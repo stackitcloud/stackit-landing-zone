@@ -24,6 +24,33 @@ Die ausführbaren Deployments stehen direkt in den Workflows:
 
 Jeder Deployment-Job zeigt die einzelnen Schritte: Credential-Vorbereitung, gegebenenfalls Lesen der vorherigen Backend-Outputs, `tofu init`, `tofu validate`, `tofu plan` beziehungsweise `tofu apply`. Es gibt keinen eigenen JavaScript-Deployment-Runner. Einmalige Recovery-Operationen gehören nicht in diesen normalen Ablauf.
 
+## Verfügbarkeit der Ubuntu-Abhängigkeiten
+
+Die Python-Paketierung behält die exakten Ubuntu-22.04-Versionen und geprüften
+SHA-256-Werte. Bei Transport- oder Verfügbarkeitsfehlern versucht sie nacheinander
+das HTTPS-Sicherheitsarchiv, das Hauptarchiv und den Ubuntu-Mirror der Oregon State
+University. Schon die erste abweichende Prüfsumme oder fehlgeschlagene
+TLS-Zertifikatsprüfung bricht ab. Es gibt keinen Versionswechsel, kein unsicheres
+HTTP und kein Entpacken ungeprüfter Pakete. Für jede Quelle gelten begrenzte
+Verbindungs-, Übertragungs- und Prozesslaufzeiten.
+
+Die Browserinstallation darf auf das Ubuntu-HTTPS-Repository der OSU wechseln,
+wenn eine begrenzte DNS-Vorprüfung oder die erste Installation einen
+Auflösungsfehler für Ubuntu-Paketserver meldet. Bei gescheiterter Vorprüfung
+wechselt sie vor langsamen APT-Wiederholungen; andernfalls darf sie nach genau
+diesem DNS-Fehler einmal erneut installieren. Der Helfer ändert erkannte
+Ubuntu-Repository-URIs auf dem kurzlebigen
+CI-Runner; Suites, Komponenten, Signaturschlüssel und APT-Signaturprüfungen bleiben
+erhalten. Andere Repositories bleiben bestehen. Browser-CDN-Fehler, Signaturfehler,
+Abbruch und ein zweiter Fehler beenden den Job. Die eigentliche Browserabnahme wird
+weder übersprungen noch durch diesen Helfer automatisch wiederholt. Workflow-
+Zeitlimits und Freigaben vor der Aktivierung bleiben unverändert.
+Siehe Vorfall [#243](https://github.com/stackitcloud/stackit-landing-zone/issues/243).
+
+Die Offline-Regressionsprüfungen starten im Repository-Root mit
+`node --test landing-zone-configurator/infra/ci/ubuntu-dependencies.test.mjs`.
+Sie ändern niemals die APT-Konfiguration des Arbeitsplatzrechners.
+
 <a id="plan-and-apply"></a>
 
 ## Plan und Apply

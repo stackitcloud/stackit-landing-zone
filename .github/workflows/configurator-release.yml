@@ -79,6 +79,7 @@ jobs:
           node --test ../infra/ci/prepare-release.test.mjs
           node --test ../infra/ci/buildpack-source.test.mjs
           node --test ../infra/ci/image-staging.test.mjs
+          node --test ../infra/ci/ubuntu-dependencies.test.mjs
           node --test ../infra/ci/release-lifecycle.test.mjs ../infra/ci/production.test.mjs ../infra/ci/production-readiness.test.mjs
       - name: Test first preparations and stateful platform Plan/Apply broker
         run: npm run test:platform-database
@@ -119,7 +120,7 @@ jobs:
           tofu_wrapper: false
       - name: Verify browser flow and package native runner in parallel
         run: |
-          node ../infra/ci/run-parallel.mjs browser 'npx playwright install --with-deps chromium && npm run test:e2e' native '
+          node ../infra/ci/run-parallel.mjs browser 'node ../infra/ci/install-browser.mjs && npm run test:e2e' native '
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npx vitest run tests/worker-recovery-hold.test.ts
           npm run test:common-contract
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:export-native
