@@ -469,7 +469,9 @@ jobs:
       - name: CF service connection tests
         id: connectivity
         timeout-minutes: 5
-        run: cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
+        run: |
+          node infra/ci/verify-mailout-binding.mjs
+          cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
       - name: Verify separate runner app, bindings and rejected job ticket
         timeout-minutes: 10
         run: |

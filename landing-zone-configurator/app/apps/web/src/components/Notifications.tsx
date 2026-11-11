@@ -191,7 +191,7 @@ export function Notifications({ session }: { session: Session | null }) {
         <h2>{t("Benachrichtigungen")}</h2>
         <p>
           {t(
-            "Aufgaben und Statusmeldungen für deinen aktiven Arbeitsbereich. Der Verlauf bleibt unabhängig von deinen E-Mail-Einstellungen sichtbar.",
+            "Öffne eine Benachrichtigung, um Details zu sehen oder eine offene Aufgabe zu bearbeiten.",
           )}
         </p>
         {error && <p role="alert">{t(error)}</p>}
@@ -264,25 +264,19 @@ export function Notifications({ session }: { session: Session | null }) {
           </button>
         )}
         <p className="hint">
-          {t(
-            "Nachrichten werden 90 Tage aufbewahrt. Links öffnen geschützte Ansichten und erteilen keine Freigabe.",
-          )}
+          {t("Hier findest du deine Benachrichtigungen der letzten 90 Tage.")}
         </p>
       </section>
       <section className="panel">
-        <h2>{t("Meine E-Mail-Einstellungen")}</h2>
+        <h2>{t("E-Mail-Benachrichtigungen")}</h2>
         {preferences && (
           <>
             <p>
-              {t(
-                "Du entscheidest für jedes Thema selbst. Einladungen verschickt die einladende Person unabhängig von diesen Einstellungen.",
-              )}
+              {t("Wähle die Themen, zu denen du E-Mails erhalten möchtest.")}
             </p>
             {!preferences.mailEnabled && (
               <p role="status">
-                {t(
-                  "E-Mail-Versand ist auf dieser Instanz noch nicht eingerichtet. Deine Einstellungen werden trotzdem gespeichert.",
-                )}
+                {t("E-Mail-Benachrichtigungen sind derzeit nicht verfügbar.")}
               </p>
             )}
             {!preferences.hasVerifiedEmail && (
