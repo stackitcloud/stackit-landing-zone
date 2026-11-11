@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { materializePythonRuntime } from "./materialize-python-runtime.mjs";
 
 // cflinuxfs4 is Ubuntu 22.04. Carry the matching interpreter and standard
 // library instead of relying on a Python executable in the CF stack.
@@ -28,6 +29,7 @@ try {
     await writeFile(path, bytes, { mode: 0o600, flag: "wx" });
     execFileSync("dpkg-deb", ["--extract", path, runtime], { stdio: "pipe" });
   }
+  await materializePythonRuntime(runtime);
   await mkdir(resolve(root, "tools"), { recursive: true });
   await writeFile(resolve(root, "tools/python3"), `#!/usr/bin/env bash
 set -euo pipefail

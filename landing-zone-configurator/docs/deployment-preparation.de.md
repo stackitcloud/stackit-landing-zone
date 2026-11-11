@@ -122,6 +122,10 @@ SHA-256-Prüfsummen. Interpreter und Standardbibliothek ermöglichen die native
 OPNsense-Kontoinitialisierung auf `cflinuxfs4`, das keine ausführbare Python-Datei
 mitbringt. Der Paketbau prüft die benötigten Imports; Tasks installieren keine
 Pakete. Lokale Runner-Pakete verwenden die Python-3-Installation des Arbeitsplatzes.
+Paketinterne Python-Links werden vor der Fingerprint-Berechnung in reguläre Dateien
+aufgelöst. Absolute Links werden innerhalb des entpackten Pakets aufgelöst;
+ausbrechende oder defekte Links lassen den Paketbau fehlschlagen. Das Verbot
+symbolischer Links im Runner bleibt bestehen.
 
 `POST /api/v1/preparations` verwendet die vorhandene gespeicherte Konfiguration,
 Revision und das eigene Credential-Profil. Die zusätzliche Auswahl lautet:
