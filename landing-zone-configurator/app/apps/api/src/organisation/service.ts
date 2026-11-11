@@ -16,6 +16,8 @@ export type OrganisationOverview = {
   members: {
     userId: string;
     login: string | null;
+    displayName?: string | null;
+    email?: string | null;
     roles: ProductRole[];
     manageMembers: boolean;
   }[];

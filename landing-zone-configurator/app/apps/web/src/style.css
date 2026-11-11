@@ -1217,6 +1217,7 @@ select[aria-invalid="true"] {
   width: 1.125rem;
   height: 1.125rem;
 }
+
 .text-button {
   padding: 0;
   color: inherit;
@@ -2155,5 +2156,311 @@ button.template-node:hover {
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
+  }
+}
+
+.people-management {
+  min-width: 0;
+}
+.people-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.people-heading h2,
+.people-heading h3 {
+  margin: 0;
+}
+.people-heading p {
+  margin: 0.5rem 0 0;
+  color: #526978;
+}
+.people-tabs {
+  display: flex;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.people-tabs [role="tab"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 0.25rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.people-tabs [aria-selected="true"] {
+  color: #006b9f;
+  border-bottom-color: #006b9f;
+  font-weight: 700;
+}
+.people-count,
+.people-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 1rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  background: #edf3f6;
+  color: #284556;
+}
+.people-badge-manager {
+  background: #e4f3f8;
+  color: #00587a;
+}
+.people-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(11rem, auto);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.people-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.people-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.people-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  min-width: 0;
+}
+.people-identity > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.people-identity h3,
+.people-identity h4 {
+  font-size: 1rem;
+  margin: 0 0 0.35rem;
+  line-height: 1.5;
+}
+.people-identity p {
+  margin: 0.25rem 0;
+}
+.people-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  flex: 0 0 2.75rem;
+  background: #e4f3f8;
+  color: #00587a;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+.people-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: #216644;
+}
+.people-status::before {
+  content: "";
+  width: 0.375rem;
+  height: 0.375rem;
+  background: currentColor;
+  border-radius: 50%;
+}
+.people-role-badges {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+.people-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  max-width: 21rem;
+}
+.people-row-actions .hint {
+  flex-basis: 100%;
+  text-align: right;
+}
+.people-danger {
+  color: #a52323;
+}
+.people-destructive {
+  background: #a52323;
+  border-color: #a52323;
+}
+.people-empty {
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+}
+.people-empty h4 {
+  margin: 0 0 0.5rem;
+}
+.invitation-details {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.invitation-details p {
+  margin: 0.5rem 0 0;
+}
+.people-dialog {
+  width: min(42rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  box-sizing: border-box;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  color: var(--text);
+}
+.people-dialog::backdrop {
+  background: rgb(6 43 67 / 50%);
+}
+.people-dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.people-dialog-heading h2 {
+  font-size: 1.375rem;
+  margin: 0;
+}
+.people-dialog-person {
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+.people-form-fields {
+  display: grid;
+  gap: 1.5rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.people-role-options {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.people-role-options legend {
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  padding: 0;
+}
+.people-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.875rem;
+  cursor: pointer;
+}
+.people-choice:has(input:checked) {
+  border-color: #00779e;
+  background: #f0f8fc;
+}
+.people-choice:has(input:disabled) {
+  opacity: 0.65;
+  cursor: default;
+}
+.people-choice input[type="checkbox"],
+.people-choice input[type="radio"] {
+  flex: 0 0 auto;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  accent-color: #006b9f;
+}
+.people-choice > span {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.people-choice > span > span {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #526978;
+}
+.people-email-fields {
+  display: grid;
+  gap: 1rem;
+}
+.people-email-fields p {
+  margin: 0;
+}
+.people-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  position: sticky;
+  bottom: -1.5rem;
+  padding: 1.25rem 0;
+  margin: 1rem 0 -1.5rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.people-invitation-receipt {
+  overflow-wrap: anywhere;
+}
+.people-invitation-receipt details {
+  margin-top: 1rem;
+}
+.people-invitation-receipt details[open] summary {
+  margin-bottom: 1rem;
+}
+.people-invitation-receipt .field .button {
+  margin-top: 0.75rem;
+}
+@media (max-width: 900px) {
+  .people-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.875rem;
+  }
+  .people-row-actions {
+    justify-content: flex-start;
+    max-width: none;
+  }
+  .people-row-actions .hint {
+    text-align: left;
+  }
+}
+@media (max-width: 560px) {
+  .people-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .people-dialog {
+    padding: 1rem;
+  }
+  .people-dialog-actions {
+    bottom: -1rem;
+    margin-bottom: -1rem;
+  }
+  .people-dialog-actions .button {
+    flex: 1 1 auto;
   }
 }

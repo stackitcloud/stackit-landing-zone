@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { currentLanguage, t } from "../i18n";
 import type { Session } from "./Account";
+import type { MemberRole } from "./MemberIdentity";
+import { MembershipRoles } from "./MembershipRoles";
+import { PeopleDialog } from "./PeopleDialog";
 
 const key = "lzc.pending-invitation";
 function readPending(): { token: string | null; persisted: boolean } {
@@ -188,231 +191,442 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
   );
 }
 type Item = {
-  mailStatus?: string | null;
   id: string;
   roles: string[];
   manageMembers: boolean;
   expiresAt: string;
+  createdAt?: string;
+  recipientEmail?: string | null;
+  mailStatus?: string | null;
 };
-export function Invitations({ session }: { session: Session }) {
+export function Invitations({
+  session,
+  createOpen,
+  onCreateClose,
+  onCountChange,
+  active,
+}: {
+  session: Session;
+  createOpen: boolean;
+  onCreateClose: () => void;
+  onCountChange: (count: number) => void;
+  active: boolean;
+}) {
+  const currentSession = useRef(session);
+  currentSession.current = session;
+  const sequence = useRef(0);
   const [items, setItems] = useState<Item[]>([]);
-  const [owner, setOwner] = useState(true);
-  const [engineer, setEngineer] = useState(false);
+  const [roles, setRoles] = useState<MemberRole[]>(["application-owner"]);
   const [manage, setManage] = useState(false);
-  const [sendMail, setSendMail] = useState(false);
+  const [method, setMethod] = useState<"email" | "link" | null>(null);
   const [email, setEmail] = useState("");
   const [locale, setLocale] = useState<"de" | "en">("de");
-  const [emailQueued, setEmailQueued] = useState(false);
+  const [recipient, setRecipient] = useState<string | null>(null);
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const load = () =>
-    call(session, "", "GET").then((v) => setItems(v.invitations));
+  const [revoking, setRevoking] = useState<Item | null>(null);
+  const load = useCallback(async () => {
+    const request = ++sequence.current;
+    const value = await call(currentSession.current, "", "GET");
+    if (request === sequence.current) {
+      setItems(value.invitations);
+      onCountChange(value.invitations.length);
+    }
+  }, [onCountChange]);
   useEffect(() => {
-    let active = true;
-    void call(session, "", "GET")
-      .then((v) => {
-        if (active) setItems(v.invitations);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      });
+    void load().catch((e) => setError(e.message));
     return () => {
-      active = false;
+      sequence.current++;
     };
-  }, [session]);
+  }, [load]);
+  useEffect(() => {
+    if (
+      !active ||
+      !items.some((item) =>
+        ["pending", "sending"].includes(item.mailStatus ?? ""),
+      )
+    )
+      return;
+    const timer = setInterval(() => {
+      void load().catch((e) => setError(e.message));
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [active, items, load]);
+  const close = () => {
+    if (busy) return;
+    setLink("");
+    setRecipient(null);
+    setEmail("");
+    setMethod(null);
+    setRoles(["application-owner"]);
+    setManage(false);
+    setCopied(false);
+    setError("");
+    onCreateClose();
+  };
+  const copy = () =>
+    void navigator.clipboard
+      .writeText(link)
+      .then(() => setCopied(true))
+      .catch(() =>
+        setError("Bitte markiere und kopiere den Link aus dem Feld."),
+      );
+  const linkField = (
+    <div className="field">
+      <label htmlFor="invitation-link">
+        {t("Einladungslink – jetzt kopieren")}
+      </label>
+      <input id="invitation-link" readOnly value={link} />
+      <button type="button" className="button secondary" onClick={copy}>
+        {t("Link kopieren")}
+      </button>
+      {copied && <p role="status">{t("Link kopiert.")}</p>}
+    </div>
+  );
   return (
-    <section className="panel">
-      <h3>{t("Mitglied einladen")}</h3>
-      <p>
-        {t(
-          "Erstelle einen einmaligen Link, gültig für sieben Tage. Die Person meldet sich an und bestätigt den Beitritt. Teile den Link nur mit der gewünschten Person: Wer ihn besitzt, kann die gewählten Rollen erhalten.",
-        )}
-      </p>
-      {error && <p role="alert">{t(error)}</p>}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setBusy(true);
-          setError("");
-          setLink("");
-          setCopied(false);
-          void call(session, "", "POST", {
-            roles: [
-              ...(engineer ? ["platform-engineer"] : []),
-              ...(owner ? ["application-owner"] : []),
-            ],
-            manageMembers: engineer && manage,
-            ...(sendMail ? { mail: { email, locale } } : {}),
-          })
-            .then(async (v) => {
-              setLink(v.url);
-              setEmailQueued(v.emailQueued === true);
-              await load();
-            })
-            .catch((e) => setError(e.message))
-            .finally(() => setBusy(false));
-        }}
-      >
-        <label>
-          <input
-            type="checkbox"
-            checked={owner}
-            onChange={(e) => setOwner(e.target.checked)}
-          />{" "}
-          {t("Application Owner")}
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={engineer}
-            onChange={(e) => {
-              setEngineer(e.target.checked);
-              if (!e.target.checked) setManage(false);
-            }}
-          />{" "}
-          {t("Platform Engineer")}
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={manage}
-            disabled={!engineer}
-            onChange={(e) => setManage(e.target.checked)}
-          />{" "}
-          {t("Mitglieder verwalten")}
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={sendMail}
-            onChange={(e) => setSendMail(e.target.checked)}
-          />
-          {t("Einladung zusätzlich per E-Mail senden")}
-        </label>
-        {sendMail && (
-          <>
-            <label>
-              {t("E-Mail-Adresse der eingeladenen Person")}
-              <input
-                type="email"
-                maxLength={254}
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </label>
-            <label>
-              {t("Sprache für Nachrichten")}
-              <select
-                value={locale}
-                onChange={(e) =>
-                  setLocale(e.target.value === "en" ? "en" : "de")
-                }
-              >
-                <option value="de">Deutsch</option>
-                <option value="en">English</option>
-              </select>
-            </label>
-            <p>
-              {t(
-                "Die E-Mail-Einladung kann nur mit der passenden verifizierten STACKIT-E-Mail-Adresse angenommen werden.",
-              )}
-            </p>
-          </>
-        )}
+    <div className="invitation-management">
+      <div className="people-heading">
+        <h3>{t("Offene Einladungen")}</h3>
         <button
-          type="submit"
-          className="button primary"
-          disabled={busy || (!owner && !engineer)}
+          type="button"
+          className="button secondary"
+          disabled={busy}
+          onClick={() => {
+            setError("");
+            void load().catch((e) => setError(e.message));
+          }}
         >
-          {t("Einladungslink erstellen")}
+          {t("Aktualisieren")}
         </button>
-      </form>
-      {link && (
-        <div className="field">
-          <label htmlFor="invitation-link">
-            {t("Einladungslink – jetzt kopieren")}
-          </label>
-          <input id="invitation-link" readOnly value={link} />
+      </div>
+      {error && !createOpen && !revoking && <p role="alert">{t(error)}</p>}
+      {items.length === 0 && (
+        <div className="people-empty">
+          <h4>{t("Keine offenen Einladungen.")}</h4>
           <p>
             {t(
-              emailQueued
-                ? "Die Einladung wurde für den E-Mail-Versand vorgemerkt. Dies bestätigt noch keine Zustellung."
-                : "Der vollständige Link wird nur jetzt angezeigt. Es wird keine E-Mail verschickt.",
+              "Lade eine Person ein, um ihr Zugriff auf diesen Arbeitsbereich zu geben.",
             )}
           </p>
-          <button
-            type="button"
-            className="button secondary"
-            onClick={() =>
-              void navigator.clipboard
-                .writeText(link)
-                .then(() => setCopied(true))
-                .catch(() =>
-                  setError("Bitte markiere und kopiere den Link aus dem Feld."),
-                )
-            }
-          >
-            {t("Link kopieren")}
-          </button>
-          {copied && <p role="status">{t("Link kopiert.")}</p>}
         </div>
       )}
-      <h3>{t("Offene Einladungen")}</h3>
-      {items.length === 0 && <p>{t("Keine offenen Einladungen.")}</p>}
-      {items.map((i) => (
-        <article key={i.id} className="panel">
-          {i.mailStatus && (
-            <p>
-              {t("E-Mail-Status:")}{" "}
-              {t(
-                (
-                  {
-                    pending: "Versand vorgemerkt",
-                    sending: "Versand läuft",
-                    accepted: "An den Mailserver übergeben",
-                    suppressed: "Versand unterdrückt",
-                    failed: "Versand fehlgeschlagen",
-                    uncertain:
+      <ul className="people-list" aria-label={t("Offene Einladungen")}>
+        {items.map((item) => (
+          <li key={item.id} className="people-row invitation-row">
+            <div className="people-identity">
+              <span className="people-avatar" aria-hidden="true">
+                {item.recipientEmail?.slice(0, 1).toUpperCase() ?? "↗"}
+              </span>
+              <div>
+                <h4>{item.recipientEmail ?? t("Einladungslink")}</h4>
+                <p>
+                  {t(
+                    item.recipientEmail
+                      ? "E-Mail-Einladung"
+                      : "Noch keiner Person zugeordnet",
+                  )}
+                </p>
+                <span className="people-badge">{t("Ausstehend")}</span>
+              </div>
+            </div>
+            <div className="invitation-details">
+              <div className="people-role-badges">
+                {item.roles.map((role) => (
+                  <span key={role} className="people-badge">
+                    {role === "platform-engineer"
+                      ? t("Platform Engineer")
+                      : t("Application Owner")}
+                  </span>
+                ))}
+                {item.manageMembers && (
+                  <span className="people-badge people-badge-manager">
+                    {t("Mitgliederverwaltung")}
+                  </span>
+                )}
+              </div>
+              {item.mailStatus && (
+                <p>
+                  {t("E-Mail-Status:")}{" "}
+                  {t(
+                    (
+                      {
+                        pending: "Versand vorgemerkt",
+                        sending: "Versand läuft",
+                        accepted: "An den Mailserver übergeben",
+                        suppressed: "Versand unterdrückt",
+                        failed: "Versand fehlgeschlagen",
+                        uncertain:
+                          "Versandergebnis unklar – keine automatische Wiederholung",
+                      } as Record<string, string>
+                    )[item.mailStatus] ??
                       "Versandergebnis unklar – keine automatische Wiederholung",
-                  } as Record<string, string>
-                )[i.mailStatus] ??
-                  "Versandergebnis unklar – keine automatische Wiederholung",
+                  )}
+                </p>
               )}
-            </p>
-          )}
-          <p>
-            {names(i.roles)}
-            {i.manageMembers ? " · Mitglieder verwalten" : ""}
-          </p>
-          <p>
-            {t("Gültig bis")}{" "}
-            {new Date(i.expiresAt).toLocaleString(
-              currentLanguage() === "de" ? "de-DE" : "en-GB",
-            )}
-          </p>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={busy}
-            onClick={() => {
-              setBusy(true);
-              setError("");
-              void call(session, `/${i.id}`, "DELETE")
-                .then(async () => {
-                  setLink("");
-                  await load();
+              <p>
+                {t("Gültig bis")}{" "}
+                <time dateTime={item.expiresAt}>
+                  {new Date(item.expiresAt).toLocaleString(
+                    currentLanguage() === "de" ? "de-DE" : "en-GB",
+                  )}
+                </time>
+              </p>
+              {item.createdAt && (
+                <p className="hint">
+                  {t("Erstellt am")}{" "}
+                  <time dateTime={item.createdAt}>
+                    {new Date(item.createdAt).toLocaleString(
+                      currentLanguage() === "de" ? "de-DE" : "en-GB",
+                    )}
+                  </time>
+                </p>
+              )}
+            </div>
+            <div className="people-row-actions">
+              <button
+                type="button"
+                className="button secondary people-danger"
+                disabled={busy}
+                onClick={() => {
+                  setError("");
+                  setRevoking(item);
+                }}
+              >
+                {t("Einladung widerrufen")}
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {createOpen && (
+        <PeopleDialog
+          title={link ? t("Einladung erstellt") : t("Person einladen")}
+          busy={busy}
+          onClose={close}
+        >
+          {error && <p role="alert">{t(error)}</p>}
+          {link ? (
+            <div className="people-invitation-receipt">
+              {recipient ? (
+                <>
+                  <p role="status">
+                    {t(
+                      "Die Einladung an {{value0}} ist für den Versand vorgemerkt.",
+                      { value0: recipient },
+                    )}
+                  </p>
+                  <p>
+                    {t(
+                      "Die Person erhält einen Link, über den sie den Beitritt bestätigen kann.",
+                    )}
+                  </p>
+                  <details>
+                    <summary>{t("Link alternativ selbst weitergeben")}</summary>
+                    {linkField}
+                  </details>
+                </>
+              ) : (
+                <>
+                  <p>
+                    {t(
+                      "Kopiere den Link und teile ihn mit der gewünschten Person. Er ist sieben Tage gültig.",
+                    )}
+                  </p>
+                  {linkField}
+                </>
+              )}
+              <div className="people-dialog-actions">
+                <button
+                  type="button"
+                  className="button primary"
+                  onClick={close}
+                >
+                  {t("Fertig")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!method || busy) return;
+                const address = method === "email" ? email.trim() : null;
+                setBusy(true);
+                setError("");
+                setCopied(false);
+                void call(currentSession.current, "", "POST", {
+                  roles,
+                  manageMembers: manage,
+                  ...(address ? { mail: { email: address, locale } } : {}),
                 })
-                .catch((e) => setError(e.message))
-                .finally(() => setBusy(false));
-            }}
-          >
-            {t("Einladung widerrufen")}
-          </button>
-        </article>
-      ))}
-    </section>
+                  .then(async (value) => {
+                    setLink(value.url);
+                    setRecipient(value.emailQueued === true ? address : null);
+                    await load();
+                  })
+                  .catch((e) => setError(e.message))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              <fieldset className="people-form-fields" disabled={busy}>
+                <fieldset className="people-role-options">
+                  <legend>{t("Wie möchtest du einladen?")}</legend>
+                  <label className="people-choice">
+                    <input
+                      type="radio"
+                      name="invitation-method"
+                      value="email"
+                      required
+                      checked={method === "email"}
+                      onChange={() => setMethod("email")}
+                    />
+                    <span>
+                      <strong>{t("Per E-Mail einladen")}</strong>
+                      <span>
+                        {t(
+                          "Der Einladungslink wird automatisch erstellt und per E-Mail verschickt.",
+                        )}
+                      </span>
+                    </span>
+                  </label>
+                  <label className="people-choice">
+                    <input
+                      type="radio"
+                      name="invitation-method"
+                      value="link"
+                      required
+                      checked={method === "link"}
+                      onChange={() => setMethod("link")}
+                    />
+                    <span>
+                      <strong>{t("Link selbst teilen")}</strong>
+                      <span>
+                        {t(
+                          "Erstelle einen Link und gib ihn selbst an die gewünschte Person weiter.",
+                        )}
+                      </span>
+                    </span>
+                  </label>
+                </fieldset>
+                {method === "email" && (
+                  <div className="people-email-fields">
+                    <div className="field">
+                      <label htmlFor="invitation-email">
+                        {t("E-Mail-Adresse der eingeladenen Person")}
+                      </label>
+                      <input
+                        id="invitation-email"
+                        type="email"
+                        autoComplete="off"
+                        maxLength={254}
+                        required
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                      />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="invitation-language">
+                        {t("Sprache für Nachrichten")}
+                      </label>
+                      <select
+                        id="invitation-language"
+                        value={locale}
+                        onChange={(event) =>
+                          setLocale(event.target.value === "en" ? "en" : "de")
+                        }
+                      >
+                        <option value="de">Deutsch</option>
+                        <option value="en">English</option>
+                      </select>
+                    </div>
+                    <p className="hint">
+                      {t(
+                        "Die Person meldet sich mit dieser STACKIT-E-Mail-Adresse an und bestätigt den Beitritt.",
+                      )}
+                    </p>
+                  </div>
+                )}
+                <MembershipRoles
+                  roles={roles}
+                  manageMembers={manage}
+                  onChange={setRoles}
+                  onManageChange={setManage}
+                />
+              </fieldset>
+              <div className="people-dialog-actions">
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={close}
+                >
+                  {t("Abbrechen")}
+                </button>
+                <button
+                  type="submit"
+                  className="button primary"
+                  disabled={busy || !method || roles.length === 0}
+                >
+                  {t(
+                    method === "email"
+                      ? "Einladung senden"
+                      : method === "link"
+                        ? "Einladungslink erstellen"
+                        : "Einladung erstellen",
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+        </PeopleDialog>
+      )}
+      {revoking && (
+        <PeopleDialog
+          title={t("Einladung widerrufen")}
+          busy={busy}
+          onClose={() => setRevoking(null)}
+        >
+          <p>
+            {revoking.recipientEmail
+              ? t("Einladung für {{value0}} widerrufen?", {
+                  value0: revoking.recipientEmail,
+                })
+              : t("Diesen Einladungslink widerrufen?")}
+          </p>
+          <p>{t("Mit dieser Einladung kann danach niemand mehr beitreten.")}</p>
+          {error && <p role="alert">{t(error)}</p>}
+          <div className="people-dialog-actions">
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setRevoking(null)}
+            >
+              {t("Abbrechen")}
+            </button>
+            <button
+              type="button"
+              className="button primary people-destructive"
+              disabled={busy}
+              onClick={() => {
+                setBusy(true);
+                setError("");
+                void call(currentSession.current, `/${revoking.id}`, "DELETE")
+                  .then(async () => {
+                    setRevoking(null);
+                    await load();
+                  })
+                  .catch((e) => setError(e.message))
+                  .finally(() => setBusy(false));
+              }}
+            >
+              {t("Einladung widerrufen")}
+            </button>
+          </div>
+        </PeopleDialog>
+      )}
+    </div>
   );
 }

@@ -3,13 +3,15 @@ import { t } from "../i18n";
 import { pendingLoginOwner } from "../login-draft";
 import type { Session } from "./Account";
 import { ApplicationGroups } from "./ApplicationGroups";
-import { Invitations } from "./Invitations";
 import { OrganizationBinding } from "./OrganizationBinding";
+import { UserManagement } from "./UserManagement";
 
 type Role = "platform-engineer" | "application-owner";
 type Member = {
   userId: string;
   login: string | null;
+  displayName?: string | null;
+  email?: string | null;
   roles: Role[];
   manageMembers: boolean;
 };
@@ -87,17 +89,17 @@ export function Organisation({
   restoreLastWorkspace?: boolean;
   onNavigate?: () => void;
 }) {
-  const [data, setData] = useState<Overview | null>(null);
+  const [overview, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [organizationId, setOrganizationId] = useState("");
-  const [userId, setUserId] = useState("");
-  const [engineer, setEngineer] = useState(false);
-  const [owner, setOwner] = useState(true);
-  const [manager, setManager] = useState(false);
   const [creating, setCreating] = useState(false);
+  const data =
+    overview && (!session?.user.id || overview.userId === session.user.id)
+      ? overview
+      : null;
   const load = useCallback(async (signal?: AbortSignal) => {
     const response = await fetch(
       "/api/v1/organisation",
@@ -171,7 +173,7 @@ export function Organisation({
     switchWorkspace = false,
     targetTenantId?: string,
   ) {
-    if (!session || busy) return;
+    if (!session || busy) return false;
     setBusy(true);
     setError("");
     setNotice("");
@@ -209,7 +211,7 @@ export function Organisation({
         window.location.assign(
           tenant ? workspaceDestination(tenant) : "/workspaces",
         );
-        return;
+        return true;
       }
       if (selectionOnly && path === "" && method === "POST") {
         const created = await response.json();
@@ -230,7 +232,7 @@ export function Organisation({
         rememberWorkspace(session, created.id);
         onNavigate?.();
         window.location.assign("/configurations");
-        return;
+        return true;
       }
       const changesOwnMembership =
         path === `/members/${session.user.id}` ||
@@ -241,14 +243,16 @@ export function Organisation({
           body.userId === session.user.id);
       if (changesOwnMembership) {
         window.location.assign("/organisation");
-        return;
+        return true;
       }
       await load();
       setNotice("Änderung gespeichert.");
+      return true;
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Änderung fehlgeschlagen.",
       );
+      return false;
     } finally {
       setBusy(false);
     }
@@ -460,150 +464,21 @@ export function Organisation({
         </section>
       )}
       {!selectionOnly && active?.kind === "organisation" && (
-        <section className="panel">
-          <h2>
-            {t("Mitglieder in")} {active.name}
-          </h2>
-          {!active.manageMembers && (
-            <p>
-              {t(
-                "Änderungen übernimmt ein Platform Engineer mit Berechtigung zur Mitgliederverwaltung.",
-              )}
-            </p>
-          )}
-          {data?.members.map((member) => (
-            <article key={member.userId}>
-              <h3>
-                {member.login ? `@${member.login}` : t("Benutzer")}
-                {member.userId === data.userId ? " · Du" : ""}
-              </h3>
-
-              <p>
-                {member.roles
-                  .map((role) =>
-                    role === "platform-engineer"
-                      ? "Platform Engineer"
-                      : "Application Owner",
-                  )
-                  .join(", ")}
-                {member.manageMembers ? " · Mitgliederverwaltung" : ""}
-              </p>
-              {active.manageMembers && (
-                <>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      setUserId(member.userId);
-                      setEngineer(member.roles.includes("platform-engineer"));
-                      setOwner(member.roles.includes("application-owner"));
-                      setManager(member.manageMembers);
-                      document.getElementById("member-roles")?.focus();
-                    }}
-                  >
-                    {t("Rollen bearbeiten")}
-                  </button>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          t(
-                            "Diese Mitgliedschaft entfernen? Der Zugriff auf den Arbeitsbereich endet damit.",
-                          ),
-                        )
-                      )
-                        void mutate(`/members/${member.userId}`, "DELETE");
-                    }}
-                  >
-                    {t("Mitglied entfernen")}
-                  </button>
-                </>
-              )}
-            </article>
-          ))}
-          {active.manageMembers && <Invitations session={session} />}
-          {active.manageMembers && userId && (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!new RegExp(`^${uuid}$`).test(userId.trim())) {
-                  setError(
-                    "Bitte wähle ein bestehendes Mitglied über Rollen bearbeiten aus.",
-                  );
-                  return;
-                }
-                const roles: Role[] = [];
-                if (engineer) roles.push("platform-engineer");
-                if (owner) roles.push("application-owner");
-                void mutate("/members", "PUT", {
-                  userId: userId.trim(),
-                  roles,
-                  manageMembers: engineer && manager,
-                });
-              }}
-            >
-              <h3 id="member-roles" tabIndex={-1}>
-                {t("Rollen bearbeiten:")}{" "}
-                {data?.members.find((m) => m.userId === userId)?.login ??
-                  t("Mitglied")}
-              </h3>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={engineer}
-                  onChange={(event) => {
-                    setEngineer(event.target.checked);
-                    if (!event.target.checked) setManager(false);
-                  }}
-                />{" "}
-                {t("Platform Engineer")}
-              </label>
-              <p>
-                {t(
-                  "Verwaltet Plattform und künftig veröffentlichte Application Templates.",
-                )}
-              </p>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={owner}
-                  onChange={(event) => setOwner(event.target.checked)}
-                />{" "}
-                {t("Application Owner")}
-              </label>
-              <p>
-                {t(
-                  "Verwendet künftig freigegebene Application Templates. Der Application-Katalog ist noch nicht verfügbar.",
-                )}
-              </p>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={manager}
-                  disabled={!engineer}
-                  onChange={(event) => setManager(event.target.checked)}
-                />{" "}
-                {t("Mitglieder verwalten")}
-              </label>
-              <p>
-                {t(
-                  "Zusätzliche Berechtigung für Platform Engineers. Eigene Rollen können nur durch ein anderes berechtigtes Mitglied erweitert werden. Mindestens ein Mitglied muss diese Berechtigung behalten.",
-                )}
-              </p>
-              <button
-                className="button primary"
-                type="submit"
-                disabled={busy || (!engineer && !owner)}
-              >
-                {t("Mitgliedschaft speichern")}
-              </button>
-            </form>
-          )}
-        </section>
+        <UserManagement
+          key={`${session.user.id ?? session.user.login}:${active.id}`}
+          session={session}
+          workspaceName={active.name}
+          viewerId={data?.userId ?? session.user.id ?? ""}
+          members={data?.members ?? []}
+          canManage={active.manageMembers}
+          busy={busy}
+          error={error}
+          clearError={() => setError("")}
+          onSave={(userId, roles, manageMembers) =>
+            mutate("/members", "PUT", { userId, roles, manageMembers })
+          }
+          onRemove={(userId) => mutate(`/members/${userId}`, "DELETE")}
+        />
       )}
       {!selectionOnly &&
         active &&

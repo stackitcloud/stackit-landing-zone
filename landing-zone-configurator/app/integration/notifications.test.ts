@@ -281,6 +281,15 @@ it("queues invitations atomically, encrypts their links and binds acceptance to 
   expect(send).toHaveBeenCalledTimes(1);
   expect(send.mock.calls[0]?.[0]).toBe(email);
   expect(send.mock.calls[0]?.[1].text).toContain(`#invite=${invitation.token}`);
+  expect(await invitations.list(inviter)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: invitation.id,
+        recipientEmail: email,
+        mailStatus: "accepted",
+      }),
+    ]),
+  );
   await invitations.use(recipient, invitation.token, true);
   await expect(
     invitations.use(recipient, invitation.token, true),
@@ -293,6 +302,69 @@ it("queues invitations atomically, encrypts their links and binds acceptance to 
       )
     ).rows[0].invitation_cipher,
   ).toBeNull();
+});
+it("shows recipient identities only to current workspace managers and identifies STACKIT-only members", async () => {
+  await clearQueue();
+  const manager = await workspace();
+  const person = await user();
+  const address = `${person.userId}@example.test`;
+  await verified(person, address);
+  await migration.query(
+    "UPDATE lzc_auth.users SET github_id=NULL,github_login=NULL,display_name='Alex Example' WHERE id=$1",
+    [person.userId],
+  );
+  const membership = await invitations.create(
+    manager,
+    ["application-owner"],
+    false,
+  );
+  await invitations.use(person, membership.token, true);
+  const email = await invitations.create(
+    manager,
+    ["application-owner"],
+    false,
+    { email: address, locale: "de" },
+  );
+  const link = await invitations.create(manager, ["application-owner"], false);
+  const listed = await invitations.list(manager);
+  expect(listed).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: email.id, recipientEmail: address }),
+      expect.objectContaining({ id: link.id, recipientEmail: null }),
+    ]),
+  );
+  expect(JSON.stringify(listed)).not.toContain(email.token);
+  expect(JSON.stringify(listed)).not.toContain(link.token);
+  expect((await organisations.overview(manager)).members).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        userId: person.userId,
+        login: null,
+        displayName: "Alex Example",
+        email: address,
+      }),
+    ]),
+  );
+  const other = await workspace();
+  expect(JSON.stringify(await organisations.overview(other))).not.toContain(
+    address,
+  );
+  await expect(
+    invitations.list({ ...manager, tenantId: other.tenantId }),
+  ).rejects.toMatchObject({ code: "40001" });
+  await organisations.switch(person, manager.tenantId);
+  const member = { ...person, tenantId: manager.tenantId };
+  expect((await organisations.overview(member)).members).toEqual([]);
+  await expect(invitations.list(member)).rejects.toMatchObject({
+    code: "42501",
+  });
+  await invitations.revoke(manager, email.id);
+  expect(
+    (await invitations.list(manager)).some(
+      (item: { id: string }) => item.id === email.id,
+    ),
+  ).toBe(false);
+  await clearQueue();
 });
 it("suppresses revoked or expired invitations before sending", async () => {
   await clearQueue();

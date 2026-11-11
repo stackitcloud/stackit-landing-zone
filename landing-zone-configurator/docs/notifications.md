@@ -9,7 +9,7 @@ start anything; current authentication, membership and workflow authorization
 still apply. If a mail belongs to another workspace, switch explicitly using the
 workspace notice. The destination checks membership again.
 
-Under **Notifications → My email preferences**, each user chooses topics and the
+Under **Notifications → Email notifications**, each user chooses topics and the
 message language (German by default, or English). Preferences belong to the user,
 across workspaces and app instances. There is no workspace-level topic switch.
 Approvals, failures, recovery, access changes and bounded reminders default on;
@@ -36,9 +36,28 @@ and invitations can produce the documented bounded reminders.
 
 ## Invitations
 
-The inviter can retain the existing one-time link or select **Also send invitation
-by email**, enter the recipient and choose German/English. The invitation and its
-outbox entry commit together. An emailed invitation can only be previewed and
+In **Members**, workspace membership managers can search members by name or email,
+filter by role and edit roles directly on a person's row. Removal requires a
+confirmation naming the person and workspace; it removes workspace access, not
+the account. The last membership manager must transfer that permission before
+removing themselves. Members without management permission see their own access;
+the member directory and pending invitations remain manager-only.
+
+Choose **Invite person** and select one method:
+
+- **Invite by email:** enter the recipient and message language, select roles,
+  then choose **Send invitation**. The link is generated and queued automatically;
+  there is no separate link-generation step.
+- **Share a link yourself:** select roles and choose **Create invitation link**,
+  then copy the one-time link and share it yourself.
+
+The **Invitations** tab shows recipient addresses, roles, expiry and delivery
+status. A manually shared link is explicitly unassigned until someone accepts it.
+Pending/sending email states refresh automatically while this tab is open; a
+manual refresh is also available. Revocation names the recipient or identifies
+the link. SMTP acceptance confirms handoff, not inbox delivery.
+
+The invitation and its outbox entry commit together. An emailed invitation can only be previewed and
 accepted by an account with that matching, verified, non-revoked STACKIT email.
 Manually shared invitations preserve their existing bearer-link semantics. Both
 flows require login, explicit acceptance and an unexpired, unrevoked invitation.
