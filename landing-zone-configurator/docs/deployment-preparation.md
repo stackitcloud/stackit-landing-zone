@@ -100,7 +100,7 @@ future Plan/Apply, access, secret version and target must be checked again.
 
 Addition from 2026-10-06: ordinary preparation remains bound to `a256f68`.
 For contract output, an additional preparation can explicitly
-select the fixed qualified commit `6f5c4c981f8820c826476c5a85ca4c23dc3948a9`.
+select the fixed qualified commit `6398834bf20a4f24ea81c1f7dd0627025b4a81ce`.
 This is currently a local opt-in execution path, not general source selection or
 production approval.
 
@@ -111,6 +111,13 @@ The source metadata file `platform-source.json` is strictly validated and part o
 the package fingerprint. The Runner accepts only the matching source commit;
 saved Plans from another package remain invalid for this Runner.
 
+Hosted Runner packages also include Python 3.10.12 from Ubuntu 22.04 security
+packages, verified against pinned SHA-256 checksums. The matching interpreter
+and standard library support native OPNsense account initialization on
+`cflinuxfs4`, which does not supply a Python executable. Packaging verifies the
+required imports; tasks do not install packages. Local Runner packages use the
+workstation's Python 3 installation.
+
 `POST /api/v1/preparations` uses the existing saved configuration,
 revision and own credential profile. The additional selection is:
 
@@ -118,7 +125,7 @@ revision and own credential profile. The additional selection is:
 {
   "platformUpgrade": {
     "confirm": true,
-    "acceleratorCommit": "6f5c4c981f8820c826476c5a85ca4c23dc3948a9"
+    "acceleratorCommit": "6398834bf20a4f24ea81c1f7dd0627025b4a81ce"
   }
 }
 ```

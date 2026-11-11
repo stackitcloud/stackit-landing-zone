@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { buildpackTag } from "./buildpack-source.mjs";
 import { validateProductionBindings } from "./production-bindings.mjs";
+import { mailoutEnvironment } from "../mailout/bindings.mjs";
 import { deploymentStage } from "./stages.mjs";
 import { releaseMode } from "./release-artifact.mjs";
 const stage=deploymentStage(process.env.LZC_ENVIRONMENT??"lzc-dev");
@@ -88,6 +89,12 @@ if(mode==="backend" && stage.name==="lzc-prod") {
   const artifactKey=executionEnabled?required("LZC_DEPLOYMENT_ARTIFACT_KEY"):"";
   if(executionEnabled&&(Buffer.from(artifactKey,"base64").length!==32||Buffer.from(artifactKey,"base64").toString("base64")!==artifactKey))throw new Error("Artifact key invalid");
   if(artifactKey)mask(artifactKey);
+  const mailout=mailoutEnvironment(process.env.LZC_MAILOUT_BINDINGS,stage.name,process.env.LZC_PROJECT_ID ?? (stage.name==="lzc-dev"?"7dbff805-6788-4d5d-88c0-a5212ac5e90f":""));
+  if(mailout.LZC_MAILOUT_ENABLED==="true"&&!enabled)throw new Error("MailOut requires authentication");
+  if(mailout.LZC_MAILOUT_ENABLED==="true"&&!/^[A-Za-z0-9+/]{43}=$/.test(artifactKey))throw new Error("MailOut requires the protected artifact encryption key");
+  if(mailout.LZC_MAILOUT_PASSWORD)mask(mailout.LZC_MAILOUT_PASSWORD);
+  if(mailout.LZC_MAILOUT_USERNAME)mask(mailout.LZC_MAILOUT_USERNAME);
+  Object.assign(vars,mailout);
   Object.assign(vars,{LZC_EXECUTION_ENABLED:String(executionEnabled),LZC_APPLICATION_EXECUTION_ENABLED:String(applicationExecutionEnabled),LZC_DEPLOYMENT_ARTIFACT_KEY:artifactKey,LZC_RUNNER_DROPLET_ID:"",LZC_RUNNER_POOL_SIZE:runnerPoolSize});
   if(clientSecret)mask(clientSecret);
   Object.assign(vars,{LZC_PLANS_ENABLED:"false",LZC_RUNNER_CF_USERNAME:"",LZC_RUNNER_CF_PASSWORD:"",LZC_RUNNER_SPACE_ID:"",LZC_RUNNER_TEMPLATE_ID:""});
@@ -103,7 +110,7 @@ if(mode==="backend" && stage.name==="lzc-prod") {
   vars.LZC_IMAGE_BUILDPACK=`https://github.com/stackitcloud/stackit-landing-zone.git#${buildpackTag(revision)}`;
   writeFileSync(resolve(dir,"runner-vars.json"),JSON.stringify({LZC_IMAGE_BUILDPACK:vars.LZC_IMAGE_BUILDPACK}),{mode:0o600});
   writeFileSync(resolve(dir,"app-vars.json"),JSON.stringify(vars),{mode:0o600});
-  writeFileSync(resolve(dir,"app-stage-vars.json"),JSON.stringify({...vars,LZC_EXECUTION_ENABLED:"false",LZC_APPLICATION_EXECUTION_ENABLED:"false",LZC_RUNNER_POOL_SIZE:"0"}),{mode:0o600});
+  writeFileSync(resolve(dir,"app-stage-vars.json"),JSON.stringify({...vars,LZC_EXECUTION_ENABLED:"false",LZC_APPLICATION_EXECUTION_ENABLED:"false",LZC_RUNNER_POOL_SIZE:"0",LZC_MAILOUT_ENABLED:"false"}),{mode:0o600});
   publish("LZC_CF_ORG_NAME",stage.prefix);publish("LZC_RUNNER_ORG_NAME",`${stage.prefix}-runners`);
   publish("CF_API_URL",cf.api_url);publish("CF_USERNAME",cf.username,true);publish("CF_PASSWORD",cf.password,true);publish("LZC_CF_SPACE_ID",space.id);
 }

@@ -137,6 +137,34 @@ If you are deploying the Hub-Spoke + Firewall flavour, download the OPNsense ima
 curl -o firewall-image.qcow2 https://opnsense.object.storage.eu01.onstackit.cloud/opnsense-26.1-amd64-21-05-2026.qcow2
 ```
 
+For a new firewall, set the desired administrator login **before the first
+Apply**. Keep the password outside committed tfvars:
+
+```bash
+export TF_VAR_firewall_admin_username=root
+read -rsp 'New firewall administrator password: ' TF_VAR_firewall_admin_password
+export TF_VAR_firewall_admin_password
+printf '\n'
+```
+
+The VM creation step authenticates with the image's existing login, initializes
+and verifies the desired administrator, and finishes before API-key or HA setup.
+For a custom administrator name it creates a full administrator and also changes
+the retained `root`/image account to the configured password. The known image
+password therefore stops working. Existing VMs are not reset by an ordinary
+Apply or by editing these variables. Use the appliance's explicit password
+rotation procedure for established VMs. A replacement VM runs initialization
+again.
+
+`firewall_bootstrap_username` and `firewall_bootstrap_password` select the
+existing image login when it differs from the shipped image. They are separate
+from the desired `firewall_admin_*` values. Set `firewall_admin_password = null`
+to skip initialization for a preconfigured image with externally supplied API
+credentials. Custom passwords support at most 72 UTF-8 bytes because the default
+OPNsense password hash uses bcrypt. Initialization requires Python 3 and access
+to the new appliance's public HTTPS endpoint; it uses the image's self-signed
+certificate in the same way as the API-key bootstrap.
+
 ### 3. Authenticate with STACKIT
 
 Log in interactively via browser:
@@ -367,10 +395,7 @@ The first `tofu apply` derives the API key (waiting for the appliance to finish 
 
 Two runs are unavoidable: the provider needs the key at plan time, and a value created during an apply cannot configure a provider in that same run.
 
-The appliance login it uses comes from `firewall_admin_password`, which defaults to the `root` password baked into the STACKIT OPNsense image, so nothing has to be exported for a fresh deployment.
-
-> [!IMPORTANT]
-> Change the password on the appliance (**System → Access → Users**). The password is only used to derive the API key. Once the key exists, it is no longer read at all.
+The API-key bootstrap uses the administrator login initialized during VM creation. `firewall_admin_username` and `firewall_admin_password` must match the appliance. On established appliances, changing the variables does not change the password: rotate explicitly on the appliance first, then update the protected binding. HA configuration continues to use this administrator login.
 
 **3. Drop the bootstrap variable and delete the cache file**
 
@@ -413,7 +438,7 @@ Two consequences are worth knowing before you enable it:
 What exactly fails over, and what was measured, is in [High availability](architecture.md#high-availability-optional).
 
 > [!IMPORTANT]
-> The backup appliance boots with the same image default password as the primary and its web GUI answers on its own public IP until the policy is pushed. The lockout warning above applies to both nodes.
+> The backup appliance receives the same configured administrator credentials during creation; its web GUI answers on its own public IP until the policy is pushed. The lockout warning above applies to both nodes.
 
 ### Kubernetes: DNS automation for Gateway API resources
 

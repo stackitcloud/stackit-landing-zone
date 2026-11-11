@@ -8,8 +8,12 @@ import {
   validMutation,
 } from "../auth/routes.js";
 import { type Session, tokenHash } from "../auth/store.js";
+import type { ArtifactCrypto } from "../plans/crypto.js";
 export class Invitations {
-  constructor(private readonly pool: pg.Pool) {}
+  constructor(
+    private readonly pool: pg.Pool,
+    private readonly crypto?: ArtifactCrypto,
+  ) {}
   async list(s: Session) {
     return (
       await this.pool.query(
@@ -18,14 +22,58 @@ export class Invitations {
       )
     ).rows[0].value;
   }
-  async create(s: Session, roles: string[], manage: boolean) {
+  async create(
+    s: Session,
+    roles: string[],
+    manage: boolean,
+    mail?: { email: string; locale: "de" | "en" },
+  ) {
+    if (mail && !this.crypto)
+      throw Object.assign(new Error("mail_unavailable"), { code: "P0001" });
     const token = randomBytes(32).toString("base64url");
-    const result = await this.pool.query(
-      "SELECT lzc_auth.create_invitation($1,$2,$3,$4,$5) AS value",
-      [s.id, s.tenantId, tokenHash(token), roles, manage],
-    );
-    return { ...result.rows[0].value, token };
+    if (!mail) {
+      const result = await this.pool.query(
+        "SELECT lzc_auth.create_invitation($1,$2,$3,$4,$5) AS value",
+        [s.id, s.tenantId, tokenHash(token), roles, manage],
+      );
+      return { ...result.rows[0].value, token };
+    }
+    const client = await this.pool.connect();
+    let broken = false;
+    try {
+      await client.query("BEGIN");
+      const result = await client.query(
+        "SELECT lzc_auth.create_invitation($1,$2,$3,$4,$5) AS value",
+        [s.id, s.tenantId, tokenHash(token), roles, manage],
+      );
+      const invitation = result.rows[0].value as {
+        id: string;
+        expiresAt: string;
+      };
+      const cipher = this.crypto!.encrypt(
+        Buffer.from(token),
+        s.tenantId,
+        s.userId,
+        `notification-invitation:${invitation.id}`,
+      );
+      await client.query(
+        "SELECT lzc_auth.enqueue_invitation_mail($1,$2,$3,$4,$5,$6)",
+        [s.id, s.tenantId, invitation.id, mail.email, mail.locale, cipher],
+      );
+      await client.query("COMMIT");
+      return { ...invitation, token, emailQueued: true };
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        broken = true;
+      }
+      throw error;
+    } finally {
+      client.release(broken);
+    }
   }
+
   async revoke(s: Session, id: string) {
     await this.pool.query("SELECT lzc_auth.revoke_invitation($1,$2,$3)", [
       s.id,
@@ -76,6 +124,12 @@ export function registerInvitations(
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_invitation_request" });
       const code = (error as { code?: string }).code;
+      if (
+        code === "42501" &&
+        error instanceof Error &&
+        error.message === "invitation_recipient_mismatch"
+      )
+        return reply.code(403).send({ error: "invitation_recipient_mismatch" });
       const errors: Record<string, [number, string]> = {
         "42501": [403, "membership_management_forbidden"],
         "40001": [409, "stale_tenant_context"],
@@ -83,6 +137,8 @@ export function registerInvitations(
         "23505": [409, "already_member"],
         "23514": [400, "invalid_invitation_request"],
         P0002: [401, "authentication_required"],
+        P0001: [503, "invitation_email_unavailable"],
+        "54000": [429, "invitation_email_rate_limit"],
       };
       const mapped = code ? errors[code] : undefined;
       return reply
@@ -103,6 +159,12 @@ export function registerInvitations(
               .min(1)
               .max(2),
             manageMembers: z.boolean(),
+            mail: z
+              .strictObject({
+                email: z.email().max(254),
+                locale: z.enum(["de", "en"]),
+              })
+              .optional(),
           })
           .strict()
           .parse(request.body);
@@ -112,10 +174,12 @@ export function registerInvitations(
           requireSession(request),
           [...new Set(input.roles)],
           input.manageMembers,
+          input.mail,
         );
         return reply.code(201).send({
           id: result.id,
           expiresAt: result.expiresAt,
+          ...(result.emailQueued === true ? { emailQueued: true } : {}),
           url: `${auth.origin}/organisation#invite=${result.token}`,
         });
       },

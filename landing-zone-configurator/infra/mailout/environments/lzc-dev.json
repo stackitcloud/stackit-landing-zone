@@ -1,0 +1,11 @@
+{
+  "environment": "lzc-dev",
+  "projectId": "7dbff805-6788-4d5d-88c0-a5212ac5e90f",
+  "region": "eu01",
+  "domain": "dev.landing-zone.runs.onstackit.cloud",
+  "from": "notifications@dev.landing-zone.runs.onstackit.cloud",
+  "senderDescription": "Landing Zone Configurator Dev notifications v1",
+  "dnsProjectId": "b601468a-e897-4f74-8e10-ac4ab1e448af",
+  "dnsZoneId": "59775d2f-b237-4c71-97dd-5d8624223ef5",
+  "dnsZone": "landing-zone.runs.onstackit.cloud"
+}

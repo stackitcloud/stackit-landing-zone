@@ -6,6 +6,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { platformUpgradeAcceleratorCommit } from "@lzc/contracts";
 import pg from "pg";
 import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
@@ -28,6 +29,7 @@ import { LocalCredentialSecrets } from "../apps/api/src/credentials/local-secret
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
 import { Backends } from "../apps/api/src/deployments/backends.js";
 import { Preparations } from "../apps/api/src/deployments/preparations.js";
+import { Notifications } from "../apps/api/src/notifications/service.js";
 import { Invitations } from "../apps/api/src/organisation/invitations.js";
 import { PostgresOrganisations } from "../apps/api/src/organisation/service.js";
 import { CloudFoundryPlanRunner } from "../apps/api/src/plans/cloud-foundry.js";
@@ -354,9 +356,7 @@ async function start() {
           templateId: required("LZC_RUNNER_TEMPLATE_ID"),
         });
     platformUpgradeEnabled =
-      runner.supportsAccelerator?.(
-        "6f5c4c981f8820c826476c5a85ca4c23dc3948a9",
-      ) === true;
+      runner.supportsAccelerator?.(platformUpgradeAcceleratorCommit) === true;
     plans = new Plans(
       pool,
       profiles,
@@ -407,6 +407,7 @@ async function start() {
     | Awaited<ReturnType<typeof openStackitCodeCallback>>
     | undefined;
   const app = buildApp({
+    notifications: new Notifications(pool),
     ...(developmentAccount
       ? { developmentLogin: developmentLogin(pool, developmentAccount) }
       : {}),

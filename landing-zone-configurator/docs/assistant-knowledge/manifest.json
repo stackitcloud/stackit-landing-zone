@@ -4,8 +4,8 @@
     {
       "id": "credential-foundations",
       "file": "credential-foundations.md",
-      "version": 3,
-      "checkedOn": "2026-10-29",
+      "version": 4,
+      "checkedOn": "2026-11-10",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [],
       "mandatory": true,
@@ -13,7 +13,9 @@
         "platform_kubernetes_kube_config_override",
         "vpn_pre_shared_keys",
         "firewall_admin_password",
-        "firewall_api_credentials"
+        "firewall_api_credentials",
+        "firewall_bootstrap_username",
+        "firewall_bootstrap_password"
       ],
       "dependencies": [],
       "sources": [
@@ -414,8 +416,8 @@
     {
       "id": "firewall-access-bootstrap",
       "file": "firewall-access-bootstrap.md",
-      "version": 1,
-      "checkedOn": "2026-10-10",
+      "version": 2,
+      "checkedOn": "2026-11-10",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "firewall",
@@ -427,7 +429,9 @@
         "firewall_admin_password",
         "firewall_api_credentials",
         "firewall_bootstrap",
-        "firewall_api_secret_version"
+        "firewall_api_secret_version",
+        "firewall_bootstrap_username",
+        "firewall_bootstrap_password"
       ],
       "dependencies": [
         "firewall-infrastructure",
@@ -437,7 +441,8 @@
         "src/variables.tf",
         "src/_firewall-bootstrap.tf",
         "src/providers.tf",
-        "landing-zone-configurator/docs/deployment-credentials.md"
+        "landing-zone-configurator/docs/deployment-credentials.md",
+        "src/modules/connectivity/5-firewall.tf"
       ],
       "externalSources": [],
       "scenarios": [

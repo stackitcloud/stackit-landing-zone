@@ -7,6 +7,7 @@ export const test = base.extend<{ backgroundRequests: undefined }>({
     async ({ context }, use) => {
       const unmocked: string[] = [];
       const lists: Record<string, unknown> = {
+        "/api/v1/notifications/inbox": { items: [], unread: 0 },
         "/api/v1/configurations": { configurations: [] },
         "/api/v1/configurations/template-advice": { advice: null },
         "/api/v1/preparations": { preparations: [] },

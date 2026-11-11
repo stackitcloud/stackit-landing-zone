@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import pg from "pg";
 import { buildApp } from "./app.js";
 import { Applications } from "./applications/service.js";
@@ -22,6 +23,11 @@ import { VaultCredentialSecrets } from "./credentials/secrets.js";
 import { Backends } from "./deployments/backends.js";
 import { Preparations } from "./deployments/preparations.js";
 import { Repositories } from "./github/repositories.js";
+import { createMailTransport, mailSettings } from "./notifications/mail.js";
+import {
+  NotificationDelivery,
+  Notifications,
+} from "./notifications/service.js";
 import { Invitations } from "./organisation/invitations.js";
 import { PostgresOrganisations } from "./organisation/service.js";
 import { CloudFoundryPlanRunner } from "./plans/cloud-foundry.js";
@@ -270,7 +276,23 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
   }
 }
 
+const mailConfig = mailSettings(process.env);
+const mailTransport = mailConfig ? createMailTransport(mailConfig) : undefined;
+const notificationCrypto = mailConfig
+  ? new ArtifactCrypto(process.env.LZC_DEPLOYMENT_ARTIFACT_KEY ?? "")
+  : undefined;
+const delivery =
+  pool && mailConfig && mailTransport && notificationCrypto
+    ? new NotificationDelivery(
+        pool,
+        mailConfig.origin,
+        mailTransport,
+        notificationCrypto,
+        await readFile(new URL("../assets/stackit-mail.png", import.meta.url)),
+      )
+    : undefined;
 const app = buildApp({
+  ...(pool ? { notifications: new Notifications(pool, !!mailConfig) } : {}),
   repositories,
   ...(pool && process.env.LZC_ASSISTANT_ENABLED === "true"
     ? {
@@ -291,7 +313,10 @@ const app = buildApp({
     ? {
         organisations: new PostgresOrganisations(pool),
         configurations: new Configurations(pool),
-        invitations: new Invitations(pool),
+        invitations: new Invitations(
+          pool,
+          mailConfig ? notificationCrypto : undefined,
+        ),
       }
     : {}),
   ...(catalogues ? { catalogues } : {}),
@@ -329,6 +354,26 @@ const app = buildApp({
   ...(stackit ? { stackit } : {}),
   ...(credentials ? { credentials } : {}),
 });
+let notificationMaintenance: Promise<unknown> | undefined;
+const maintainNotifications = () => {
+  if (notificationMaintenance || !pool) return;
+  notificationMaintenance = pool
+    .query("SELECT lzc_auth.notification_maintenance()")
+    .then(() => delivery?.maintain())
+    .catch(() =>
+      app.log.warn(
+        { event: "notification_delivery_failed" },
+        "Notification delivery requires review",
+      ),
+    )
+    .finally(() => {
+      notificationMaintenance = undefined;
+    });
+};
+const notificationTimer = pool
+  ? setInterval(maintainNotifications, 15000)
+  : undefined;
+notificationTimer?.unref();
 let maintaining = false;
 const maintenance = plans
   ? setInterval(() => {
@@ -394,6 +439,9 @@ const cleanupTimer = runnerCleanup
   : undefined;
 cleanupTimer?.unref();
 app.addHook("onClose", async () => {
+  clearInterval(notificationTimer);
+  await notificationMaintenance;
+  mailTransport?.close();
   clearInterval(maintenance);
   clearInterval(poolMaintenance);
   clearInterval(cleanupTimer);
@@ -415,6 +463,7 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
 try {
   await app.listen({ port, host: process.env.HOST ?? "127.0.0.1" });
   void maintainRunners();
+  maintainNotifications();
 } catch (error) {
   app.log.error(error);
   process.exitCode = 1;

@@ -91,6 +91,21 @@ resource "stackit_server" "firewall" {
     stackit_network_interface.wan[each.key].network_interface_id, # vtnet0 = WAN
     stackit_network_interface.lan[each.key].network_interface_id  # vtnet1 = LAN
   ]
+
+  # Creation-only: adding this provisioner must never rotate an existing VM's login.
+  provisioner "local-exec" {
+    when    = create
+    command = "python3 '${path.module}/scripts/initialize-admin.py'"
+
+    environment = {
+      OPNSENSE_INITIALIZE         = tostring(var.firewall_admin_password != null)
+      OPNSENSE_ENDPOINT           = "https://${local.network_area_firewall[each.key].wan_ip}"
+      OPNSENSE_USERNAME           = var.firewall_admin_username
+      OPNSENSE_PASSWORD           = var.firewall_admin_password == null ? "" : var.firewall_admin_password
+      OPNSENSE_BOOTSTRAP_USERNAME = var.firewall_bootstrap_username
+      OPNSENSE_BOOTSTRAP_PASSWORD = var.firewall_bootstrap_password
+    }
+  }
 }
 
 #################
@@ -131,6 +146,21 @@ resource "stackit_server" "firewall_backup" {
     stackit_network_interface.wan_backup[each.key].network_interface_id, # vtnet0 = WAN
     stackit_network_interface.lan_backup[each.key].network_interface_id  # vtnet1 = LAN
   ]
+
+  # Creation-only: adding this provisioner must never rotate an existing VM's login.
+  provisioner "local-exec" {
+    when    = create
+    command = "python3 '${path.module}/scripts/initialize-admin.py'"
+
+    environment = {
+      OPNSENSE_INITIALIZE         = tostring(var.firewall_admin_password != null)
+      OPNSENSE_ENDPOINT           = "https://${local.network_area_firewall[each.key].wan_backup_ip}"
+      OPNSENSE_USERNAME           = var.firewall_admin_username
+      OPNSENSE_PASSWORD           = var.firewall_admin_password == null ? "" : var.firewall_admin_password
+      OPNSENSE_BOOTSTRAP_USERNAME = var.firewall_bootstrap_username
+      OPNSENSE_BOOTSTRAP_PASSWORD = var.firewall_bootstrap_password
+    }
+  }
 }
 
 #############

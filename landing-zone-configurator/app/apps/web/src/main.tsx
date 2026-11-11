@@ -42,6 +42,11 @@ import {
 } from "./components/Deployments";
 import { ForkWorkspace } from "./components/ForkWorkspace";
 import { InvitationAcceptance } from "./components/Invitations";
+import {
+  NotificationIndicator,
+  Notifications,
+  NotificationWorkspace,
+} from "./components/Notifications";
 import { Organisation } from "./components/Organisation";
 import { ProjectTemplates } from "./components/ProjectTemplates";
 import { projectTemplateSummary } from "./components/project-template-summary";
@@ -162,7 +167,8 @@ function App() {
       !platformAccess &&
       view !== "workspaces" &&
       view !== "organisation" &&
-      view !== "applications"
+      view !== "applications" &&
+      view !== "notifications"
     )
       setView("applications");
   }, [session, platformAccess, view, setView]);
@@ -650,6 +656,15 @@ function App() {
             <span aria-hidden="true">▾</span>
           </button>
         )}
+        <NotificationIndicator
+          key={JSON.stringify([
+            workspaceKey(session),
+            session?.tenant?.roles,
+            session?.tenant?.manageMembers,
+          ])}
+          session={session}
+          onOpen={() => setView("notifications")}
+        />
         <Account
           onSessionChange={changeSession}
           onLogin={finishLogin}
@@ -689,6 +704,7 @@ function App() {
           }}
         />
       </header>
+      <NotificationWorkspace session={session} />
       {sessionExpired && (
         <p role="status" className="notice">
           {t(
@@ -815,42 +831,16 @@ function App() {
               </>
             )}
             <span>
-              {view === "workspaces"
-                ? t("Auswahl")
-                : view === "applications"
-                  ? t("Application Landing Zones")
-                  : view === "organisation"
-                    ? t("Benutzerverwaltung")
-                    : view === "templates"
-                      ? t("Templates")
-                      : view === "preview"
-                        ? t(describe(selected).title)
-                        : view === "history"
-                          ? t("Verlauf")
-                          : view === "deployments"
-                            ? deploymentStep === "plan"
-                              ? t("Plan")
-                              : deploymentStep === "apply"
-                                ? t("Apply")
-                                : t("Vorbereitung")
-                            : view === "credentials"
-                              ? t("Deployment-Zugänge")
-                              : view === "repositories"
-                                ? t("Konfigurationen")
-                                : (draft?.name ?? t("Neue Konfiguration"))}
-            </span>
-          </nav>
-          <div className="page-heading">
-            <div>
-              <h1 ref={heading} tabIndex={-1}>
-                {view === "workspaces"
-                  ? t("Arbeitsbereiche")
+              {view === "notifications"
+                ? t("Benachrichtigungen")
+                : view === "workspaces"
+                  ? t("Auswahl")
                   : view === "applications"
                     ? t("Application Landing Zones")
                     : view === "organisation"
                       ? t("Benutzerverwaltung")
                       : view === "templates"
-                        ? t("Neue Konfiguration")
+                        ? t("Templates")
                         : view === "preview"
                           ? t(describe(selected).title)
                           : view === "history"
@@ -865,40 +855,72 @@ function App() {
                                 ? t("Deployment-Zugänge")
                                 : view === "repositories"
                                   ? t("Konfigurationen")
-                                  : draft?.name || t("Neue Konfiguration")}
+                                  : (draft?.name ?? t("Neue Konfiguration"))}
+            </span>
+          </nav>
+          <div className="page-heading">
+            <div>
+              <h1 ref={heading} tabIndex={-1}>
+                {view === "notifications"
+                  ? t("Benachrichtigungen")
+                  : view === "workspaces"
+                    ? t("Arbeitsbereiche")
+                    : view === "applications"
+                      ? t("Application Landing Zones")
+                      : view === "organisation"
+                        ? t("Benutzerverwaltung")
+                        : view === "templates"
+                          ? t("Neue Konfiguration")
+                          : view === "preview"
+                            ? t(describe(selected).title)
+                            : view === "history"
+                              ? t("Verlauf")
+                              : view === "deployments"
+                                ? deploymentStep === "plan"
+                                  ? t("Plan")
+                                  : deploymentStep === "apply"
+                                    ? t("Apply")
+                                    : t("Vorbereitung")
+                                : view === "credentials"
+                                  ? t("Deployment-Zugänge")
+                                  : view === "repositories"
+                                    ? t("Konfigurationen")
+                                    : draft?.name || t("Neue Konfiguration")}
               </h1>
               <p hidden={view === "deployments" || view === "history"}>
-                {view === "workspaces"
-                  ? (session?.user.login ?? "")
-                  : view === "applications"
-                    ? (session?.tenant?.name ?? "")
-                    : view === "organisation"
-                      ? t(
-                          "Arbeitsbereiche, Organisationszuordnung und persönliche Rollen verwalten.",
-                        )
-                      : view === "templates"
+                {view === "notifications"
+                  ? t("Benachrichtigungen")
+                  : view === "workspaces"
+                    ? (session?.user.login ?? "")
+                    : view === "applications"
+                      ? (session?.tenant?.name ?? "")
+                      : view === "organisation"
                         ? t(
-                            "Wähle die passende Grundlage für deine Cloud-Umgebung.",
+                            "Arbeitsbereiche, Organisationszuordnung und persönliche Rollen verwalten.",
                           )
-                        : view === "preview"
-                          ? describe(selected).description
-                          : view === "history"
-                            ? (draft?.name ?? deploymentSelection?.name ?? "")
-                            : view === "deployments"
-                              ? t(
-                                  "Gespeicherte Konfiguration, Ziel und Zugang nachvollziehbar verbinden.",
-                                )
-                              : view === "credentials"
+                        : view === "templates"
+                          ? t(
+                              "Wähle die passende Grundlage für deine Cloud-Umgebung.",
+                            )
+                          : view === "preview"
+                            ? describe(selected).description
+                            : view === "history"
+                              ? (draft?.name ?? deploymentSelection?.name ?? "")
+                              : view === "deployments"
                                 ? t(
-                                    "Persönliche STACKIT-Service-Accounts für spätere Deployments verwalten.",
+                                    "Gespeicherte Konfiguration, Ziel und Zugang nachvollziehbar verbinden.",
                                   )
-                                : view === "repositories"
+                                : view === "credentials"
                                   ? t(
-                                      "Konfigurationen in deinem Arbeitsbereich speichern und wieder öffnen.",
+                                      "Persönliche STACKIT-Service-Accounts für spätere Deployments verwalten.",
                                     )
-                                  : t(
-                                      "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben.",
-                                    )}
+                                  : view === "repositories"
+                                    ? t(
+                                        "Konfigurationen in deinem Arbeitsbereich speichern und wieder öffnen.",
+                                      )
+                                    : t(
+                                        "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben.",
+                                      )}
               </p>
             </div>
             <span
@@ -982,6 +1004,16 @@ function App() {
                 )}
               </nav>
             )}
+          {view === "notifications" && (
+            <Notifications
+              key={JSON.stringify([
+                workspaceKey(session),
+                session?.tenant?.roles,
+                session?.tenant?.manageMembers,
+              ])}
+              session={session}
+            />
+          )}
           {(view === "organisation" || view === "workspaces") && (
             <Organisation
               key={`${view}:${workspaceKey(session) ?? "guest"}`}

@@ -2082,3 +2082,78 @@ button.template-node:hover {
   cursor: pointer;
   font-weight: 600;
 }
+
+.notification-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+.notification-count,
+.notification-unread {
+  border-radius: 12px;
+  padding: 2px 8px;
+  background: #0079ad;
+  color: white;
+  font-size: 0.8rem;
+  margin-left: 8px;
+}
+.notification-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.notification-list {
+  list-style: none;
+  padding: 0;
+}
+.notification-card {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.notification-card.unread {
+  border-left: 4px solid var(--accent);
+  padding-left: 16px;
+}
+.notification-layout fieldset {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+.notification-layout label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+@media (max-width: 900px) {
+  .notification-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .notification-indicator {
+    font-size: 0.8rem;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 900px) {
+  .notification-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}

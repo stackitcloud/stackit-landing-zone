@@ -602,13 +602,26 @@ variable "firewall_config" {
 
 variable "firewall_admin_username" {
   type        = string
-  description = "Login used to derive the API key from the appliance. The STACKIT OPNsense image ships with root."
+  description = "Administrator login initialized when creating a new firewall VM and used for API-key/HA setup. Existing VMs are not reset. The system root account is retained."
   default     = "root"
 }
 
 variable "firewall_admin_password" {
   type        = string
-  description = "Password of firewall_admin_username, used once to derive the API key. Defaults to the password baked into the STACKIT OPNsense image. Override through TF_VAR_firewall_admin_password after rotating it, or set to null and supply firewall_api_credentials instead."
+  description = "Administrator password initialized on new firewall VMs and used for API-key/HA setup. Existing VMs are not reset by editing this variable. Set to null to skip initialization when using a preconfigured image and supplied firewall_api_credentials."
+  default     = "STACKIT123!"
+  sensitive   = true
+}
+
+variable "firewall_bootstrap_username" {
+  type        = string
+  description = "Image administrator used only while creating a new appliance. Existing VMs are not reinitialized. Distinct from the desired firewall_admin_username."
+  default     = "root"
+}
+
+variable "firewall_bootstrap_password" {
+  type        = string
+  description = "Image administrator password used only while creating a new appliance. Not used to rotate established appliances."
   default     = "STACKIT123!"
   sensitive   = true
 }

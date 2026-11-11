@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{mailoutEnvironment}from'./bindings.mjs';
+const dev='7dbff805-6788-4d5d-88c0-a5212ac5e90f';const prod='b601468a-e897-4f74-8e10-ac4ab1e448af';
+const binding={schemaVersion:1,projectId:dev,domainId:dev,senderId:dev,host:'smtp.mailout.eu01.stackit.cloud',port:25,from:'notifications@dev.landing-zone.runs.onstackit.cloud',username:'fixture',password:'fixture-secret'};
+test('leaves email disabled without explicit private bindings',()=>{assert.deepEqual(mailoutEnvironment(undefined,'lzc-dev',dev),{LZC_MAILOUT_ENABLED:'false'});});
+test('accepts only stage/project/sender-bound private SMTP settings',()=>{assert.equal(mailoutEnvironment(JSON.stringify(binding),'lzc-dev',dev).LZC_MAILOUT_PASSWORD,'fixture-secret');for(const b of [{...binding,from:'arbitrary@example.test'},{...binding,projectId:prod},{...binding,host:'smtp.evil.example'},{...binding,port:80},{...binding,password:''}])assert.throws(()=>mailoutEnvironment(JSON.stringify(b),'lzc-dev',dev));assert.throws(()=>mailoutEnvironment(JSON.stringify(binding),'lzc-prod',prod));});

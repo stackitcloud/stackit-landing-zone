@@ -2642,7 +2642,11 @@ export function Applications({
         previous
           ? (storedOrders.instances.find((item) => item.id === previous.id) ??
             null)
-          : null,
+          : (storedOrders.instances.find(
+              (item) =>
+                item.id ===
+                new URLSearchParams(window.location.search).get("resource"),
+            ) ?? null),
       );
       setContracts(
         z

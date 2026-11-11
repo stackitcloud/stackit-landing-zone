@@ -177,6 +177,9 @@ jobs:
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
           tofu -chdir=src init -backend=false -input=false -no-color
 
+      - name: Test firewall administrator initialization
+        run: python3 -m unittest discover -s src/tests -p test_firewall_initialization.py
+
       - name: Run configuration tests
         run: tofu -chdir=src test -no-color
 

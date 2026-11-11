@@ -37,10 +37,13 @@ else
 	cp -R ../.local/release/runtime "$runner_dir/"
 fi
 cp "$tofu_bin" "$runner_dir/tools/tofu"
+if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" != "true" ]]; then
+	node --use-system-ca ../deploy/runner/package-python.mjs "$runner_dir"
+fi
 cp ../deploy/runner/run-plan.sh ../deploy/runner/runner.tfrc "$runner_dir/"
 platform_commit=a256f6896d11134fdc351786f1be5eba4e56b2e2
 if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
-	platform_commit=6f5c4c981f8820c826476c5a85ca4c23dc3948a9
+	platform_commit=6398834bf20a4f24ea81c1f7dd0627025b4a81ce
 else
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi
@@ -48,6 +51,9 @@ if [[ "${LZC_HOSTED_EXECUTION_PACKAGE:-false}" == "true" && "${LZC_PACKAGE_PLATF
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi
 git -C "$(git rev-parse --show-toplevel)" archive "$platform_commit" src | tar -x --strip-components=1 -C "$runner_dir/accelerator"
+if [[ "${LZC_LOCAL_RUNNER_PACKAGE:-false}" != "true" && -f "$runner_dir/accelerator/tests/test_firewall_initialization.py" ]]; then
+	"$runner_dir/tools/python3" "$runner_dir/accelerator/tests/test_firewall_initialization.py"
+fi
 node scripts/prepare-firewall-image.mjs "$(cd "$runner_dir/accelerator" && pwd)"
 node --input-type=module -e 'import {writeFileSync} from "node:fs"; import {platformFirewallImage,platformRunnerSourceSchema} from "./packages/contracts/dist/index.js"; writeFileSync(process.argv[1], JSON.stringify(platformRunnerSourceSchema.parse({schemaVersion:1,acceleratorCommit:process.argv[2],firewallImageSha256:platformFirewallImage.sha256})), {flag:"wx",mode:0o600})' "$runner_dir/platform-source.json" "$platform_commit"
 cp ../deploy/runner/accelerator.lock.hcl "$runner_dir/accelerator/.terraform.lock.hcl"
