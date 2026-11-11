@@ -19,7 +19,7 @@ func TestCompleteRootVariableInventory(t *testing.T) {
 	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Variables) != 30 {
+	if len(result.Variables) != 32 {
 		t.Fatalf("review Accelerator feature coverage: %d inputs", len(result.Variables))
 	}
 	variables := map[string]variableDefinition{}
@@ -47,7 +47,7 @@ func TestCompleteRootVariableInventory(t *testing.T) {
 	if len(variables["landing_zones"].Validations) == 0 {
 		t.Fatal("dependency checks lost")
 	}
-	for _, name := range []string{"firewall_admin_password", "firewall_api_credentials", "vpn_pre_shared_keys", "platform_kubernetes_kube_config_override"} {
+	for _, name := range []string{"firewall_bootstrap_password", "firewall_admin_password", "firewall_api_credentials", "vpn_pre_shared_keys", "platform_kubernetes_kube_config_override"} {
 		variable := variables[name]
 		if !variable.Sensitive || len(variable.Default) != 0 || variable.NestedDefaults != nil {
 			t.Fatalf("sensitive default exposed: %s", name)

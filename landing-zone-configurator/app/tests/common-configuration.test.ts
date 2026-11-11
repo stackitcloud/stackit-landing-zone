@@ -94,12 +94,12 @@ describe("shared accelerator feature contract", () => {
       landing_zone_configurator: "true",
     });
   });
-  it("assigns all 30 inputs exactly once, including every protected input", () => {
+  it("assigns all 32 inputs exactly once, including every protected input", () => {
     const assigned = Object.values(featureGroups).flatMap((group) => [
       ...group.inputs,
     ]);
-    expect(assigned.length).toBe(30);
-    expect(new Set(assigned).size).toBe(30);
+    expect(assigned.length).toBe(32);
+    expect(new Set(assigned).size).toBe(32);
     expect([...assigned].sort()).toEqual(
       acceleratorInputs.map((input) => input.name).sort(),
     );

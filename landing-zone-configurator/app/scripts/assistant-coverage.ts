@@ -38,6 +38,8 @@ const inputScenarios: Record<string, string[]> = {
   landing_zone_namespace_services: ["A12"],
   firewall_config: ["A13"],
   firewall_admin_username: ["A13"],
+  firewall_bootstrap_username: ["A13"],
+  firewall_bootstrap_password: ["A13", "A16"],
   firewall_bootstrap: ["A13"],
   firewall_api_secret_version: ["A13"],
   platform_kubernetes_kube_config_override: ["A09", "A16"],

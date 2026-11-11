@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceSha256": "534690b7f98b7ed6af03292dbefc180f05d0ecd6048997b93084f678589681d3",
+  "sourceSha256": "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
   "variables": [
     {
       "name": "bucket_naming",
@@ -1628,7 +1628,7 @@
     {
       "name": "firewall_admin_username",
       "line": 603,
-      "description": "Login used to derive the API key from the appliance. The STACKIT OPNsense image ships with root.",
+      "description": "Administrator login initialized when creating a new firewall VM and used for API-key/HA setup. Existing VMs are not reset. The system root account is retained.",
       "type": "string",
       "required": false,
       "sensitive": false,
@@ -1637,14 +1637,31 @@
     {
       "name": "firewall_admin_password",
       "line": 609,
-      "description": "Password of firewall_admin_username, used once to derive the API key. Defaults to the password baked into the STACKIT OPNsense image. Override through TF_VAR_firewall_admin_password after rotating it, or set to null and supply firewall_api_credentials instead.",
+      "description": "Administrator password initialized on new firewall VMs and used for API-key/HA setup. Existing VMs are not reset by editing this variable. Set to null to skip initialization when using a preconfigured image and supplied firewall_api_credentials.",
+      "type": "string",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "firewall_bootstrap_username",
+      "line": 616,
+      "description": "Image administrator used only while creating a new appliance. Existing VMs are not reinitialized. Distinct from the desired firewall_admin_username.",
+      "type": "string",
+      "required": false,
+      "sensitive": false,
+      "default": "root"
+    },
+    {
+      "name": "firewall_bootstrap_password",
+      "line": 622,
+      "description": "Image administrator password used only while creating a new appliance. Not used to rotate established appliances.",
       "type": "string",
       "required": false,
       "sensitive": true
     },
     {
       "name": "firewall_bootstrap",
-      "line": 616,
+      "line": 629,
       "description": "Pass -var firewall_bootstrap=true on the two greenfield applies that create the OPNsense API key. It suppresses the Secrets Manager read, which would otherwise fail at plan time because the secret does not exist yet. Never set it on an established deployment: without the bootstrap cache file it plans the destruction of the policy and the stored key. The steady state needs no variable at all.",
       "type": "bool",
       "required": false,
@@ -1653,7 +1670,7 @@
     },
     {
       "name": "firewall_api_secret_version",
-      "line": 622,
+      "line": 635,
       "description": "Write version of the OPNsense API key in the Secrets Manager. The key is only transmitted when this number changes, so bump it by one after a re-bootstrap has produced a fresh key, otherwise the Secrets Manager keeps serving the old one.",
       "type": "number",
       "required": false,
@@ -1662,7 +1679,7 @@
     },
     {
       "name": "firewall_api_credentials",
-      "line": 628,
+      "line": 641,
       "description": "OPNsense API key and secret. Bootstrap them once from the appliance login with src/modules/firewall-config/scripts/bootstrap-api-key.sh, then supply through TF_VAR_firewall_api_credentials or a gitignored tfvars file. Kept out of firewall_config so the policy stays committable.",
       "type": [
         "object",
@@ -1676,7 +1693,7 @@
     },
     {
       "name": "sandboxes",
-      "line": 642,
+      "line": 655,
       "description": "List of sandboxes to create.",
       "type": [
         "list",
@@ -1701,7 +1718,7 @@
     },
     {
       "name": "landing_zones",
-      "line": 656,
+      "line": 669,
       "description": "Map of landing zones to create. Public landing zones can create a local network with network_enabled. Corporate landing zones use network_area_key to select a connectivity.network_areas entry; set region to eu01 or eu02 with connectivity_regions.",
       "type": [
         "map",
@@ -1820,7 +1837,7 @@
     },
     {
       "name": "landing_zone_namespace_services",
-      "line": 711,
+      "line": 724,
       "description": "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone.",
       "type": [
         "map",

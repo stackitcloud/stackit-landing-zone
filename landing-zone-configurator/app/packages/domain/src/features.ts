@@ -53,6 +53,7 @@ export const featureGroups = {
     inputs: [
       "firewall_config",
       "firewall_admin_username",
+      "firewall_bootstrap_username",
       "firewall_bootstrap",
       "firewall_api_secret_version",
     ],
@@ -63,6 +64,7 @@ export const featureGroups = {
       "platform_kubernetes_kube_config_override",
       "vpn_pre_shared_keys",
       "firewall_admin_password",
+      "firewall_bootstrap_password",
       "firewall_api_credentials",
     ],
   },

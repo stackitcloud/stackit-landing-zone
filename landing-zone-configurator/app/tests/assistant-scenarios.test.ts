@@ -974,6 +974,14 @@ it("requires reviewed bootstrap workflow facts and rejects field-only or secret-
   expect(assistantFirewallBootstrapFailures(text)).toEqual([]);
   expect(
     assistantFirewallBootstrapFailures(
+      text.replace(
+        "Bestehende VMs werden bei Folge-Apply oder Variablenänderung nicht zurückgesetzt",
+        "Bestehende VMs werden zurückgesetzt",
+      ),
+    ),
+  ).toContain("bootstrap_overview_missing_creation_only_boundary");
+  expect(
+    assistantFirewallBootstrapFailures(
       "firewall_admin_username firewall_admin_password firewall_api_credentials firewall_bootstrap firewall_api_secret_version",
     ),
   ).toEqual(

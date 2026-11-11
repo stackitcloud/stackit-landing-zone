@@ -95,13 +95,26 @@ variable "firewall_admin_endpoint" {
 
 variable "firewall_admin_username" {
   type        = string
-  description = "Appliance login used to push the node-local HA settings. The STACKIT OPNsense image ships with root. Only used when firewall.ha is set."
+  description = "Desired administrator login for new firewall VMs; also used for node-local HA settings. Existing VMs are not reset."
   default     = "root"
 }
 
 variable "firewall_admin_password" {
   type        = string
-  description = "Password of firewall_admin_username. Defaults to the password baked into the STACKIT OPNsense image. Only used when firewall.ha is set."
+  description = "Desired administrator password for new firewall VMs; also used for HA settings. Null skips initialization. Existing VMs are not reset by changing this value."
+  default     = "STACKIT123!"
+  sensitive   = true
+}
+
+variable "firewall_bootstrap_username" {
+  type        = string
+  description = "Image administrator used only while creating a new appliance. Existing VMs are not reinitialized. Distinct from the desired firewall_admin_username."
+  default     = "root"
+}
+
+variable "firewall_bootstrap_password" {
+  type        = string
+  description = "Image administrator password used only while creating a new appliance. Not used to rotate established appliances."
   default     = "STACKIT123!"
   sensitive   = true
 }

@@ -3,8 +3,8 @@
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
   "status": "concept-coverage-not-ai-qualification",
   "sourceDigests": {
-    "packages/domain/src/features.ts": "bf2506a3ba0bff45ce87c010a4a86e119dd07b0b9216dfea88e34e71d17c9ba6",
-    "packages/domain/src/accelerator-inputs.json": "ec2874c98ff2394155f5c17a0386540be62695711bb3d23b9f19ee7803b3ed54",
+    "packages/domain/src/features.ts": "14892476a20d32f3f6c873648ce98d54c3b73fb6ea50beaa10d2b08bdd3d3e7d",
+    "packages/domain/src/accelerator-inputs.json": "ecb8cfb96839c88aff198029d5371121be20f4f81a49a635fc4d4414c2467061",
     "packages/domain/src/catalogue.json": "0c9fc73cbfff4eb0ea2e9956165646e409fbff107cbf9ca1eb3b78a25dca2059",
     "packages/domain/src/project-templates.ts": "dd7e1abfb945376e37f54e5126d110a28a2673fe9f4a5e6bb202dfd116560ff4",
     "packages/domain/src/template-parameters.ts": "ea2cb1e272f4f51da6bc68ea78895febe128b83f2b3022371a5aeeb666120e0a",
@@ -206,6 +206,12 @@
           ]
         },
         {
+          "input": "firewall_bootstrap_username",
+          "scenarios": [
+            "A13"
+          ]
+        },
+        {
           "input": "firewall_bootstrap",
           "scenarios": [
             "A13"
@@ -238,6 +244,13 @@
         },
         {
           "input": "firewall_admin_password",
+          "scenarios": [
+            "A13",
+            "A16"
+          ]
+        },
+        {
+          "input": "firewall_bootstrap_password",
           "scenarios": [
             "A13",
             "A16"
@@ -6354,6 +6367,33 @@
     },
     {
       "path": "firewall_admin_password",
+      "group": "credentials",
+      "sensitive": true,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "protected-binding-pending",
+      "assistantMode": "requirements-only-no-values",
+      "scenarios": [
+        "A13",
+        "A16"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_bootstrap_username",
+      "group": "firewall",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A13"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "firewall_bootstrap_password",
       "group": "credentials",
       "sensitive": true,
       "type": "string",
