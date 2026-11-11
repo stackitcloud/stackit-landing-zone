@@ -1,4 +1,67 @@
 export const englishMessages: Record<string, string> = {
+  "Mitglied {{value0}}": "Member {{value0}}",
+  "Rollen und Berechtigungen": "Roles and permissions",
+  "Application Landing Zones bestellen und verwalten.":
+    "Order and manage Application Landing Zones.",
+  "Plattform konfigurieren und Application Templates verwalten.":
+    "Configure the platform and manage Application Templates.",
+  "Mitglieder einladen, Rollen ändern und Zugriff entziehen.":
+    "Invite members, change roles and remove access.",
+  "Eigene Berechtigungen kann nur ein anderes Mitglied erweitern.":
+    "Another member must grant any additional permissions to your account.",
+  "Verwalte Personen und ihren Zugriff auf diesen Arbeitsbereich.":
+    "Manage people and their access to this workspace.",
+  "Person einladen": "Invite person",
+  "Die Mitgliederverwaltung übernimmt ein dafür berechtigtes Mitglied deines Arbeitsbereichs.":
+    "Contact a member with permission to manage access in this workspace.",
+  "Mitglieder suchen": "Search members",
+  "Name oder E-Mail-Adresse": "Name or email address",
+  "Nach Rolle filtern": "Filter by role",
+  "Alle Rollen": "All roles",
+  Du: "You",
+  Aktiv: "Active",
+  "Rollen für {{value0}} bearbeiten": "Edit roles for {{value0}}",
+  "{{value0}} entfernen": "Remove {{value0}}",
+  "Letzte Person mit Mitgliederverwaltung":
+    "Last member with access management permission",
+  "Keine passenden Mitglieder gefunden.": "No matching members found.",
+  "Übertrage die Mitgliederverwaltung zuerst an ein anderes Mitglied.":
+    "Grant access management permission to another member first.",
+  "{{value0}} aus „{{value1}}“ entfernen?":
+    "Remove {{value0}} from “{{value1}}”?",
+  "Die Person verliert den Zugriff auf diesen Arbeitsbereich. Ihr Konto bleibt bestehen.":
+    "This person will lose access to this workspace. Their account will remain.",
+  "Lade eine Person ein, um ihr Zugriff auf diesen Arbeitsbereich zu geben.":
+    "Invite someone to give them access to this workspace.",
+  Einladungslink: "Invitation link",
+  "E-Mail-Einladung": "Email invitation",
+  "Noch keiner Person zugeordnet": "Not yet assigned to a person",
+  Ausstehend: "Pending",
+  "Einladung erstellt": "Invitation created",
+  "Die Einladung an {{value0}} ist für den Versand vorgemerkt.":
+    "The invitation to {{value0}} is queued for sending.",
+  "Die Person erhält einen Link, über den sie den Beitritt bestätigen kann.":
+    "The recipient will receive a link to confirm joining the workspace.",
+  "Link alternativ selbst weitergeben": "Share the link yourself instead",
+  "Kopiere den Link und teile ihn mit der gewünschten Person. Er ist sieben Tage gültig.":
+    "Copy the link and share it with the intended person. It is valid for seven days.",
+  Fertig: "Done",
+  "Wie möchtest du einladen?": "How would you like to invite them?",
+  "Per E-Mail einladen": "Invite by email",
+  "Der Einladungslink wird automatisch erstellt und per E-Mail verschickt.":
+    "The invitation link is created automatically and sent by email.",
+  "Link selbst teilen": "Share a link yourself",
+  "Erstelle einen Link und gib ihn selbst an die gewünschte Person weiter.":
+    "Create a link and share it directly with the intended person.",
+  "Die Person meldet sich mit dieser STACKIT-E-Mail-Adresse an und bestätigt den Beitritt.":
+    "The recipient signs in with this STACKIT email address and confirms joining.",
+  "Einladung senden": "Send invitation",
+  "Einladung erstellen": "Create invitation",
+  "Einladung für {{value0}} widerrufen?":
+    "Revoke the invitation for {{value0}}?",
+  "Diesen Einladungslink widerrufen?": "Revoke this invitation link?",
+  "Mit dieser Einladung kann danach niemand mehr beitreten.":
+    "No one will be able to join using this invitation afterwards.",
   "Du hast das Limit von 20 E-Mail-Einladungen pro Stunde erreicht. Bitte versuche es später erneut.":
     "You have reached the limit of 20 emailed invitations per hour. Please try again later.",
   "Arbeitsbereich der Nachricht öffnen": "Open notification workspace",

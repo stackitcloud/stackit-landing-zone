@@ -180,19 +180,22 @@ test("inviter chooses recipient and mail language without claiming delivery", as
   });
   await page.goto("/organisation");
   await page
-    .getByRole("checkbox", { name: "Einladung zusätzlich per E-Mail senden" })
-    .check();
+    .getByRole("button", { name: "Person einladen", exact: true })
+    .click();
+  await page.getByRole("radio", { name: /^Per E-Mail einladen/ }).check();
   await page
     .getByLabel("E-Mail-Adresse der eingeladenen Person")
     .fill("invitee@example.test");
   await page.getByLabel("Sprache für Nachrichten").selectOption("en");
-  await page.getByRole("button", { name: "Einladungslink erstellen" }).click();
+  await page
+    .getByRole("button", { name: "Einladung senden", exact: true })
+    .click();
   expect(posted).toMatchObject({
     mail: { email: "invitee@example.test", locale: "en" },
   });
   await expect(
     page.getByText(
-      "Die Einladung wurde für den E-Mail-Versand vorgemerkt. Dies bestätigt noch keine Zustellung.",
+      "Die Einladung an invitee@example.test ist für den Versand vorgemerkt.",
     ),
   ).toBeVisible();
 });

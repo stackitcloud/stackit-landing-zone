@@ -9,7 +9,7 @@ sichtbar. Ein Link genehmigt und startet nichts: Anmeldung, aktuelle Mitgliedsch
 und Berechtigungen werden weiterhin geprüft. Gehört die Nachricht zu einem anderen
 Arbeitsbereich, erfolgt der Wechsel ausdrücklich über den Hinweis zur Nachricht.
 
-Unter **Benachrichtigungen → Meine E-Mail-Einstellungen** wählt jeder Benutzer
+Unter **Benachrichtigungen → E-Mail-Benachrichtigungen** wählt jeder Benutzer
 seine Themen und die Nachrichtensprache: standardmäßig Deutsch, alternativ Englisch.
 Die Einstellungen gelten persönlich über Arbeitsbereiche und App-Instanzen hinweg.
 Es gibt keinen zentralen Themen-Schalter pro Arbeitsbereich. Freigaben, Fehler,
@@ -37,9 +37,30 @@ Migration; offene Bestellungen und Einladungen können begrenzte Erinnerungen au
 
 ## Einladungen
 
-Der Einladende kann den vorhandenen einmaligen Link beibehalten oder **Einladung
-zusätzlich per E-Mail senden** wählen, den Empfänger eingeben und die Sprache
-festlegen. Einladung und Versandauftrag werden gemeinsam gespeichert. Eine
+Unter **Mitglieder** können berechtigte Mitglieder nach Namen oder E-Mail-Adresse
+suchen, nach Rolle filtern und Rollen direkt bei der jeweiligen Person bearbeiten.
+Vor dem Entfernen nennt die Bestätigung Person und Arbeitsbereich. Dabei endet der
+Zugriff auf den Arbeitsbereich; das Konto bleibt bestehen. Die letzte Person mit
+Mitgliederverwaltung muss diese Berechtigung vor dem eigenen Entfernen übertragen.
+Mitglieder ohne Verwaltungsberechtigung sehen ihren eigenen Zugriff; Mitgliederliste
+und offene Einladungen bleiben der Mitgliederverwaltung vorbehalten.
+
+Über **Person einladen** wählst du ein Verfahren:
+
+- **Per E-Mail einladen:** Empfänger und Nachrichtensprache eingeben, Rollen wählen
+  und **Einladung senden** drücken. Der Link wird automatisch erstellt und für den
+  Versand vorgemerkt. Eine separate Link-Erstellung ist nicht erforderlich.
+- **Link selbst teilen:** Rollen wählen und **Einladungslink erstellen** drücken.
+  Kopiere den einmalig angezeigten Link und gib ihn selbst weiter.
+
+Der Reiter **Einladungen** zeigt Empfängeradresse, Rollen, Ablaufdatum und
+Versandstatus. Manuell geteilte Links sind bis zur Annahme ausdrücklich keiner
+Person zugeordnet. Vorgemerkte und laufende Versandvorgänge werden bei geöffnetem
+Reiter automatisch aktualisiert; zusätzlich gibt es eine manuelle Aktualisierung.
+Beim Widerrufen nennt die Bestätigung den Empfänger oder bezeichnet den Link.
+Die SMTP-Annahme bestätigt die Übergabe, nicht die Zustellung ins Postfach.
+
+Einladung und Versandauftrag werden gemeinsam gespeichert. Eine
 E-Mail-Einladung lässt sich nur mit der passenden verifizierten, nicht widerrufenen
 STACKIT-E-Mail-Adresse prüfen und annehmen. Manuell geteilte Links behalten ihr
 bisheriges Bearer-Verhalten. Beide Verfahren verlangen Anmeldung, ausdrückliche

@@ -4531,12 +4531,21 @@ for (const manager of [true, false]) {
         });
       });
       await page
+        .getByRole("button", { name: "Person einladen", exact: true })
+        .click();
+      await page.getByRole("radio", { name: /^Link selbst teilen/ }).check();
+      await page
         .getByRole("button", { name: "Einladungslink erstellen" })
         .click();
       await expect(
         page.getByLabel("Einladungslink – jetzt kopieren"),
       ).toHaveValue(/#invite=/);
+      await page.getByRole("button", { name: "Fertig", exact: true }).click();
       await page.getByRole("button", { name: "Einladung widerrufen" }).click();
+      await page
+        .getByRole("dialog", { name: "Einladung widerrufen" })
+        .getByRole("button", { name: "Einladung widerrufen", exact: true })
+        .click();
       await expect(page.getByText("Keine offenen Einladungen.")).toBeVisible();
       let deletionCalled = false;
       await page.route(
