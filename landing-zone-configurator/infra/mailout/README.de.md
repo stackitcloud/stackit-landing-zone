@@ -63,6 +63,11 @@ funktionieren weiter. Ein Merge startet kein Deployment. Der vorhandene
 Artefakt-Schlüssel verschlüsselt Einladungstoken mit gesondertem Kontext; solange
 solche Aufträge offen sind, muss der Schlüssel verfügbar bleiben.
 
+Nach der Aktivierung vergleicht der Release alle tatsächlich in CF gesetzten
+MailOut-Werte mit der freigegebenen Bindung, bevor er SMTP prüft. Fehlende,
+deaktivierte oder veraltete Bindungen lassen den Release fehlschlagen;
+Verbindungstests können eingerichteten E-Mail-Versand nicht unbemerkt überspringen.
+
 ## Zustellungsdiagnose und Wiederherstellung
 
 - Posteingang und Einladungsliste zeigen vorgemerkt/laufend/angenommen/unterdrückt/

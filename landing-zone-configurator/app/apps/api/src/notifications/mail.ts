@@ -65,8 +65,8 @@ export function renderNotificationMail(
       ? "Review invitation"
       : "Open application";
   const footer = de
-    ? "Diese Nachricht informiert über einen Workflow. Links ersetzen keine Anmeldung oder Freigabe. Deine E-Mail-Themen kannst du unter Benachrichtigungen selbst einstellen."
-    : "This message reports a workflow event. Links do not replace sign-in or authorization. Manage your email topics under Notifications.";
+    ? "Verwalte deine E-Mail-Benachrichtigungen in der Anwendung."
+    : "Manage your email notifications in the application.";
   const reference = item.operation
     ? `${de ? "Vorgang" : "Operation"}: ${item.operation === "plan" ? "Plan" : "Apply"}`
     : "";

@@ -23,18 +23,18 @@ export const englishMessages: Record<string, string> = {
     "Sign in to see your notifications.",
   "Benachrichtigungen konnten nicht geladen oder gespeichert werden. Bitte prüfe die Anmeldung und den aktiven Arbeitsbereich.":
     "Notifications could not be loaded or saved. Check your sign-in and active workspace.",
-  "Aufgaben und Statusmeldungen für deinen aktiven Arbeitsbereich. Der Verlauf bleibt unabhängig von deinen E-Mail-Einstellungen sichtbar.":
-    "Tasks and status updates for your active workspace. History remains visible independently of your email preferences.",
+  "Öffne eine Benachrichtigung, um Details zu sehen oder eine offene Aufgabe zu bearbeiten.":
+    "Open a notification to view details or act on an outstanding task.",
   "Alle als gelesen markieren": "Mark all as read",
   "Du hast noch keine Benachrichtigungen.": "You have no notifications yet.",
   "Ältere Nachrichten laden": "Load older notifications",
-  "Nachrichten werden 90 Tage aufbewahrt. Links öffnen geschützte Ansichten und erteilen keine Freigabe.":
-    "Notifications are retained for 90 days. Links open authenticated views and do not grant authorization.",
-  "Meine E-Mail-Einstellungen": "My email preferences",
-  "Du entscheidest für jedes Thema selbst. Einladungen verschickt die einladende Person unabhängig von diesen Einstellungen.":
-    "You choose each topic yourself. The inviter decides whether to email an invitation independently of these preferences.",
-  "E-Mail-Versand ist auf dieser Instanz noch nicht eingerichtet. Deine Einstellungen werden trotzdem gespeichert.":
-    "Email delivery is not configured on this instance yet. Your preferences are still saved.",
+  "Hier findest du deine Benachrichtigungen der letzten 90 Tage.":
+    "View your notifications from the last 90 days.",
+  "E-Mail-Benachrichtigungen": "Email notifications",
+  "Wähle die Themen, zu denen du E-Mails erhalten möchtest.":
+    "Choose the topics you want to receive emails about.",
+  "E-Mail-Benachrichtigungen sind derzeit nicht verfügbar.":
+    "Email notifications are currently unavailable.",
   "Für E-Mails fehlt eine verifizierte STACKIT-E-Mail-Adresse. Melde dich über STACKIT an.":
     "A verified STACKIT email address is required for email delivery. Sign in through STACKIT.",
   "Sprache für Nachrichten": "Notification language",

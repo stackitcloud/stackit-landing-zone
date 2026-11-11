@@ -58,6 +58,9 @@ The manual Configurator Release workflow reads the secret, verifies stage/projec
 sender domain and official SMTP host, then includes it in final app bindings.
 Staging mail is always disabled. An absent binding leaves mail disabled while inbox
 and preferences continue working. No source merge automatically deploys the feature.
+After activation the release compares the actual CF environment with every approved
+MailOut setting before running the SMTP check. Missing, disabled or stale bindings
+fail the release; connection checks cannot silently skip configured email delivery.
 The existing artifact-encryption key encrypts invitation tokens with separate,
 context-bound purposes; preserve that key while encrypted pending jobs exist.
 
