@@ -1,9 +1,9 @@
-import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { materializePythonRuntime } from "./materialize-python-runtime.mjs";
+import { downloadUbuntuPackage } from "./download-ubuntu-package.mjs";
 
 // cflinuxfs4 is Ubuntu 22.04. Carry the matching interpreter and standard
 // library instead of relying on a Python executable in the CF stack.
@@ -19,12 +19,7 @@ try {
   await mkdir(runtime, { recursive: true });
   for (const [name, sha256] of packages) {
     const filename = `${name}_3.10.12-1~22.04.18_amd64.deb`;
-    const bytes = execFileSync("curl", ["--ipv4", "--fail", "--silent", "--show-error",
-      "--proto", "=https", "--tlsv1.2", "--retry", "2", "--connect-timeout", "15", "--max-time", "120",
-      `https://security.ubuntu.com/ubuntu/pool/main/p/python3.10/${filename}`],
-      { maxBuffer: 16 * 1024 * 1024 });
-    if (createHash("sha256").update(bytes).digest("hex") !== sha256)
-      throw new Error(`Python package checksum mismatch: ${name}`);
+    const bytes = downloadUbuntuPackage(filename, sha256);
     const path = resolve(work, filename);
     await writeFile(path, bytes, { mode: 0o600, flag: "wx" });
     execFileSync("dpkg-deb", ["--extract", path, runtime], { stdio: "pipe" });

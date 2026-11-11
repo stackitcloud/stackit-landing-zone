@@ -125,7 +125,7 @@ jobs:
         env:
           LZC_TEST_DATABASE_URL: postgres://postgres:lzc-test-only@127.0.0.1:5432/configurator_test
       - name: Install isolated browser for UI acceptance
-        run: npx playwright install --with-deps chromium
+        run: node ../infra/ci/install-browser.mjs
       - name: Test upgrade wizard against real HTTP and PostgreSQL
         run: npm run test:upgrade-journey -- --no-build
         env:
@@ -201,7 +201,7 @@ jobs:
           tofu_version: '1.12.6'
           tofu_wrapper: false
       - name: Check operator plan guard
-        run: node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/saved-plan-env.test.mjs infra/ci/artifact.test.mjs infra/ci/prepare.test.mjs infra/ci/review.test.mjs infra/ci/timeout.test.mjs infra/ci/buildpack-source.test.mjs infra/ci/image-staging.test.mjs infra/ci/python-runtime.test.mjs infra/mailout/provision.test.mjs infra/mailout/bindings.test.mjs
+        run: node --test infra/prepare-local.test.mjs infra/plan-guard.test.mjs infra/state-key.test.mjs infra/ci/context.test.mjs infra/ci/saved-plan-env.test.mjs infra/ci/artifact.test.mjs infra/ci/prepare.test.mjs infra/ci/review.test.mjs infra/ci/timeout.test.mjs infra/ci/buildpack-source.test.mjs infra/ci/image-staging.test.mjs infra/ci/python-runtime.test.mjs infra/ci/ubuntu-dependencies.test.mjs infra/mailout/provision.test.mjs infra/mailout/bindings.test.mjs
       - name: Check formatting
         run: tofu -chdir=infra fmt -check -recursive
       - name: Prepare disposable validation encryption

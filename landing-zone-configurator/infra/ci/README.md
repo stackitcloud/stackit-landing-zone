@@ -22,6 +22,30 @@ Executable deployments are defined directly in the workflows:
 
 Each deployment job shows the individual steps: credential preparation, reading previous backend outputs if applicable, `tofu init`, `tofu validate`, `tofu plan` or `tofu apply`. There is no custom JavaScript deployment runner. One-time recovery operations do not belong in this normal process.
 
+## Ubuntu dependency availability
+
+Python runtime packaging retains the exact Ubuntu 22.04 versions and reviewed
+SHA-256 values. For transport/availability failures it tries the HTTPS security
+archive, the main archive and the Oregon State University Ubuntu mirror in order.
+The first checksum mismatch or TLS verification failure stops packaging. There is
+no version substitution, insecure HTTP or unverified extraction. Each source has
+bounded connection, transfer and process timeouts.
+
+Browser installation uses the OSU Ubuntu HTTPS repository only when a bounded DNS
+preflight or the initial installation reports failure resolving Ubuntu package hosts.
+A failed preflight switches before slow APT retries; otherwise installation may
+retry once after that specific DNS error. The helper
+changes recognized Ubuntu repository URIs on the ephemeral CI runner; suites,
+components, signing keys and APT signature checks remain intact. Other repositories
+are retained. Browser CDN errors, signature failures, cancellation and a second
+failure stop the job. Browser acceptance itself is never skipped or automatically
+retried by this helper. Workflow timeouts and activation gates remain unchanged.
+See incident [#243](https://github.com/stackitcloud/stackit-landing-zone/issues/243).
+
+Run the offline regressions from the repository root with
+`node --test landing-zone-configurator/infra/ci/ubuntu-dependencies.test.mjs`.
+They never rewrite the workstation's APT configuration.
+
 <a id="plan-und-apply"></a>
 
 ## Plan and Apply
