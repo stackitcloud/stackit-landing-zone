@@ -117,6 +117,9 @@ and standard library support native OPNsense account initialization on
 `cflinuxfs4`, which does not supply a Python executable. Packaging verifies the
 required imports; tasks do not install packages. Local Runner packages use the
 workstation's Python 3 installation.
+Package-internal Python links are resolved to regular files before fingerprinting;
+absolute links resolve inside the extracted package, and escaping or broken links
+fail the build. The Runner's prohibition on symbolic links remains unchanged.
 
 `POST /api/v1/preparations` uses the existing saved configuration,
 revision and own credential profile. The additional selection is:
