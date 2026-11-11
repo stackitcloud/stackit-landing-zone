@@ -105,7 +105,7 @@ künftigen Plan/Apply müssen Zugriff, Secret-Version und Ziel erneut geprüft w
 
 Ergänzung vom 2026-10-06: Die gewöhnliche Vorbereitung bleibt auf `a256f68`
 gebunden. Für den Contract-Output kann eine zusätzliche Vorbereitung ausdrücklich
-den fest qualifizierten Commit `6f5c4c981f8820c826476c5a85ca4c23dc3948a9` wählen.
+den fest qualifizierten Commit `6398834bf20a4f24ea81c1f7dd0627025b4a81ce` wählen.
 Das ist derzeit ein lokaler, opt-in Laufpfad, keine allgemeine Source-Auswahl und
 keine Produktionsfreigabe.
 
@@ -116,6 +116,13 @@ Die Source-Metadatei `platform-source.json` wird strikt validiert und gehört zu
 Paket-Fingerprint. Der Runner akzeptiert nur den dazu passenden Quellcommit;
 gespeicherte Plans eines anderen Pakets bleiben ungültig für diesen Runner.
 
+Gehostete Runner-Pakete enthalten außerdem Python 3.10.12 aus den
+Sicherheitspaketen von Ubuntu 22.04, geprüft gegen fest hinterlegte
+SHA-256-Prüfsummen. Interpreter und Standardbibliothek ermöglichen die native
+OPNsense-Kontoinitialisierung auf `cflinuxfs4`, das keine ausführbare Python-Datei
+mitbringt. Der Paketbau prüft die benötigten Imports; Tasks installieren keine
+Pakete. Lokale Runner-Pakete verwenden die Python-3-Installation des Arbeitsplatzes.
+
 `POST /api/v1/preparations` verwendet die vorhandene gespeicherte Konfiguration,
 Revision und das eigene Credential-Profil. Die zusätzliche Auswahl lautet:
 
@@ -123,7 +130,7 @@ Revision und das eigene Credential-Profil. Die zusätzliche Auswahl lautet:
 {
   "platformUpgrade": {
     "confirm": true,
-    "acceleratorCommit": "6f5c4c981f8820c826476c5a85ca4c23dc3948a9"
+    "acceleratorCommit": "6398834bf20a4f24ea81c1f7dd0627025b4a81ce"
   }
 }
 ```

@@ -136,6 +136,7 @@ export function Notifications({ session }: { session: Session | null }) {
       setPreferences(preferenceResponse.parse(prefs));
     }
   }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset for identity or CSRF changes while preserving edits across ordinary session heartbeats.
   useEffect(() => {
     setData(null);
     setPreferences(null);
@@ -238,11 +239,10 @@ export function Notifications({ session }: { session: Session | null }) {
             className="button secondary"
             disabled={busy}
             onClick={() => {
+              const before = data.items.at(-1)?.createdAt;
+              if (!before) return;
               setBusy(true);
-              void call(
-                session,
-                `inbox?before=${encodeURIComponent(data.items.at(-1)!.createdAt)}`,
-              )
+              void call(session, `inbox?before=${encodeURIComponent(before)}`)
                 .then((v) => {
                   const older = inbox.parse(v);
                   setHasOlder(older.items.length === 50);
