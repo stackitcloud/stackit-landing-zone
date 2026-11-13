@@ -94,7 +94,7 @@ it("authenticates only the private development account and provisions no externa
   if (!token) throw new Error("Expected a development session");
   const session = await store.resolveSession(token);
   if (!session) throw new Error("Expected a resolved development session");
-  expect(session.tenantKind).toBe("personal");
+  expect(session.tenantKind).toBe("account");
   expect(session.productRoles).toEqual([]);
   expect(session.manageMembers).toBe(false);
   const identity = await migration.query(

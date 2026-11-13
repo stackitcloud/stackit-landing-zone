@@ -60,6 +60,7 @@ import {
   assistantScenarioFixture,
   assistantScenarios,
 } from "../scripts/assistant-scenarios.js";
+import { inWorkspace } from "./fixture-workspace.js";
 
 const address = process.env.LZC_TEST_DATABASE_URL;
 if (!address)
@@ -124,7 +125,7 @@ beforeAll(async () => {
       csrfToken: randomBytes(32).toString("base64url"),
       expiresAt: new Date(Date.now() + 3600000),
     });
-    return { token: token.token, identity };
+    return { token: token.token, identity: await inWorkspace(pool, identity) };
   }
   const a = await session(101, "alice");
   alice = a.identity;
@@ -1495,7 +1496,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
   it("exposes only the active user's valid human email to the assistant, never identity credentials", async () => {
     const token = newSessionToken();
     const email = "assistant-owner@example.invalid";
-    const session = await store.createStackitSession({
+    const login = await store.createStackitSession({
       id: randomUUID(),
       hash: token.hash,
       csrfToken: randomBytes(32).toString("base64url"),
@@ -1510,6 +1511,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         organization: null,
       },
     });
+    const session = await inWorkspace(pool, login);
     const configurations = new Configurations(pool);
     const stored = await configurations.create(
       session,
@@ -10663,7 +10665,7 @@ describe("independent external identities", () => {
       expiresAt: new Date(Date.now() + 3600000),
     });
     expect(session.userId).toBe(alice.userId);
-    expect(session.tenantId).toBe(alice.tenantId);
+    expect(session.tenantId).toBe(alice.tokenTenantId);
     const result = await migration.query(
       "SELECT user_id FROM lzc_auth.external_identities WHERE provider='github' AND subject='101'",
     );
@@ -10714,7 +10716,7 @@ describe("organisation draft workspaces", () => {
         csrfToken: randomBytes(32).toString("base64url"),
         expiresAt: new Date(Date.now() + 3600000),
       });
-      return { session, token: token.token };
+      return { session: await inWorkspace(pool, session), token: token.token };
     }
     const first = await create(901);
     alice = first.session;
@@ -10781,12 +10783,12 @@ describe("organisation draft workspaces", () => {
     await organisations.switch(alice, alice.tenantId);
     await organisations.switch(bob, bob.tenantId);
   });
-  it("creates draft membership, preserves personal token binding and revokes membership", async () => {
+  it("creates draft membership, preserves account token binding and revokes membership", async () => {
     expect(
       (await organisations.overview(alice)).tenants.find(
         (t) => t.id === alice.tenantId,
       )?.roles,
-    ).toEqual([]);
+    ).toEqual(["platform-engineer"]);
     const id = await organisations.create(alice, "Platform team", randomUUID());
     const overview = await organisations.overview(alice);
     expect(overview.activeTenantId).toBe(alice.tenantId);
@@ -10813,7 +10815,7 @@ describe("organisation draft workspaces", () => {
     ).rejects.toMatchObject({ code: "42501" });
     expect(await store.resolveSession(aliceToken)).toMatchObject({
       tenantId: id,
-      tokenTenantId: alice.tenantId,
+      tokenTenantId: alice.tokenTenantId,
       tenantKind: "organisation",
       productRoles: ["platform-engineer"],
     });
@@ -10856,9 +10858,7 @@ describe("organisation draft workspaces", () => {
       false,
       true,
     );
-    expect((await organisations.overview(bob)).activeTenantId).toBe(
-      bob.tenantId,
-    );
+    expect((await organisations.overview(bob)).activeTenantId).toBeNull();
     await expect(organisations.switch(bob, id)).rejects.toMatchObject({
       code: "42501",
     });
@@ -10946,7 +10946,7 @@ describe("organisation draft workspaces", () => {
       code: "42501",
     });
     await expect(
-      organisations.archive(alice, alice.tenantId),
+      organisations.archive(alice, alice.tokenTenantId!),
     ).rejects.toMatchObject({ code: "42501" });
     await organisations.switch(alice, id);
     await inviteMember(
@@ -10988,7 +10988,7 @@ describe("organisation draft workspaces", () => {
     ]);
     await organisations.archive(alice, id);
     const overview = await organisations.overview(alice);
-    expect(overview.activeTenantId).toBe(alice.tenantId);
+    expect(overview.activeTenantId).toBeNull();
     expect(overview.tenants.some((t) => t.id === id)).toBe(false);
     await expect(organisations.switch(alice, id)).rejects.toMatchObject({
       code: "42501",
@@ -11011,15 +11011,18 @@ describe("single-use membership invitations", () => {
   const organisations = new PostgresOrganisations(pool);
   let alice: Session, bob: Session;
   beforeAll(async () => {
-    const create = (githubId: number) =>
-      store.createSession({
-        githubId,
-        login: `invite-${githubId}`,
-        id: randomUUID(),
-        hash: newSessionToken().hash,
-        csrfToken: randomBytes(32).toString("base64url"),
-        expiresAt: new Date(Date.now() + 3600000),
-      });
+    const create = async (githubId: number) =>
+      inWorkspace(
+        pool,
+        await store.createSession({
+          githubId,
+          login: `invite-${githubId}`,
+          id: randomUUID(),
+          hash: newSessionToken().hash,
+          csrfToken: randomBytes(32).toString("base64url"),
+          expiresAt: new Date(Date.now() + 3600000),
+        }),
+      );
     alice = await create(1001);
     bob = await create(1002);
   });

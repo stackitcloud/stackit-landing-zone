@@ -112,6 +112,10 @@ beforeAll(async () => {
       );
   });
   engineer = { ...engineer, tenantId: owner.tenantId };
+  await admin.query(
+    "UPDATE lzc_auth.sessions SET active_tenant_id=$1 WHERE id=$2",
+    [owner.tenantId, owner.id],
+  );
 }, 30000);
 afterAll(async () => {
   await runtime.end();
@@ -868,7 +872,7 @@ it("exposes only tenant-authorized current Platform eligibility, not private pro
     );
   expect(await read(owner, f.to)).toBe(true);
   expect(await read(owner, randomUUID())).toBe(false);
-  expect(await read(outsider, f.to)).toBe(false);
+  await expect(read(outsider, f.to)).rejects.toMatchObject({ code: "42501" });
   await imported(() =>
     admin.query("UPDATE lzc.platform_states SET version=2 WHERE state_key=$1", [
       f.stateKey,
@@ -936,48 +940,19 @@ it("persists and unlocks the live job checkpoint after browser expiry without is
   }
 });
 
-it("preserves personal deployer Platform authorization when no Applications depend on the plan", async () => {
+it("denies Platform authorization without a selected workspace even when a plan has no Application dependents", async () => {
   const f = await platformFixture();
-  const org = (
-    await admin.query("SELECT organization_id FROM lzc.tenants WHERE id=$1", [
-      engineer.tenantId,
-    ])
-  ).rows[0].organization_id;
-  await imported(async () => {
-    await admin.query("DELETE FROM lzc.application_instances WHERE id=$1", [
-      f.instance,
-    ]);
-    await admin.query(
-      "UPDATE lzc.tenants SET kind='personal',owner_user_id=$2,organization_id=NULL WHERE id=$1",
-      [engineer.tenantId, owner.userId],
-    );
-    await admin.query(
-      "UPDATE lzc.memberships SET role='deployer',manage_members=false,product_roles='{}' WHERE tenant_id=$1 AND user_id=$2",
-      [engineer.tenantId, engineer.userId],
-    );
-  });
+  await admin.query(
+    "UPDATE lzc_auth.sessions SET active_tenant_id=NULL WHERE id=$1",
+    [engineer.id],
+  );
   try {
-    expect(await impact(f)).toMatchObject({
-      classification: "ordinary",
-      affectedApplications: [],
-      blockers: [],
-      canAcknowledge: false,
-    });
-    const run = await apply(f);
-    await scoped(engineer, (c) =>
-      c.query("UPDATE lzc.plan_runs SET input_claimed=true WHERE id=$1", [run]),
-    );
+    await expect(impact(f)).rejects.toMatchObject({ code: "42501" });
   } finally {
-    await imported(async () => {
-      await admin.query(
-        "UPDATE lzc.tenants SET kind='organisation',owner_user_id=NULL,organization_id=$2 WHERE id=$1",
-        [engineer.tenantId, org],
-      );
-      await admin.query(
-        "UPDATE lzc.memberships SET role='admin',product_roles=ARRAY['platform-engineer'] WHERE tenant_id=$1 AND user_id=$2",
-        [engineer.tenantId, engineer.userId],
-      );
-    });
+    await admin.query(
+      "UPDATE lzc_auth.sessions SET active_tenant_id=$1 WHERE id=$2",
+      [engineer.tenantId, engineer.id],
+    );
   }
 });
 

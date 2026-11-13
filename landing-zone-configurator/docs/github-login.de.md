@@ -49,8 +49,8 @@ Entwurf und bietet lokalen Download und Anmeldung an. Ein tablokaler Checkpoint
 für 24 Stunden bewahrt Entwurf, ursprüngliche Datenbank-Konfigurations-ID und
 Revision, gespeicherte Vergleichsbasis und Editorposition. Er enthält keine
 Login-Tokens oder CSRF-Geheimnisse. Er wird nur für denselben authentifizierten
-Benutzer und Arbeitsbereich wiederhergestellt. Beginnt eine neue Anmeldung im
-persönlichen Arbeitsbereich, wird die vorherige Organisation nur nach einer
+Benutzer und Arbeitsbereich wiederhergestellt. Beginnt eine neue Anmeldung ohne
+ausgewählten Arbeitsbereich, wird der vorherige Arbeitsbereich nur nach einer
 frischen serverseitigen Mitgliedschaftsprüfung gewählt. Andere Konten und
 Arbeitsbereiche erhalten den privaten Entwurf nicht; ausdrücklicher Logout löscht
 den Checkpoint dieses Kontos. Ist Browserspeicher nicht verfügbar, wird die
@@ -308,7 +308,9 @@ jeweiligen CI-Artefakten, nicht in einen fortgeschriebenen historischen Bericht.
 2. Der Callback verbraucht den Vorgang atomar und tauscht den Code mit PKCE gegen
    ein zeitlich begrenztes GitHub-App-**Benutzertoken**. `/user` bestätigt die Identität.
    Installation-Tokens und nicht ablaufende Tokens werden abgelehnt.
-3. Die Datenbank erzeugt einen persönlichen Arbeitsbereich mit Mitgliedschaft.
+3. Die Datenbank erzeugt einen unprivilegierten Kontokontext für die Anmeldung.
+   Dieser ist kein Arbeitsbereich und wird weder angezeigt noch angeboten. Der Benutzer
+   erstellt oder wählt einen normalen Arbeitsbereich oder nimmt eine Einladung an.
    Die Anwendung legt das GitHub-Token im Secrets Manager ab. Erst danach erhält
    der Browser ein zufälliges Sessioncookie; die Datenbank enthält nur dessen Hash.
 4. Die Session gilt höchstens acht Stunden, mit Abstand zum Tokenablauf. Refresh-

@@ -86,17 +86,16 @@ Die globalen/regionsbezogenen APIs liefern keinen Nachweis, dass alle Werte in e
 
 Alle Cloud-Ziele sind fest definiert; Redirects sind verboten, Antworten sind auf 2 MB begrenzt und Requests haben 15 Sekunden Timeout. Fehlermeldungen enthalten keine Providerantworten, privaten Schlüssel oder Tokens. Unbekannte/fehlerhafte Antwortschemata markieren nur den betroffenen Katalog als nicht verfügbar. Ein vorhandener, aber leerer Katalog unterscheidet sich von einem fehlgeschlagenen Abruf.
 
-Die bisherige manuelle Profilauswahl gilt im persönlichen Legacy-Arbeitsbereich.
-Im STACKIT-Login-Modus und in Organisationstenants erfolgt der Abruf automatisch.
-Platform Engineers dürfen im Organisationstenant eigene Zugänge speichern und
-Kataloge abrufen; Application Owner nicht. Migration `013_organisation_credentials.sql`
-setzt dieselbe Produktrollenprüfung in PostgreSQL RLS durch. Profile bleiben an
-Tenant und Besitzer gebunden, nicht tenantweit geteilt; persönliche Profile werden
-nie in einen Organisationstenant übernommen. Cloud-Ausführung bleibt separat gesperrt.
-Ohne Organisationskontext werden im persönlichen Tenant die für den Service Account
-zugänglichen Projekte abgefragt. Im Organisationstenant begrenzt dessen
-Organisations-ID die Suche. Ein fehlender Katalogzugang wird sichtbar gemeldet,
-nicht still als erfolgreicher Freitext-Fallback behandelt.
+Platform Engineers dürfen im ausgewählten regulären Arbeitsbereich eigene
+Zugänge speichern und Kataloge abrufen; Application Owner nicht. Migration
+`013_organisation_credentials.sql` setzt die Produktrollenprüfung in PostgreSQL
+RLS durch. Profile bleiben an Arbeitsbereich und Besitzer gebunden und werden
+nicht arbeitsbereichsweit geteilt. Cloud-Ausführung bleibt separat freizugeben.
+Es gibt keinen persönlichen Arbeitsbereich und keinen Katalogzugriff aus dem
+reinen Login-Kontext. Die Organisations-ID des Arbeitsbereichs begrenzt die
+Projektsuche. Übernommene Altbereiche ohne Organisations-ID müssen diese vor dem
+organisationsbezogenen Katalogabruf zuordnen. Fehlender Zugriff wird sichtbar
+gemeldet und nicht als erfolgreicher Freitext-Ausweichpfad behandelt.
 
 Im Legacy-Modus werden Katalogzugang, Referenzprojekt-ID und Region in diesem Browser pro Benutzer
 und Arbeitsbereich gespeichert und beim erneuten Öffnen wiederhergestellt.

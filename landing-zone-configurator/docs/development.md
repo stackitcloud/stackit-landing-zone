@@ -28,6 +28,24 @@ Use code, current contracts, tests and issue discussions for implementation stat
 Historical workstation handoffs and run-specific acceptance logs are not part of
 the maintained documentation.
 
+## Account and workspace boundaries
+
+Migration `097_explicit_workspaces.sql` retires automatic personal workspaces.
+An account without a selected ordinary workspace receives `workspaceRequired`
+and no public tenant in the session response. Workspace data/execution APIs
+reject that context server-side; workspace creation, selection and invitation
+acceptance retain authentication and CSRF checks. Revocation returns the account
+to workspace selection without granting fallback access to the login context.
+
+The internal `account` tenant row is a stable, unprivileged login/encryption
+context, not a listed or selectable workspace. Its UUID and the session's
+immutable token binding remain intact. Empty legacy homes become account contexts;
+homes with referenced data become ordinary unverified workspaces with unchanged
+resource, configuration and credential IDs. Their original admins retain local
+management capabilities, not verified STACKIT authority. A missing organization ID
+can be assigned once by a workspace manager; normal Owner verification is still
+required. Tests for workspace features must explicitly create/select a workspace.
+
 ## Interface localization
 
 Use `t()` for interface headings, navigation, buttons, hints, accessible labels
