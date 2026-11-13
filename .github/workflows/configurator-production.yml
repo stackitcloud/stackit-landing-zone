@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24.21.0'
       - name: Install pinned GitHub CLI for attestation verification
@@ -70,7 +70,7 @@ jobs:
         env:
           REVISION: ${{ steps.source.outputs.release_revision }}
         run: test "$REVISION" = "$GITHUB_SHA"
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           artifact-ids: ${{ steps.source.outputs.artifact_id }}
           run-id: ${{ inputs.release_run_id }}
@@ -117,7 +117,7 @@ jobs:
         with:
           ref: main
           persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24.21.0'
       - name: Install pinned GitHub CLI for attestation verification
@@ -153,7 +153,7 @@ jobs:
         with:
           ref: ${{ needs.source.outputs.revision }}
           persist-credentials: false
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24.21.0'
       - name: Install pinned GitHub CLI for attestation verification
