@@ -951,7 +951,9 @@ for (const before of [
         exact: true,
       })
       .click();
-    const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+    const chat = page.getByRole("region", {
+      name: /^(Konfigurations-Chat|Configuration chat)$/,
+    });
     const row = chat.locator(".assistant-diff tbody tr");
     await expect(row).toHaveCount(1);
     await expect(row).not.toContainText("[object Object]");
@@ -977,6 +979,9 @@ for (const before of [
     expect(accepted).toBe(0);
     expect(saved).toBe(0);
     await page.locator(".language-switch").selectOption("en");
+    await expect(
+      page.getByRole("region", { name: "Configuration chat", exact: true }),
+    ).toBeVisible();
     await expect(proposed).toContainText("Retention (days): 90");
     await expect(proposed).toContainText("No");
     await expect(baseline).toContainText(
