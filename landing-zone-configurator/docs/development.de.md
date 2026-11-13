@@ -50,6 +50,9 @@ aber keinen STACKIT-Nachweis. Eine fehlende Organisations-ID kann ein
 Workspace-Verantwortlicher einmalig setzen; der normale Owner-Nachweis bleibt
 erforderlich. Tests für Workspace-Funktionen müssen einen Bereich explizit
 erstellen und auswählen.
+Führe bei Änderungen an Anmeldung oder Arbeitsbereichen zusätzlich
+`npm run test:platform-database` aus: `npm run check` überspringt diese isolierte
+Docker-Testgruppe bewusst; CI und Release-Build verlangen sie dennoch.
 
 <a id="interface-localization"></a>
 ## Übersetzung der Oberfläche

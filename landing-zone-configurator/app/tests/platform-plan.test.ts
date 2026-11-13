@@ -48,6 +48,7 @@ import { RunnerPool } from "../apps/api/src/plans/runner-pool.js";
 import { Plans } from "../apps/api/src/plans/service.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
+import { inWorkspace } from "../integration/fixture-workspace.js";
 
 const enabled = process.env.LZC_PLAN_DATABASE_TEST === "true";
 const container = `lzc-platform-plan-test-${randomUUID()}`;
@@ -245,7 +246,7 @@ describe.skipIf(!enabled)(
     });
 
     async function session(): Promise<Session> {
-      return new PostgresAuthStore(pool).createSession({
+      const login = await new PostgresAuthStore(pool).createSession({
         githubId: ++identity,
         login: `plan-user-${identity}`,
         id: randomUUID(),
@@ -253,6 +254,7 @@ describe.skipIf(!enabled)(
         csrfToken: randomBytes(32).toString("base64url"),
         expiresAt: new Date(Date.now() + 3600000),
       });
+      return inWorkspace(pool, login);
     }
     async function fixture(
       applicationContracts = false,
@@ -2892,7 +2894,7 @@ describe.skipIf(!enabled)(
         expect(await test.plans.list(stranger)).toEqual([]);
       }
       await migration!.query(
-        "UPDATE lzc.memberships SET role='viewer' WHERE tenant_id=$1 AND user_id=$2",
+        "UPDATE lzc.memberships SET role='viewer',product_roles=ARRAY['application-owner'],manage_members=false WHERE tenant_id=$1 AND user_id=$2",
         [test.owner.tenantId, test.owner.userId],
       );
       await expect(
@@ -2904,7 +2906,7 @@ describe.skipIf(!enabled)(
         ),
       ).rejects.toMatchObject({ code: "plan_not_found" });
       await migration!.query(
-        "UPDATE lzc.memberships SET role='deployer' WHERE tenant_id=$1 AND user_id=$2",
+        "UPDATE lzc.memberships SET role='deployer',product_roles=ARRAY['platform-engineer'] WHERE tenant_id=$1 AND user_id=$2",
         [test.owner.tenantId, test.owner.userId],
       );
       expect((await test.plans.list(test.owner))[0].applyAllowed).toBe(true);
