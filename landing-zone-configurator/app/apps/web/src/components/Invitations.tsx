@@ -145,7 +145,7 @@ export function InvitationAcceptance({ session }: { session: Session | null }) {
           </p>
           <p>
             {t("Rollen:")} {names(preview.roles)}
-            {preview.manageMembers ? " · Mitglieder verwalten" : ""}
+            {preview.manageMembers ? t(" · Mitglieder verwalten") : ""}
           </p>
           <p>
             {t("Du trittst als @")}

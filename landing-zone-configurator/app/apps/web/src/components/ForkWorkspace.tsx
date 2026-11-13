@@ -399,9 +399,9 @@ export function ForkWorkspace({
         {t(
           "Verbinde einen beschreibbaren Accelerator-Fork. Der Configurator speichert deine Entwürfe im Branch",
         )}
-        <code>lzc/configurations</code>. Pro Konfiguration entstehen zwei
-        Dateien: <code>landing-zone.json</code>{" "}
-        {t("zum erneuten Bearbeiten und")}
+        <code>lzc/configurations</code>
+        {t(". Pro Konfiguration entstehen zwei Dateien:")}{" "}
+        <code>landing-zone.json</code> {t("zum erneuten Bearbeiten und")}
         <code>landing-zone.tfvars</code>{" "}
         {t(
           "für OpenTofu/Terraform. Änderungen bitte im Configurator vornehmen; manuelle tfvars-Änderungen werden nicht importiert.",
@@ -459,7 +459,7 @@ export function ForkWorkspace({
               {t(
                 "Noch kein passender Fork gefunden. Prüfe die App-Installation",
               )}{" "}
-              {nextPage ? " oder lade weitere Repositories" : ""}.
+              {nextPage ? t(" oder lade weitere Repositories") : ""}.
             </p>
           )}
           <ul className="fork-list">
@@ -484,7 +484,7 @@ export function ForkWorkspace({
                 {t("Speicherziel:")}
                 <code>{repository.branch}</code>
                 {!repository.branchExists &&
-                  " · wird beim ersten Speichern angelegt"}
+                  t(" · wird beim ersten Speichern angelegt")}
               </p>
               <h3>{t("Gespeicherte Konfigurationen")}</h3>
               {repository.configurations.length ? (

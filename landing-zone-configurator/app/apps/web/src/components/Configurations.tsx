@@ -275,7 +275,7 @@ export function Configurations({
               checked={includeAdvice}
               onChange={(event) => setIncludeAdvice(event.target.checked)}
             />{" "}
-            Template-Beratung übernehmen
+            {t("Template-Beratung übernehmen")}
           </label>
         )}
         <div className="actions">
@@ -319,7 +319,7 @@ export function Configurations({
             checked={includeAdvice}
             onChange={(event) => setIncludeAdvice(event.target.checked)}
           />{" "}
-          Template-Beratung übernehmen
+          {t("Template-Beratung übernehmen")}
         </label>
       )}
       <p className="muted">

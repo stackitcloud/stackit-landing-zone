@@ -207,7 +207,7 @@ function RegionConnectivity({
       </h3>
       <p>
         {areaKeys.length} {t("STACKIT Network Areas (SNAs)")}
-        {legacy ? " · Standardregion" : ""}
+        {legacy ? t(" · Standardregion") : ""}
       </p>
       {settings.network_area != null ? (
         <>
@@ -321,7 +321,7 @@ function RegionConnectivity({
             onChange(null);
         }}
       >
-        {t("Connectivity")} {region} entfernen
+        {t("Connectivity {{value0}} entfernen", { value0: region })}
       </button>
     </section>
   );

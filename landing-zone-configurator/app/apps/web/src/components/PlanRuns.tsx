@@ -444,7 +444,7 @@ function CheckpointReview({
             </dd>
             <dt>{t("State-Version")}</dt>
             <dd>{checkpoint.stateVersion}</dd>
-            <dt>Checkpoint-SHA256</dt>
+            <dt>{t("Checkpoint-SHA256")}</dt>
             <dd>
               <code>{checkpoint.checkpointSha256}</code>
             </dd>

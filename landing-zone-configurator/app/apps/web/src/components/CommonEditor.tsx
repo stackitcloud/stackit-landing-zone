@@ -111,7 +111,7 @@ export function CommonEditor({
     (item) => !platformDraft || item.id !== "projects",
   );
   const stepTitle = (id: EditorStep, title: string) =>
-    id === "projects" ? "Projekte (Bestand)" : title;
+    t(id === "projects" ? "Projekte (Bestand)" : title);
   const values = compileCommonConfiguration(draft);
   const projects = commonProjects(draft);
   const areas = commonNetworkAreas(draft);

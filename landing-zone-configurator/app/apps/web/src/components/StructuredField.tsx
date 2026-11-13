@@ -564,7 +564,7 @@ export function StructuredField({
                   onChange(items);
                 }}
               >
-                {t("Eintrag")} {index + 1} entfernen
+                {t("Eintrag {{value0}} entfernen", { value0: index + 1 })}
               </button>
             </div>
           ))}

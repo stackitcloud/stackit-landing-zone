@@ -1,4 +1,160 @@
 export const englishMessages: Record<string, string> = {
+  "Meine Antwort: {{value0}}": "My answer: {{value0}}",
+  "Service Accounts": "Service Accounts",
+  DNS: "DNS",
+  Logs: "Logs",
+  Kafka: "Kafka",
+  "MongoDB Flex": "MongoDB Flex",
+  "PostgreSQL Flex": "PostgreSQL Flex",
+  "SQL Server Flex": "SQL Server Flex",
+  Redis: "Redis",
+  "Application Load Balancer": "Application Load Balancer",
+  OpenSearch: "OpenSearch",
+  Airflow: "Airflow",
+  Lesen: "Read",
+  "Vorhandener Image-Administrator": "Existing image administrator",
+  "Die Anmeldung ist abgelaufen. Bitte erneut mit STACKIT anmelden.":
+    "Your session has expired. Sign in with STACKIT again.",
+  " · wird beim ersten Speichern angelegt": " · created on first save",
+  " · Mitglieder verwalten": " · Manage members",
+  " · Standardregion": " · Default region",
+  " · Aktiv": " · Active",
+  " · Mitgliederverwaltung": " · Membership management",
+  firma: "company",
+  projekt: "project",
+  "Upgrade-Hindernisse": "Upgrade blockers",
+  "Ziel-Plattformvertrag": "Target platform contract",
+  "Upgrade-Vergleich": "Upgrade comparison",
+  "Checkpoint-SHA256": "Checkpoint SHA-256",
+  Mitgliederverwaltung: "Membership management",
+  "Einstellungen speichern": "Save settings",
+  Neu: "New",
+  Schließen: "Close",
+  Mitglieder: "Members",
+  Einladungen: "Invitations",
+  Entfernen: "Remove",
+  "Änderungen speichern": "Save changes",
+  Übersicht: "Overview",
+  Unverändert: "Unchanged",
+  "Die vorbereitete Ausführungsfreigabe läuft zu bald ab. Bitte einen neuen Cloud-Plan vorbereiten.":
+    "The prepared execution grant expires too soon. Prepare a new Cloud Plan.",
+  "Der isolierte Application-Plan-Runner ist noch nicht freigegeben. Es wurde kein Cloud-Plan ausgeführt.":
+    "The isolated Application Plan runner has not been enabled. No Cloud Plan was executed.",
+  "Die Modellantwort konnte nicht sicher verarbeitet werden. Bitte erneut versuchen; deine Anfrage bleibt erhalten und es wurde nichts geändert.":
+    "The model response could not be processed safely. Try again; your request is preserved and nothing was changed.",
+  "Bitte keine Zugangsdaten senden. Nachricht und Vorschlag müssen innerhalb der erlaubten Grenzen bleiben.":
+    "Do not send credentials. The message and proposal must stay within the allowed limits.",
+  "Diese Feldauswahl passt nicht zur aktuellen Konfiguration. Wähle zusammengehörige Pflichtfelder gemeinsam oder fordere einen zum aktuellen Entwurf passenden Vorschlag an; es wurde nichts geändert.":
+    "This field selection does not match the current configuration. Select related required fields together or request a proposal for the current draft; nothing was changed.",
+  "Alle Chat-Plätze sind belegt. Bitte später erneut versuchen.":
+    "All chat slots are in use. Try again later.",
+  "Die Konfiguration wurde geändert. Bitte den aktuellen Stand öffnen.":
+    "The configuration has changed. Open the current version.",
+  "Der Vorschlag ist nicht mehr aktuell. Bitte das Gespräch neu laden.":
+    "The proposal is out of date. Reload the conversation.",
+  "Der gespeicherte Vorschlag passt nicht mehr zum aktuellen Konfigurationsvertrag. Bitte stelle deine Frage erneut; Entwurf und Konfiguration bleiben unverändert.":
+    "The saved proposal no longer matches the current configuration contract. Ask your question again; the draft and configuration remain unchanged.",
+  "Der Entwurf wurde während der Übernahme geändert. Bitte prüfe die Auswahl und übernimm sie erneut; deine Editoränderungen bleiben erhalten.":
+    "The draft changed while the proposal was being accepted. Review the selection and accept it again; your editor changes are preserved.",
+  "Das Gespräch wurde geändert oder gelöscht. Bitte neu laden.":
+    "The conversation was changed or deleted. Reload it.",
+  "Dieses Gespräch ist voll. Bitte löschen und ein neues Gespräch beginnen.":
+    "This conversation is full. Delete it and start a new conversation.",
+  "Der Wissensstand hat sich während der Antwort geändert. Bitte die Nachricht erneut senden; das Gespräch bleibt erhalten.":
+    "The knowledge version changed during the response. Send the message again; the conversation is preserved.",
+  "Bitte die Konfiguration zuerst in das aktuelle Editorformat übernehmen.":
+    "First migrate the configuration to the current editor format.",
+  "Die Sitzung oder Browser-Adresse passt nicht. Bitte über den lokalen Login-Zugang erneut anmelden.":
+    "The session or browser address does not match. Sign in again through the local login entry point.",
+  "Chat ist in dieser Umgebung noch nicht aktiviert.":
+    "Chat is not enabled in this environment.",
+  "Die Anfrage konnte nicht abgeschlossen werden. Konfiguration und Entwurf bleiben unverändert.":
+    "The request could not be completed. The configuration and draft remain unchanged.",
+  "Gespräch und Vorschlag endgültig löschen?":
+    "Permanently delete the conversation and proposal?",
+  "Gespräch löschen": "Delete conversation",
+  Gespräch: "Conversation",
+  Rückfragen: "Follow-up questions",
+  " Kein zugängliches Referenzprojekt gefunden.":
+    " No accessible reference project found.",
+  "Die Template-Beratung wurde geändert, ist abgelaufen oder nicht mehr aktuell. Bitte neu laden oder ohne Übernahme speichern.":
+    "The template advice has changed, expired or become out of date. Reload it or save without accepting the advice.",
+  "Im Organisationstenant benötigst du die Rolle Platform Engineer; im persönlichen Arbeitsbereich Administrator oder Deployer.":
+    "An organization workspace requires the Platform Engineer role; a personal workspace requires Administrator or Deployer.",
+  "JSON und tfvars fehlen oder passen nicht zusammen. Speichere die Konfiguration erneut im Configurator; prüfe zuvor mögliche manuelle Änderungen.":
+    "JSON and tfvars are missing or do not match. Review any manual changes, then save the configuration again in the Configurator.",
+  " oder lade weitere Repositories": " or load more repositories",
+  "Die Änderung wurde nicht gespeichert. Prüfe deine Berechtigung und Eingaben; mindestens ein Mitglied muss die Mitgliederverwaltung behalten.":
+    "The change was not saved. Check your permissions and input; at least one member must retain membership management permission.",
+  "Automatische Aktualisierung beendet. Prüfe den Status manuell; laufende Ausführungen können weiterhin Ressourcen verändern.":
+    "Automatic refresh has stopped. Check the status manually; running executions may still change resources.",
+  "Kurzer Baustein für Ressourcen- und gegebenenfalls DNS-Namen, z. B. portal. 1–16 Zeichen: Kleinbuchstaben, Ziffern und Bindestriche; beginnt mit einem Buchstaben.":
+    "A short component for resource names and, where applicable, DNS names, for example portal. Use 1–16 lowercase letters, digits or hyphens, starting with a letter.",
+  "Bitte keine Zugangsdaten senden. Die Nachricht darf höchstens 4000 Zeichen enthalten.":
+    "Do not send credentials. The message must not exceed 4,000 characters.",
+  "Die Beratung ist ausgelastet. Bitte später erneut versuchen.":
+    "The advice service is busy. Try again later.",
+  "Die Modellantwort konnte nicht sicher verarbeitet werden. Bitte versuche die Anfrage erneut; es wurde keine Empfehlung übernommen.":
+    "The model response could not be processed safely. Try the request again; no recommendation was accepted.",
+  "Für die Template-Beratung sind aktuelle Plattformrechte erforderlich.":
+    "Current platform permissions are required for template advice.",
+  "Das Gespräch ist voll. Bitte löschen und neu beginnen.":
+    "The conversation is full. Delete it and start again.",
+  "Das Gespräch wurde geändert. Bitte die Seite neu laden.":
+    "The conversation has changed. Reload the page.",
+  "Bitte über den lokalen Login-Zugang erneut anmelden.":
+    "Sign in again through the local login entry point.",
+  "Die Template-Beratung ist derzeit nicht verfügbar. Du kannst weiterhin eine Vorlage aus der Liste wählen.":
+    "Template advice is currently unavailable. You can still select a template from the list.",
+  "Template-Beratung und Empfehlung endgültig löschen?":
+    "Permanently delete the template advice conversation and recommendation?",
+  "Template-Beratung löschen": "Delete template advice",
+  "Template-Gespräch": "Template conversation",
+  "Zum Beispiel: Zwei Teams, öffentliche APIs und eine gemeinsame Verbindung ins Unternehmensnetz.":
+    "For example: Two teams, public APIs and a shared connection to the corporate network.",
+  "Connectivity bündelt SNAs, DNS, Firewalls und VPN in der unter Grundlagen gewählten Region. Alternativ Connectivity je Region verwenden; nicht beide Varianten gleichzeitig.":
+    "Connectivity groups SNAs, DNS, firewalls and VPN in the region selected under Basics. Alternatively, use Connectivity per region; do not use both variants at the same time.",
+  "Eine STACKIT Network Area (SNA) mit regionalen Adressbereichen. Ältere Einzelkonfiguration mit der Kennung default; über die Umstellung können mehrere SNAs verwaltet werden.":
+    "A STACKIT Network Area (SNA) with regional address ranges. This legacy single configuration uses the default key; migrate it to manage multiple SNAs.",
+  "Pro Region (eu01/eu02) können null bis mehrere SNAs konfiguriert werden. Landing-Zone-Projekte benötigen in dieser Variante eine ausdrückliche Region. Der Accelerator erstellt getrennte SNAs je Region; gleiche Kennungen verbinden Regionen nicht automatisch.":
+    "Configure zero or more SNAs per region (eu01/eu02). Landing Zone projects must specify a region in this variant. The Accelerator creates separate SNAs per region; matching keys do not automatically connect regions.",
+  "Diese Gesamtkonfiguration kann noch nicht verlustfrei als Plattformkopie übernommen werden. Der bisherige Entwurf bleibt erhalten; prüfe insbesondere die Zuordnung der Namespace-Dienste.":
+    "This complete configuration cannot yet be copied into a platform draft without loss. The existing draft is preserved; check the namespace service assignments in particular.",
+  " · Nicht gespeichert": " · Not saved",
+  "Konfigurations-Chat": "Configuration chat",
+  "Gespräch gültig bis": "Conversation valid until",
+  Assistent: "Assistant",
+  "Vorläufig · Antwort wird geprüft": "Provisional · Response is being checked",
+  Änderungsvorschlag: "Proposed changes",
+  Feld: "Field",
+  Vorschlag: "Proposal",
+  "Deine Nachricht": "Your message",
+  "Anfrage läuft…": "Request in progress…",
+  "Offene Fragen": "Open questions",
+  "Eigene Antwort": "Your own answer",
+  "Template-Beratung übernehmen": "Accept template advice",
+  ". Pro Konfiguration entstehen zwei Dateien:":
+    ". Each configuration produces two files:",
+  "Template-Beratung": "Template advice",
+  "Empfehlung:": "Recommendation:",
+  "Vorlage ansehen": "View template",
+  "Der Vorlagenstand wurde geändert. Bitte die Empfehlung erneut prüfen lassen.":
+    "The template version has changed. Ask for the recommendation to be reviewed again.",
+  "Welche Umgebung brauchst du?": "What environment do you need?",
+  "Beratung läuft…": "Advice in progress…",
+  von: "of",
+  "Was soll diese Umgebung leisten?":
+    "What does this environment need to support?",
+  "Nachricht senden": "Send message",
+  "Anfrage senden": "Send request",
+  "Template-Anfrage senden": "Send template request",
+  "standort-zentrale": "head-office",
+  "Antwort wird vorbereitet…": "Preparing response…",
+  "{{value0}} auswählen": "Select {{value0}}",
+  "{{value0}} weiterbearbeiten": "Continue editing {{value0}}",
+  "Connectivity {{value0}} entfernen": "Remove connectivity {{value0}}",
+  "Eintrag {{value0}} entfernen": "Remove entry {{value0}}",
+  Konnektivität: "Connectivity",
   "Mitglied {{value0}}": "Member {{value0}}",
   "Rollen und Berechtigungen": "Roles and permissions",
   "Application Landing Zones bestellen und verwalten.":

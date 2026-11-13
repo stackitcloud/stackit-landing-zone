@@ -16,9 +16,9 @@ import {
 } from "@lzc/domain";
 import { Check, MessageSquare, Send, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { assistantFailureMessage } from "../assistant-errors";
+import { AssistantFailureError } from "../assistant-errors";
 import { readAssistantResponse } from "../assistant-stream";
-import { t } from "../i18n";
+import { currentLanguage, t } from "../i18n";
 import type { Session } from "./Account";
 import {
   type AssistantQuestion,
@@ -110,9 +110,10 @@ async function checked(response: Response) {
         confirmation.data.conflicts,
         confirmation.data.configurationRevision,
       );
+    const failure = AssistantFailureError.from(body);
+    if (failure) throw failure;
     throw new Error(
-      assistantFailureMessage(body) ??
-        errors[body.error] ??
+      errors[body.error] ??
         (response.status === 404
           ? "Chat ist in dieser Umgebung noch nicht aktiviert."
           : "Die Anfrage konnte nicht abgeschlossen werden. Konfiguration und Entwurf bleiben unverändert."),
@@ -144,7 +145,9 @@ export function AssistantChat({
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | AssistantFailureError>("");
+  const errorText =
+    error instanceof AssistantFailureError ? error.localize() : t(error);
   const [previewText, setPreviewText] = useState<string | null>(null);
   const [previewMessage, setPreviewMessage] = useState("");
   const [selectedPaths, setSelectedPaths] = useState<string[] | null>(null);
@@ -178,7 +181,10 @@ export function AssistantChat({
           }
         })
         .catch((reason) => {
-          if (!controller.signal.aborted) setError(reason.message);
+          if (!controller.signal.aborted)
+            setError(
+              reason instanceof AssistantFailureError ? reason : reason.message,
+            );
         });
     return () => controller.abort();
   }, [endpoint, binding?.revision]);
@@ -197,9 +203,7 @@ export function AssistantChat({
     const next = [message.trim(), reply].filter(Boolean).join("\n\n");
     if (next.length > 4000) {
       setError(
-        t(
-          "Die Antwort ist zu lang. Bitte kürze deine Nachricht oder beantworte weniger Fragen gemeinsam.",
-        ),
+        "Die Antwort ist zu lang. Bitte kürze deine Nachricht oder beantworte weniger Fragen gemeinsam.",
       );
       return;
     }
@@ -259,7 +263,7 @@ export function AssistantChat({
     if (action === "discard" && !conversation?.proposal) return;
     if (
       action === "remove" &&
-      !window.confirm("Gespräch und Vorschlag endgültig löschen?")
+      !window.confirm(t("Gespräch und Vorschlag endgültig löschen?"))
     )
       return;
     active.current = true;
@@ -397,7 +401,11 @@ export function AssistantChat({
         });
       else if (!signal?.aborted)
         setError(
-          reason instanceof Error ? reason.message : "Anfrage fehlgeschlagen.",
+          reason instanceof AssistantFailureError
+            ? reason
+            : reason instanceof Error
+              ? reason.message
+              : "Anfrage fehlgeschlagen.",
         );
     } finally {
       active.current = false;
@@ -409,7 +417,7 @@ export function AssistantChat({
   }
 
   return (
-    <section className="assistant-chat" aria-label="Konfigurations-Chat">
+    <section className="assistant-chat" aria-label={t("Konfigurations-Chat")}>
       <div className="assistant-heading">
         <button
           type="button"
@@ -417,14 +425,15 @@ export function AssistantChat({
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
-          <MessageSquare size={18} aria-hidden="true" /> Konfigurations-Chat
+          <MessageSquare size={18} aria-hidden="true" />{" "}
+          {t("Konfigurations-Chat")}
         </button>
         {conversation && (
           <button
             type="button"
             className="button secondary"
-            title="Gespräch löschen"
-            aria-label="Gespräch löschen"
+            title={t("Gespräch löschen")}
+            aria-label={t("Gespräch löschen")}
             disabled={busy}
             onClick={() => void act("remove")}
           >
@@ -436,8 +445,10 @@ export function AssistantChat({
         <div className="assistant-body">
           {conversation && (
             <p className="muted">
-              Gespräch gültig bis{" "}
-              {new Date(conversation.expiresAt).toLocaleDateString("de-DE")}
+              {t("Gespräch gültig bis")}{" "}
+              {new Date(conversation.expiresAt).toLocaleDateString(
+                currentLanguage() === "de" ? "de-DE" : "en-GB",
+              )}
             </p>
           )}
           <div
@@ -445,11 +456,11 @@ export function AssistantChat({
             className="assistant-messages"
             role="log"
             aria-live="polite"
-            aria-label="Gespräch"
+            aria-label={t("Gespräch")}
           >
             {conversation?.messages.map((entry) => (
               <div className={`assistant-message ${entry.role}`} key={entry.id}>
-                <strong>{entry.role === "user" ? "Du" : "Assistent"}</strong>
+                <strong>{t(entry.role === "user" ? "Du" : "Assistent")}</strong>
                 <p>{entry.content}</p>
                 {entry.proposalDiscarded && (
                   <small>{t("Vorschlag verworfen.")}</small>
@@ -459,13 +470,13 @@ export function AssistantChat({
             {previewText !== null && (
               <>
                 <div className="assistant-message user">
-                  <strong>Du</strong>
+                  <strong>{t("Du")}</strong>
                   <p>{previewMessage}</p>
                 </div>
                 <div className="assistant-message assistant">
-                  <strong>Assistent</strong>
-                  <p>{previewText || "Antwort wird vorbereitet…"}</p>
-                  <small>Vorläufig · Antwort wird geprüft</small>
+                  <strong>{t("Assistent")}</strong>
+                  <p>{previewText || t("Antwort wird vorbereitet…")}</p>
+                  <small>{t("Vorläufig · Antwort wird geprüft")}</small>
                 </div>
               </>
             )}
@@ -494,25 +505,29 @@ export function AssistantChat({
           )}
           {conversation?.proposal && fields.length > 0 && (
             <div className="assistant-proposal">
-              <h2>Änderungsvorschlag</h2>
+              <h2>{t("Änderungsvorschlag")}</h2>
               <div className="assistant-diff">
                 <table>
                   <thead>
                     <tr>
-                      <th>Auswahl</th>
-                      <th>Feld</th>
+                      <th>{t("Auswahl")}</th>
+                      <th>{t("Feld")}</th>
                       <th>{t("Ausgangswert")}</th>
-                      <th>Vorschlag</th>
+                      <th>{t("Vorschlag")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {fields.map((field) => (
                       <tr key={field.id}>
                         <td>
-                          <span className="assistant-diff-label">Auswahl</span>
+                          <span className="assistant-diff-label">
+                            {t("Auswahl")}
+                          </span>
                           <input
                             type="checkbox"
-                            aria-label={`${field.path} auswählen`}
+                            aria-label={t("{{value0}} auswählen", {
+                              value0: field.path,
+                            })}
                             checked={selected.includes(field.id)}
                             disabled={busy || !!confirmation}
                             onChange={(event) =>
@@ -527,7 +542,9 @@ export function AssistantChat({
                           />
                         </td>
                         <td>
-                          <span className="assistant-diff-label">Feld</span>
+                          <span className="assistant-diff-label">
+                            {t("Feld")}
+                          </span>
                           <strong>
                             {labelFor(field.keys.at(-1) ?? field.changePath)}
                           </strong>
@@ -545,7 +562,7 @@ export function AssistantChat({
                         </td>
                         <td>
                           <span className="assistant-diff-label">
-                            Vorschlag
+                            {t("Vorschlag")}
                           </span>
                           <span>
                             {field.removesEntry
@@ -627,14 +644,14 @@ export function AssistantChat({
             )}
           </p>
           {notice && <p role="status">{t(notice)}</p>}
-          {error && <p role="alert">{error}</p>}
+          {error && <p role="alert">{errorText}</p>}
           <form
             onSubmit={(event) => {
               event.preventDefault();
               void act("send");
             }}
           >
-            <label htmlFor="assistant-message">Deine Nachricht</label>
+            <label htmlFor="assistant-message">{t("Deine Nachricht")}</label>
             <div className="assistant-compose">
               <textarea
                 id="assistant-message"
@@ -642,20 +659,20 @@ export function AssistantChat({
                 maxLength={4000}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Was soll diese Umgebung leisten?"
+                placeholder={t("Was soll diese Umgebung leisten?")}
                 disabled={!binding || busy || !!confirmation}
               />
               <button
                 type="submit"
                 className="button primary"
-                aria-label="Nachricht senden"
-                title="Nachricht senden"
+                aria-label={t("Nachricht senden")}
+                title={t("Nachricht senden")}
                 disabled={!binding || busy || !!confirmation || !message.trim()}
               >
                 <Send size={18} aria-hidden="true" />
               </button>
             </div>
-            {busy && <p role="status">Anfrage läuft…</p>}
+            {busy && <p role="status">{t("Anfrage läuft…")}</p>}
           </form>
         </div>
       )}
@@ -736,7 +753,7 @@ export function AssistantChat({
               {t("Trotzdem in Entwurf übernehmen")}
             </button>
           </div>
-          {error && <p role="alert">{t(error)}</p>}
+          {error && <p role="alert">{errorText}</p>}
         </dialog>
       )}
     </section>

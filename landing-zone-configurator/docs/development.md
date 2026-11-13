@@ -28,6 +28,22 @@ Use code, current contracts, tests and issue discussions for implementation stat
 Historical workstation handoffs and run-specific acceptance logs are not part of
 the maintained documentation.
 
+## Interface localization
+
+Use `t()` for interface headings, navigation, buttons, hints, accessible labels
+and diagnostic messages, with English entries in `apps/web/src/locales/en.ts`.
+Translate stored message identifiers and editor-step metadata when rendering so
+an immediate language switch also updates already open dialogs and errors.
+Translate surrounding interface text separately from customer names, entered
+values, resource identifiers and Assistant-generated content; preserve those
+values exactly.
+
+`tests/i18n-coverage.test.ts` checks static message registration and untranslated
+JSX or accessible labels as part of `npm run check`. Run the `i18n` and
+`english-interface` Playwright flows on desktop and mobile for dynamic rendering,
+language changes and preservation of customer data. Inspect their screenshots:
+source coverage cannot detect every missing translation call on runtime values.
+
 Configuration-list reads must not overwrite a newer post-save refresh with an
 older initial response or error. Keep request ordering and the captured
 session-lifetime abort signal intact. The database-configuration browser flow
