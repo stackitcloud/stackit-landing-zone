@@ -45,6 +45,9 @@ resource, configuration and credential IDs. Their original admins retain local
 management capabilities, not verified STACKIT authority. A missing organization ID
 can be assigned once by a workspace manager; normal Owner verification is still
 required. Tests for workspace features must explicitly create/select a workspace.
+For authentication or workspace changes, also run `npm run test:platform-database`:
+the ordinary `npm run check` intentionally skips this isolated Docker-backed group,
+but CI and the release build require it.
 
 ## Interface localization
 
