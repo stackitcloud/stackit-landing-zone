@@ -114,7 +114,7 @@ export function ProjectsStep({
           <p className="field-hint">
             {t("Namenspräfix für Ressourcen:")}{" "}
             <code>
-              {draft.companyCode || "firma"}-lz-{p.code || "projekt"}-
+              {draft.companyCode || t("firma")}-lz-{p.code || t("projekt")}-
               {p.environment || "dev"}
             </code>
             {t(

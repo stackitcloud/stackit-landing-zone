@@ -428,7 +428,7 @@ export function TemplateParameters({
                     </div>
                     <p className="field-hint" role="status">
                       {assigned.length} {t("ausgewählt ·")}{" "}
-                      {visibleRoles.length} von {roleOptions.length}{" "}
+                      {visibleRoles.length} {t("von")} {roleOptions.length}{" "}
                       {t("Rollen")}
                     </p>
                     <div className="role-list">

@@ -219,13 +219,13 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
           ] as const
         )
           .filter(([key]) => data[key]?.status === "unavailable")
-          .map(([, label]) => label)
+          .map(([, label]) => t(label))
       : [];
     return (
       <p role="status" className="field-hint">
         {busy
           ? t("STACKIT-Produktkataloge werden geladen.")
-          : error ||
+          : t(error) ||
             (data
               ? t("STACKIT-Produktkataloge geladen ({{value0}}).", {
                   value0: data.region,
@@ -238,7 +238,7 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
             value0: unavailable.join(", "),
             value1:
               data.projectId === null
-                ? " Kein zugängliches Referenzprojekt gefunden."
+                ? t(" Kein zugängliches Referenzprojekt gefunden.")
                 : "",
           })}
       </p>
@@ -356,7 +356,7 @@ export function CloudCataloguePanel({ session }: { session: Session | null }) {
         {busy ? t("Wird geladen …") : t("Produktoptionen aktualisieren")}
       </button>
       {error && <p role="alert">{t(error)}</p>}
-      {storageWarning && <p role="status">{storageWarning}</p>}
+      {storageWarning && <p role="status">{t(storageWarning)}</p>}
       {data && (
         <>
           <p role="status">

@@ -300,7 +300,7 @@ export function Organisation({
             <article key={tenant.id}>
               <h3>
                 {tenant.name}
-                {tenant.id === data.activeTenantId ? " · Aktiv" : ""}
+                {tenant.id === data.activeTenantId ? t(" · Aktiv") : ""}
               </h3>
               <p>
                 {tenant.kind === "personal"
@@ -319,7 +319,7 @@ export function Organisation({
                         : "Application Owner",
                     )
                     .join(", ")}
-                  {tenant.manageMembers ? " · Mitgliederverwaltung" : ""}
+                  {tenant.manageMembers ? t(" · Mitgliederverwaltung") : ""}
                 </p>
               )}
               {(selectionOnly || tenant.id !== data.activeTenantId) && (

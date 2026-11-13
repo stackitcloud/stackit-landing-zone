@@ -479,7 +479,7 @@ Auswirkungsbestätigung, sensiblen Änderungen und Recovery stehen unter
 
 ## Benachrichtigungen
 
-Die Glocke im Kopfbereich öffnet den Posteingang. Unter **Meine E-Mail-Einstellungen**
+Die Glocke im Kopfbereich öffnet den Posteingang. Unter **E-Mail-Benachrichtigungen**
 wählt jeder Benutzer Themen und Deutsch/Englisch selbst. Einladende können eine
 empfängergebundene Einladung per E-Mail senden. Ereignisse, Versandzustände und
 Zugriffsprüfungen stehen unter [Benachrichtigungen und E-Mail](notifications.de.md).

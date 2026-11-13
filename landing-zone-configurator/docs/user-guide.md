@@ -422,6 +422,6 @@ for impact acknowledgement, sensitive-change policies and Recovery.
 ## Notifications
 
 Use the header bell to open your workspace inbox and personally select email topics
-and German/English under **My email preferences**. The inviter can optionally email
+and German/English under **Email notifications**. The inviter can optionally email
 a recipient-bound invitation. See [Notifications and email](notifications.md) for
 events, delivery states and retained access checks.

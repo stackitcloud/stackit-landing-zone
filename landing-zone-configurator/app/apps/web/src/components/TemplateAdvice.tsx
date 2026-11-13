@@ -1,6 +1,6 @@
 import { MessageSquare, Send, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { assistantFailureMessage } from "../assistant-errors";
+import { AssistantFailureError } from "../assistant-errors";
 import { readAssistantResponse } from "../assistant-stream";
 import { t } from "../i18n";
 import { describe, templates } from "../templates";
@@ -43,9 +43,10 @@ async function checked(response: Response) {
       invalid_request_origin_or_csrf:
         "Bitte über den lokalen Login-Zugang erneut anmelden.",
     };
+    const failure = AssistantFailureError.from(body);
+    if (failure) throw failure;
     throw new Error(
-      assistantFailureMessage(body) ??
-        messages[body.error] ??
+      messages[body.error] ??
         "Die Template-Beratung ist derzeit nicht verfügbar. Du kannst weiterhin eine Vorlage aus der Liste wählen.",
     );
   }
@@ -61,7 +62,9 @@ export function TemplateAdvice({
 }) {
   const [advice, setAdvice] = useState<Advice | null>(null);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | AssistantFailureError>("");
+  const errorText =
+    error instanceof AssistantFailureError ? error.localize() : t(error);
   const [busy, setBusy] = useState(false);
   const [previewText, setPreviewText] = useState<string | null>(null);
   const [previewMessage, setPreviewMessage] = useState("");
@@ -78,7 +81,10 @@ export function TemplateAdvice({
         if (!controller.signal.aborted) setAdvice(body.advice);
       })
       .catch((reason) => {
-        if (!controller.signal.aborted) setError(reason.message);
+        if (!controller.signal.aborted)
+          setError(
+            reason instanceof AssistantFailureError ? reason : reason.message,
+          );
       });
     return () => controller.abort();
   }, []);
@@ -92,7 +98,7 @@ export function TemplateAdvice({
     if (!controller || controller.signal.aborted || active.current) return;
     if (
       remove &&
-      !window.confirm("Template-Beratung und Empfehlung endgültig löschen?")
+      !window.confirm(t("Template-Beratung und Empfehlung endgültig löschen?"))
     )
       return;
     active.current = true;
@@ -132,7 +138,11 @@ export function TemplateAdvice({
     } catch (reason) {
       if (!controller.signal.aborted)
         setError(
-          reason instanceof Error ? reason.message : "Beratung fehlgeschlagen.",
+          reason instanceof AssistantFailureError
+            ? reason
+            : reason instanceof Error
+              ? reason.message
+              : "Beratung fehlgeschlagen.",
         );
     } finally {
       active.current = false;
@@ -149,26 +159,25 @@ export function TemplateAdvice({
     const next = [message.trim(), reply].filter(Boolean).join("\n\n");
     if (next.length > 4000) {
       setError(
-        t(
-          "Die Antwort ist zu lang. Bitte kürze deine Nachricht oder beantworte weniger Fragen gemeinsam.",
-        ),
+        "Die Antwort ist zu lang. Bitte kürze deine Nachricht oder beantworte weniger Fragen gemeinsam.",
       );
       return;
     }
     void act(false, next);
   }
   return (
-    <section className="assistant-chat" aria-label="Template-Beratung">
+    <section className="assistant-chat" aria-label={t("Template-Beratung")}>
       <div className="assistant-heading">
         <h2>
-          <MessageSquare size={18} aria-hidden="true" /> Template-Beratung
+          <MessageSquare size={18} aria-hidden="true" />{" "}
+          {t("Template-Beratung")}
         </h2>
         {advice && (
           <button
             type="button"
             className="button secondary"
-            aria-label="Template-Beratung löschen"
-            title="Template-Beratung löschen"
+            aria-label={t("Template-Beratung löschen")}
+            title={t("Template-Beratung löschen")}
             disabled={busy}
             onClick={() => void act(true)}
           >
@@ -182,24 +191,24 @@ export function TemplateAdvice({
           className="assistant-messages"
           role="log"
           aria-live="polite"
-          aria-label="Template-Gespräch"
+          aria-label={t("Template-Gespräch")}
         >
           {advice?.messages.map((entry) => (
             <div className={`assistant-message ${entry.role}`} key={entry.id}>
-              <strong>{entry.role === "user" ? "Du" : "Assistent"}</strong>
+              <strong>{t(entry.role === "user" ? "Du" : "Assistent")}</strong>
               <p>{entry.content}</p>
             </div>
           ))}
           {previewText !== null && (
             <>
               <div className="assistant-message user">
-                <strong>Du</strong>
+                <strong>{t("Du")}</strong>
                 <p>{previewMessage}</p>
               </div>
               <div className="assistant-message assistant">
-                <strong>Assistent</strong>
-                <p>{previewText || "Antwort wird vorbereitet…"}</p>
-                <small>Vorläufig · Antwort wird geprüft</small>
+                <strong>{t("Assistent")}</strong>
+                <p>{previewText || t("Antwort wird vorbereitet…")}</p>
+                <small>{t("Vorläufig · Antwort wird geprüft")}</small>
               </div>
             </>
           )}
@@ -214,7 +223,9 @@ export function TemplateAdvice({
         )}
         {recommended && (
           <div className="assistant-proposal">
-            <h3>Empfehlung: {describe(recommended).title}</h3>
+            <h3>
+              {t("Empfehlung:")} {describe(recommended).title}
+            </h3>
             <p>{describe(recommended).description}</p>
             <button
               type="button"
@@ -222,17 +233,18 @@ export function TemplateAdvice({
               disabled={busy || advice?.stale}
               onClick={() => onChoose(recommended.id)}
             >
-              Vorlage ansehen
+              {t("Vorlage ansehen")}
             </button>
           </div>
         )}
         {advice?.stale && (
           <p role="alert">
-            Der Vorlagenstand wurde geändert. Bitte die Empfehlung erneut prüfen
-            lassen.
+            {t(
+              "Der Vorlagenstand wurde geändert. Bitte die Empfehlung erneut prüfen lassen.",
+            )}
           </p>
         )}
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert">{errorText}</p>}
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -240,14 +252,16 @@ export function TemplateAdvice({
           }}
         >
           <label htmlFor="template-advice-message">
-            Welche Umgebung brauchst du?
+            {t("Welche Umgebung brauchst du?")}
           </label>
           <div className="assistant-compose">
             <textarea
               id="template-advice-message"
               rows={3}
               maxLength={4000}
-              placeholder="Zum Beispiel: Zwei Teams, öffentliche APIs und eine gemeinsame Verbindung ins Unternehmensnetz."
+              placeholder={t(
+                "Zum Beispiel: Zwei Teams, öffentliche APIs und eine gemeinsame Verbindung ins Unternehmensnetz.",
+              )}
               value={message}
               disabled={busy}
               onChange={(event) => setMessage(event.target.value)}
@@ -255,14 +269,14 @@ export function TemplateAdvice({
             <button
               type="submit"
               className="button primary"
-              title="Anfrage senden"
-              aria-label="Template-Anfrage senden"
+              title={t("Anfrage senden")}
+              aria-label={t("Template-Anfrage senden")}
               disabled={busy || !message.trim()}
             >
               <Send size={18} aria-hidden="true" />
             </button>
           </div>
-          {busy && <p role="status">Beratung läuft…</p>}
+          {busy && <p role="status">{t("Beratung läuft…")}</p>}
         </form>
       </div>
     </section>

@@ -36,3 +36,31 @@ export function assistantFailureMessage(body: unknown): string | null {
     t("Diagnosekennung: {{requestId}}", { requestId: result.data.requestId }),
   ].join(" ");
 }
+
+// Keep only the public category and diagnostic reference, so an existing alert
+// can be rendered again after a language change without retaining model data.
+export class AssistantFailureError extends Error {
+  private constructor(
+    private readonly reason: AssistantFailureReason,
+    private readonly requestId: string,
+  ) {
+    super("assistant_inference_failed");
+  }
+
+  static from(body: unknown): AssistantFailureError | null {
+    const result = assistantInferenceFailureSchema.safeParse(body);
+    return result.success
+      ? new AssistantFailureError(result.data.reason, result.data.requestId)
+      : null;
+  }
+
+  localize(): string {
+    return (
+      assistantFailureMessage({
+        error: "assistant_inference_failed",
+        reason: this.reason,
+        requestId: this.requestId,
+      }) ?? this.message
+    );
+  }
+}

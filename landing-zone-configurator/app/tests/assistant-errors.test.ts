@@ -2,9 +2,30 @@ import { expect, it, vi } from "vitest";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import { AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
 import { publicAssistantFailureReason } from "../apps/api/src/assistant/routes.js";
-import { assistantFailureMessage } from "../apps/web/src/assistant-errors.js";
+import {
+  AssistantFailureError,
+  assistantFailureMessage,
+} from "../apps/web/src/assistant-errors.js";
 import { readAssistantResponse } from "../apps/web/src/assistant-stream.js";
 import { setLanguage } from "../apps/web/src/i18n.js";
+
+it("rerenders an existing diagnostic in the new language without retaining private model fields", async () => {
+  await setLanguage("de");
+  const error = AssistantFailureError.from({
+    error: "assistant_inference_failed",
+    reason: "response_truncated",
+    requestId: "req-language-change",
+    rawModelResponse: "PRIVATE MODEL DATA",
+  });
+  expect(error?.localize()).toContain("abgeschnitten");
+  await setLanguage("en");
+  expect(error?.localize()).toContain("cut off");
+  expect(error?.localize()).toContain("req-language-change");
+  expect(JSON.stringify(error)).not.toContain("PRIVATE MODEL DATA");
+  expect(
+    AssistantFailureError.from({ reason: "unknown", requestId: "req-test" }),
+  ).toBeNull();
+});
 
 it.each([
   ["intent_evidence", "requirements_unconfirmed"],

@@ -30,6 +30,24 @@ Nutze Code, aktuelle Verträge, Tests und Issue-Diskussionen für den Implementi
 Historische Arbeitsplatzübergaben und laufbezogene Abnahmeprotokolle gehören nicht
 zur gepflegten Dokumentation.
 
+<a id="interface-localization"></a>
+## Übersetzung der Oberfläche
+
+Nutze `t()` für Überschriften, Navigation, Schaltflächen, Hinweise, zugängliche
+Beschriftungen und Diagnosemeldungen und ergänze englische Einträge in
+`apps/web/src/locales/en.ts`. Übersetze gespeicherte Meldungskennungen und
+Metadaten der Editor-Schritte erst beim Rendern, damit ein Sprachwechsel auch
+bereits geöffnete Dialoge und Fehler aktualisiert. Übersetze umgebende
+Oberflächentexte getrennt von Kundennamen, Eingaben, Ressourcenkennungen und
+Assistant-generierten Inhalten; diese Werte bleiben unverändert.
+
+`tests/i18n-coverage.test.ts` prüft statische Meldungseinträge und unübersetzte
+JSX-Texte oder zugängliche Beschriftungen mit `npm run check`. Führe die
+Playwright-Abläufe `i18n` und `english-interface` auf Desktop und Mobilgeräten
+für dynamische Anzeigen, Sprachwechsel und den Erhalt von Kundendaten aus.
+Prüfe auch deren Screenshots: Die Quellprüfung kann nicht jeden fehlenden
+Übersetzungsaufruf für dynamische Werte erkennen.
+
 Lesen der Konfigurationsliste darf eine neuere Aktualisierung nach dem Speichern
 nicht mit einer älteren initialen Antwort oder einem Fehler überschreiben.
 Erhalte die Reihenfolge der Anfragen und das erfasste Abort-Signal für die

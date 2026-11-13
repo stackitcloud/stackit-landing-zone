@@ -97,7 +97,7 @@ export function Topology({
           Object.entries(folderDefaults).map(([key, name]) => [key, { name }]),
         )
       : objectValue(values.rm_folders);
-  const company = textValue(values.company_code) || "<Unternehmenskürzel>";
+  const company = textValue(values.company_code) || t("<Unternehmenskürzel>");
   const tree = (
     <div className="tree-children">
       {Object.entries(folders).map(([key, raw]) => {
@@ -115,8 +115,8 @@ export function Topology({
             nodes.push(
               <Project
                 key={hub.path}
-                name="Netzwerk-Hub"
-                detail={`Konnektivität · ${hub.region} · ${hub.key}`}
+                name={t("Netzwerk-Hub")}
+                detail={`${t("Konnektivität")} · ${hub.region} · ${hub.key}`}
                 components={components[hub.path]}
               />,
             );
@@ -136,7 +136,7 @@ export function Topology({
               <Project
                 key={`k8s-${id}`}
                 name={`${company}-pltfm-k8s-${textValue(objectValue(cluster).region)}`}
-                detail="Plattform-Kubernetes"
+                detail={t("Plattform-Kubernetes")}
                 components={components[`k8s-${id}`]}
               />,
             );
@@ -166,7 +166,7 @@ export function Topology({
             nodes.push(
               <Project
                 key={identity}
-                name={`${company}-sbx-${textValue(s.project_name) || "Unbenannte Sandbox"}`}
+                name={`${company}-sbx-${textValue(s.project_name) || t("Unbenannte Sandbox")}`}
                 detail="Sandbox"
               />,
             );
@@ -218,7 +218,11 @@ export function Topology({
       </div>
       {parent ? (
         <div className="tree-children">
-          <Folder name={`Bestehender übergeordneter Ordner · ${parent}`}>
+          <Folder
+            name={t("Bestehender übergeordneter Ordner · {{value0}}", {
+              value0: parent,
+            })}
+          >
             {tree}
           </Folder>
         </div>

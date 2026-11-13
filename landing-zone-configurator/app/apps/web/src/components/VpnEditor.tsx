@@ -380,7 +380,7 @@ export function VpnEditor({
               id={id}
               value={newKey}
               onChange={(event) => setNewKey(event.target.value)}
-              placeholder="standort-zentrale"
+              placeholder={t("standort-zentrale")}
             />
           </div>
           <button

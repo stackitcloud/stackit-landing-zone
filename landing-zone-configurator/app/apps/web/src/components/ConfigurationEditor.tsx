@@ -37,15 +37,16 @@ function issueLabel(field: string, draft: ConfigurationDraft): string {
     environment: "Umgebung",
   };
   const [kind, id, property] = field.split(".");
-  if (kind === "folder") return `Ordner · ${folderDefaults[id as FolderKey]}`;
+  if (kind === "folder")
+    return `${t("Ordner")} · ${folderDefaults[id as FolderKey]}`;
   if (property) {
     const item =
       kind === "project"
         ? draft.projects.find((p) => p.id === id)
         : draft.sandboxes.find((s) => s.id === id);
-    return `${item?.name || (kind === "project" ? "Landing Zone" : "Sandbox")} · ${labels[property] || property}`;
+    return `${item?.name || (kind === "project" ? "Landing Zone" : "Sandbox")} · ${t(labels[property] || property)}`;
   }
-  return labels[field] || field;
+  return t(labels[field] || field);
 }
 
 export function ConfigurationEditor({

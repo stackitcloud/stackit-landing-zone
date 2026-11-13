@@ -31,12 +31,14 @@ export function AssistantQuestions({
         .filter(Boolean)
         .join("; ");
       const text = typeof question === "string" ? question : question.text;
-      return answer ? [`${text}\nMeine Antwort: ${answer}`] : [];
+      return answer
+        ? [`${text}\n${t("Meine Antwort: {{value0}}", { value0: answer })}`]
+        : [];
     })
     .join("\n\n");
   return (
-    <section className="assistant-questions" aria-label="Rückfragen">
-      <h3>Offene Fragen</h3>
+    <section className="assistant-questions" aria-label={t("Rückfragen")}>
+      <h3>{t("Offene Fragen")}</h3>
       {questions.map((question, index) => {
         const text = typeof question === "string" ? question : question.text;
         const options =
@@ -74,7 +76,7 @@ export function AssistantQuestions({
               ))}
             </div>
             <label className="assistant-free-answer">
-              <span>Eigene Antwort</span>
+              <span>{t("Eigene Antwort")}</span>
               <input
                 type="text"
                 maxLength={600}

@@ -948,7 +948,7 @@ function App() {
                   {configurationBinding
                     ? t("Revision {{value0}}{{value1}}", {
                         value0: configurationBinding.revision,
-                        value1: draftDirty ? " · Nicht gespeichert" : "",
+                        value1: draftDirty ? t(" · Nicht gespeichert") : "",
                       })
                     : deploymentSelection && "revision" in deploymentSelection
                       ? t("Revision {{value0}}", {
@@ -1290,7 +1290,9 @@ function App() {
                         className="button secondary"
                         onClick={() => setView("editor")}
                       >
-                        {draft.name || t("Entwurf")} weiterbearbeiten
+                        {t("{{value0}} weiterbearbeiten", {
+                          value0: draft.name || t("Entwurf"),
+                        })}
                       </button>
                     )}
                   </div>
