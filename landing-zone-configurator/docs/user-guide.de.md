@@ -10,6 +10,13 @@ Melde dich mit STACKIT an. Die Authentifizierung allein gewährt weder Zugriff a
 Organisation noch die Berechtigung, Infrastruktur bereitzustellen. Wähle die verifizierte
 Arbeitsumgebung deiner Organisation.
 
+Es gibt keinen persönlichen Arbeitsbereich. Wähle nach der Anmeldung einen
+Arbeitsbereich, dem du angehörst, lege einen mit seiner STACKIT Organisations-ID
+an oder öffne eine Einladung. Das Anlegen erteilt keine Cloud-Rechte und
+verifiziert keine Organisation. Ohne Arbeitsbereich bietet die Liste die
+Erstellung an; Konfigurationen, Kataloge und Deployments stehen erst nach der
+Auswahl eines Arbeitsbereichs zur Verfügung.
+
 - **Platform Engineers** konfigurieren die gemeinsame Plattform und bereiten Projektvorlagen vor.
 - **Application Owners** nutzen die Vorlagen und Instanzen, für die sie zugriffsberechtigt sind.
 - Mitgliederverwaltung, Zugangsdatenverwendung und Ausführungsfreigaben sind getrennte

@@ -10,7 +10,7 @@ export type Session = {
   userId: string;
   tenantId: string;
   tokenTenantId?: string;
-  tenantKind?: "personal" | "organisation";
+  tenantKind?: "personal" | "organisation" | "account";
   productRoles?: string[];
   manageMembers?: boolean;
   githubId: string;
@@ -130,7 +130,7 @@ export class PostgresAuthStore implements AuthStore {
     if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
     const result = await this.pool.query<{
       token_tenant_id: string;
-      tenant_kind: "personal" | "organisation";
+      tenant_kind: "personal" | "organisation" | "account";
       product_roles: string[];
       manage_members: boolean;
       session_id: string;

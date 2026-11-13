@@ -5,6 +5,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { checkRunnerStart } from "../apps/api/src/applications/runner-start.js";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
+import { inWorkspace } from "./fixture-workspace.js";
 
 const address = process.env.LZC_TEST_DATABASE_URL;
 if (!address) throw new Error("LZC_TEST_DATABASE_URL required");
@@ -141,14 +142,17 @@ beforeAll(async () => {
   await migrate(migration, directory);
   const store = new PostgresAuthStore(runtime);
   async function session(id: number) {
-    return store.createSession({
-      githubId: id,
-      login: `lifecycle-${id}`,
-      id: randomUUID(),
-      hash: randomBytes(32).toString("base64url"),
-      csrfToken: randomBytes(32).toString("base64url"),
-      expiresAt: new Date(Date.now() + 3600000),
-    });
+    return inWorkspace(
+      runtime,
+      await store.createSession({
+        githubId: id,
+        login: `lifecycle-${id}`,
+        id: randomUUID(),
+        hash: randomBytes(32).toString("base64url"),
+        csrfToken: randomBytes(32).toString("base64url"),
+        expiresAt: new Date(Date.now() + 3600000),
+      }),
+    );
   }
   owner = await session(790001);
   outsider = await session(790002);

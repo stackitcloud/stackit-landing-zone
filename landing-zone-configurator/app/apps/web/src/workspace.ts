@@ -17,7 +17,7 @@ export type Workspace = {
   path: string;
 };
 export function workspaceKey(session: Session | null): string | null {
-  return session?.user.id
+  return session?.user.id && !session.workspaceRequired
     ? `lzc-workspace-v1:${encodeURIComponent(session.tenant?.id ?? "personal")}:${encodeURIComponent(session.user.id)}`
     : null;
 }

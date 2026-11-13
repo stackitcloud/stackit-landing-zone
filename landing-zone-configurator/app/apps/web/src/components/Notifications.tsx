@@ -61,7 +61,7 @@ export function NotificationIndicator({
   const [count, setCount] = useState(0);
   useEffect(() => {
     setCount(0);
-    if (!session) return;
+    if (!session || session.workspaceRequired) return;
     const controller = new AbortController();
     let loading = false;
     const load = async () => {
@@ -86,7 +86,7 @@ export function NotificationIndicator({
       window.removeEventListener("lzc-notifications-read", load);
     };
   }, [session]);
-  if (!session) return null;
+  if (!session || session.workspaceRequired) return null;
   return (
     <button
       type="button"
@@ -125,7 +125,7 @@ export function Notifications({ session }: { session: Session | null }) {
   liveSession.current = session;
   const load = useCallback(async (signal?: AbortSignal) => {
     const session = liveSession.current;
-    if (!session) return;
+    if (!session || session.workspaceRequired) return;
     const [items, prefs] = await Promise.all([
       call(session, "inbox", "GET", undefined, signal),
       call(session, "preferences", "GET", undefined, signal),

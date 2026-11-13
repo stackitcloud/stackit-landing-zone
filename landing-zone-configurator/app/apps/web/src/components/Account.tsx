@@ -29,6 +29,7 @@ export type Session = {
     manageMembers?: boolean;
   };
   csrfToken: string;
+  workspaceRequired?: boolean;
   expiresAt: string;
   stackitVerified?: boolean;
   stackitOrganizationProof?:

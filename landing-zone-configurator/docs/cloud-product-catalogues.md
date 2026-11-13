@@ -82,15 +82,15 @@ All cloud targets are fixed; redirects are forbidden, responses limited to 2 MB 
 
 Previous manual profile selection applies in the personal legacy workspace.
 In STACKIT login mode and organization tenants, retrieval is automatic.
-Platform Engineers may store own credentials and retrieve catalogues in
-organization tenants; Application Owners may not. Migration `013_organisation_credentials.sql`
-enforces the same product-role check in PostgreSQL RLS. Profiles remain bound to
-tenant and owner, not shared tenant-wide; personal profiles are
-never transferred into an organization tenant. Cloud execution remains separately blocked.
-Without organization context, projects accessible to the service account are queried
-in the personal tenant. In organization tenants, the organization ID
-limits the search. Missing catalogue access is visibly reported,
-not silently treated as a successful free-text fallback.
+Platform Engineers may store their own credentials and retrieve catalogues in a
+selected ordinary workspace; Application Owners may not. Migration
+`013_organisation_credentials.sql` enforces the product-role check in PostgreSQL
+RLS. Profiles remain bound to workspace and owner, not shared workspace-wide.
+Cloud execution remains separately gated. There is no personal workspace or
+catalogue access from the login-only account context. The workspace organization
+ID limits the project search. Retained legacy workspaces with no organization ID
+must assign it before organization-scoped catalogue access. Missing catalogue
+access is visibly reported, never treated as successful free-text fallback.
 
 In legacy mode, catalogue credentials, reference project ID and region are stored in this browser per user
 and workspace and restored on reopening.

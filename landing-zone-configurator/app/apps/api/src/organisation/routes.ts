@@ -89,6 +89,31 @@ export function registerOrganisations(
       await service.switch(session, input.tenantId);
       return { switched: true };
     });
+    routes.patch(
+      "/api/v1/organisation/workspaces/:tenantId/organization",
+      async (request, reply) => {
+        const session = await authenticatedSession(request, auth);
+        if (!session)
+          return reply.code(401).send({ error: "authentication_required" });
+        const { tenantId } = z
+          .object({ tenantId: z.uuid() })
+          .parse(request.params);
+        if (
+          session.tenantId !== tenantId ||
+          request.headers["x-lzc-tenant"] !== tenantId
+        )
+          return reply.code(409).send({ error: "stale_tenant_context" });
+        const { organizationId } = z
+          .strictObject({ organizationId: z.uuid() })
+          .parse(request.body);
+        if (!service.assignOrganization)
+          return reply
+            .code(503)
+            .send({ error: "organisation_operation_failed" });
+        await service.assignOrganization(session, tenantId, organizationId);
+        return { assigned: true };
+      },
+    );
     routes.delete(
       "/api/v1/organisation/workspaces/:tenantId",
       async (request, reply) => {

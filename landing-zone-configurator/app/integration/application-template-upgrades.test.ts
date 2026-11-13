@@ -127,6 +127,10 @@ beforeAll(async () => {
       );
   });
   engineer = { ...engineer, tenantId: owner.tenantId };
+  await admin.query(
+    "UPDATE lzc_auth.sessions SET active_tenant_id=$1 WHERE id=$2",
+    [owner.tenantId, owner.id],
+  );
 }, 30000);
 afterAll(async () => {
   await runtime.end();

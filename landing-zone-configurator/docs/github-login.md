@@ -42,7 +42,7 @@ the editor keeps its draft and offers local download and sign-in. A tab-local,
 24-hour checkpoint preserves the draft, original database configuration ID/revision,
 saved baseline and editor location. It contains no login tokens or CSRF secrets.
 It is restored only for the same authenticated user and workspace. After a fresh
-login starts in the personal workspace, the previous organization is selected only
+login starts without a selected workspace, the previous workspace is selected only
 if a fresh server membership check still permits it. Different accounts and
 workspaces do not receive the private draft; explicit logout clears that account's
 checkpoint. If browser storage is unavailable, sign-in navigation is blocked until
@@ -286,7 +286,8 @@ their respective CI artifacts, not an ongoing historical report.
 2. The callback atomically consumes the transaction and exchanges the code with PKCE for
    a time-limited GitHub App **user token**. `/user` confirms identity.
    Installation tokens and nonexpiring tokens are rejected.
-3. The database creates a personal workspace with membership.
+3. The database creates an unprivileged account context for the login. It is not
+   a workspace and is never listed or selectable. The user creates or selects a normal workspace, or accepts an invitation.
    The application stores the GitHub token in Secrets Manager. Only then does
    the browser receive a random session cookie; the database contains only its hash.
 4. The session lasts at most eight hours, with a margin before token expiry. Refresh

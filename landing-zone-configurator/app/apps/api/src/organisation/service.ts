@@ -3,7 +3,7 @@ import type { Session } from "../auth/store.js";
 export type ProductRole = "platform-engineer" | "application-owner";
 export type OrganisationOverview = {
   userId: string;
-  activeTenantId: string;
+  activeTenantId: string | null;
   tenants: {
     id: string;
     name: string;
@@ -30,6 +30,11 @@ export interface OrganisationService {
     organizationId: string,
   ): Promise<string>;
   switch(session: Session, tenantId: string): Promise<void>;
+  assignOrganization?(
+    session: Session,
+    tenantId: string,
+    organizationId: string,
+  ): Promise<void>;
   archive(session: Session, tenantId: string): Promise<void>;
   editMember(
     session: Session,
@@ -70,6 +75,16 @@ export class PostgresOrganisations implements OrganisationService {
       session.id,
       tenantId,
     ]);
+  }
+  async assignOrganization(
+    session: Session,
+    tenantId: string,
+    organizationId: string,
+  ) {
+    await this.pool.query(
+      "SELECT lzc_auth.assign_workspace_organization($1,$2,$3)",
+      [session.id, tenantId, organizationId],
+    );
   }
   async editMember(
     session: Session,

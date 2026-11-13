@@ -28,7 +28,7 @@ type Tenant = {
 type Overview = {
   organizationBindingEnabled?: boolean;
   userId: string;
-  activeTenantId: string;
+  activeTenantId: string | null;
   tenants: Tenant[];
   members: Member[];
 };
@@ -184,7 +184,7 @@ export function Organisation({
           "content-type": "application/json",
           "x-lzc-csrf": session.csrfToken,
           ...(targetTenantId ? { "x-lzc-tenant": targetTenantId } : {}),
-          ...(path.startsWith("/members") && data
+          ...(path.startsWith("/members") && data?.activeTenantId
             ? { "x-lzc-tenant": data.activeTenantId }
             : {}),
         },
@@ -296,6 +296,13 @@ export function Organisation({
           {!data && !error && (
             <p role="status">{t("Arbeitsbereiche werden geladen …")}</p>
           )}
+          {data && data.tenants.length === 0 && (
+            <p>
+              {t(
+                "Erstelle einen Arbeitsbereich oder öffne eine Einladung, um gemeinsam zu arbeiten.",
+              )}
+            </p>
+          )}
           {data?.tenants.map((tenant) => (
             <article key={tenant.id}>
               <h3>
@@ -303,12 +310,12 @@ export function Organisation({
                 {tenant.id === data.activeTenantId ? t(" · Aktiv") : ""}
               </h3>
               <p>
-                {tenant.kind === "personal"
-                  ? t("Persönlicher Arbeitsbereich")
-                  : t(
+                {tenant.organizationId
+                  ? t(
                       "STACKIT Organisation: {{value0}} · Zuordnung noch nicht verifiziert",
                       { value0: tenant.organizationId },
-                    )}
+                    )
+                  : t("Keine STACKIT Organisation zugeordnet")}
               </p>
               {tenant.kind === "organisation" && (
                 <p>
@@ -436,20 +443,57 @@ export function Organisation({
         <section className="panel">
           <h2>{active.name}</h2>
           <p>
-            {active.kind === "personal"
-              ? t("Persönlicher Arbeitsbereich")
-              : t("STACKIT Organisation: {{value0}} · {{value1}}", {
+            {active.organizationId
+              ? t("STACKIT Organisation: {{value0}} · {{value1}}", {
                   value0: active.organizationId,
                   value1: t(
                     active.organizationVerified
                       ? "Zuordnung verifiziert"
                       : "Zuordnung noch nicht verifiziert",
                   ),
-                })}
+                })
+              : t("Keine STACKIT Organisation zugeordnet")}
           </p>
+          {!active.organizationId &&
+            active.manageMembers &&
+            active.roles.includes("platform-engineer") && (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void mutate(
+                    `/workspaces/${active.id}/organization`,
+                    "PATCH",
+                    { organizationId: organizationId.trim() },
+                    false,
+                    active.id,
+                  );
+                }}
+              >
+                <div className="field">
+                  <label htmlFor="migrated-organization-id">
+                    {t("STACKIT Organisations-ID")}
+                  </label>
+                  <input
+                    id="migrated-organization-id"
+                    required
+                    pattern={uuid}
+                    value={organizationId}
+                    onChange={(event) => setOrganizationId(event.target.value)}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="button primary"
+                  disabled={busy}
+                >
+                  {t("STACKIT Organisation zuordnen")}
+                </button>
+              </form>
+            )}
           {data?.organizationBindingEnabled &&
             session &&
             active.kind === "organisation" &&
+            !!active.organizationId &&
             !active.organizationVerified &&
             active.manageMembers &&
             active.roles.includes("platform-engineer") && (
@@ -482,9 +526,8 @@ export function Organisation({
       )}
       {!selectionOnly &&
         active &&
-        (active.kind === "personal" ||
-          (active.manageMembers &&
-            active.roles.includes("platform-engineer"))) && (
+        active.manageMembers &&
+        active.roles.includes("platform-engineer") && (
           <ApplicationGroups
             key={`${session.csrfToken}:${active.id}`}
             session={session}

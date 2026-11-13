@@ -137,6 +137,20 @@ export function buildApp(
   });
   app.addHook("preHandler", async (request, reply) => {
     const path = request.url.split("?")[0] ?? "";
+    if (options.auth && path.startsWith("/api/v1/")) {
+      const session = await authenticatedSession(request, options.auth);
+      if (
+        session?.tenantKind === "account" &&
+        !(
+          path === "/api/v1/session" ||
+          path === "/api/v1/organisation" ||
+          path === "/api/v1/organisation/switch" ||
+          /^\/api\/v1\/organisation\/workspaces\/[0-9a-f-]+$/.test(path) ||
+          /^\/api\/v1\/invitations\/(preview|accept)$/.test(path)
+        )
+      )
+        return reply.code(403).send({ error: "workspace_required" });
+    }
     if (
       !options.auth ||
       !/^\/api\/v1\/(github|configurations|credentials|preparations|plans|cloud-catalogues)(\/|$)/.test(
@@ -257,12 +271,16 @@ export function buildApp(
           return reply.code(401).send({ error: "authentication_required" });
         return {
           user: { id: session.userId, login: session.login },
-          tenant: {
-            id: session.tenantId,
-            kind: session.tenantKind ?? "personal",
-            roles: session.productRoles ?? [],
-            manageMembers: session.manageMembers ?? false,
-          },
+          ...(session.tenantKind === "account"
+            ? { workspaceRequired: true }
+            : {
+                tenant: {
+                  id: session.tenantId,
+                  kind: session.tenantKind ?? "personal",
+                  roles: session.productRoles ?? [],
+                  manageMembers: session.manageMembers ?? false,
+                },
+              }),
           csrfToken: session.csrfToken,
           expiresAt: session.expiresAt.toISOString(),
           ...(options.developmentLogin

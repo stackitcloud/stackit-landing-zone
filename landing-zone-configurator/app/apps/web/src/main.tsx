@@ -159,11 +159,17 @@ function App() {
     useState(true);
   const organisationWorkspace = session?.tenant?.kind === "organisation";
   const platformAccess =
-    !organisationWorkspace ||
-    !!session?.tenant?.roles?.includes("platform-engineer");
+    !session?.workspaceRequired &&
+    (!organisationWorkspace ||
+      !!session?.tenant?.roles?.includes("platform-engineer"));
+  useEffect(() => {
+    if (session?.workspaceRequired && view !== "workspaces")
+      setView("workspaces", undefined, true);
+  }, [session?.workspaceRequired, view, setView]);
   useEffect(() => {
     if (
       session &&
+      !session.workspaceRequired &&
       !platformAccess &&
       view !== "workspaces" &&
       view !== "organisation" &&
@@ -761,6 +767,7 @@ function App() {
             )}
             <button
               type="button"
+              hidden={session?.workspaceRequired}
               className={
                 view === "applications" ? "nav-item active" : "nav-item"
               }
@@ -769,7 +776,9 @@ function App() {
             >
               {t("Application Landing Zones")}
             </button>
-            <div className="nav-section">{t("Verwaltung")}</div>
+            <div className="nav-section" hidden={session?.workspaceRequired}>
+              {t("Verwaltung")}
+            </div>
             {platformAccess && (
               <button
                 type="button"
@@ -784,6 +793,7 @@ function App() {
             )}
             <button
               type="button"
+              hidden={session?.workspaceRequired}
               className={
                 view === "organisation" ? "nav-item active" : "nav-item"
               }
@@ -1041,7 +1051,7 @@ function App() {
           <CloudCatalogueProvider
             key={`catalogues:${workspaceEpoch}:${platformAccess ? "platform" : "application"}`}
           >
-            {view === "applications" && (
+            {view === "applications" && !session?.workspaceRequired && (
               <Applications
                 key={`applications:${workspaceKey(session) ?? "guest"}`}
                 session={session}

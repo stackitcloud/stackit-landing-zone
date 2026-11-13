@@ -8,6 +8,12 @@ Sign in with STACKIT. Authentication does not by itself grant access to an
 organization or permission to provision infrastructure. Select the verified
 working environment for your organization.
 
+There is no personal workspace. After signing in, choose a workspace you belong
+to, create one with its STACKIT organization ID, or open an invitation. Workspace
+creation does not grant cloud permissions or verify the organization. If you have
+no workspace yet, the workspace list offers creation; configuration, catalogue
+and deployment features become available only after selecting a workspace.
+
 - **Platform Engineers** configure the shared platform and prepare project templates.
 - **Application Owners** use the templates and instances they are authorized to access.
 - Membership administration, credential use and execution approvals are separate

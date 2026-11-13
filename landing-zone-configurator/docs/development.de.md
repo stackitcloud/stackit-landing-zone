@@ -30,6 +30,27 @@ Nutze Code, aktuelle Verträge, Tests und Issue-Diskussionen für den Implementi
 Historische Arbeitsplatzübergaben und laufbezogene Abnahmeprotokolle gehören nicht
 zur gepflegten Dokumentation.
 
+<a id="account-and-workspace-boundaries"></a>
+## Konto- und Arbeitsbereichsgrenzen
+
+Migration `097_explicit_workspaces.sql` beendet automatisch erzeugte persönliche
+Arbeitsbereiche. Ohne ausgewählten regulären Arbeitsbereich enthält die öffentliche
+Sitzung `workspaceRequired` und keinen Tenant. Daten- und Ausführungs-APIs sperren
+diesen Kontext serverseitig; Erstellung, Auswahl und Einladungsannahme behalten
+Anmeldung und CSRF-Prüfung bei. Mitgliedschaftsentzug führt zur Auswahl zurück,
+ohne Ersatzrechte im Login-Kontext zu gewähren.
+
+Der interne `account`-Tenant ist ein stabiler unprivilegierter Login- und
+Verschlüsselungskontext, kein angezeigter oder auswählbarer Arbeitsbereich. Seine
+UUID und die unveränderliche Token-Bindung bleiben erhalten. Leere Altbereiche
+werden Kontokontexte; Bereiche mit referenzierten Daten werden reguläre
+unverifizierte Arbeitsbereiche mit unveränderten Ressourcen-, Konfigurations- und
+Zugangs-IDs. Bisherige Administratoren behalten lokale Verwaltungsrechte, erhalten
+aber keinen STACKIT-Nachweis. Eine fehlende Organisations-ID kann ein
+Workspace-Verantwortlicher einmalig setzen; der normale Owner-Nachweis bleibt
+erforderlich. Tests für Workspace-Funktionen müssen einen Bereich explizit
+erstellen und auswählen.
+
 <a id="interface-localization"></a>
 ## Übersetzung der Oberfläche
 

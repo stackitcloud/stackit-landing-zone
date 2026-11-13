@@ -16,7 +16,7 @@ BEGIN
   END IF;
   INSERT INTO lzc.tenants(owner_user_id,name) VALUES(account,'Ubuntu-Entwicklung')
   ON CONFLICT(owner_user_id) DO UPDATE SET owner_user_id=excluded.owner_user_id RETURNING id INTO workspace;
-  INSERT INTO lzc.memberships(tenant_id,user_id,role) VALUES(workspace,account,'admin') ON CONFLICT DO NOTHING;
+  INSERT INTO lzc.memberships(tenant_id,user_id,role) VALUES(workspace,account,'viewer') ON CONFLICT DO NOTHING;
 END $$;
 REVOKE ALL ON FUNCTION lzc_auth.provision_development_account(uuid,text) FROM PUBLIC, configurator_app, configurator_development;
 
@@ -29,8 +29,8 @@ BEGIN
   END IF;
   SELECT a.user_id,t.id INTO STRICT account,workspace
   FROM lzc_auth.development_accounts a
-  JOIN lzc.tenants t ON t.owner_user_id=a.user_id AND t.kind='personal' AND t.archived_at IS NULL
-  JOIN lzc.memberships m ON m.tenant_id=t.id AND m.user_id=a.user_id AND m.role='admin'
+  JOIN lzc.tenants t ON t.owner_user_id=a.user_id AND t.kind='account' AND t.archived_at IS NULL
+  JOIN lzc.memberships m ON m.tenant_id=t.id AND m.user_id=a.user_id AND m.role='viewer'
   WHERE a.id=p_account AND a.enabled;
   INSERT INTO lzc_auth.sessions(id,token_hash,user_id,tenant_id,csrf_token,expires_at)
   VALUES(p_session,p_hash,account,workspace,p_csrf,p_expires);

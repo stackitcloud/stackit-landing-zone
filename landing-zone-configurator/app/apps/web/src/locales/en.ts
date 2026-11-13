@@ -1,4 +1,9 @@
 export const englishMessages: Record<string, string> = {
+  "Erstelle einen Arbeitsbereich oder öffne eine Einladung, um gemeinsam zu arbeiten.":
+    "Create a workspace or open an invitation to start working together.",
+  "Keine STACKIT Organisation zugeordnet": "No STACKIT organization assigned",
+  "STACKIT Organisation zuordnen": "Assign STACKIT organization",
+
   "Meine Antwort: {{value0}}": "My answer: {{value0}}",
   "Service Accounts": "Service Accounts",
   DNS: "DNS",

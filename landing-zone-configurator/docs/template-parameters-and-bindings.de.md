@@ -143,8 +143,7 @@ und leere Bestell-Auswahllisten bleiben gesperrt.
 
 Platform Engineers veröffentlichen aus dem aktuellen Entwurf. Application Owner
 sehen nur Versionen ihres aktiven Tenants und benötigen keinen persönlichen Fork.
-Der persönliche Arbeitsbereich erlaubt seinem bisherigen Admin die Vorbereitung
-dieses Testkatalogs. Unverifizierte Organisationsarbeitsbereiche dürfen damit Daten
+Unverifizierte Organisationsarbeitsbereiche dürfen damit Daten
 vorbereiten, erhalten aber keine STACKIT-Ausführungsrechte. Eine Katalogversion ist
 noch keine für reale Kunden verifiziert freigegebene Ressourcenvorlage.
 
