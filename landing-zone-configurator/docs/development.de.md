@@ -53,6 +53,9 @@ erstellen und auswählen.
 Führe bei Änderungen an Anmeldung oder Arbeitsbereichen zusätzlich
 `npm run test:platform-database` aus: `npm run check` überspringt diese isolierte
 Docker-Testgruppe bewusst; CI und Release-Build verlangen sie dennoch.
+DELETE-Anfragen ohne Inhalt dürfen kein `Content-Type: application/json` setzen;
+ein leerer JSON-Body scheitert bereits vor der Berechtigungsprüfung. Browsertests
+prüfen die tatsächlichen Header sowie erfolgreiche Löschung und fachliche Fehler.
 
 <a id="interface-localization"></a>
 ## Übersetzung der Oberfläche

@@ -1509,6 +1509,23 @@ it("rejects stale workspace headers before membership mutations", async () => {
   expect(service.editMember).not.toHaveBeenCalled();
 });
 
+it("rejects an empty JSON delete body as malformed input before any archive operation", async () => {
+  const { app, service, headers } = setup();
+  const id = randomUUID();
+  const response = await app.inject({
+    method: "DELETE",
+    url: `/api/v1/organisation/workspaces/${id}`,
+    headers: {
+      ...headers,
+      "x-lzc-tenant": id,
+      "content-type": "application/json",
+    },
+  });
+  expect(response.statusCode).toBe(400);
+  expect(response.json()).toEqual({ error: "invalid_organisation_request" });
+  expect(service.archive).not.toHaveBeenCalled();
+});
+
 it("protects draft deletion with authentication, CSRF and explicit target context", async () => {
   const { app, service, headers } = setup();
   const id = randomUUID();

@@ -4554,6 +4554,8 @@ for (const manager of [true, false]) {
           deletionCalled = true;
           expect(route.request().method()).toBe("DELETE");
           expect(route.request().headers()["x-lzc-tenant"]).toBe(tenantId);
+          expect(route.request().headers()["content-type"]).toBeUndefined();
+          expect(route.request().postData()).toBeNull();
           await route.fulfill({
             status: 409,
             json: { error: "organisation_not_empty_draft" },
