@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "../i18n";
 import { pendingLoginOwner } from "../login-draft";
+import { workspaceName } from "../workspace-name";
 import type { Session } from "./Account";
 import { ApplicationGroups } from "./ApplicationGroups";
 import { OrganizationBinding } from "./OrganizationBinding";
@@ -299,7 +300,7 @@ export function Organisation({
           {data?.tenants.map((tenant) => (
             <article key={tenant.id}>
               <h3>
-                {tenant.name}
+                {workspaceName(tenant, session.user.login)}
                 {tenant.id === data.activeTenantId ? t(" · Aktiv") : ""}
               </h3>
               <p>
@@ -330,7 +331,7 @@ export function Organisation({
                   aria-label={
                     selectionOnly
                       ? t("Arbeitsbereich öffnen: {{value0}}", {
-                          value0: tenant.name,
+                          value0: workspaceName(tenant, session.user.login),
                         })
                       : undefined
                   }
@@ -351,7 +352,9 @@ export function Organisation({
                 >
                   {selectionOnly
                     ? t("Öffnen")
-                    : t("Zu {{value0}} wechseln", { value0: tenant.name })}
+                    : t("Zu {{value0}} wechseln", {
+                        value0: workspaceName(tenant, session.user.login),
+                      })}
                 </button>
               )}
               {tenant.canArchive && (
@@ -365,7 +368,7 @@ export function Organisation({
                       window.confirm(
                         t(
                           "Arbeitsbereich „{{value0}}“ löschen? Das ist nur für leere, unbestätigte Entwürfe ohne weitere Mitglieder möglich. STACKIT-Ressourcen werden nicht verändert.",
-                          { value0: tenant.name },
+                          { value0: workspaceName(tenant, session.user.login) },
                         ),
                       )
                     )
@@ -434,7 +437,7 @@ export function Organisation({
       )}
       {!selectionOnly && active && (
         <section className="panel">
-          <h2>{active.name}</h2>
+          <h2>{workspaceName(active, session.user.login)}</h2>
           <p>
             {active.kind === "personal"
               ? t("Persönlicher Arbeitsbereich")
@@ -467,7 +470,7 @@ export function Organisation({
         <UserManagement
           key={`${session.user.id ?? session.user.login}:${active.id}`}
           session={session}
-          workspaceName={active.name}
+          workspaceName={workspaceName(active, session.user.login)}
           viewerId={data?.userId ?? session.user.id ?? ""}
           members={data?.members ?? []}
           canManage={active.manageMembers}

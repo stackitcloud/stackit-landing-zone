@@ -40,6 +40,10 @@ Metadaten der Editor-Schritte erst beim Rendern, damit ein Sprachwechsel auch
 bereits geöffnete Dialoge und Fehler aktualisiert. Übersetze umgebende
 Oberflächentexte getrennt von Kundennamen, Eingaben, Ressourcenkennungen und
 Assistant-generierten Inhalten; diese Werte bleiben unverändert.
+Nutze `workspaceName()` für die Anzeige des erzeugten Standardnamens eines
+persönlichen Arbeitsbereichs, einschließlich der älteren Form mit Login-Präfix.
+Eigene Namen und Namen von Organisationsarbeitsbereichen bleiben unverändert;
+ein Sprachwechsel schreibt keine gespeicherten Namen um.
 
 `tests/i18n-coverage.test.ts` prüft statische Meldungseinträge und unübersetzte
 JSX-Texte oder zugängliche Beschriftungen mit `npm run check`. Führe die

@@ -37,6 +37,9 @@ an immediate language switch also updates already open dialogs and errors.
 Translate surrounding interface text separately from customer names, entered
 values, resource identifiers and Assistant-generated content; preserve those
 values exactly.
+Use `workspaceName()` to render the generated personal-workspace default,
+including the legacy login-prefixed form. Custom names and organization
+workspace names remain unchanged; no stored name is rewritten on a language switch.
 
 `tests/i18n-coverage.test.ts` checks static message registration and untranslated
 JSX or accessible labels as part of `npm run check`. Run the `i18n` and

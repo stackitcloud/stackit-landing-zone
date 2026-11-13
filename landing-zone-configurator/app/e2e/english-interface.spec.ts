@@ -34,6 +34,87 @@ async function authenticated(page: Page) {
   );
 }
 
+for (const [kind, name, english] of [
+  ["personal", "Persönlicher Arbeitsbereich", "Personal workspace"],
+  [
+    "personal",
+    "owner@example.test · Persönlicher Arbeitsbereich",
+    "owner@example.test · Personal workspace",
+  ],
+  ["personal", "Vorbereitung", "Vorbereitung"],
+  [
+    "organisation",
+    "Persönlicher Arbeitsbereich",
+    "Persönlicher Arbeitsbereich",
+  ],
+] as const) {
+  test(`workspace display localizes only the generated default: ${kind} ${name}`, async ({
+    page,
+  }) => {
+    await authenticated(page);
+    const tenant = {
+      id: tenantId,
+      name,
+      kind,
+      roles,
+      manageMembers: true,
+      organizationId: null,
+      organizationVerified: false,
+    };
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: userId, login: "owner@example.test" },
+          tenant,
+          csrfToken: "csrf-locale",
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+      }),
+    );
+    await page.route("**/api/v1/organisation", (route) =>
+      route.fulfill({
+        json: {
+          userId,
+          activeTenantId: tenantId,
+          tenants: [tenant],
+          members: [],
+        },
+      }),
+    );
+    await page.goto("/workspaces");
+    const switcher = page.locator(".workspace-switch");
+    await expect(switcher).toContainText(english);
+    await expect(switcher).toHaveAttribute("title", english);
+    await expect(page.locator(".sidebar .workspace strong")).toHaveText(
+      english,
+    );
+    await expect(
+      page.getByRole("heading", {
+        level: 3,
+        name: `${english} · Active`,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: `Open workspace: ${english}`,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.locator(".language-switch").selectOption("de");
+    await expect(switcher).toHaveAttribute("title", name);
+    await expect(
+      page.getByRole("heading", {
+        level: 3,
+        name: `${name} · Aktiv`,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.locator(".language-switch").selectOption("en");
+    await expect(switcher).toHaveAttribute("title", english);
+  });
+}
+
 test("English membership tabs, role dialogs and invitation controls preserve German customer names", async ({
   page,
 }, testInfo) => {

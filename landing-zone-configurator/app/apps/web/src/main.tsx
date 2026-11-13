@@ -56,6 +56,7 @@ import { currentLanguage, setLanguage, t } from "./i18n";
 import { type DeploymentStep, useNavigation } from "./navigation";
 import { describe, standaloneTemplate, templates } from "./templates";
 import { workspaceKey } from "./workspace";
+import { workspaceName } from "./workspace-name";
 import "./style.css";
 import { Account, type Session } from "./components/Account";
 import {
@@ -649,10 +650,14 @@ function App() {
             type="button"
             className="workspace-switch"
             aria-label={t("Arbeitsbereich wechseln")}
-            title={session.tenant?.name ?? t("Arbeitsbereiche")}
+            title={
+              workspaceName(session.tenant, session.user.login) ??
+              t("Arbeitsbereiche")
+            }
             onClick={() => setView("workspaces")}
           >
-            {session.tenant?.name ?? t("Arbeitsbereiche")}{" "}
+            {workspaceName(session.tenant, session.user.login) ??
+              t("Arbeitsbereiche")}{" "}
             <span aria-hidden="true">▾</span>
           </button>
         )}
@@ -718,7 +723,10 @@ function App() {
         <aside className="sidebar" aria-label={t("Anwendungsnavigation")}>
           <div className="workspace">
             <small>{t("ARBEITSBEREICH")}</small>
-            <strong>{session?.tenant?.name ?? t("Landing Zones")}</strong>
+            <strong>
+              {workspaceName(session?.tenant, session?.user.login) ??
+                t("Landing Zones")}
+            </strong>
           </div>
           <nav aria-label={t("Hauptnavigation")}>
             <button
@@ -893,7 +901,8 @@ function App() {
                   : view === "workspaces"
                     ? (session?.user.login ?? "")
                     : view === "applications"
-                      ? (session?.tenant?.name ?? "")
+                      ? (workspaceName(session?.tenant, session?.user.login) ??
+                        "")
                       : view === "organisation"
                         ? t(
                             "Arbeitsbereiche, Organisationszuordnung und persönliche Rollen verwalten.",
