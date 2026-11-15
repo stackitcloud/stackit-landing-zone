@@ -124,6 +124,8 @@ export function registerInvitations(
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_invitation_request" });
       const code = (error as { code?: string }).code;
+      if (code === "FST_ERR_CTP_EMPTY_JSON_BODY")
+        return reply.code(400).send({ error: "invalid_invitation_request" });
       if (
         code === "42501" &&
         error instanceof Error &&

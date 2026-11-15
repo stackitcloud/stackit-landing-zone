@@ -28,6 +28,8 @@ export function registerOrganisations(
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_organisation_request" });
       const code = (error as { code?: string }).code;
+      if (code === "FST_ERR_CTP_EMPTY_JSON_BODY")
+        return reply.code(400).send({ error: "invalid_organisation_request" });
       if (code === "23505")
         return reply.code(409).send({ error: "organisation_already_exists" });
       if (code === "55000")

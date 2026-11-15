@@ -66,7 +66,7 @@ async function call(
   const response = await fetch(`/api/v1/invitations${path}`, {
     method,
     headers: {
-      "content-type": "application/json",
+      ...(body === undefined ? {} : { "content-type": "application/json" }),
       "x-lzc-csrf": session.csrfToken,
       "x-lzc-tenant": session.tenant?.id ?? "",
     },

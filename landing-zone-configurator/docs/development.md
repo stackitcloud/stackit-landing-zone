@@ -48,6 +48,9 @@ required. Tests for workspace features must explicitly create/select a workspace
 For authentication or workspace changes, also run `npm run test:platform-database`:
 the ordinary `npm run check` intentionally skips this isolated Docker-backed group,
 but CI and the release build require it.
+Bodyless DELETE requests must omit `Content-Type: application/json`; an empty
+JSON body is rejected before workspace or membership authorization. Browser
+checks cover the actual headers as well as successful deletion and domain errors.
 
 ## Interface localization
 

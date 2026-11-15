@@ -118,6 +118,19 @@ it("protects invitation creation/acceptance, validates roles and never trusts a 
     });
     expect(expired.statusCode).toBe(410);
     expect(expired.json()).toEqual({ error: "invitation_unavailable" });
+    const url = `/api/v1/invitations/${randomUUID()}`;
+    const malformed = await app.inject({
+      method: "DELETE",
+      url,
+      headers: { ...headers, "content-type": "application/json" },
+    });
+    expect(malformed.statusCode).toBe(400);
+    expect(malformed.json()).toEqual({ error: "invalid_invitation_request" });
+    expect(service.revoke).not.toHaveBeenCalled();
+    expect(
+      (await app.inject({ method: "DELETE", url, headers })).statusCode,
+    ).toBe(204);
+    expect(service.revoke).toHaveBeenCalledTimes(1);
   } finally {
     await app.close();
   }

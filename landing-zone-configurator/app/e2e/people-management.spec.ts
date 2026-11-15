@@ -94,6 +94,8 @@ async function workspace(
     expect(r.request().headers()["x-lzc-tenant"]).toBe(tenantId);
     expect(r.request().headers()["x-lzc-csrf"]).toBe("c".repeat(43));
     if (r.request().method() === "DELETE") {
+      expect(r.request().headers()["content-type"]).toBeUndefined();
+      expect(r.request().postData()).toBeNull();
       const id = r.request().url().split("/").at(-1)!;
       removed.push(id);
       members = members.filter((m) => m.userId !== id);
@@ -139,6 +141,8 @@ async function workspace(
     }
     if (r.request().method() === "DELETE") {
       const id = r.request().url().split("/").at(-1)!;
+      expect(r.request().headers()["content-type"]).toBeUndefined();
+      expect(r.request().postData()).toBeNull();
       removed.push(id);
       invitations = invitations.filter((i) => i.id !== id);
       return r.fulfill({ status: 204 });

@@ -1,4 +1,6 @@
 export const englishMessages: Record<string, string> = {
+  "Die Änderung konnte nicht gespeichert werden. Bitte versuche es später erneut.":
+    "The change could not be saved. Please try again later.",
   "Erstelle einen Arbeitsbereich oder öffne eine Einladung, um gemeinsam zu arbeiten.":
     "Create a workspace or open an invitation to start working together.",
   "Keine STACKIT Organisation zugeordnet": "No STACKIT organization assigned",

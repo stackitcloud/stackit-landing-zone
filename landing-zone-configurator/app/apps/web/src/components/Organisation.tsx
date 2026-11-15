@@ -53,6 +53,8 @@ const messages: Record<string, string> = {
     "Ein zugänglicher Arbeitsbereich mit diesem Namen und dieser Organisations-ID existiert bereits. Bitte wähle ihn in der Liste aus.",
   organisation_not_empty_draft:
     "Nur leere, unbestätigte Arbeitsbereiche ohne weitere Mitglieder können gelöscht werden. Entferne zunächst weitere Mitglieder. Konfigurationen, Zugänge oder Deployment-Daten verhindern das Löschen.",
+  organisation_operation_failed:
+    "Die Änderung konnte nicht gespeichert werden. Bitte versuche es später erneut.",
   stale_tenant_context:
     "Der aktive Arbeitsbereich wurde in einem anderen Tab geändert. Bitte lade die Seite neu, bevor du Mitglieder bearbeitest.",
   membership_constraints:
@@ -181,7 +183,7 @@ export function Organisation({
       const response = await fetch(`/api/v1/organisation${path}`, {
         method,
         headers: {
-          "content-type": "application/json",
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
           "x-lzc-csrf": session.csrfToken,
           ...(targetTenantId ? { "x-lzc-tenant": targetTenantId } : {}),
           ...(path.startsWith("/members") && data?.activeTenantId
@@ -194,7 +196,7 @@ export function Organisation({
         const payload = await response.json().catch(() => ({}));
         throw new Error(
           messages[payload.error] ??
-            "Die Änderung wurde nicht gespeichert. Prüfe deine Berechtigung und Eingaben; mindestens ein Mitglied muss die Mitgliederverwaltung behalten.",
+            "Die Änderung konnte nicht gespeichert werden. Bitte versuche es später erneut.",
         );
       }
       if (switchWorkspace) {
