@@ -115,7 +115,9 @@ die Produktionseinrichtung ist eine separate Aufgabe.
 Der [Workflow-Katalog](docs/workflows.de.md) führt alle Pipelines, automatischen/manuellen
 Auslöser und Startanleitungen für die Oberfläche auf. Aktualisieren Sie ihn bei Änderungen
 an Workflow-Namen, Auslösern, Eingaben oder betrieblichen Freigabeschranken; halten Sie
-die Bereitstellungsfreigabe getrennt von der PR-Freigabe.
+die Bereitstellungsfreigabe getrennt von der PR-Freigabe. Die zweisprachigen
+Phasengrafiken und das Verzeichnis mit den [Pflegebefehlen](docs/workflows.de.md#maintaining-this-catalogue)
+neu erzeugen; Validate prüft Workflow-/Job-Abdeckung und Aktualität.
 
 <a id="terraform-conventions"></a>
 ### Terraform-Konventionen

@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "workflows": [
+    {
+      "file": "validate.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "All changes / no cloud writes",
+        "de": "Alle Änderungen / keine Cloud-Schreibzugriffe"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "changes",
+            "format",
+            "tflint",
+            "validate",
+            "test",
+            "workflow-docs"
+          ],
+          "en": "Scope • format • lint\nNative / firewall tests\nWorkflow map freshness",
+          "de": "Umfang • Format • Lint\nNative / Firewall-Tests\nAktualität der Grafik",
+          "conditional": false
+        }
+      }
+    },
+    {
+      "file": "validate-configurator.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "Stage-neutral / local fixtures",
+        "de": "Umgebungsneutral / lokale Fixtures"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "template-catalogue",
+            "recovery-lab",
+            "infrastructure",
+            "application"
+          ],
+          "en": "HCL / catalogue\n7 mocked IaC roots\nRecovery / native checks",
+          "de": "HCL / Katalog\n7 IaC-Roots mit Mocks\nRecovery / native Prüfung",
+          "conditional": false
+        },
+        "build": {
+          "jobs": [
+            "application"
+          ],
+          "en": "Test build • PostgreSQL\nHTTP / upgrade journey\nDesktop + mobile tests",
+          "de": "Test-Build • PostgreSQL\nHTTP / Upgrade-Ablauf\nDesktop- und Mobiltests",
+          "conditional": false
+        }
+      }
+    },
+    {
+      "file": "validate-stackit-flavors.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "Live catalogue read / no deployment",
+        "de": "Live-Katalog lesen / kein Deployment"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "validate"
+          ],
+          "en": "Compare configured\nflavors with live SKUs",
+          "de": "Konfigurierte Flavors\nmit Live-SKUs abgleichen",
+          "conditional": false
+        }
+      }
+    },
+    {
+      "file": "assistant-live.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "Real model / no cloud Apply",
+        "de": "Echtes Modell / kein Cloud-Apply"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "assistant"
+          ],
+          "en": "◆ assistant-tests\nSource / scenario check\nReal-model qualification",
+          "de": "◆ assistant-tests\nQuellen- / Szenarioprüfung\nQualifikation am Modell",
+          "conditional": false
+        }
+      }
+    },
+    {
+      "file": "verify-deployment.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "Accelerator / real test cloud writes",
+        "de": "Accelerator / echte Test-Cloud-Schreibzugriffe"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "cycle"
+          ],
+          "en": "◆ terraform-plan\nValidate inputs / image",
+          "de": "◆ terraform-plan\nEingaben / Image prüfen",
+          "conditional": false
+        },
+        "deploy": {
+          "jobs": [
+            "cycle"
+          ],
+          "en": "Plan → Apply → destroy\nKeep folder skeleton\nReport remaining resources",
+          "de": "Plan → Apply → Destroy\nOrdnergerüst erhalten\nRestressourcen prüfen",
+          "conditional": false
+        }
+      }
+    },
+    {
+      "file": "publish-release.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "Accelerator release / not Configurator",
+        "de": "Accelerator-Release / kein Configurator"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "verify-deployment"
+          ],
+          "en": "Call Verify Deployment\nReal Plan / Apply / cleanup",
+          "de": "Verify Deployment aufrufen\nEchter Plan / Apply / Abbau",
+          "conditional": false
+        },
+        "publish": {
+          "jobs": [
+            "publish"
+          ],
+          "en": "Tag + source archives\nGitHub Release\nProvenance attestation",
+          "de": "Tag + Quellarchive\nGitHub Release\nHerkunftsnachweis",
+          "conditional": false
+        }
+      }
+    },
+    {
+      "file": "configurator-bootstrap.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "Choose environment: Dev or Prod",
+        "de": "Zielumgebung wählen: Dev oder Prod"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "plan"
+          ],
+          "en": "◆ selected plan environment\nState bucket / versioning\nValidate + encrypted Plan",
+          "de": "◆ gewählte Plan-Umgebung\nState-Bucket / Versionierung\nValidieren + verschl. Plan",
+          "conditional": false
+        },
+        "deploy": {
+          "jobs": [
+            "apply"
+          ],
+          "en": "apply=true only\n◆ selected apply environment\nApply same reviewed Plan\nEncrypted recovery state",
+          "de": "Nur bei apply=true\n◆ gewählte Apply-Umgebung\nDenselben Plan anwenden\nVerschl. Recovery-State",
+          "conditional": true
+        }
+      }
+    },
+    {
+      "file": "configurator-platform.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "Choose environment: Dev or Prod",
+        "de": "Zielumgebung wählen: Dev oder Prod"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "plan"
+          ],
+          "en": "◆ selected plan environment\nDatabase • CF • secrets\nStorage / model binding\nValidate + encrypted Plan",
+          "de": "◆ gewählte Plan-Umgebung\nDatenbank • CF • Secrets\nStorage / Modellzugang\nValidieren + verschl. Plan",
+          "conditional": false
+        },
+        "deploy": {
+          "jobs": [
+            "apply"
+          ],
+          "en": "apply=true only\n◆ selected apply environment\nApply same reviewed Plan\nEncrypted recovery state",
+          "de": "Nur bei apply=true\n◆ gewählte Apply-Umgebung\nDenselben Plan anwenden\nVerschl. Recovery-State",
+          "conditional": true
+        }
+      }
+    },
+    {
+      "file": "configurator-runtime.yml",
+      "lane": "shared",
+      "scope": {
+        "en": "Choose environment: Dev or Prod",
+        "de": "Zielumgebung wählen: Dev oder Prod"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "plan"
+          ],
+          "en": "◆ selected plan environment\nCF space / roles / DNS\nRuntime service identities\nValidate + encrypted Plan",
+          "de": "◆ gewählte Plan-Umgebung\nCF-Space / Rollen / DNS\nLaufzeit-Dienstidentitäten\nValidieren + verschl. Plan",
+          "conditional": false
+        },
+        "deploy": {
+          "jobs": [
+            "apply"
+          ],
+          "en": "apply=true only\n◆ selected apply environment\nApply same reviewed Plan\nEncrypted recovery state",
+          "de": "Nur bei apply=true\n◆ gewählte Apply-Umgebung\nDenselben Plan anwenden\nVerschl. Recovery-State",
+          "conditional": true
+        }
+      }
+    },
+    {
+      "file": "configurator-release.yml",
+      "lane": "dev",
+      "scope": {
+        "en": "Build: Dev + Prod / deploy: Dev only",
+        "de": "Build: Dev + Prod / Deploy: nur Dev"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "assistant"
+          ],
+          "en": "Call Assistant qualification\nOnly in qualified mode",
+          "de": "Assistant-Qualifikation\nNur im Modus qualified",
+          "conditional": true
+        },
+        "build": {
+          "jobs": [
+            "build"
+          ],
+          "en": "App / DB / browser tests\nAPI + UI + native Runner\nImmutable shared artifact",
+          "de": "App- / DB- / Browsertests\nAPI + UI + nativer Runner\nUnveränderliches Artefakt",
+          "conditional": true
+        },
+        "publish": {
+          "jobs": [
+            "publish_buildpack"
+          ],
+          "en": "Protected buildpack tag\nBound to source + run",
+          "de": "Geschützter Buildpack-Tag\nAn Quellstand + Lauf gebunden",
+          "conditional": true
+        },
+        "deploy": {
+          "jobs": [
+            "deploy"
+          ],
+          "en": "Unless build_only\n◆ lzc-dev-release\nStage → migrate → activate\nTLS / services / Runner",
+          "de": "Außer bei build_only\n◆ lzc-dev-release\nStage → Migration → Start\nTLS / Dienste / Runner",
+          "conditional": true
+        }
+      }
+    },
+    {
+      "file": "configurator-production.yml",
+      "lane": "prod",
+      "scope": {
+        "en": "Published assets / never rebuild",
+        "de": "Veröffentlichte Artefakte / kein Neubau"
+      },
+      "phases": {
+        "checks": {
+          "jobs": [
+            "source",
+            "publish"
+          ],
+          "en": "Verify source / assets\nStable release + attestations",
+          "de": "Quellstand / Assets prüfen\nStabiles Release + Nachweise",
+          "conditional": false
+        },
+        "publish": {
+          "jobs": [
+            "publish"
+          ],
+          "en": "publish=true only\nVersioned GitHub Release\nConcise release notes",
+          "de": "Nur bei publish=true\nVersioniertes GitHub Release\nKnappe Release Notes",
+          "conditional": true
+        },
+        "deploy": {
+          "jobs": [
+            "deploy"
+          ],
+          "en": "◆ lzc-prod-release\nStage + migration\nRolling activation\nTLS / services / Runner",
+          "de": "◆ lzc-prod-release\nStage + Migration\nRolling-Aktivierung\nTLS / Dienste / Runner",
+          "conditional": false
+        }
+      }
+    }
+  ]
+}
