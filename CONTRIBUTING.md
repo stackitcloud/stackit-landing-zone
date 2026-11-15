@@ -107,7 +107,9 @@ setup is a separate task.
 The [workflow catalogue](docs/workflows.md) lists all pipelines, automatic/manual
 triggers and UI start instructions. Update it when changing workflow names,
 triggers, inputs or operational gates; keep deployment authorization separate
-from PR approval.
+from PR approval. Regenerate the bilingual phase diagrams and inventory using
+the [catalogue maintenance commands](docs/workflows.md#maintaining-this-catalogue);
+Validate checks workflow/job coverage and generated output freshness.
 
 ### Terraform conventions
 

@@ -20,6 +20,21 @@ env:
   TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
 
 jobs:
+  workflow-docs:
+    name: Workflow documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check workflow inventory and phase diagrams
+        run: |
+          python3 -m venv "$RUNNER_TEMP/workflow-docs"
+          "$RUNNER_TEMP/workflow-docs/bin/python" -m pip install --disable-pip-version-check -r .github/scripts/requirements-workflows.txt
+          "$RUNNER_TEMP/workflow-docs/bin/python" -m unittest discover -s .github/scripts -p 'test_workflow_map.py'
+          "$RUNNER_TEMP/workflow-docs/bin/python" .github/scripts/workflow-map.py --check
   changes:
     name: Accelerator change scope
     runs-on: ubuntu-latest
