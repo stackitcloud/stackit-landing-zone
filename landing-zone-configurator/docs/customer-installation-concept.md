@@ -186,7 +186,7 @@ App -->|"Live product options; scoped reads"| Catalogue["Official STACKIT PIM an
 
 The private runner branch is a proposed optional feature, not required merely to
 sign in or edit a configuration. It follows the agreed [private VM runner
-concept (PR #257)](https://github.com/stackitcloud/stackit-landing-zone/pull/257):
+concept](../../docs/private-runner-concept.md):
 STACKIT Git plus persistent VMs in the customer SNA and fresh containers per job.
 The app is never installed on a privileged runner host. A private-only app also
 needs user/VPN connectivity; a service account cannot create browser reachability.
@@ -596,7 +596,7 @@ security contracts; these links are not evidence of a working installer.
 - [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html): user identity protocol; not STACKIT IAM delegation.
 - [CF provisioning with Terraform](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/provision-cloud-foundry-via-terraform/) and [CF service accounts](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/create-cloud-foundry-service-accounts/): automation building blocks, not proof of the complete minimal installer.
 - [Current production operations](production.md), [authentication](github-login.md) and [architecture](architecture.md): current operator-specific provisioning, personal proofs and CF runtime boundaries to refactor explicitly.
-- [Private VM runner proposal, PR #257](https://github.com/stackitcloud/stackit-landing-zone/pull/257): persistent SNA VMs with fresh containers per job; optional complementary execution design.
+- [Private VM runner concept](../../docs/private-runner-concept.md): persistent SNA VMs with fresh containers per job; optional complementary execution design.
 - [Current catalogue client and ownership checks](../app/apps/api/src/credentials/catalogues.ts), [template publication](project-template-drafts.md) and [notification behavior](notifications.md): current behavior to preserve with explicit customer identity adapters.
 - [MailOut operations](../infra/mailout/README.md) and [official sending-domain setup](https://docs.stackit.cloud/products/messaging/mailout/how-tos/create-setup-and-manage-sending-domains/): credential/DNS readiness and the current operator-specific reconciler to generalize.
 - [STACKIT MailOut overview](https://docs.stackit.cloud/products/messaging/mailout/): outbound delivery, not an inbound mailbox server.

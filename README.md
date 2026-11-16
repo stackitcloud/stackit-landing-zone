@@ -27,6 +27,7 @@ filled manually and use a separate backend/state.
 
 - [Getting Started](docs/getting-started.md)
 - [Architecture/Modules](docs/architecture.md)
+- [Private runner concept](docs/private-runner-concept.md) - STACKIT Git, SNA VM runners, standalone and Configurator operation (architecture proposal)
 - [Corporate VM connectivity: firewall, NAT and SSH](docs/corporate-vm-connectivity.md)
 - [Landing Zone Configurator](landing-zone-configurator/README.md)
 - [Customer-installed Configurator](landing-zone-configurator/docs/customer-installation-concept.md) - installation and authentication options (concept)

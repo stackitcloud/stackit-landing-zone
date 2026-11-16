@@ -202,7 +202,7 @@ App -->|"Live-Produktoptionen; begrenzter Lesezugriff"| Catalogue["Offizielle ST
 
 Der private Runner-Zweig ist eine vorgeschlagene optionale Funktion, keine
 Voraussetzung zum Anmelden oder Bearbeiten einer Konfiguration. Er folgt dem
-vereinbarten [privaten VM-Runner-Konzept (PR #257)](https://github.com/stackitcloud/stackit-landing-zone/pull/257):
+vereinbarten [privaten VM-Runner-Konzept](../../docs/private-runner-concept.de.md):
 STACKIT Git plus dauerhafte VMs in der Kunden-SNA und frische Container pro Job.
 Die App wird nie auf einem privilegierten Runner-Host installiert. Eine rein
 private App benötigt auch Benutzer-/VPN-Konnektivität; ein Service Account
@@ -650,7 +650,7 @@ Sicherheitsverträgen getrennt; Links belegen keinen funktionierenden Installer.
 - [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html): Benutzeridentitätsprotokoll, keine STACKIT-IAM-Delegation.
 - [CF-Provisionierung mit Terraform](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/provision-cloud-foundry-via-terraform/) und [CF-Service-Accounts](https://docs.stackit.cloud/products/runtime/cloud-foundry/how-tos/create-cloud-foundry-service-accounts/): Automatisierungsbausteine, kein Nachweis eines vollständigen minimalen Installers.
 - [Heutiger Produktionsbetrieb](production.de.md), [Anmeldung](github-login.de.md) und [Architektur](architecture.de.md): betreiberspezifische Provisionierung, persönliche Nachweise und CF-Laufzeitgrenzen ausdrücklich überarbeiten.
-- [Privater VM-Runner-Vorschlag, PR #257](https://github.com/stackitcloud/stackit-landing-zone/pull/257): dauerhafte SNA-VMs mit frischen Containern pro Job; optionale ergänzende Ausführungsarchitektur.
+- [Privates VM-Runner-Konzept](../../docs/private-runner-concept.de.md): dauerhafte SNA-VMs mit frischen Containern pro Job; optionale ergänzende Ausführungsarchitektur.
 - [Heutiger Katalogclient und Eigentümerprüfungen](../app/apps/api/src/credentials/catalogues.ts), [Vorlagenveröffentlichung](project-template-drafts.de.md) und [Benachrichtigungen](notifications.de.md): heutiges Verhalten mit ausdrücklichen Kundenidentitäts-Adaptern erhalten.
 - [MailOut-Betrieb](../infra/mailout/README.de.md) und [offizielles Sending-Domain-Setup](https://docs.stackit.cloud/products/messaging/mailout/how-tos/create-setup-and-manage-sending-domains/): Zugangs-/DNS-Bereitschaft und heutiger betreiberspezifischer Reconciler zur Verallgemeinerung.
 - [STACKIT-MailOut-Übersicht](https://docs.stackit.cloud/products/messaging/mailout/): ausgehender Versand, kein eingehender Postfachserver.
