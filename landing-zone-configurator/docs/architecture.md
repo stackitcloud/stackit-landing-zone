@@ -3,6 +3,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+The proposed [customer-installed software profile](customer-installation-concept.md) describes bootstrap, local passkeys/optional corporate SSO and delegated cloud execution separately from the current hosted mode. It is not implemented.
+
 The proposed [private execution path using STACKIT Git and VM runners](../../docs/private-runner-concept.md) is documented separately. The Configurator would optionally submit to the same customer pipelines; this does not yet replace the CF execution described here.
 
 This reference describes the implemented components and their

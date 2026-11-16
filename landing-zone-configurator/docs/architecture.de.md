@@ -4,6 +4,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+Die vorgeschlagene [Kundeninstallation als Software](customer-installation-concept.de.md) beschreibt Bootstrap, lokale Passkeys/optionales Firmen-SSO und delegierte Cloud-Ausführung getrennt von der heutigen gehosteten Betriebsart. Sie ist noch nicht implementiert.
+
 Der vorgeschlagene [private Ausführungsweg über STACKIT Git und VM-Runner](../../docs/private-runner-concept.de.md) ist separat dokumentiert. Der Configurator würde als optionaler Auftraggeber dieselben Kundenpipelines nutzen; dies ersetzt die hier beschriebene CF-Ausführung noch nicht.
 
 Diese Referenz beschreibt die implementierten Komponenten und ihre

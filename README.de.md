@@ -31,6 +31,7 @@ können manuell ausgefüllt werden und verwenden ein separates Backend mit eigen
 - [Private-Runner-Konzept](docs/private-runner-concept.de.md) – STACKIT Git, VM-Runner in der SNA, Betrieb mit und ohne Configurator (Architekturvorschlag)
 - [Corporate-VM: Firewall, NAT und SSH](docs/corporate-vm-connectivity.de.md)
 - [Landing Zone Configurator](landing-zone-configurator/README.de.md)
+- [Kundenseitig installierter Configurator](landing-zone-configurator/docs/customer-installation-concept.de.md) – Installations- und Anmeldeoptionen (Konzept)
 - [Configurator-Architektur](landing-zone-configurator/docs/architecture.de.md)
 - [Configurator-Benutzerhandbuch](landing-zone-configurator/docs/user-guide.de.md)
 - [Configurator-Entwicklung](landing-zone-configurator/docs/development.de.md)
