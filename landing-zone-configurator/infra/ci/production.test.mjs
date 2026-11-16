@@ -4,7 +4,7 @@ import {mkdtempSync,writeFileSync,readFileSync,rmSync,mkdirSync,symlinkSync,exis
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {spawnSync} from "node:child_process";
-import {productionRelease} from "./production-release.mjs";
+import {productionRelease,verifyProductionBuild} from "./production-release.mjs";
 import {productionBindings,validateProductionBindings,runtimeKeys} from "./production-bindings.mjs";
 import {createReleaseManifest,verifyReleaseManifest,approvedReleaseSource} from "./release-artifact.mjs";
 const id="11111111-2222-4333-8444-555555555555",runnerId="22222222-2222-4333-8444-555555555555";
@@ -89,6 +89,11 @@ test("production preparation uses scoped bindings, exact PKCE origin and three r
   assert.equal(prepared.LZC_APP_INSTANCES,3);assert.equal(prepared.LZC_APP_ROUTE,"app.landing-zone.runs.onstackit.cloud");assert.equal(prepared.LZC_ASSISTANT_ENABLED,"true");assert.equal(prepared.LZC_RUNNER_CF_USERNAME,"runner-space-deployer");
   assert.ok(!JSON.stringify(prepared).includes("org-manager"));assert.equal(existsSync(join(directory,"lzc-release/platform.backend.hcl")),false);
   env.LZC_STACKIT_REDIRECT_URI="https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback";assert.notEqual(run("application").status,0);
+  env.LZC_STACKIT_REDIRECT_URI="https://app.landing-zone.runs.onstackit.cloud/auth/stackit/callback";
+  env.LZC_RELEASE_MODE="skip";
+  assert.equal(run("backend").status,0);
+  assert.equal(run("application").status,0);
+  assert.equal(JSON.parse(readFileSync(join(directory,"lzc-release/app-vars.json"),"utf8")).LZC_ASSISTANT_ENABLED,"true");
   env.LZC_PUBLISHED_RELEASE="false";assert.notEqual(run("backend").status,0);
   env.LZC_PUBLISHED_RELEASE="true";env.LZC_RELEASE_MODE="dev-skip-assistant-qualification";assert.notEqual(run("backend").status,0);
  }finally{rmSync(directory,{recursive:true,force:true});}
@@ -104,8 +109,61 @@ test("space-scoped account creation waits for its provisioning principal's devel
 });
 
 test("patch release notes describe their changes and unknown versions require curation",()=>{
- const run=tag=>spawnSync(process.execPath,[new URL("./release-notes.mjs",import.meta.url).pathname],{env:{...process.env,LZC_RELEASE_TAG:tag,LZC_RELEASE_MODE:"accepted-assistant-limitations"},encoding:"utf8"});
+ const run=(tag,mode="accepted-assistant-limitations")=>spawnSync(process.execPath,[new URL("./release-notes.mjs",import.meta.url).pathname],{env:{...process.env,LZC_RELEASE_TAG:tag,LZC_RELEASE_MODE:mode},encoding:"utf8"});
  const patch=run("v2.0.1");assert.equal(patch.status,0,patch.stderr);assert.match(patch.stdout,/obsolete Development badge/);assert.match(patch.stdout,/all three API replicas/);assert.match(patch.stdout,/#225/);assert.doesNotMatch(patch.stdout,/First production release/);assert.ok(patch.stdout.split(/\s+/).length<150);
  assert.match(run("v2.0.0").stdout,/First production release/);
+ const feature=run("v2.1.0","skip");assert.equal(feature.status,0,feature.stderr);assert.match(feature.stdout,/notification inbox/);assert.match(feature.stdout,/Build once/);assert.match(feature.stdout,/#225/);assert.ok(feature.stdout.split(/\s+/).length<180);
+ assert.doesNotMatch(run("v2.1.0","qualified").stdout,/not fully qualified/);
  const future=run("v2.0.2");assert.notEqual(future.status,0);assert.match(future.stderr,/Curated release notes required/);
+});
+
+
+test("one stage-neutral skip build is promotable to Dev and Prod without qualifying legacy Dev artifacts",()=>{
+ const source={revision:"a".repeat(40),runId:"123",mode:"skip"};
+ const run={id:123,run_attempt:1,path:".github/workflows/configurator-release.yml",head_sha:source.revision,head_repository:{full_name:"stackitcloud/stackit-landing-zone"},head_branch:"main",event:"workflow_dispatch"};
+ const jobs=[{name:"build-skip",status:"completed",conclusion:"success"},{name:"assistant",status:"completed",conclusion:"skipped"}];
+ const artifacts=[{id:456,name:"configurator-release-123",expired:false,workflow_run:{id:123,head_sha:source.revision}}];
+ for(const caller of ["123","999"]){
+  assert.equal(approvedReleaseSource(run,jobs,artifacts,source.runId,"skip",caller).runId,"123");
+ }
+ const metadata={schemaVersion:1,repository:run.head_repository.full_name,tag:"v2.1.0",revision:source.revision,runId:source.runId,mode:"skip"};
+ const release={tag_name:metadata.tag,draft:false,prerelease:false,published_at:"2026-11-16T00:00:00Z"};
+ assert.equal(productionRelease(metadata,release,source.revision),metadata);
+ const completed={...run,conclusion:"success"};
+ assert.equal(verifyProductionBuild(completed,jobs,metadata,source.revision),metadata);
+ for(const conclusion of [undefined,null,"failure","cancelled"]){
+  assert.throws(()=>verifyProductionBuild({...completed,conclusion},jobs,metadata,source.revision));
+ }
+ for(const change of [{head_sha:"b".repeat(40)},{path:".github/workflows/foreign.yml"},{head_branch:"feature"},{event:"push"},{run_attempt:2},{head_repository:{full_name:"foreign/repository"}}]){
+  assert.throws(()=>verifyProductionBuild({...completed,...change},jobs,metadata,source.revision));
+ }
+ assert.throws(()=>verifyProductionBuild(completed,[{...jobs[0],conclusion:"failure"}],metadata,source.revision));
+ assert.throws(()=>verifyProductionBuild(completed,[{...jobs[0],name:"build-dev-skip-assistant-qualification"}],metadata,source.revision));
+ assert.throws(()=>verifyProductionBuild(completed,jobs,{...metadata,mode:"qualified"},source.revision));
+ assert.throws(()=>verifyProductionBuild(completed,jobs,{...metadata,mode:"dev-skip-assistant-qualification"},source.revision));
+ for(const change of [{head_branch:"feature"},{event:"push"},{run_attempt:2},{head_repository:{full_name:"foreign/repository"}}]){
+  assert.throws(()=>approvedReleaseSource({...run,...change},jobs,artifacts,"123","skip","999"));
+ }
+ for(const conclusion of ["failure","cancelled","success"]){
+  assert.throws(()=>approvedReleaseSource(run,[jobs[0],{...jobs[1],conclusion}],artifacts,"123","skip","999"));
+ }
+ assert.throws(()=>approvedReleaseSource(run,[{...jobs[0],name:"build-dev-skip-assistant-qualification"},jobs[1]],artifacts,"123","skip","999"));
+ assert.throws(()=>approvedReleaseSource(run,jobs,artifacts,"123","qualified","999"));
+ assert.throws(()=>approvedReleaseSource(run,jobs,[{...artifacts[0],expired:true}],"123","skip","999"));
+ const directory=mkdtempSync(join(tmpdir(),"lzc-skip-shared-artifact-"));
+ try{
+  for(const name of ["release.tar.gz","runner.tar.gz"])writeFileSync(join(directory,name),"same-immutable-bundle");
+  const manifest=createReleaseManifest(directory,source);
+  assert.equal(manifest.schemaVersion,4);assert.equal(manifest.target,"stage-neutral");assert.equal(manifest.assistantQualified,false);assert.equal(manifest.assistantQualification,"skipped");
+  assert.deepEqual(verifyReleaseManifest(directory,source),manifest);
+  assert.throws(()=>verifyReleaseManifest(directory,{...source,mode:"qualified"}));
+  assert.throws(()=>verifyReleaseManifest(directory,{...source,mode:"dev-skip-assistant-qualification"}));
+  for(const change of [{schemaVersion:1},{releaseMode:"qualified"},{target:"lzc-dev"},{assistantQualified:true},{assistantQualification:"passed"},{knownLimitations:[]},{releaseRunId:"456"}]){
+   writeFileSync(join(directory,"release-manifest.json"),JSON.stringify({...manifest,...change}));
+   assert.throws(()=>verifyReleaseManifest(directory,source));
+  }
+  writeFileSync(join(directory,"release-manifest.json"),JSON.stringify(manifest));
+  writeFileSync(join(directory,"runner.tar.gz"),"tampered");
+  assert.throws(()=>verifyReleaseManifest(directory,source),/checksum/);
+ }finally{rmSync(directory,{recursive:true,force:true});}
 });

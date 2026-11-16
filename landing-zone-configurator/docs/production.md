@@ -160,12 +160,15 @@ patch releases must describe their own changes rather than repeat the initial
 production-release announcement.
 
 1. Merge the checked source to `main`.
-2. Run **Configurator Release** with `build_only=true` and the selected
-   `release_mode`. All non-inference application, browser, database, native and
-   packaging checks remain mandatory. The build publishes its immutable artifact
-   and protected source-bound image buildpack tag.
-3. Run **Configurator Production Release** on the same `main` revision, supplying
-   `version=v2.0.0`, that successful build run ID and its exact release mode.
+2. Run **Configurator Release** on `main` with `release_mode=skip` (default) or
+   `qualified`. To deploy Dev too, use `build_only=false` and the desired Dev
+   Runner reserve; to build only, use `build_only=true`. All non-inference checks
+   remain mandatory. The build publishes immutable artifacts and a protected
+   source-bound buildpack tag.
+3. After the whole run succeeds, run **Configurator Production Release** on the
+   same `main` revision with `version=v2.1.0`, that build run ID and exactly the
+   same mode. No second Configurator build is needed even if the first run
+   already deployed Dev.
 4. The workflow verifies the artifact and publishes a stable GitHub Release with
    concise notes, checksums, provenance and durable application/Runner assets.
    It then prepares the `lzc-prod-release` job for **manual approval**.
@@ -180,13 +183,16 @@ The in-workflow publication continues directly to the protected job because even
 created with `GITHUB_TOKEN` do not start another workflow. Arbitrary Actions
 artifacts, pre-releases and Dev exception artifacts cannot deploy to production.
 
-For the initial release, `accepted-assistant-limitations` is an explicit operator
-acceptance: the manifest records `assistantQualified: false` and links
-[issue #225](https://github.com/stackitcloud/stackit-landing-zone/issues/225).
-The Assistant is enabled; intermittent model-service HTTP 400 failures and full
-qualification remain open. This mode never claims successful qualification.
-`qualified` still requires the repeated live suite. The existing
-`dev-skip-assistant-qualification` mode remains Dev-only and non-promotable.
+`skip` and `qualified` are the current choices. `skip` skips only live Assistant
+qualification, preserves runtime configuration and records `assistantQualified=false`
+and `assistantQualification=skipped` in its stage-neutral manifest. Known limitations
+remain visible in release notes, currently
+[#225](https://github.com/stackitcloud/stackit-landing-zone/issues/225).
+`qualified` requires the repeated successful live suite and applies to affected
+Assistant fact/capability changes according to contributor guidance. Legacy modes
+remain only for historical provenance: published `accepted-assistant-limitations`
+releases remain readable; `dev-skip-assistant-qualification` stays Dev-only and
+non-promotable.
 
 ## Recovery and rotation
 

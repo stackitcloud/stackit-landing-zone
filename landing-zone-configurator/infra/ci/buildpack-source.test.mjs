@@ -456,3 +456,25 @@ test("failed deployments remain promotable only when qualification, build and im
       /Only successful trusted release builds/,
     );
 });
+
+
+test("the actual workflow allows skip build plus Dev deployment and qualified still requires live success",()=>{
+ const workflow=readFileSync(new URL("../../../.github/workflows/configurator-release.yml",import.meta.url),"utf8");
+ const build=workflow.split("\n  build:\n")[1].split("\n  publish_buildpack:\n")[0];
+ const assistant=workflow.split("\n  assistant:\n")[1].split("\n  build:\n")[0];
+ const context={always:()=>true,cancelled:()=>false,github:{event_name:"workflow_dispatch",run_attempt:1,ref:"refs/heads/main"},inputs:{release_mode:"skip",build_only:false,release_run_id:""},vars:{LZC_RELEASE_CI_ENABLED:"true"},needs:{assistant:{result:"skipped"},build:{result:"success"},publish_buildpack:{result:"success"}}};
+ const allowed=(job,overrides={})=>runInNewContext(job.match(/^\s+if: (.+)$/m)[1],{...context,...overrides});
+ assert.equal(allowed(assistant),false);
+ assert.equal(allowed(build),true);assert.equal(allowed(publisher),true);assert.equal(allowed(deploy),true);
+ assert.equal(allowed(build,{inputs:{...context.inputs,build_only:true}}),true);
+ assert.equal(allowed(deploy,{inputs:{...context.inputs,build_only:true}}),false);
+ assert.equal(allowed(build,{github:{...context.github,ref:"refs/heads/feature/landing-zone-configurator"}}),false);
+ for(const result of ["failure","cancelled","skipped"]){
+  assert.equal(allowed(build,{inputs:{...context.inputs,release_mode:"qualified"},needs:{...context.needs,assistant:{result}}}),false);
+ }
+ assert.equal(allowed(build,{inputs:{...context.inputs,release_mode:"qualified"},needs:{...context.needs,assistant:{result:"success"}}}),true);
+ const production=readFileSync(new URL("../../../.github/workflows/configurator-production.yml",import.meta.url),"utf8");
+ assert.match(production,/options: \[skip, qualified\]/);
+ assert.doesNotMatch(production,/inputs\.build_only/);
+ assert.match(production,/environment:\n      name: lzc-prod-release/);
+});

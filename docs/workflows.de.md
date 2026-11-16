@@ -30,7 +30,8 @@ Gemeinsame Workflows und solche mit wählbarer Zielumgebung stehen einmal oben.
 Die getrennten Dev- und Prod-Auslieferungen folgen darunter. **Configurator
 Release** baut auch die gemeinsamen Produktionseingaben; sein Deploy-Job zielt
 auf Dev. Produktion verwendet kompatible veröffentlichte Assets ohne erneuten
-Build. Dev-skip-Artefakte sind keine zulässigen Produktionseingaben.
+Build. Ein Build mit skip oder qualified kann Dev und Prod versorgen; historische
+Dev-only-Artefakte bleiben ausgeschlossen.
 Die Grafik fasst Phasen zusammen, nicht jeden Schritt oder jede Abhängigkeit.
 Browserabnahme/Runner-Paketierung und CF-Staging laufen teilweise parallel.
 Der Aufruf von **Verify Deployment** führt echte Test-Cloud-Änderungen und
@@ -53,37 +54,43 @@ Bereinigung aus, auch in der Vorprüfungsphase von **Publish Release**.
 <a id="current-repository-workflows"></a>
 ### Dev-Release ohne Live-Qualifikation des Assistant
 
-Bei Model-Serving-Ausfällen unter
-**Actions > Configurator Release > Run workflow** auf Branch **main** ausdrücklich
-**release_mode=dev-skip-assistant-qualification** wählen. **build_only** nicht
-anhaken, **release_run_id** leer lassen und **runner_pool_size=1** setzen.
-Den genauen Quellstand/Lauf prüfen und nach allen anwendbaren Build-/
-Veröffentlichungsprüfungen die bestehende Umgebung **lzc-dev-release** freigeben.
-Diese ausdrückliche Dev-Ausnahme überspringt nur den Live-Qualifikationsjob des
-Assistant. `LZC_ASSISTANT_ENABLED` übernimmt weiterhin die bestehende
-Umgebungseinstellung; ein konfigurierter Assistant bleibt aktiviert, ohne neuen
-Live-Qualifikationsnachweis für diesen Release. Ob Inferenz funktioniert, hängt
-weiterhin von der Modellverfügbarkeit ab. Dies gilt nicht als erfolgreiche
-Qualifikation und löscht keine früheren fehlgeschlagenen Nachweise. Alle übrigen
-Prüfungen, Migrationen, geschützten Tags und Dev-Zielprüfungen bleiben erhalten.
-Gespräche und Vorschläge bleiben gespeichert; bestehende Laufzeitvalidierung,
-Autorisierung und Revisionsprüfungen bleiben unverändert. Der Modus autorisiert
-weder Produktion noch Kunden-Infrastruktur-Apply.
+**Configurator Release** auf **main** verwenden. **release_mode=skip** (Standard)
+wählen, wenn keine neue Live-Qualifikation des Assistant nötig ist; **qualified**
+führt die vollständige wiederholte Live-Suite aus. Änderungen an Assistant-Fakten/
+-Fähigkeiten benötigen weiterhin quellgebundene Qualifikation gemäß Beitragsanleitung.
+Überspringen behauptet keine Qualifikation und entfernt keine fehlgeschlagenen
+Nachweise.
 
-Das Manifest vermerkt die Beschränkung auf Dev und `assistantQualified=false`;
-der Build-Job heißt `build-dev-skip-assistant-qualification`. Diese Artefakte
-können nicht mit `release_run_id` übernommen werden, auch nicht als qualifizierter
-Release. Nach einem Deploymentfehler sind Untersuchung und ein neuer manueller
-Lauf nötig. `build_only=true` erlaubt einen Build zur Prüfung, dessen Artefakt
-anschließend nicht übernommen werden kann. Ein qualifizierter Release erfordert
-weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
-quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
-Übernahmebedingungen bleiben unverändert.
+Für Dev mit anschließendem Prod **build_only=false** und **release_run_id** leer
+lassen, Dev-**runner_pool_size** wählen (beispielsweise `2`). Build, Datenbank-/
+Browser-/native Prüfungen und geschützte Buildpack-Veröffentlichung laufen einmal,
+danach das manuell freigegebene **lzc-dev-release**-Deployment. Die Assistant-
+Laufzeiteinstellung bleibt in beiden Modi erhalten. Kein Kunden-Infrastruktur-
+Apply wird dadurch autorisiert.
+
+Nach Erfolg des **gesamten Laufs** dessen numerische Run-ID in **Configurator
+Production Release** auf derselben `main`-Revision verwenden: **publish=true**,
+kuratierter Versionstag (aktuell **v2.1.0**) und **derselbe release_mode**.
+Veröffentlichung und **lzc-prod-release**-Freigabe verwenden unveränderte Pakete;
+Configurator Release nicht nur für einen zusätzlichen Prod-Build erneut starten.
+Ist Dev nicht gewünscht, im ersten Lauf **build_only=true** wählen. Produktion
+baut nicht neu.
+
+Ein neues `skip`-Manifest vermerkt umgebungsunabhängigen Umfang,
+`assistantQualified=false` und `assistantQualification=skipped`; der Job heißt
+**build-skip**. `qualified` verlangt weiter erfolgreiche Live-Qualifikation.
+Bestehende Builds lassen sich über **release_run_id** später ohne Neubau nach Dev
+übernehmen, unter Quell-/Tag- und Artefaktprüfung. Historische Artefakte mit
+**dev-skip-assistant-qualification** bleiben auf Dev beschränkt und nicht
+promotierbar. Veröffentlichte **accepted-assistant-limitations**-Releases bleiben
+für kompatible erneute Deployments lesbar. Beide alten Modi sind keine neue
+Laufauswahl. Eine fehlgeschlagene Qualifikation lässt sich nicht als `skip`
+umetikettieren.
 
 
 ### Produktionsrelease und Infrastruktur
 
-[Configurator Production Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-production.yml) · [Quelle](../.github/workflows/configurator-production.yml) veröffentlicht ein stabiles Release und deployt erst nach manueller Freigabe von `lzc-prod-release`. Eingaben: `version` (Standard `v2.0.0`), `publish` (Standard `true`), `release_run_id` (für Veröffentlichung erforderlich) und `release_mode` (Standard `accepted-assistant-limitations`, alternativ `qualified`). Zuerst **Configurator Release** mit `build_only=true` auf derselben `main`-Revision und mit demselben `release_mode` ausführen. `accepted-assistant-limitations` dokumentiert ausdrücklich den unqualifizierten Assistant und Issue #225; es qualifiziert kein Dev-skip-Artefakt. Alle Prüfungen außerhalb der Inferenz bleiben verpflichtend.
+[Configurator Production Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-production.yml) · [Quelle](../.github/workflows/configurator-production.yml) veröffentlicht ein stabiles Release und deployt erst nach manueller Freigabe von `lzc-prod-release`. Eingaben: `version` (Standard `v2.1.0`), `publish` (Standard `true`), `release_run_id` (für Veröffentlichung erforderlich) und `release_mode` (Standard `skip`, alternativ `qualified`). Einen vollständig erfolgreichen **Configurator Release** von derselben `main`-Revision mit demselben Modus verwenden, unabhängig davon, ob dieser Dev deployt oder `build_only=true` genutzt hat. Ein zweiter Build ist nicht erforderlich. `skip` dokumentiert die übersprungene Assistant-Qualifikation, ohne historische Dev-only-Artefakte umzudeuten. Alle Prüfungen außerhalb der Inferenz bleiben verpflichtend.
 
 Ein veröffentlichtes stabiles GitHub Release mit den erforderlichen quellgebundenen Assets startet den Workflow ebenfalls. Veröffentlichung über `GITHUB_TOKEN` setzt im selben Lauf fort und benötigt kein zweites Ereignis. `publish=false` deployt ein bestehendes kompatibles veröffentlichtes Release nach neuer manueller Freigabe. Pre-Releases und beliebige Artefakte werden abgelehnt. Produktion verwendet unveränderliche angehängte Anwendungs-/Runner-Assets, begrenzte CF-Zugänge und Rolling Deployment mit drei Web-Repliken.
 
@@ -148,8 +155,8 @@ Pflichtprüfung, ohne sicherzustellen, dass er für jeden relevanten PR ein Erge
 | Configurator Bootstrap | Standardmäßig `root=bootstrap` oder `backend`; standardmäßig `apply=false`. `environment=lzc-dev\|lzc-prod`; Apply verwendet das Bootstrap-Apply-Environment der ausgewählten Stage. |
 | Configurator Platform | `root=platform`; standardmäßig `apply=false`. Benötigt den obigen Plattform-Operatorschalter; `environment=lzc-dev\|lzc-prod`; Apply verwendet das passende Platform-Apply-Environment. |
 | Configurator Runtime | `root=runtime`; standardmäßig `apply=false`. Benötigt den obigen Laufzeit-Operatorschalter; `environment=lzc-dev\|lzc-prod`; Apply verwendet das passende Runtime-Apply-Environment. |
-| Configurator Release | Standardmäßig `release_mode=qualified` und `build_only=false`; leere `release_run_id` bedeutet einen neuen Build im gewählten Modus. Setzen Sie `build_only=true` für einen Build ohne CF-Bereitstellung; die Veröffentlichung des geschützten Tags erfolgt trotzdem; echte Modellaufrufe laufen im Modus `qualified`. Um einen bestehenden qualifizierten Build zu übernehmen, lassen Sie Build-only deaktiviert und geben Sie dessen numerische Run-ID an; das aufbewahrte Artefakt/Tag muss weiterhin gültig sein. |
-| Configurator Production Release | `publish=true`, `version=v2.0.0`, `release_run_id` für Veröffentlichung erforderlich; `release_mode=accepted-assistant-limitations` als Standard (alternativ `qualified`). Zuerst Configurator Release mit demselben Modus und `build_only=true` ausführen. `publish=false` nutzt ein bestehendes kompatibles Release ohne Neubau; ein Release-Ereignis verwendet dessen unveränderliche Assets. Prod-Aktivierung erfordert weiterhin die Freigabe von `lzc-prod-release`. |
+| Configurator Release | Standardmäßig `release_mode=skip` und `build_only=false`; leere `release_run_id` bedeutet einen neuen Build im gewählten Modus. Setzen Sie `build_only=true` für einen Build ohne CF-Bereitstellung; die Veröffentlichung des geschützten Tags erfolgt trotzdem; echte Modellaufrufe laufen im Modus `qualified`. Um einen bestehenden Build mit skip oder qualified zu übernehmen, lassen Sie Build-only deaktiviert und geben Sie dessen numerische Run-ID an; das aufbewahrte Artefakt/Tag muss weiterhin gültig sein. |
+| Configurator Production Release | `publish=true`, `version=v2.1.0`, `release_run_id` des vollständig erfolgreichen Configurator-Release-Laufs; `release_mode=skip` als Standard (alternativ `qualified`, muss zum Build passen). Derselbe Build kann zuvor Dev deployt haben; kein zusätzlicher Build-only-Lauf nötig. `publish=false` verwendet ein bestehendes kompatibles Release ohne Neubau. Prod-Aktivierung erfordert `lzc-prod-release`-Freigabe. |
 
 Browser-Abnahme und native Paketierung laufen im Release-Build parallel; die
 Bereitstellung bereitet Runner, minimales Migrationspaket und Web/API mit getrennten

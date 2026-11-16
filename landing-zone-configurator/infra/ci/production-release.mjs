@@ -7,7 +7,22 @@ export function productionRelease(metadata, release, revision) {
   if (!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(release?.tag_name ?? "") || release.draft || release.prerelease || !release.published_at) throw new Error("Production requires a published stable GitHub Release");
   if (metadata?.schemaVersion !== 1 || metadata.repository !== "stackitcloud/stackit-landing-zone" || metadata.tag !== release.tag_name || metadata.revision !== revision || !/^[a-f0-9]{40}$/.test(revision ?? "") || !/^[1-9][0-9]*$/.test(String(metadata.runId))) throw new Error("Published release source binding is invalid");
   const mode = releaseMode(metadata.mode);
-  if (!["qualified", "accepted-assistant-limitations"].includes(mode)) throw new Error("Dev exception artifacts cannot enter production");
+  if (!["qualified", "skip", "accepted-assistant-limitations"].includes(mode)) throw new Error("Dev exception artifacts cannot enter production");
+  return metadata;
+}
+export function verifyProductionBuild(run, jobs, metadata, revision) {
+  const mode = releaseMode(metadata.mode);
+  if (!["qualified", "skip", "accepted-assistant-limitations"].includes(mode))
+    throw new Error("Dev exception artifacts cannot enter production");
+  const names = mode === "qualified"
+    ? ["build", "assistant / assistant-live-qualification"]
+    : mode === "skip" ? ["build-skip"] : ["build-accepted-assistant-limitations"];
+  if (run.head_sha !== revision || run.path !== ".github/workflows/configurator-release.yml" ||
+      run.head_branch !== "main" || run.event !== "workflow_dispatch" ||
+      run.run_attempt !== 1 || run.conclusion !== "success" ||
+      run.head_repository?.full_name !== "stackitcloud/stackit-landing-zone" ||
+      !names.every(name => jobs.some(job => job.name === name && job.conclusion === "success")))
+    throw new Error("Published assets do not originate from a successful trusted build");
   return metadata;
 }
 if (process.argv[2] === "metadata") {
@@ -32,7 +47,6 @@ if (process.argv[2] === "metadata") {
   gh(["attestation","verify",".local/production-release.json","--repo",repo,"--signer-workflow",`${repo}/.github/workflows/configurator-production.yml`,"--source-ref","refs/heads/main","--source-digest",ref.sha,"--signer-digest",ref.sha,"--deny-self-hosted-runners"]);
   const run=JSON.parse(gh(["api",`repos/${repo}/actions/runs/${metadata.runId}`]));
   const jobs=JSON.parse(gh(["api",`repos/${repo}/actions/runs/${metadata.runId}/jobs?per_page=100`]));
-  const names=metadata.mode==="qualified"?["build","assistant / assistant-live-qualification"]:["build-accepted-assistant-limitations"];
-  if(run.head_sha!==ref.sha || run.path!==".github/workflows/configurator-release.yml" || run.head_branch!=="main" || run.event!=="workflow_dispatch" || run.run_attempt!==1 || run.conclusion!=="success" || run.head_repository?.full_name!==repo || !names.every(name=>jobs.jobs.some(job=>job.name===name&&job.conclusion==="success"))) throw new Error("Published assets do not originate from a successful trusted build");
+  verifyProductionBuild(run, jobs.jobs, metadata, ref.sha);
   appendFileSync(process.env.GITHUB_OUTPUT,`revision=${metadata.revision}\nrun_id=${metadata.runId}\nmode=${metadata.mode}\n`);
 }

@@ -175,12 +175,15 @@ nicht veröffentlicht. Patch-Releases beschreiben ihre eigenen Änderungen, stat
 die Ankündigung des ersten Produktionsrelease zu wiederholen.
 
 1. Geprüfte Quelle nach `main` zusammenführen.
-2. **Configurator Release** mit `build_only=true` und ausgewähltem `release_mode`
-   starten. Alle Prüfungen für Anwendung, Browser, Datenbank, native Verträge und
-   Paketierung bleiben verpflichtend. Der Build veröffentlicht sein unveränderliches
-   Artefakt und den geschützten, quellgebundenen Image-Buildpack-Tag.
-3. **Configurator Production Release** auf derselben `main`-Revision starten:
-   `version=v2.0.0`, erfolgreicher Build-Lauf und dessen exakter Release-Modus.
+2. **Configurator Release** auf `main` mit `release_mode=skip` (Standard) oder
+   `qualified` starten. Für gleichzeitigen Dev-Rollout `build_only=false` und
+   gewünschte Dev-Runner-Reserve wählen; nur für einen Build `build_only=true`.
+   Alle Prüfungen außerhalb der Live-Inferenz bleiben verpflichtend. Der Build
+   veröffentlicht unveränderliche Artefakte und geschützten Buildpack-Tag.
+3. Nach Erfolg des gesamten Laufs **Configurator Production Release** auf
+   derselben `main`-Revision starten: `version=v2.1.0`, dessen Build-Run-ID und
+   exakt derselbe Modus. Kein zweiter Configurator-Build ist nötig, auch wenn der
+   erste Lauf bereits Dev deployt hat.
 4. Der Workflow prüft das Artefakt und veröffentlicht ein stabiles GitHub Release
    mit kurzen Hinweisen, Prüfsummen, Herkunftsnachweis und dauerhaft verfügbaren
    Anwendungs-/Runner-Paketen. Anschließend wartet `lzc-prod-release` auf
@@ -197,13 +200,16 @@ mit dem geschützten Job fort, da durch `GITHUB_TOKEN` erzeugte Ereignisse keine
 weiteren Workflow starten. Beliebige Actions-Artefakte, Pre-Releases und Artefakte
 aus der Dev-Ausnahme können nicht nach Produktion deployt werden.
 
-Beim ersten Release ist `accepted-assistant-limitations` eine ausdrückliche
-Betreiberentscheidung: Das Manifest enthält `assistantQualified: false` und
-verlinkt [Issue #225](https://github.com/stackitcloud/stackit-landing-zone/issues/225).
-Der Assistant ist aktiviert; sporadische HTTP-400-Fehler des Modelldienstes und die
-vollständige Qualifikation bleiben offen. Dieser Modus behauptet keine erfolgreiche
-Qualifikation. `qualified` erfordert weiterhin die wiederholte Live-Suite.
-`dev-skip-assistant-qualification` bleibt auf Dev beschränkt und nicht promotierbar.
+`skip` und `qualified` sind die aktuellen Auswahlwerte. `skip` überspringt nur
+Live-Assistant-Qualifikation, lässt die Laufzeiteinstellung unverändert und
+vermerkt `assistantQualified=false` sowie `assistantQualification=skipped` im
+umgebungsunabhängigen Manifest. Bekannte Einschränkungen bleiben in den Notes
+sichtbar, derzeit [#225](https://github.com/stackitcloud/stackit-landing-zone/issues/225).
+`qualified` verlangt die wiederholte erfolgreiche Live-Suite und ist für betroffene
+Assistant-Fakten-/Fähigkeitsänderungen gemäß Beitragsanleitung zu verwenden.
+Die alten Modi sind nur für historische Nachweise erhalten: veröffentlichte
+`accepted-assistant-limitations`-Releases bleiben kompatibel lesbar;
+`dev-skip-assistant-qualification` bleibt Dev-only und nicht promotierbar.
 
 ## Wiederherstellung und Rotation
 

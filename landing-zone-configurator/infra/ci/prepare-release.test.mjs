@@ -46,15 +46,15 @@ test("validation and release both execute native template and stateful platform 
   assert.match(workflow,/^\s+npm run test:common-contract$|run: npm run test:common-contract/m);
  }
 });
-test("release builds require repeated live model qualification and retain multi-turn failures",()=>{
+test("qualified releases require repeated live qualification while explicit skip retains runtime settings",()=>{
  const release=readFileSync(new URL("../../../.github/workflows/configurator-release.yml",import.meta.url),"utf8");
  const live=readFileSync(new URL("../../../.github/workflows/assistant-live.yml",import.meta.url),"utf8");
  assert.match(release,/uses: \.\/\.github\/workflows\/assistant-live\.yml/);
  assert.match(release,/topic: all\n\s+repetitions: 2/);
  assert.match(release,/needs: assistant/);
- assert.ok(release.includes("inputs.release_mode != 'dev-skip-assistant-qualification' && needs.assistant.result == 'success'"));
- assert.ok(release.includes("inputs.release_mode == 'dev-skip-assistant-qualification' && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped'"));
- assert.match(release,/default: qualified/);
+ assert.ok(release.includes("inputs.release_mode == 'qualified' && needs.assistant.result == 'success'"));
+ assert.ok(release.includes("inputs.release_mode == 'skip' && github.ref == 'refs/heads/main' && needs.assistant.result == 'skipped'"));
+ assert.match(release,/default: skip/);
  assert.equal(release.split("LZC_ASSISTANT_ENABLED: ${{ vars.LZC_ASSISTANT_ENABLED }}").length,3);
  assert.doesNotMatch(release,/continue-on-error:/);
  assert.match(live,/workflow_call:/);
@@ -269,6 +269,12 @@ test("release uses private inputs, rejects wrong destinations and omits privileg
   assert.equal(run("application").status,0);
   assert.equal(JSON.parse(readFileSync(vars)).LZC_ASSISTANT_ENABLED,"false","Skipping qualification also preserves opt-out");
   env.LZC_ASSISTANT_ENABLED="true";
+  env.LZC_RELEASE_MODE="skip";
+  env.GITHUB_REF="refs/heads/feature/landing-zone-configurator";
+  assert.notEqual(run("application").status,0,"Skipped qualification requires main");
+  env.GITHUB_REF="refs/heads/main";
+  assert.equal(run("application").status,0);
+  assert.equal(JSON.parse(readFileSync(vars)).LZC_ASSISTANT_ENABLED,"true","Stage-neutral skip preserves Assistant runtime configuration");
   env.LZC_RELEASE_MODE="qualified";
   assert.equal(run("application").status,0);
   assert.equal(JSON.parse(readFileSync(vars)).LZC_ASSISTANT_ENABLED,"true");
