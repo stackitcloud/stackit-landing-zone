@@ -2,6 +2,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+The [repository separation concept](repository-separation-concept.md) proposes a slimmer independently usable Accelerator and extraction of the Configurator. The repository move has not been implemented.
+
 The [private runner concept](private-runner-concept.md) describes a proposed extension for private service APIs using STACKIT Git and VM runners in the SNA. It is not an implemented execution option.
 
 This repository is a production-ready OpenTofu/Terraform framework for deploying a STACKIT Landing Zone. It provisions the complete cloud foundation, covering governance hierarchy, identity and access management, shared networking, optional firewall, DNS, secrets management, observability, and repeatable per-workload project templates.

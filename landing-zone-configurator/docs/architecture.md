@@ -3,6 +3,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+The proposed [repository separation](../../docs/repository-separation-concept.md) prioritizes a slim native Accelerator. The Configurator would consume native releases as verified versioned dependencies; the move is not implemented.
+
 The proposed [customer-installed software profile](customer-installation-concept.md) describes bootstrap, local passkeys/optional corporate SSO and delegated cloud execution separately from the current hosted mode. It is not implemented.
 
 The proposed [private execution path using STACKIT Git and VM runners](../../docs/private-runner-concept.md) is documented separately. The Configurator would optionally submit to the same customer pipelines; this does not yet replace the CF execution described here.
