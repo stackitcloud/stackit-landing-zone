@@ -313,10 +313,14 @@ export function Organisation({
               </h3>
               <p>
                 {tenant.organizationId
-                  ? t(
-                      "STACKIT Organisation: {{value0}} · Zuordnung noch nicht verifiziert",
-                      { value0: tenant.organizationId },
-                    )
+                  ? t("STACKIT Organisation: {{value0}} · {{value1}}", {
+                      value0: tenant.organizationId,
+                      value1: t(
+                        tenant.organizationVerified
+                          ? "Zuordnung verifiziert"
+                          : "Zuordnung noch nicht verifiziert",
+                      ),
+                    })
                   : t("Keine STACKIT Organisation zugeordnet")}
               </p>
               {tenant.kind === "organisation" && (
