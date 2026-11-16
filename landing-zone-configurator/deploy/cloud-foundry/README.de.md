@@ -29,9 +29,10 @@ des Repositorys **Configurator Release** und dann **Run workflow** auswählen:
    auf `0` zum Deaktivieren/Abbauen des Pools setzen. Standard ist `0`; zulässig
    sind `0`–`4`. Jede Reserve benötigt zusätzlich zu aktiven Aufträgen 1 GiB RAM
    und ein Disk-Budget von 4 GiB.
-5. Für normale Releases **release_mode=qualified** beibehalten und den Workflow
-   starten. Er qualifiziert den echten Assistant, baut und testet beide
-   Pakete und erstellt anschließend den geschützten, quellgebundenen Buildpack-Tag.
+5. **release_mode=skip** (Standard) wählen, wenn keine neue Assistant-Qualifikation
+   nötig ist; **qualified** führt zusätzlich die wiederholte Live-Suite aus.
+   Beide Modi bauen/testen dieselben Pakete und veröffentlichen den geschützten
+   quellgebundenen Buildpack-Tag.
 6. Wenn **deploy** auf Prüfung wartet, über **Review deployments** das
    Environment **lzc-dev-release** mit einem autorisierten Prüferkonto freigeben.
 7. Auf den Erfolg des gesamten Laufs warten, einschließlich Runner-Isolation, Engine-Prüfungen,
@@ -48,16 +49,16 @@ Ein überholter Branch-HEAD wird abgelehnt, statt stillschweigend eine andere
 Revision zu deployen. Bei einem gewöhnlichen neuen Release weder Repository-Token-Rechte
 erweitern noch Tags manuell erstellen.
 
-Für qualifiziertes „jetzt bauen, später deployen“ **release_mode=qualified** beibehalten und **build_only** anhaken. Qualifizierung, Paketierung und Tag-
-Veröffentlichung laufen weiterhin, aber es findet kein Cloud-Deployment statt. Später einen **neuen**
-manuellen Lauf auf `main` starten, **build_only** nicht anhaken und die ursprüngliche
-numerische Build-Run-ID unter **release_run_id** eintragen. Damit wird exakt das qualifizierte
-Artefakt promoviert, ohne Qualifizierung/Build zu wiederholen oder einen historischen Commit zu taggen;
-es wird nicht der neueste Anwendungsquellstand ausgewählt. Das ursprüngliche Artefakt muss
-noch vorhanden und darf nicht abgelaufen sein.
+Für „jetzt bauen, später deployen“ **skip** oder **qualified** wählen und
+**build_only** anhaken. Beide Modi paketieren und veröffentlichen den geschützten
+Tag; nur qualified führt Live-Assistant-Prüfungen aus. Später einen neuen manuellen
+Lauf auf `main` mit demselben Modus starten, **build_only** nicht anhaken und
+ursprüngliche numerische Build-Run-ID unter **release_run_id** eintragen. Exaktes
+Artefakt ohne Qualifikation, Neubau oder historische Tag-Veröffentlichung deployen;
+das Artefakt muss noch aufbewahrt sein.
 
 Nach einem reinen Deployment-Fehler kann eine neue Promotion den erfolgreichen
-qualifizierten Build ebenso wiederverwenden. Nicht **Re-run jobs** verwenden: Release-Versuche
+Build mit skip oder qualified ebenso wiederverwenden. Nicht **Re-run jobs** verwenden: Release-Versuche
 nach dem ersten werden abgelehnt. Vor einem weiteren Lauf den tatsächlichen Fehler prüfen;
 Fehler bleiben erhalten, und der Workflow führt keine automatische Deployment-
 Wiederholung durch. Historische Artefakte ohne Buildpack-Tag benötigen den unten beschriebenen
@@ -353,32 +354,38 @@ Neuabruf den separaten lokalen Login-Checkpoint ausdrücklich aus.
 
 ### Dev-Release ohne Live-Qualifikation des Assistant
 
-Bei Model-Serving-Ausfällen unter
-**Actions > Configurator Release > Run workflow** auf Branch **main** ausdrücklich
-**release_mode=dev-skip-assistant-qualification** wählen. **build_only** nicht
-anhaken, **release_run_id** leer lassen und **runner_pool_size=1** setzen.
-Den genauen Quellstand/Lauf prüfen und nach allen anwendbaren Build-/
-Veröffentlichungsprüfungen die bestehende Umgebung **lzc-dev-release** freigeben.
-Diese ausdrückliche Dev-Ausnahme überspringt nur den Live-Qualifikationsjob des
-Assistant. `LZC_ASSISTANT_ENABLED` übernimmt weiterhin die bestehende
-Umgebungseinstellung; ein konfigurierter Assistant bleibt aktiviert, ohne neuen
-Live-Qualifikationsnachweis für diesen Release. Ob Inferenz funktioniert, hängt
-weiterhin von der Modellverfügbarkeit ab. Dies gilt nicht als erfolgreiche
-Qualifikation und löscht keine früheren fehlgeschlagenen Nachweise. Alle übrigen
-Prüfungen, Migrationen, geschützten Tags und Dev-Zielprüfungen bleiben erhalten.
-Gespräche und Vorschläge bleiben gespeichert; bestehende Laufzeitvalidierung,
-Autorisierung und Revisionsprüfungen bleiben unverändert. Der Modus autorisiert
-weder Produktion noch Kunden-Infrastruktur-Apply.
+**Configurator Release** auf **main** verwenden. **release_mode=skip** (Standard)
+wählen, wenn keine neue Live-Qualifikation des Assistant nötig ist; **qualified**
+führt die vollständige wiederholte Live-Suite aus. Änderungen an Assistant-Fakten/
+-Fähigkeiten benötigen weiterhin quellgebundene Qualifikation gemäß Beitragsanleitung.
+Überspringen behauptet keine Qualifikation und entfernt keine fehlgeschlagenen
+Nachweise.
 
-Das Manifest vermerkt die Beschränkung auf Dev und `assistantQualified=false`;
-der Build-Job heißt `build-dev-skip-assistant-qualification`. Diese Artefakte
-können nicht mit `release_run_id` übernommen werden, auch nicht als qualifizierter
-Release. Nach einem Deploymentfehler sind Untersuchung und ein neuer manueller
-Lauf nötig. `build_only=true` erlaubt einen Build zur Prüfung, dessen Artefakt
-anschließend nicht übernommen werden kann. Ein qualifizierter Release erfordert
-weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
-quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
-Übernahmebedingungen bleiben unverändert.
+Für Dev mit anschließendem Prod **build_only=false** und **release_run_id** leer
+lassen, Dev-**runner_pool_size** wählen (beispielsweise `2`). Build, Datenbank-/
+Browser-/native Prüfungen und geschützte Buildpack-Veröffentlichung laufen einmal,
+danach das manuell freigegebene **lzc-dev-release**-Deployment. Die Assistant-
+Laufzeiteinstellung bleibt in beiden Modi erhalten. Kein Kunden-Infrastruktur-
+Apply wird dadurch autorisiert.
+
+Nach Erfolg des **gesamten Laufs** dessen numerische Run-ID in **Configurator
+Production Release** auf derselben `main`-Revision verwenden: **publish=true**,
+kuratierter Versionstag (aktuell **v2.1.0**) und **derselbe release_mode**.
+Veröffentlichung und **lzc-prod-release**-Freigabe verwenden unveränderte Pakete;
+Configurator Release nicht nur für einen zusätzlichen Prod-Build erneut starten.
+Ist Dev nicht gewünscht, im ersten Lauf **build_only=true** wählen. Produktion
+baut nicht neu.
+
+Ein neues `skip`-Manifest vermerkt umgebungsunabhängigen Umfang,
+`assistantQualified=false` und `assistantQualification=skipped`; der Job heißt
+**build-skip**. `qualified` verlangt weiter erfolgreiche Live-Qualifikation.
+Bestehende Builds lassen sich über **release_run_id** später ohne Neubau nach Dev
+übernehmen, unter Quell-/Tag- und Artefaktprüfung. Historische Artefakte mit
+**dev-skip-assistant-qualification** bleiben auf Dev beschränkt und nicht
+promotierbar. Veröffentlichte **accepted-assistant-limitations**-Releases bleiben
+für kompatible erneute Deployments lesbar. Beide alten Modi sind keine neue
+Laufauswahl. Eine fehlgeschlagene Qualifikation lässt sich nicht als `skip`
+umetikettieren.
 
 
 ## Unveränderlicher Release und Promotion
@@ -395,14 +402,14 @@ Bauen und qualifizieren, ohne CF zu verändern:
 
 ```sh
 gh workflow run configurator-release.yml \
-	--ref feature/landing-zone-configurator -f build_only=true
+	--ref main -f release_mode=qualified -f build_only=true
 ```
 
 Diesen erfolgreichen Build ohne Neubau in das geschützte Dev-Environment promovieren:
 
 ```sh
 gh workflow run configurator-release.yml \
-	--ref feature/landing-zone-configurator -f release_run_id=<build-run-id>
+	--ref main -f release_mode=qualified -f release_run_id=<build-run-id>
 ```
 
 Promotion prüft Repository, erlaubten Quellbranch und Event, Workflow,
@@ -413,11 +420,10 @@ Runtime-Variablen und Secrets des geschützten Environments. Environment-Freigab
 Zielbeschränkungen, Migrationsschutz und Dienstprüfungen gelten weiterhin.
 Artefakte werden 30 Tage aufbewahrt; abgelaufene Artefakte werden nicht stillschweigend neu gebaut.
 
-Derzeit ist nur Dev als Deployment-Ziel aktiviert. Weitere Stages benötigen ihre
-eigene geprüfte Zielkonfiguration und geschützte Environments, keine separaten
-Anwendungsbuilds oder Authentifizierungsimplementierungen. Das Promovieren älterer Bytes ist
-kein automatischer Datenbank-Rollback: Migrationen sind nur vorwärtsgerichtet, und das Zurücksetzen
-von Anwendungscode erfordert ausdrückliche Qualifizierung der Schemakompatibilität.
+Prod verwendet denselben vollständig erfolgreichen Build über **Configurator
+Production Release**, nach Veröffentlichung und geschützter Freigabe. Ein Dev-
+Deployment erfordert keinen zusätzlichen Prod-Build. Gleichen Modus und dieselbe
+Quellrevision verwenden; siehe [Produktionshandbuch](../../docs/production.de.md).
 
 <a id="network-verification"></a>
 

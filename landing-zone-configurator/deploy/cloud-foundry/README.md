@@ -24,9 +24,9 @@ page and select **Configurator Release**, then **Run workflow**:
 4. Set **runner_pool_size** to `1` for one prepared, one-shot Dev Runner, or `0`
    to disable/drain the pool. The default is `0`; valid values are `0`–`4`.
    Each reserve uses 1 GiB RAM and a 4 GiB disk budget, in addition to active jobs.
-5. Keep **release_mode=qualified** for a normal release. Start the workflow.
-   It qualifies the real Assistant, builds and tests both
-   packages, then creates the protected source-bound buildpack tag.
+5. Select **release_mode=skip** (default) when new Assistant qualification is not
+   needed; **qualified** additionally runs the repeated live suite. Both modes
+   build/test the same packages and publish the protected source-bound buildpack tag.
 6. When **deploy** waits for review, use **Review deployments** to approve
    **lzc-dev-release** with an authorized reviewer account.
 7. Wait for the whole run to succeed, including Runner isolation, engine checks,
@@ -42,16 +42,15 @@ a superseded branch HEAD is rejected rather than silently deploying another
 revision. Do not add broader repository token permissions or manually create
 tags during an ordinary new release.
 
-For qualified build now/deploy later, keep **release_mode=qualified** and check **build_only**. Qualification, packaging and tag
-publication still run, but no cloud deployment occurs. Later start a **new**
-manual run on `main`, leave **build_only** unchecked and enter the original
-numeric build run ID in **release_run_id**. This promotes that exact qualified
-artifact without repeating qualification/build or tagging a historical commit;
-it does not select the newest application source. The original artifact must
-still exist and must not have expired.
+For build now/deploy later, choose **skip** or **qualified** and check
+**build_only**. Both modes package and publish the protected tag; only qualified
+runs live Assistant checks. Later start a new manual run on `main`, use the same
+mode, leave **build_only** unchecked and enter the original numeric build run ID
+in **release_run_id**. This deploys the exact artifact without qualification,
+rebuild or historical tag publication; the artifact must still be retained.
 
 After a deployment-only failure, a new promotion can reuse the successful
-qualified build in the same way. Do not use **Re-run jobs**: release attempts
+skip/qualified build in the same way. Do not use **Re-run jobs**: release attempts
 after the first are rejected. Inspect the actual failure before starting another
 run; failures are retained and the workflow performs no automatic deployment
 retry. Historical artifacts missing their buildpack tag need the explicit
@@ -333,30 +332,33 @@ exclude the separate local login checkpoint before asserting an exact refetch.
 
 ### Dev release without live Assistant qualification
 
-During Model Serving outages, select
-**release_mode=dev-skip-assistant-qualification** in
-**Actions > Configurator Release > Run workflow**, branch **main**.
-Leave **build_only** unchecked and **release_run_id** empty; set
-**runner_pool_size=1**. Review the exact source/run and approve the existing
-**lzc-dev-release** environment after all applicable build/publication checks.
-This explicit Dev exception skips only the live Assistant qualification job.
-`LZC_ASSISTANT_ENABLED` continues to use the existing environment setting;
-the Assistant remains enabled when configured, without a new live qualification
-receipt for this release. Model availability still determines whether inference
-works. This is not a successful qualification and does not erase earlier failed
-receipts. All non-Assistant checks, migrations, protected tags and Dev destination
-guards remain in force. Conversations and proposals are preserved; existing
-runtime validation, authorization and revision checks remain unchanged. No
-production deployment or customer infrastructure Apply is authorized by this mode.
+Use **Configurator Release** on **main**. Choose **release_mode=skip** (default)
+when no new live Assistant qualification is needed, or **qualified** to run the
+complete repeated live suite. Changes to Assistant facts/capabilities still need
+source-bound qualification according to the contributor guidance. Skipping does
+not claim qualification or remove earlier failed receipts.
 
-The manifest records Dev-only scope and `assistantQualified=false`; the build
-job is named `build-dev-skip-assistant-qualification`. These artifacts cannot be
-promoted using `release_run_id`, including as a qualified release. A deployment
-failure requires inspection and a fresh manual run. `build_only=true` may build
-this mode for inspection, but its artifact cannot subsequently be promoted.
-A qualified release still requires a fresh **release_mode=qualified** run with
-the complete source-bound live qualification. The default **qualified** path
-and its promotion requirements are unchanged.
+For Dev followed by Prod, leave **build_only=false** and **release_run_id** empty;
+choose the Dev **runner_pool_size** (for example `2`). Build, database/browser/
+native checks and protected buildpack publication run once, followed by the
+manually approved **lzc-dev-release** deployment. The Assistant runtime setting
+remains unchanged in either mode. No customer infrastructure Apply is authorized.
+
+After the **whole run succeeds**, use its numeric run ID in **Configurator
+Production Release** on the same `main` revision: **publish=true**, a curated
+version tag (currently **v2.1.0**) and the **same release_mode**. Publication and
+**lzc-prod-release** approval reuse the immutable packages; do not run Configurator
+Release again just to create a Prod-only build. If Dev is not wanted, select
+**build_only=true** in the initial run instead. Production does not rebuild.
+
+A new `skip` manifest records stage-neutral scope, `assistantQualified=false` and
+`assistantQualification=skipped`; the job is **build-skip**. `qualified` still
+requires successful live qualification. Existing builds can be deployed to Dev
+later through **release_run_id** without rebuilding, subject to source/tag and
+artifact checks. Historical **dev-skip-assistant-qualification** artifacts remain
+Dev-only/non-promotable; published **accepted-assistant-limitations** releases
+remain readable for compatible redeployment. Neither legacy mode is a new-run
+selection. A failed qualification cannot be relabeled as `skip`.
 
 
 ## Immutable release and promotion
@@ -373,14 +375,14 @@ Build and qualify without changing CF:
 
 ```sh
 gh workflow run configurator-release.yml \
-	--ref feature/landing-zone-configurator -f build_only=true
+	--ref main -f release_mode=qualified -f build_only=true
 ```
 
 Promote that successful build to the protected Dev Environment without rebuilding:
 
 ```sh
 gh workflow run configurator-release.yml \
-	--ref feature/landing-zone-configurator -f release_run_id=<build-run-id>
+	--ref main -f release_mode=qualified -f release_run_id=<build-run-id>
 ```
 
 Promotion verifies the repository, allowed source branch and event, workflow,
@@ -391,11 +393,10 @@ protected Environment's runtime variables and secrets. Environment approval,
 destination restrictions, migration guards and service checks still apply.
 Artifact retention is 30 days; expired artifacts are not silently rebuilt.
 
-Only Dev is currently an enabled deployment target. Additional stages need their
-own reviewed destination configuration and protected Environments, not separate
-application builds or authentication implementations. Promoting older bytes is
-not an automatic database rollback: migrations are forward-only, and reverting
-application code requires explicit schema compatibility qualification.
+Production consumes the same fully successful build through **Configurator
+Production Release**, after publication and protected approval. Deploying Dev
+does not require a separate Prod build. Use the same mode and source revision;
+see the [production runbook](../../docs/production.md).
 
 ## Network verification
 

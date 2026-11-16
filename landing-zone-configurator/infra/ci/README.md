@@ -75,30 +75,33 @@ The workflows contain all required environment variables, preparation steps and 
 
 ### Dev release without live Assistant qualification
 
-During Model Serving outages, select
-**release_mode=dev-skip-assistant-qualification** in
-**Actions > Configurator Release > Run workflow**, branch **main**.
-Leave **build_only** unchecked and **release_run_id** empty; set
-**runner_pool_size=1**. Review the exact source/run and approve the existing
-**lzc-dev-release** environment after all applicable build/publication checks.
-This explicit Dev exception skips only the live Assistant qualification job.
-`LZC_ASSISTANT_ENABLED` continues to use the existing environment setting;
-the Assistant remains enabled when configured, without a new live qualification
-receipt for this release. Model availability still determines whether inference
-works. This is not a successful qualification and does not erase earlier failed
-receipts. All non-Assistant checks, migrations, protected tags and Dev destination
-guards remain in force. Conversations and proposals are preserved; existing
-runtime validation, authorization and revision checks remain unchanged. No
-production deployment or customer infrastructure Apply is authorized by this mode.
+Use **Configurator Release** on **main**. Choose **release_mode=skip** (default)
+when no new live Assistant qualification is needed, or **qualified** to run the
+complete repeated live suite. Changes to Assistant facts/capabilities still need
+source-bound qualification according to the contributor guidance. Skipping does
+not claim qualification or remove earlier failed receipts.
 
-The manifest records Dev-only scope and `assistantQualified=false`; the build
-job is named `build-dev-skip-assistant-qualification`. These artifacts cannot be
-promoted using `release_run_id`, including as a qualified release. A deployment
-failure requires inspection and a fresh manual run. `build_only=true` may build
-this mode for inspection, but its artifact cannot subsequently be promoted.
-A qualified release still requires a fresh **release_mode=qualified** run with
-the complete source-bound live qualification. The default **qualified** path
-and its promotion requirements are unchanged.
+For Dev followed by Prod, leave **build_only=false** and **release_run_id** empty;
+choose the Dev **runner_pool_size** (for example `2`). Build, database/browser/
+native checks and protected buildpack publication run once, followed by the
+manually approved **lzc-dev-release** deployment. The Assistant runtime setting
+remains unchanged in either mode. No customer infrastructure Apply is authorized.
+
+After the **whole run succeeds**, use its numeric run ID in **Configurator
+Production Release** on the same `main` revision: **publish=true**, a curated
+version tag (currently **v2.1.0**) and the **same release_mode**. Publication and
+**lzc-prod-release** approval reuse the immutable packages; do not run Configurator
+Release again just to create a Prod-only build. If Dev is not wanted, select
+**build_only=true** in the initial run instead. Production does not rebuild.
+
+A new `skip` manifest records stage-neutral scope, `assistantQualified=false` and
+`assistantQualification=skipped`; the job is **build-skip**. `qualified` still
+requires successful live qualification. Existing builds can be deployed to Dev
+later through **release_run_id** without rebuilding, subject to source/tag and
+artifact checks. Historical **dev-skip-assistant-qualification** artifacts remain
+Dev-only/non-promotable; published **accepted-assistant-limitations** releases
+remain readable for compatible redeployment. Neither legacy mode is a new-run
+selection. A failed qualification cannot be relabeled as `skip`.
 
 
 ## Logs and secrets

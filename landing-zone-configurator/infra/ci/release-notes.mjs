@@ -10,6 +10,16 @@ const notes={
    "Shared foundations, Application Landing Zone upgrades and audit-log integration.",
   ],
  },
+ "v2.1.0": {
+  introduction:"Notifications and workspace management for the Landing Zone Configurator.",
+  changes:[
+   "Add the notification inbox and branded German/English MailOut emails with per-user topic preferences.",
+   "Refresh member and invitation management with clear recipients and delivery status.",
+   "Use explicit workspaces, improve English interface coverage and correct bodyless deletion requests.",
+   "Show organization verification consistently in workspace selection.",
+   "Build once and reuse the same immutable package for Dev and manually approved production, with optional Assistant qualification.",
+  ],
+ },
  "v2.0.1": {
   introduction:"Production fixes for the Landing Zone Configurator.",
   changes:[
@@ -21,5 +31,6 @@ const notes={
 };
 const selected=notes[tag];
 if(!selected)throw new Error("Curated release notes required for this version");
-const limitations=process.env.LZC_RELEASE_MODE==="accepted-assistant-limitations";
-console.log(`${selected.introduction}\n\n${selected.changes.map(change=>`- ${change}`).join("\n")}\n\n${limitations?"Known limitation: the enabled Assistant is not fully qualified; intermittent model-service HTTP 400 errors remain under investigation in #225.":"Assistant qualification is recorded in the attached source-bound release manifest."}\n\nOperator setup, credential rotation and recovery: [production runbook](https://github.com/stackitcloud/stackit-landing-zone/blob/${tag}/landing-zone-configurator/docs/production.md).`);
+const limitations=["skip","accepted-assistant-limitations"].includes(process.env.LZC_RELEASE_MODE);
+const qualificationNote=process.env.LZC_RELEASE_MODE==="skip"?"Assistant live qualification was skipped for this release; known intermittent model-service HTTP 400 errors remain tracked in #225.":limitations?"Known limitation: the enabled Assistant is not fully qualified; intermittent model-service HTTP 400 errors remain under investigation in #225.":"Assistant qualification is recorded in the attached source-bound release manifest.";
+console.log(`${selected.introduction}\n\n${selected.changes.map(change=>`- ${change}`).join("\n")}\n\n${qualificationNote}\n\nOperator setup, credential rotation and recovery: [production runbook](https://github.com/stackitcloud/stackit-landing-zone/blob/${tag}/landing-zone-configurator/docs/production.md).`);

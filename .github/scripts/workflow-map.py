@@ -180,12 +180,12 @@ def render(rows, sources, language):
             out.append("</g>")
             y += row_height
     notes = [
-        "Build-only Configurator Release artifacts feed Prod. Dev-skip artifacts cannot be promoted to Prod.",
+        "One qualified/skip build feeds Dev and Prod; no rebuild. Historical Dev-only artifacts remain excluded.",
         "Shared infrastructure workflows choose lzc-dev / lzc-prod; no separate copies. * = source path filter.",
         "Environment reviewers and branch rules are configured in GitHub. Job conditions still apply; not every cell runs.",
         "Phase blocks summarize jobs, not a complete dependency DAG. Tests/packaging and staging can run in parallel.",
     ] if language == "en" else [
-        "Build-only-Artefakte aus Configurator Release gehen an Prod. Dev-skip-Artefakte sind dafür nicht zulässig.",
+        "Ein Build mit qualified/skip versorgt Dev und Prod. Alte Dev-only-Artefakte bleiben ausgeschlossen.",
         "Gemeinsame Infrastruktur-Workflows wählen lzc-dev / lzc-prod; keine Kopien. * = Quellpfadfilter.",
         "Reviewer und Branchregeln werden in GitHub gesetzt. Job-Bedingungen gelten weiter; nicht jede Zelle läuft.",
         "Phasenblöcke fassen Jobs zusammen, kein vollständiger Abhängigkeitsgraph. Tests und Staging laufen teils parallel.",

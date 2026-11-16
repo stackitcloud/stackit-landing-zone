@@ -81,32 +81,38 @@ Die Workflows enthalten alle benötigten Umgebungsvariablen, Vorbereitungsschrit
 
 ### Dev-Release ohne Live-Qualifikation des Assistant
 
-Bei Model-Serving-Ausfällen unter
-**Actions > Configurator Release > Run workflow** auf Branch **main** ausdrücklich
-**release_mode=dev-skip-assistant-qualification** wählen. **build_only** nicht
-anhaken, **release_run_id** leer lassen und **runner_pool_size=1** setzen.
-Den genauen Quellstand/Lauf prüfen und nach allen anwendbaren Build-/
-Veröffentlichungsprüfungen die bestehende Umgebung **lzc-dev-release** freigeben.
-Diese ausdrückliche Dev-Ausnahme überspringt nur den Live-Qualifikationsjob des
-Assistant. `LZC_ASSISTANT_ENABLED` übernimmt weiterhin die bestehende
-Umgebungseinstellung; ein konfigurierter Assistant bleibt aktiviert, ohne neuen
-Live-Qualifikationsnachweis für diesen Release. Ob Inferenz funktioniert, hängt
-weiterhin von der Modellverfügbarkeit ab. Dies gilt nicht als erfolgreiche
-Qualifikation und löscht keine früheren fehlgeschlagenen Nachweise. Alle übrigen
-Prüfungen, Migrationen, geschützten Tags und Dev-Zielprüfungen bleiben erhalten.
-Gespräche und Vorschläge bleiben gespeichert; bestehende Laufzeitvalidierung,
-Autorisierung und Revisionsprüfungen bleiben unverändert. Der Modus autorisiert
-weder Produktion noch Kunden-Infrastruktur-Apply.
+**Configurator Release** auf **main** verwenden. **release_mode=skip** (Standard)
+wählen, wenn keine neue Live-Qualifikation des Assistant nötig ist; **qualified**
+führt die vollständige wiederholte Live-Suite aus. Änderungen an Assistant-Fakten/
+-Fähigkeiten benötigen weiterhin quellgebundene Qualifikation gemäß Beitragsanleitung.
+Überspringen behauptet keine Qualifikation und entfernt keine fehlgeschlagenen
+Nachweise.
 
-Das Manifest vermerkt die Beschränkung auf Dev und `assistantQualified=false`;
-der Build-Job heißt `build-dev-skip-assistant-qualification`. Diese Artefakte
-können nicht mit `release_run_id` übernommen werden, auch nicht als qualifizierter
-Release. Nach einem Deploymentfehler sind Untersuchung und ein neuer manueller
-Lauf nötig. `build_only=true` erlaubt einen Build zur Prüfung, dessen Artefakt
-anschließend nicht übernommen werden kann. Ein qualifizierter Release erfordert
-weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
-quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
-Übernahmebedingungen bleiben unverändert.
+Für Dev mit anschließendem Prod **build_only=false** und **release_run_id** leer
+lassen, Dev-**runner_pool_size** wählen (beispielsweise `2`). Build, Datenbank-/
+Browser-/native Prüfungen und geschützte Buildpack-Veröffentlichung laufen einmal,
+danach das manuell freigegebene **lzc-dev-release**-Deployment. Die Assistant-
+Laufzeiteinstellung bleibt in beiden Modi erhalten. Kein Kunden-Infrastruktur-
+Apply wird dadurch autorisiert.
+
+Nach Erfolg des **gesamten Laufs** dessen numerische Run-ID in **Configurator
+Production Release** auf derselben `main`-Revision verwenden: **publish=true**,
+kuratierter Versionstag (aktuell **v2.1.0**) und **derselbe release_mode**.
+Veröffentlichung und **lzc-prod-release**-Freigabe verwenden unveränderte Pakete;
+Configurator Release nicht nur für einen zusätzlichen Prod-Build erneut starten.
+Ist Dev nicht gewünscht, im ersten Lauf **build_only=true** wählen. Produktion
+baut nicht neu.
+
+Ein neues `skip`-Manifest vermerkt umgebungsunabhängigen Umfang,
+`assistantQualified=false` und `assistantQualification=skipped`; der Job heißt
+**build-skip**. `qualified` verlangt weiter erfolgreiche Live-Qualifikation.
+Bestehende Builds lassen sich über **release_run_id** später ohne Neubau nach Dev
+übernehmen, unter Quell-/Tag- und Artefaktprüfung. Historische Artefakte mit
+**dev-skip-assistant-qualification** bleiben auf Dev beschränkt und nicht
+promotierbar. Veröffentlichte **accepted-assistant-limitations**-Releases bleiben
+für kompatible erneute Deployments lesbar. Beide alten Modi sind keine neue
+Laufauswahl. Eine fehlgeschlagene Qualifikation lässt sich nicht als `skip`
+umetikettieren.
 
 
 ## Logs und Secrets

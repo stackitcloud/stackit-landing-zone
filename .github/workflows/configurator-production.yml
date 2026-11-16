@@ -10,17 +10,17 @@ on:
       version:
         description: Stable GitHub Release tag
         type: string
-        default: v2.0.0
+        default: v2.1.0
         required: true
       release_run_id:
-        description: Successful build-only run; required when publishing a new release
+        description: Successful Configurator Release run (with or without Dev deployment); reuse its immutable build
         type: string
         required: false
       release_mode:
         description: Assistant qualification policy recorded in the published manifest
         type: choice
-        default: accepted-assistant-limitations
-        options: [qualified, accepted-assistant-limitations]
+        default: skip
+        options: [skip, qualified]
   release:
     types: [published]
 

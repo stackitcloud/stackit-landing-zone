@@ -26,7 +26,8 @@ are configured in GitHub, not inferred from the presence of an Environment name.
 Shared and target-selectable workflows appear once at the top. Separate Dev and
 Prod delivery rows follow below. **Configurator Release** also builds shared
 production inputs; its deployment job targets Dev. Production consumes compatible
-published assets and does not rebuild. Dev-skip artifacts are never Prod inputs.
+published assets and does not rebuild. One skip/qualified build can feed Dev and
+Prod; historical Dev-only artifacts remain excluded.
 The graphic summarizes phases rather than every step or dependency edge. For
 example, browser acceptance/Runner packaging and CF staging run partly in parallel.
 Calling **Verify Deployment** entails real test-cloud Apply and cleanup, even
@@ -48,35 +49,38 @@ when that call appears in the pre-check phase of **Publish Release**.
 
 ### Dev release without live Assistant qualification
 
-During Model Serving outages, select
-**release_mode=dev-skip-assistant-qualification** in
-**Actions > Configurator Release > Run workflow**, branch **main**.
-Leave **build_only** unchecked and **release_run_id** empty; set
-**runner_pool_size=1**. Review the exact source/run and approve the existing
-**lzc-dev-release** environment after all applicable build/publication checks.
-This explicit Dev exception skips only the live Assistant qualification job.
-`LZC_ASSISTANT_ENABLED` continues to use the existing environment setting;
-the Assistant remains enabled when configured, without a new live qualification
-receipt for this release. Model availability still determines whether inference
-works. This is not a successful qualification and does not erase earlier failed
-receipts. All non-Assistant checks, migrations, protected tags and Dev destination
-guards remain in force. Conversations and proposals are preserved; existing
-runtime validation, authorization and revision checks remain unchanged. No
-production deployment or customer infrastructure Apply is authorized by this mode.
+Use **Configurator Release** on **main**. Choose **release_mode=skip** (default)
+when no new live Assistant qualification is needed, or **qualified** to run the
+complete repeated live suite. Changes to Assistant facts/capabilities still need
+source-bound qualification according to the contributor guidance. Skipping does
+not claim qualification or remove earlier failed receipts.
 
-The manifest records Dev-only scope and `assistantQualified=false`; the build
-job is named `build-dev-skip-assistant-qualification`. These artifacts cannot be
-promoted using `release_run_id`, including as a qualified release. A deployment
-failure requires inspection and a fresh manual run. `build_only=true` may build
-this mode for inspection, but its artifact cannot subsequently be promoted.
-A qualified release still requires a fresh **release_mode=qualified** run with
-the complete source-bound live qualification. The default **qualified** path
-and its promotion requirements are unchanged.
+For Dev followed by Prod, leave **build_only=false** and **release_run_id** empty;
+choose the Dev **runner_pool_size** (for example `2`). Build, database/browser/
+native checks and protected buildpack publication run once, followed by the
+manually approved **lzc-dev-release** deployment. The Assistant runtime setting
+remains unchanged in either mode. No customer infrastructure Apply is authorized.
+
+After the **whole run succeeds**, use its numeric run ID in **Configurator
+Production Release** on the same `main` revision: **publish=true**, a curated
+version tag (currently **v2.1.0**) and the **same release_mode**. Publication and
+**lzc-prod-release** approval reuse the immutable packages; do not run Configurator
+Release again just to create a Prod-only build. If Dev is not wanted, select
+**build_only=true** in the initial run instead. Production does not rebuild.
+
+A new `skip` manifest records stage-neutral scope, `assistantQualified=false` and
+`assistantQualification=skipped`; the job is **build-skip**. `qualified` still
+requires successful live qualification. Existing builds can be deployed to Dev
+later through **release_run_id** without rebuilding, subject to source/tag and
+artifact checks. Historical **dev-skip-assistant-qualification** artifacts remain
+Dev-only/non-promotable; published **accepted-assistant-limitations** releases
+remain readable for compatible redeployment. Neither legacy mode is a new-run
+selection. A failed qualification cannot be relabeled as `skip`.
 
 
 ### Production release and infrastructure
 
-[Configurator Production Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-production.yml) · [source](../.github/workflows/configurator-production.yml) publishes a stable release and deploys only after manual `lzc-prod-release` approval. It accepts `version` (default `v2.0.0`), `publish` (default `true`), `release_run_id` (required for publication) and `release_mode` (`qualified` or `accepted-assistant-limitations`, default `accepted-assistant-limitations`). Build first with **Configurator Release**, `build_only=true`, on the same `main` revision, using the same `release_mode` as publication. `accepted-assistant-limitations` explicitly records unqualified Assistant status and issue #225; it does not qualify a Dev-skip artifact. All non-inference checks remain mandatory.
+[Configurator Production Release](https://github.com/stackitcloud/stackit-landing-zone/actions/workflows/configurator-production.yml) · [source](../.github/workflows/configurator-production.yml) publishes a stable release and deploys only after manual `lzc-prod-release` approval. It accepts `version` (default `v2.1.0`), `publish` (default `true`), `release_run_id` (required for publication) and `release_mode` (`skip` by default, or `qualified`). Reuse a fully successful **Configurator Release** from the same `main` revision and mode, whether it deployed Dev or used `build_only=true`. A second build is unnecessary. `skip` records skipped Assistant qualification without reinterpreting historical Dev-only artifacts. All non-inference checks remain mandatory.
 
 A published stable GitHub Release with the required source-bound assets also triggers this workflow. Publication with `GITHUB_TOKEN` continues within the same run, avoiding reliance on another event. `publish=false` redeploys an existing compatible published release under a fresh manual approval. Pre-releases and arbitrary artifacts are rejected. Production uses immutable attached application/Runner assets, scoped CF credentials and rolling deployment of three web replicas.
 
@@ -137,8 +141,8 @@ it reports a result for every relevant PR.
 | Configurator Bootstrap | `root=bootstrap` by default, or `backend`; `apply=false` by default. `environment=lzc-dev\|lzc-prod`; Apply uses the selected stage's bootstrap-apply Environment. |
 | Configurator Platform | `root=platform`; `apply=false` by default. Requires the platform operator switch above; `environment=lzc-dev\|lzc-prod`; Apply uses the matching platform-apply Environment. |
 | Configurator Runtime | `root=runtime`; `apply=false` by default. Requires the runtime operator switch above; `environment=lzc-dev\|lzc-prod`; Apply uses the matching runtime-apply Environment. |
-| Configurator Release | `release_mode=qualified` and `build_only=false` by default; `release_run_id` empty means a fresh build under the selected mode. Set `build_only=true` to build without CF deployment; protected tag publication still occurs; live-model calls run in `qualified` mode. To promote an existing qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
-| Configurator Production Release | `publish=true`, `version=v2.0.0`, `release_run_id` required for publication, `release_mode=accepted-assistant-limitations` by default (or `qualified`). Build first with the same mode and `build_only=true` in Configurator Release. `publish=false` uses an existing compatible release; no rebuild. A published-release event uses that release’s immutable assets. Production activation still requires `lzc-prod-release` approval. |
+| Configurator Release | `release_mode=skip` and `build_only=false` by default; `release_run_id` empty means a fresh build under the selected mode. Set `build_only=true` to build without CF deployment; protected tag publication still occurs; live-model calls run in `qualified` mode. To promote an existing skip/qualified build, leave build-only unchecked and enter its numeric run ID; the retained artifact/tag must remain valid. |
+| Configurator Production Release | `publish=true`, `version=v2.1.0`, `release_run_id` of the fully successful Configurator Release run; `release_mode=skip` by default (or `qualified`, matching the build). The same build may already have deployed Dev; no extra build-only run. `publish=false` uses an existing compatible release without rebuilding. Production activation requires `lzc-prod-release` approval. |
 
 Release build browser acceptance and native packaging run concurrently; deployment
 stages Runner, the minimal migration payload and Web/API concurrently with isolated
