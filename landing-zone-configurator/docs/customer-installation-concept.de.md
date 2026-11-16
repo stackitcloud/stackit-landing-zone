@@ -24,16 +24,21 @@ Kein verpflichtendes STACKIT-Webclient-Ticket, kein Kunden-Mailserver und kein
 externer Identity Provider. Dies ist ein Installationsziel, keine Behauptung,
 dass jeder Service Account beliebige Projekte oder Dienste anlegen kann.
 
-Empfohlene Diskussionsbasis: kundeneigenes Cloud-Foundry-Hosting, lokale
-Passkey-Anmeldung plus optionales Kunden-OIDC-SSO und ein ausdrücklich delegiertes
-Service-Account-Ausführungsmodell. Diese Auswahl ist ein Vorschlag, noch keine
-Produktzusage. VM-Hosting ist die Alternative für rein privaten Anwendungszugriff.
+Vereinbarte Anmelderichtung: lokale Passkeys als Standard, direktes Kunden-OIDC-SSO
+als optionale Ergänzung. Für die erste Anmeldung sind weder Mailserver noch
+externer Identity Provider erforderlich. Registrierung und Wiederherstellung
+gehören zum lokalen Modus.
+
+Kundeneigenes Cloud-Foundry-Hosting und ausdrücklich delegierte Service-Account-
+Ausführung bleiben Diskussionsvorschläge. VM-Hosting ist die Alternative für rein
+privaten Anwendungszugriff. Die Login-Entscheidung legt weder Hosting noch
+Cloud-Berechtigungsmodell fest.
 
 ## 2. Anmeldeoptionen
 
 | Option | Voraussetzung beim Kunden | Vorteil | Abwägung / vorgeschlagene Rolle |
 | --- | --- | --- | --- |
-| Lokale Passkeys (WebAuthn) | Stabile HTTPS-Adresse und kompatibler Authenticator/Browser | Kein externer IDP-Client, Mailserver oder Passwortversand | Registrierung, Wiederherstellung und lokale Benutzerverwaltung implementieren; empfohlener Einstieg ohne Ticket |
+| Lokale Passkeys (WebAuthn) | Stabile HTTPS-Adresse und kompatibler Authenticator/Browser | Kein externer IDP-Client, Mailserver oder Passwortversand | Registrierung, Wiederherstellung und lokale Benutzerverwaltung implementieren; vereinbarter Standard ohne Ticket |
 | Direktes Kunden-OIDC-SSO | Kunde registriert die App in seinem eigenen IDP, etwa Entra ID oder Keycloak | Vorhandene Anmeldung/MFA und Mitarbeiteridentitäten nutzen | Benötigt Kunden-IDP-Administration; optionaler Unternehmensweg, keine Föderation über STACKIT IDP |
 | Lokales Passwort plus zweiter Faktor | Erstzugang und Wiederherstellungsprozess | Vertraute Alternative bei inkompatiblen Umgebungen | Zusätzlicher Passwort-/TOTP-Schutz und Reset-Betrieb; nicht der vorgeschlagene erste Standard |
 | E-Mail-Magic-Link | Funktionierender Mailversand, Absenderkonfiguration und Postfachzugriff | Einfacher Empfängereinstieg | MailOut/DNS/Zustellung werden Anmeldeabhängigkeiten; optional, nicht minimaler Bootstrap |
@@ -338,8 +343,9 @@ unvermeidbare Betreiberhandlungen messen, kein unbelegtes „ein Klick“ verspr
 
 ## 9. Diskussionsentscheidungen
 
-- Lokale Passkeys als Standard mit optionalem Firmen-SSO oder verpflichtendes
-  Firmen-SSO? Passkeys passen am besten zu wenigen externen Voraussetzungen.
+Vereinbart: lokale Passkeys als Standard, direktes Kunden-OIDC-SSO optional.
+Die verbleibenden Entscheidungen sind:
+
 - Ist kundeneigenes CF akzeptabel oder eine SNA-private Oberfläche bereits für das
   erste Release nötig? Letzteres spricht für VM-Hosting und benötigt
   Benutzer-Netzwerkkonnektivität.

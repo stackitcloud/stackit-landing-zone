@@ -22,16 +22,20 @@ There is no mandatory STACKIT web-client ticket, customer mail server or externa
 identity provider. This is an installation goal, not a claim that any service
 account can create arbitrary projects or provision every service.
 
-Recommended discussion baseline: customer-owned Cloud Foundry hosting, local
-passkey login plus optional customer OIDC SSO, and an explicitly delegated
-service-account execution model. These choices are proposals, not yet product
-commitments. VM hosting is the alternative for private-only application access.
+Agreed authentication direction: local passkeys are the default; direct customer
+OIDC SSO is optional. Neither a mail server nor an external identity provider is
+required for initial login. Enrollment and recovery are part of the local mode.
+
+Customer-owned Cloud Foundry hosting and explicitly delegated service-account
+execution remain proposals for discussion. VM hosting is the alternative for
+private-only application access. The login decision does not approve either
+hosting or the cloud authorization model.
 
 ## 2. Authentication options
 
 | Option | Customer prerequisite | Benefit | Trade-off / proposed role |
 | --- | --- | --- | --- |
-| Local passkeys (WebAuthn) | Stable HTTPS origin and a compatible authenticator/browser | No external IDP client, mail server or password distribution | Implement enrollment, recovery and local account administration; recommended ticket-free starting point |
+| Local passkeys (WebAuthn) | Stable HTTPS origin and a compatible authenticator/browser | No external IDP client, mail server or password distribution | Implement enrollment, recovery and local account administration; agreed ticket-free default |
 | Direct customer OIDC SSO | Customer registers an app in its own IDP, e.g. Entra ID or Keycloak | Existing sign-in/MFA and employee identity lifecycle | Requires customer IDP administration; optional enterprise path, not federation through STACKIT IDP |
 | Local password plus second factor | Initial credential and recovery process | Familiar fallback for incompatible environments | Additional password/TOTP protection and reset burden; not the proposed first default |
 | Email magic link | Working transactional email, sender configuration and mailbox access | Simple recipient onboarding | MailOut/DNS/delivery become login dependencies; optional, not the minimal bootstrap |
@@ -309,8 +313,9 @@ unavoidable operator steps, not a promised "one click" before evidence exists.
 
 ## 9. Discussion decisions
 
-- Is local passkey login the default, with optional corporate SSO, or must corporate
-  SSO be mandatory? Passkeys best match the minimal external-prerequisite goal.
+Agreed: local passkeys by default, with optional direct customer OIDC SSO. The
+remaining decisions are:
+
 - Is customer-owned CF acceptable, or is an SNA-private UI a first-release
   requirement? The latter favors VM hosting and needs user network connectivity.
 - Does "customer users" mean an approved app roster/corporate directory, or native
