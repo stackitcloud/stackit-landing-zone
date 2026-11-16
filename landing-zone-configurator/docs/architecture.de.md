@@ -4,6 +4,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+Die vorgeschlagene [Kundeninstallation als Software](customer-installation-concept.de.md) beschreibt Bootstrap, lokale Passkeys/optionales Firmen-SSO und delegierte Cloud-Ausführung getrennt von der heutigen gehosteten Betriebsart. Sie ist noch nicht implementiert.
+
 Diese Referenz beschreibt die implementierten Komponenten und ihre
 Vertrauensgrenzen. Beide gehosteten Umgebungen verwenden STACKIT OIDC; eine eigene
 Passwortverwaltung ist nicht vorgesehen. Produktion hat getrennte Infrastruktur,

@@ -3,6 +3,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+The proposed [customer-installed software profile](customer-installation-concept.md) describes bootstrap, local passkeys/optional corporate SSO and delegated cloud execution separately from the current hosted mode. It is not implemented.
+
 This reference describes the implemented components and their
 trust boundaries. Both hosted environments use STACKIT OIDC; custom password management is not
 planned. Production has independent infrastructure, three web/API replicas,
