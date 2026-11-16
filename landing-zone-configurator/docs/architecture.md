@@ -3,6 +3,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+The proposed [private execution path using STACKIT Git and VM runners](../../docs/private-runner-concept.md) is documented separately. The Configurator would optionally submit to the same customer pipelines; this does not yet replace the CF execution described here.
+
 This reference describes the implemented components and their
 trust boundaries. Both hosted environments use STACKIT OIDC; custom password management is not
 planned. Production has independent infrastructure, three web/API replicas,
