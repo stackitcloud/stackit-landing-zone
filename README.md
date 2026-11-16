@@ -27,6 +27,7 @@ filled manually and use a separate backend/state.
 
 - [Getting Started](docs/getting-started.md)
 - [Architecture/Modules](docs/architecture.md)
+- [Repository separation concept](docs/repository-separation-concept.md) - slim standalone Accelerator and separately versioned Configurator
 - [Private runner concept](docs/private-runner-concept.md) - STACKIT Git, SNA VM runners, standalone and Configurator operation (architecture proposal)
 - [Corporate VM connectivity: firewall, NAT and SSH](docs/corporate-vm-connectivity.md)
 - [Landing Zone Configurator](landing-zone-configurator/README.md)
