@@ -22,7 +22,15 @@ import {
   type Template,
 } from "@lzc/domain";
 import pg from "pg";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import { Applications } from "../apps/api/src/applications/service.js";
 import { ApplicationStateRecoveries } from "../apps/api/src/applications/state-recovery.js";
@@ -2304,6 +2312,10 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     };
     const draft = editCommonInput(source, "rm_folders", folders);
     const stored = await configurations.create(alice, draft);
+    onTestFinished(async () => {
+      const current = await configurations.get(alice, stored.id);
+      await configurations.remove(alice, stored.id, current.revision);
+    });
     const names = Object.fromEntries(
       Object.entries(folders).map(([key, folder]) => [
         key,
@@ -2333,13 +2345,13 @@ describe("real PostgreSQL session and tenant boundaries", () => {
               changes: [
                 { path: "company_name", value: "Example GmbH" },
                 { path: "company_code", value: "exg" },
-                {
-                  path: "rm_folders",
-                  value: { platform: { name: "EXG Platform" } },
-                },
               ],
+              folderNames: {
+                ...names,
+                platform: { name: "EXG Platform" },
+              },
               references: ["identity-foundations", "governance-folders"],
-            } satisfies Dialogue);
+            } satisfies Dialogue & { folderNames: typeof names });
       return Response.json({
         choices: [
           {
@@ -2377,6 +2389,16 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     }
     const answerBody = requests[1];
     if (!answerBody) throw new Error("Missing naming response request");
+    const answerRequest = JSON.parse(answerBody);
+    expect(answerRequest.response_format.json_schema.schema.required).toContain(
+      "folderNames",
+    );
+    expect(
+      Object.keys(
+        answerRequest.response_format.json_schema.schema.properties.folderNames
+          .properties,
+      ).sort(),
+    ).toEqual(Object.keys(names).sort());
     const answerContext = JSON.parse(
       JSON.parse(answerBody).messages.find(
         (entry: { role: string }) => entry.role === "user",
@@ -2402,7 +2424,6 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       "owner@example.invalid",
     );
     expect(accepted.revision).toBe(2);
-    await configurations.remove(alice, stored.id, 2);
   });
 
   it("discards only the identified pending proposal without changing its configuration, and closes stale continuations", async () => {
