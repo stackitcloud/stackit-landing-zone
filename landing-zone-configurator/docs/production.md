@@ -175,7 +175,11 @@ production-release announcement.
 5. Review the published source, notes and known limitations, then approve in
    GitHub. The job downloads those published bytes unchanged, validates both
    Runner and database migration, and activates only after all staging lanes
-   succeed. It checks HTTPS, STACKIT PKCE, unauthenticated tenant boundaries and
+   succeed. Application staging applies the redacted manifest, uploads a package
+   and builds its droplet without stopping the currently serving app. Avoid
+   `cf push --no-start`: the pinned CLI stops apps that are already started.
+   The lifecycle tests cover staging without activation and reject mismatched
+   package/build evidence. It checks HTTPS, STACKIT PKCE, unauthenticated tenant boundaries and
    the isolated Runner afterward.
 
 A human-published GitHub Release with the same assets also triggers this workflow.

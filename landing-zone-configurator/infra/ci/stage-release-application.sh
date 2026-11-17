@@ -2,7 +2,10 @@
 set -euo pipefail
 # Staging uses a private snapshot with execution disabled and no Runner binding.
 # Existing processes keep their previous environment; no new process starts.
-cf push --no-start -f deploy/cloud-foundry/manifest.yml -p .local/release --vars-file "$LZC_PRIVATE/app-stage-vars.json" --redact-env
+# push --no-start stops an already started app in CF CLI v8.17.0.
+# Apply configuration and upload independently to keep its current droplet serving.
+cf apply-manifest -f deploy/cloud-foundry/manifest.yml --vars-file "$LZC_PRIVATE/app-stage-vars.json" --redact-env
+cf create-package landing-zone-configurator -p .local/release
 app_id="$(cf app landing-zone-configurator --guid)"
 package_id="$(cf curl "/v3/packages?app_guids=$app_id&order_by=-created_at&per_page=1" | jq -er '.resources | if length == 1 and .[0].state == "READY" then .[0].guid else error("Expected a ready application package") end')"
 cf stage-package landing-zone-configurator --package-guid "$package_id"

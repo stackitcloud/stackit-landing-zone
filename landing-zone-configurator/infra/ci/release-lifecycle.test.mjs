@@ -82,7 +82,9 @@ test("activation rejects a mismatched droplet before manifest mutation or restar
 test("workflow activation is downstream of all staging lanes, while browser success gates artifact creation", () => {
   const workflow = readFileSync(join(root, "../.github/workflows/configurator-release.yml"), "utf8");
   const app = readFileSync(join(import.meta.dirname, "stage-release-application.sh"), "utf8");
-  assert.match(app, /cf push --no-start/);
+  assert.match(app, /cf apply-manifest .*--redact-env/);
+  assert.match(app, /cf create-package landing-zone-configurator/);
+  assert.doesNotMatch(app, /^cf push/m);
   assert.match(app, /cf stage-package .*--package-guid/);
   assert.doesNotMatch(app, /^cf (?:start|restart|set-droplet)/m);
   assert.ok(workflow.indexOf("stage-release-migration.sh") < workflow.indexOf("run: node infra/ci/activate-release.mjs"));
@@ -91,6 +93,41 @@ test("workflow activation is downstream of all staging lanes, while browser succ
   assert.match(readFileSync(join(import.meta.dirname, "stage-release-runner.sh"), "utf8"), /CF_HOME="\$LZC_PRIVATE\/cf-runner"/);
   assert.match(readFileSync(join(import.meta.dirname, "stage-release-migration.sh"), "utf8"), /CF_HOME="\$LZC_PRIVATE\/cf-migration"/);
 });
+
+for (const scenario of ["running", "wrong-package", "upload-failure"]) {
+  test(`application staging avoids activation commands and validates evidence: ${scenario}`, () => {
+    const dir = mkdtempSync(join(tmpdir(), "lzc-stage-app-"));
+    try {
+      writeFileSync(join(dir, "cf"), `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(join(dir, "calls"))}, JSON.stringify(args)+'\\n');
+const scenario = ${JSON.stringify(scenario)};
+if (args[0] === 'push' || ['stop', 'start', 'restart', 'set-droplet'].includes(args[0])) process.exit(90);
+if (args[0] === 'create-package' && scenario === 'upload-failure') process.exit(7);
+if (args[0] === 'app') console.log('app-id');
+if (args[0] === 'curl' && args[1].startsWith('/v3/packages?')) console.log(JSON.stringify({resources:[{guid:'new-package', state:'READY'}]}));
+if (args[0] === 'curl' && args[1].startsWith('/v3/builds?')) console.log(JSON.stringify({resources:[{guid:'new-build', state:'STAGED', package:{guid:scenario === 'wrong-package' ? 'other-package' : 'new-package'}, droplet:{guid:'new-droplet'}}]}));
+`, { mode: 0o700 });
+      const result = spawnSync("bash", [join(import.meta.dirname, "stage-release-application.sh")], {
+        env: { ...env, PATH: `${dir}:${env.PATH}`, LZC_PRIVATE: dir }, encoding: "utf8",
+      });
+      const success = scenario === "running";
+      assert.equal(result.status === 0, success, result.stderr);
+      const calls = readFileSync(join(dir, "calls"), "utf8").trim().split("\n").map(JSON.parse);
+      assert.ok(calls[0].includes("--redact-env"));
+      assert.ok(calls[0].includes(join(dir, "app-stage-vars.json")));
+      assert.deepEqual(calls[1], ["create-package", "landing-zone-configurator", "-p", ".local/release"]);
+      assert.equal(calls.some(call => ["push", "start", "stop", "restart", "set-droplet"].includes(call[0])), false);
+      if (success) {
+        assert.deepEqual(calls[4], ["stage-package", "landing-zone-configurator", "--package-guid", "new-package"]);
+        assert.deepEqual(JSON.parse(readFileSync(join(dir, "app-stage.json"))), { app: "app-id", package: "new-package", build: "new-build", droplet: "new-droplet" });
+      } else {
+        assert.equal(existsSync(join(dir, "app-stage.json")) && statSync(join(dir, "app-stage.json")).size > 0, false);
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+}
 
 test("successful activation applies final variables then assigns only the verified droplet before start", () => {
   const dir = mkdtempSync(join(tmpdir(), "lzc-activation-success-"));
