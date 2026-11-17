@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "1d697d8391ca8c3d765ae8ecae41a18ce3d8758536074fde4422098b04200706",
+  "knowledgeSha256": "48967d9f510be61be627a559970720c6f8985afa9de6ef686dc7db635edb7819",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "b1c09da0d5bc47f8260807aed1c4ed4e9af8090b375fc3c9b0093be584f2dc8f",
+    "scripts/assistant-scenarios.ts": "c9b2a1e618e3831b24543513be44ed7563bfd51a12540e97bda4c489eb405d03",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "9d0aaa5777345b4b6db11723b7ac7d0242604c2cdff515b52101bc6d1508a130",
+  "suiteSha256": "b30a7161e52133f2a875758d4b20ef652ed50177a05e53009f71bad0bb930f9f",
   "topics": [
     {
       "id": "credential-foundations",
@@ -602,6 +602,24 @@
           ]
         },
         {
+          "id": "foundations-prefixed-folders",
+          "topic": "identity-foundations",
+          "fixture": "folder-naming",
+          "acceptableReferences": [
+            "identity-foundations",
+            "governance-folders",
+            "configuration-contract"
+          ],
+          "message": "Here are some details about my company. Company name: \"Synthetic Corp\". Org ID: 00000000-0000-4000-8000-000000000001. I am the technical contact with my logged in email. Region: south Germany. Please prepare the config including a good prefix and folder names reflecting this prefix.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
           "id": "foundations-restoration",
           "topic": "identity-foundations",
           "fixture": "foundations",
@@ -853,6 +871,34 @@
             "folder_name_limit_40",
             "unsupported_description_rejected",
             "no_changes"
+          ]
+        },
+        {
+          "id": "governance-prefixed-folders-followup",
+          "topic": "governance-folders",
+          "fixture": "folder-naming",
+          "acceptableReferences": [
+            "identity-foundations",
+            "governance-folders",
+            "configuration-contract"
+          ],
+          "message": "Please change the folder names reflecting the selected prefix.",
+          "history": [
+            {
+              "role": "user",
+              "content": "The company is Synthetic Corp. Please propose a short company prefix."
+            },
+            {
+              "role": "assistant",
+              "content": "I propose company_name: Synthetic Corp and company_code: syn. Nothing has been saved."
+            }
+          ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
           ]
         }
       ]

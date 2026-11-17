@@ -1603,7 +1603,7 @@ export class AssistantModelServing {
               {
                 role: "system",
                 content:
-                  "Foundation namingDelegation paths only cover USER delegation for company names/codes or folder names. Choose the source reference from supplied namingSources (current/history/template), never rewrite or normalize a quote. No FOUNDATION delegation means paths=[] and source=none; it does NOT deny separate template naming. 'Nimm schlaue Namen für Grundsettings und Ordner' delegates company_name, company_code and rm_folders. Mentioning a company or asking how naming works is NOT delegation. Application template setup uses independent templateSetup: reference the actual USER task through source; the server supplies that original message, do not generate a quote. Central-network and separate Internet-only variants mean kinds=[corporate,public]; 'Benenne das Template entsprechend' means delegateNaming=true; 'Richte dort jeweils ein lokales Netz ein' means localNetworks=true. Do not negate these resolved template decisions because foundation namingDelegation is empty. Excluded/deferred Sandbox variants are not requested kinds. Never delegate region, Cloud IDs, IAM, parent selection or access metadata. Broad setup requests spanning identity and folder naming use configuration-contract, mode=draft. Restoring previously discussed foundations with an explicitly supplied existing organization UUID uses identity-foundations or configuration-contract, mode=draft, NOT the preceding DNS topic. This only proposes draft inputs, never verifies or binds organization access. Existing internal keys remain unchanged; new template keys are not Cloud resource IDs, which arise only from separate native deployment.",
+                  "Foundation namingDelegation paths only cover USER delegation for company names/codes or folder names. Choose the source reference from supplied namingSources (current/history/template), never rewrite or normalize a quote. No FOUNDATION delegation means paths=[] and source=none; it does NOT deny separate template naming. 'Nimm schlaue Namen für Grundsettings und Ordner' delegates company_name, company_code and rm_folders. Mentioning a company or asking how naming works is NOT delegation. Application template setup uses independent templateSetup: reference the actual USER task through source; the server supplies that original message, do not generate a quote. Central-network and separate Internet-only variants mean kinds=[corporate,public]; 'Benenne das Template entsprechend' means delegateNaming=true; 'Richte dort jeweils ein lokales Netz ein' means localNetworks=true. Do not negate these resolved template decisions because foundation namingDelegation is empty. Excluded/deferred Sandbox variants are not requested kinds. Never delegate region, Cloud IDs, IAM, parent selection or access metadata. Broad setup requests spanning identity and folder naming use configuration-contract, mode=draft. A request for a good company prefix AND folder names must include BOTH company_code and rm_folders in namingDelegation.paths. A follow-up such as \"Please change the folder names reflecting the selected prefix\" delegates rm_folders and uses governance-folders, mode=draft; the existing-folder names-only foundation contract handles this even if editorContract=true. Keep the selected prefix from the draft or preceding conversation. Do not silently drop the folder part of a combined request. Restoring previously discussed foundations with an explicitly supplied existing organization UUID uses identity-foundations or configuration-contract, mode=draft, NOT the preceding DNS topic. This only proposes draft inputs, never verifies or binds organization access. Existing internal keys remain unchanged; new template keys are not Cloud resource IDs, which arise only from separate native deployment.",
               },
               {
                 role: "system",
@@ -1839,7 +1839,13 @@ export class AssistantModelServing {
     )
       return policyBoundary();
     const delegation = {
-      paths: classifiedIntent.namingDelegation.paths,
+      paths: classifiedIntent.namingDelegation.paths.filter(
+        (path) =>
+          path !== "rm_folders" ||
+          [...namingSources.values()].some((source) =>
+            /\b(?:folders?|foldernamen|ordner(?:namen|n|s)?)\b/i.test(source),
+          ),
+      ),
       quote: namingSources.get(classifiedIntent.namingDelegation.source) ?? "",
     };
     if (
@@ -2643,7 +2649,26 @@ export class AssistantModelServing {
       ])
         editorRoots.delete(root);
     }
+    const foundationNamingDraft =
+      intent.mode === "draft" &&
+      delegation.paths.includes("rm_folders") &&
+      [
+        "identity-foundations",
+        "configuration-contract",
+        "governance-folders",
+      ].includes(intent.topic) &&
+      [...editorRoots].every((root) =>
+        [
+          "company_name",
+          "company_code",
+          "owner_email",
+          "organization_id",
+          "region",
+          "rm_folders",
+        ].includes(root),
+      );
     const editorDraft =
+      !foundationNamingDraft &&
       intent.mode === "draft" &&
       !accessAssignment &&
       intent.topic !== "firewall-policy" &&
@@ -3206,6 +3231,36 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
         "configuration-contract",
         "governance-folders",
       ].includes(intent.topic);
+    const requestedFolderNames =
+      foundationDraft && delegation.paths.includes("rm_folders")
+        ? assistantFolderNames(publicValues)
+        : {};
+    const folderNamesContract = Object.keys(requestedFolderNames).length
+      ? z.strictObject(
+          Object.fromEntries(
+            Object.keys(requestedFolderNames).map((key) => [
+              key,
+              z.strictObject({
+                name: z.string().min(1).max(40),
+                prefix: z
+                  .string()
+                  .min(1)
+                  .max(20)
+                  .regex(/^[a-zA-Z0-9][a-zA-Z0-9-]*$/)
+                  .nullable()
+                  .default(null)
+                  .describe(
+                    "Requested company prefix to apply to this folder. For an explicit prefix-renaming request, return the prefix chosen in this answer or previously proposed/saved, even when name retains its original display name. Null only for an unrequested folder or a custom name without prefix delegation. This is naming metadata, not a resource ID.",
+                  ),
+              }),
+            ]),
+          ),
+        )
+      : undefined;
+    const folderNamingOnly =
+      !!folderNamesContract &&
+      intent.topic === "governance-folders" &&
+      delegation.paths.every((path) => path === "rm_folders");
     const decisionPaths = {
       traffic: "connectivity.firewall.lan_network_range",
       capacity: "connectivity.firewall.flavor",
@@ -3875,14 +3930,30 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
             ? [
                 {
                   role: "system" as const,
-                  content:
-                    "CURRENT STEP: Restore or propose ONLY supported foundation scalars and existing folder names from actual prior user requirements and the supplied organization UUID. Keep the existing DNS/network configuration unchanged. Never resume earlier DNS questions or ask about future components. Use owner_email from user requirements or the verified human email when known, explaining its source. If a supported foundation value is still unknown, ask only that missing foundation question. Return identity-foundations/governance-folders/configuration-contract references, not network sources. These are proposals: begin with 'Ich schlage vor' or the equivalent in the user's language. Never say information was already entered, changed, restored or saved. Field-selection controls perform the later explicit save.",
+                  content: `CURRENT STEP: Reply in the language of the CURRENT USER message (English request: replyLanguage=en; German request: replyLanguage=de), not the language of the curated knowledge or earlier Assistant text. ${folderNamesContract ? "The USER explicitly requested folder renaming. Return a concrete folderNames object: CHANGE the display names to reflect the requested prefix, do not merely repeat unchanged template defaults. For a combined company-prefix/folder request, choose a concise company_code and use that SAME prefix in every requested folder name by combining the chosen prefix with each folder purpose. For a follow-up, reuse the prefix already proposed in conversation or saved in the draft. Return that prefix in each requested folder's prefix property; the server applies it if name still contains the original display name. Use prefix=null for folders outside the requested scope. This naming request is unrelated to selecting IAM subjects or granting access. Keep unrequested names unchanged. " : ""}Restore or propose ONLY supported foundation scalars and existing folder names from actual prior user requirements and the supplied organization UUID. Keep the existing DNS/network configuration unchanged. Never resume earlier DNS questions or ask about future components. Use owner_email from user requirements or the verified human email when known, explaining its source. If a supported foundation value is still unknown, ask only that missing foundation question. Return identity-foundations/governance-folders/configuration-contract references, not network sources. These are proposals: begin with 'Ich schlage vor' or the equivalent in the user's language. Never say information was already entered, changed, restored or saved. Field-selection controls perform the later explicit save.`,
                 },
               ]
             : []),
         ],
         z.toJSONSchema(
           dialogueSchema.extend({
+            ...(foundationDraft
+              ? {
+                  replyLanguage: z
+                    .enum(["de", "en"])
+                    .default("de")
+                    .describe(
+                      "Language of the current user request; English requests use en, German requests use de.",
+                    ),
+                }
+              : {}),
+            ...(folderNamesContract
+              ? {
+                  folderNames: folderNamesContract.describe(
+                    "Required folder display-name proposal for the existing keys. Apply the requested company prefix consistently; use company_code from this proposal, the current draft or the previous USER-approved/proposed naming context. Keep unrequested folder names unchanged. Never omit the folder proposal when identity values are also requested. Internal keys, parents and IAM metadata remain unchanged.",
+                  ),
+                }
+              : {}),
             explanation: z
               .string()
               .min(1)
@@ -4032,7 +4103,11 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
                   )
                   .min(dnsSettingsDraft && singleDnsZone ? 1 : 0)
                   .max(
-                    !draftAllowed || (networkFirst && !addressEvidence) ? 0 : 8,
+                    !draftAllowed ||
+                      folderNamingOnly ||
+                      (networkFirst && !addressEvidence)
+                      ? 0
+                      : 8,
                   ),
             references: z
               .array(
@@ -4064,10 +4139,51 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
           : stream,
         stream?.signal,
       );
+      const {
+        replyLanguage: proposedReplyLanguage = "de",
+        folderNames: providedFolderNames,
+        ...providedDialogue
+      } = z
+        .object({
+          replyLanguage: z.enum(["de", "en"]).optional(),
+          folderNames: folderNamesContract?.optional() ?? z.never().optional(),
+        })
+        .passthrough()
+        .parse(result);
+      const foundationReplyLanguage =
+        intent.applicationAccessLanguage === "en" ||
+        proposedReplyLanguage === "en"
+          ? "en"
+          : "de";
       const dialogue = validateDialogue(
-        result,
+        providedDialogue,
         dnsAdvice ? ["dns-zones"] : context.rules.map((rule) => rule.id),
       );
+      if (folderNamingOnly && dialogue.changes.length)
+        throw new Error("assistant_invalid_scope");
+      if (folderNamesContract) {
+        const names = folderNamesContract.parse(providedFolderNames);
+        dialogue.changes = dialogue.changes.filter(
+          (change) => change.path !== "rm_folders",
+        );
+        dialogue.changes.push({
+          path: "rm_folders",
+          value: Object.fromEntries(
+            Object.entries(names).map(([key, folder]) => [
+              key,
+              {
+                name:
+                  folder.prefix &&
+                  !folder.name
+                    .toLowerCase()
+                    .startsWith(`${folder.prefix.toLowerCase()}-`)
+                    ? `${folder.prefix}-${folder.name}`.slice(0, 40)
+                    : folder.name,
+              },
+            ]),
+          ),
+        });
+      }
       if (
         dialogue.references.some(
           (reference) =>
@@ -4493,16 +4609,21 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
         );
         const details = dialogue.changes.map((change) =>
           change.path === "rm_folders"
-            ? `Ordnernamen: ${Object.entries(
+            ? `${foundationReplyLanguage === "en" ? "Folder names" : "Ordnernamen"}: ${Object.entries(
                 assistantFolderNamesSchema.parse(change.value),
               )
                 .map(([key, folder]) => `${key}: ${folder.name}`)
                 .join(", ")}`
             : `${change.path}: ${change.value}`,
         );
-        dialogue.explanation = details.length
-          ? `Ich schlage folgende Grundlagenwerte zur Prüfung vor:\n${details.join("\n")}\n\nNoch nichts gespeichert. Erst die ausdrückliche Übernahme der ausgewählten Felder speichert die Konfiguration. Bestehende DNS- und Netzwerkeinstellungen bleiben erhalten. Eine Organisations-ID im Entwurf bestätigt keinen Zugriff und ändert keine Tenant-Bindung; keine Cloud-Ausführung.`
-          : "Es gibt keinen neuen Grundlagenvorschlag. Bereits gespeicherte Werte bleiben erhalten; fehlende unterstützte Grundlagenwerte können im Chat geklärt werden. Keine Organisationsbindung oder Cloud-Ausführung.";
+        dialogue.explanation =
+          foundationReplyLanguage === "en"
+            ? details.length
+              ? `I propose the following settings for review:\n${details.join("\n")}\n\nReview and accept the fields you want to use, then save the configuration. No cloud changes have been made.`
+              : "The requested settings already match the current draft. No changes have been saved or deployed."
+            : details.length
+              ? `Ich schlage folgende Grundlagenwerte zur Prüfung vor:\n${details.join("\n")}\n\nNoch nichts gespeichert. Erst die ausdrückliche Übernahme der ausgewählten Felder speichert die Konfiguration. Bestehende DNS- und Netzwerkeinstellungen bleiben erhalten. Eine Organisations-ID im Entwurf bestätigt keinen Zugriff und ändert keine Tenant-Bindung; keine Cloud-Ausführung.`
+              : "Es gibt keinen neuen Grundlagenvorschlag. Bereits gespeicherte Werte bleiben erhalten; fehlende unterstützte Grundlagenwerte können im Chat geklärt werden. Keine Organisationsbindung oder Cloud-Ausführung.";
       }
       if (networkDraft && dialogue.changes.length) {
         const details = dialogue.changes.flatMap((change) => {

@@ -153,6 +153,7 @@ export type AssistantScenario = {
   fixture:
     | "baseline"
     | "foundations"
+    | "folder-naming"
     | "dns-owner"
     | "dns-login"
     | "dns-placeholder"
@@ -1043,6 +1044,40 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     }),
   ),
   {
+    id: "foundations-prefixed-folders",
+    topic: "identity-foundations",
+    fixture: "folder-naming",
+    acceptableReferences: [
+      "identity-foundations",
+      "governance-folders",
+      "configuration-contract",
+    ],
+    message: `Here are some details about my company. Company name: "Synthetic Corp". Org ID: ${syntheticOrganizationId}. I am the technical contact with my logged in email. Region: south Germany. Please prepare the config including a good prefix and folder names reflecting this prefix.`,
+  },
+  {
+    id: "governance-prefixed-folders-followup",
+    topic: "governance-folders",
+    fixture: "folder-naming",
+    acceptableReferences: [
+      "identity-foundations",
+      "governance-folders",
+      "configuration-contract",
+    ],
+    message: "Please change the folder names reflecting the selected prefix.",
+    history: [
+      {
+        role: "user",
+        content:
+          "The company is Synthetic Corp. Please propose a short company prefix.",
+      },
+      {
+        role: "assistant",
+        content:
+          "I propose company_name: Synthetic Corp and company_code: syn. Nothing has been saved.",
+      },
+    ],
+  },
+  {
     id: "foundations-restoration",
     topic: "identity-foundations",
     fixture: "foundations",
@@ -1201,6 +1236,27 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       content:
         "Die Grundlagen sind schon gespeichert. Zuletzt wurden Folder-Namen besprochen.",
     });
+  }
+  if (scenario.fixture === "folder-naming") {
+    draft = setCommonInput(draft, "company_name", null);
+    draft = setCommonInput(draft, "company_code", null);
+    const folders = objectValue(
+      effectiveInput(compileCommonConfiguration(draft), "rm_folders"),
+    );
+    draft = setCommonInput(
+      draft,
+      "rm_folders",
+      Object.fromEntries(
+        Object.entries(folders).map(([key, value]) => [
+          key,
+          {
+            ...objectValue(value),
+            owner_emails: ["folder-owner@example.test"],
+            reader_emails: ["folder-reader@example.test"],
+          },
+        ]),
+      ),
+    );
   }
   if (scenario.fixture === "foundations") {
     for (const path of [
@@ -1490,6 +1546,8 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
       },
     );
   }
+  if (scenario.fixture === "folder-naming")
+    values["assistant.user_email"] = "login@example.test";
   return { draft, values, history, catalogues };
 }
 
@@ -2366,6 +2424,71 @@ export function validateAssistantScenario(
       !/synchron|sync/i.test(dialogue.explanation))
   )
     failures.push("incomplete_policy_contract");
+  if (scenario.fixture === "folder-naming") {
+    const before = compileCommonConfiguration(fixture.draft);
+    const folderChange = dialogue.changes.find(
+      ({ path }) => path === "rm_folders",
+    );
+    const names = objectValue(
+      folderChange?.value as Parameters<typeof objectValue>[0],
+    );
+    const prefix =
+      scenario.id === "governance-prefixed-folders-followup"
+        ? "syn"
+        : dialogue.changes.find(({ path }) => path === "company_code")?.value;
+    const keys = Object.keys(objectValue(before.rm_folders));
+    if (
+      typeof prefix !== "string" ||
+      !prefix ||
+      !isDeepStrictEqual(Object.keys(names).sort(), keys.sort()) ||
+      keys.some(
+        (key) =>
+          typeof objectValue(names[key]).name !== "string" ||
+          !String(objectValue(names[key]).name)
+            .toLowerCase()
+            .startsWith(prefix.toLowerCase()),
+      )
+    )
+      failures.push("prefixed_folder_names_missing");
+    if (
+      keys.some(
+        (key) =>
+          !dialogue.explanation.includes(String(objectValue(names[key]).name)),
+      )
+    )
+      failures.push("folder_names_not_visible_in_explanation");
+    if (!dialogue.explanation.includes("Folder names:"))
+      failures.push("folder_proposal_not_in_english");
+    const candidate = compileCommonConfiguration(
+      applyAssistantChanges(fixture.draft, dialogue.changes),
+    );
+    if (
+      keys.some(
+        (key) =>
+          !isDeepStrictEqual(
+            objectValue(objectValue(candidate.rm_folders)[key]),
+            {
+              ...objectValue(objectValue(before.rm_folders)[key]),
+              ...objectValue(names[key]),
+            },
+          ),
+      )
+    )
+      failures.push("folder_metadata_changed");
+    if (
+      scenario.id === "governance-prefixed-folders-followup" &&
+      dialogue.changes.some(({ path }) => path !== "rm_folders")
+    )
+      failures.push("folder_followup_changed_unrequested_foundations");
+    if (
+      scenario.id === "foundations-prefixed-folders" &&
+      !dialogue.changes.some(
+        ({ path, value }) =>
+          path === "company_name" && value === "Synthetic Corp",
+      )
+    )
+      failures.push("combined_company_proposal_missing");
+  }
   if (scenario.fixture === "foundations") {
     const expected = {
       company_name: "Example GmbH",
@@ -2477,7 +2600,11 @@ export function validateAssistantScenario(
       failures.push("sna_scope_or_repeated_question");
   }
   if (scenario.fixture !== "baseline") {
-    if (!/noch (?:nichts|nicht) gespeichert/i.test(dialogue.explanation))
+    if (
+      !/noch (?:nichts|nicht) gespeichert|no(?:thing| changes?) (?:has|have) been saved|then save the configuration/i.test(
+        dialogue.explanation,
+      )
+    )
       failures.push("missing_unsaved_notice");
     if (
       scenario.id !== "firewall-ha-already-saved" &&
