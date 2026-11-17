@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "48967d9f510be61be627a559970720c6f8985afa9de6ef686dc7db635edb7819",
+  "knowledgeSha256": "214d7e81d145ea5fa6d74cbf8e174a1b9fe8b164ac37460626108582b8af0a8b",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "c9b2a1e618e3831b24543513be44ed7563bfd51a12540e97bda4c489eb405d03",
+    "scripts/assistant-scenarios.ts": "e4d6b569f36496cfe9c4c9655a18ed02a47e726e584cbd0dac7e643c8956e6df",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "b30a7161e52133f2a875758d4b20ef652ed50177a05e53009f71bad0bb930f9f",
+  "suiteSha256": "0a96248735604b037639f28c24e208263cbd1839996972a3322e71c73a9fce11",
   "topics": [
     {
       "id": "credential-foundations",
@@ -4674,6 +4674,99 @@
         }
       ],
       "cases": [
+        {
+          "id": "editor-devops-setup-en",
+          "message": "Please add a central git instance to the config",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "setupQuestionPaths": [
+            "devops.git_flavor",
+            "devops.allowed_network_ranges"
+          ],
+          "expectedLanguage": "en",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-setup-de",
+          "message": "Bitte eine zentrale Git-Instanz in die Konfiguration aufnehmen.",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "setupQuestionPaths": [
+            "devops.git_flavor",
+            "devops.allowed_network_ranges"
+          ],
+          "expectedLanguage": "de",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-size-only",
+          "message": "Please add central Git, using git-10. I have not chosen the access networks yet.",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "setupQuestionPaths": [
+            "devops.allowed_network_ranges"
+          ],
+          "expectedLanguage": "en",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-networks-only",
+          "message": "Please add central Git, accessible only from 203.0.113.0/24. I have not selected its size yet.",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "setupQuestionPaths": [
+            "devops.git_flavor"
+          ],
+          "expectedLanguage": "en",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-followup",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "message": "Use git-10 and allow access only from 203.0.113.0/24.",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please add a central git instance to the config"
+            },
+            {
+              "role": "assistant",
+              "content": "Which Git size and source networks should the draft use? No choice has been made yet."
+            }
+          ],
+          "expectedLanguage": "en",
+          "editorExpected": {
+            "path": "devops",
+            "value": {
+              "git_flavor": "git-10",
+              "allowed_network_ranges": [
+                "203.0.113.0/24"
+              ]
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "editor-devops",
           "topic": "devops-git",

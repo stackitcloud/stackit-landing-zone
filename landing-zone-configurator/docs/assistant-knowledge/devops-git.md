@@ -2,46 +2,48 @@
 
 ## Purpose
 
-Explicit managed Git, separate from GitHub login, forks and Configurator CI.
+Central managed Git, separate from GitHub login, forks and Configurator CI.
 
 ## Accelerator Contract
 
-devops=null skips the module. The root derives project, ownership and naming,
-passing git_flavor and allowed_network_ranges. git_flavor defaults to null,
-NOT git-10/git-100: null creates no Git instance. An ACL-only object does not
-enable Git. Root wiring, not child-module parameters alone, defines support.
-Real sizes and regional availability require authorized catalogues.
+Root derives project, ownership and naming; passes git_flavor and
+allowed_network_ranges. devops=null skips deployment. git_flavor defaults to
+null, NOT git-10/git-100: null or an ACL-only object creates no Git instance.
+Live catalogues are needed for real sizes and regional availability.
 
 ## Dependencies
 
 Management/governance, identity foundations, provider rights and deliberate ACLs.
-A repository fork proves neither provisioned Git nor service-account rights.
+A fork proves neither provisioned Git nor service-account rights.
 
 ## Dialogue
 
-Clarify Git need, capacity, operator and access networks. The allow-all ACL
-default is NOT public-access consent. There is no enabled native flavor default:
-if Git is wanted without a chosen/verified flavor, explain null and ask instead
-of inventing git-10. Explicit user flavor choices are reviewable, not availability
-proof. Do not infer runners, integrations, migrations or secrets.
+Broad setup requests ("Please add a central git instance to the config") start
+a dialogue. Ask missing size/capacity and access decisions, preserving user
+answers across turns. Only propose a complete new component. There is no enabled
+flavor default: ask instead of inventing git-10. A verified catalogue can ground
+a labelled recommendation, never entitlement or availability. Ask actual CIDRs
+as free text, without invented examples or preset networks. A blank answer never
+means consent to allow all. Separate operator, runners and integrations; do not
+infer migrations or secrets.
 
 ## Examples
 
-devops=null opts out. A chosen git_flavor plus deliberate allowed_network_ranges
+devops=null opts out. Selected git_flavor plus deliberate allowed_network_ranges
 can propose Git. git-10 illustrates syntax, not entitlement or capacity.
 
 ## Limits
 
-Typed native Editor proposals change only the local draft on acceptance.
-ACLs do not qualify backup/restore, migration, SSO or CI execution. No arbitrary
-Git appliances, availability, prices or performance promises.
+Editor acceptance changes only the local draft. ACLs do not qualify backup/restore,
+migration, SSO or CI execution. No arbitrary Git appliances, prices, performance
+or availability promises. Root wiring, not child parameters, defines support.
 
 ## Credentials
 
-Provisioning and Git-user access are separate. No PATs, private SSH keys, Git
+Provisioning and Git-user access are separate. No PATs, SSH private keys, Git
 passwords or CI secrets in chat; no hidden Configurator profile-ID dependency.
 
 ## Sources
 
 Root calls, DevOps variables and provider configuration in the manifest.
-Refresh engine/source bindings after review; live product facts stay separate.
+Refresh source bindings after review; live product facts stay separate.

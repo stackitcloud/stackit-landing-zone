@@ -230,7 +230,30 @@ it.each(assistantScenarios)(
     expect(JSON.stringify(fixture)).not.toMatch(
       /af026540|lukas|preshared_key/i,
     );
-    if (scenario.auditQuestionPaths) {
+    if (scenario.setupQuestionPaths) {
+      expect(
+        validateAssistantScenario(scenario, {
+          explanation: "Nothing changed.",
+          changes: [],
+          references: [scenario.topic],
+          questions: [
+            {
+              path: scenario.setupQuestionPaths[0],
+              text: "Please choose.",
+              options: [],
+            },
+          ],
+        }).failures,
+      ).toEqual([]);
+      expect(
+        validateAssistantScenario(scenario, {
+          explanation: "Nothing changed.",
+          changes: [],
+          references: [scenario.topic],
+          questions: [],
+        }).failures,
+      ).toContain("setup_must_ask_missing_choices_without_changes");
+    } else if (scenario.auditQuestionPaths) {
       expect(
         validateAssistantScenario(scenario, {
           explanation: "Reviewable local draft only.",

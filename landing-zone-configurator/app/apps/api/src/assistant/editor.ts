@@ -64,6 +64,10 @@ export const assistantEditorPolicies: Record<
     freeTextQuestions: ["audit_logs.acl"],
   },
   observability: { freeTextQuestions: ["observability.acl"] },
+  devops: {
+    creationDecisions: ["devops.git_flavor", "devops.allowed_network_ranges"],
+    freeTextQuestions: ["devops.git_flavor", "devops.allowed_network_ranges"],
+  },
 };
 
 export function assistantEditorProposalPath(path: string): string | null {
@@ -745,6 +749,12 @@ export function assistantEditorPublicValues(
   return result;
 }
 
+export class AssistantEditorSourceError extends Error {
+  constructor(readonly path: string) {
+    super("assistant_editor_value_unconfirmed");
+  }
+}
+
 export function validateAssistantEditorSources(
   change: AssistantEditorChange,
   current: Record<string, unknown>,
@@ -761,7 +771,7 @@ export function validateAssistantEditorSources(
     saved.includes(value) ||
     userSources.some((source) => source.includes(value)) ||
     productValues.includes(value);
-  const visit = (value: JsonValue, key: string): void => {
+  const visit = (value: JsonValue, key: string, path: string): void => {
     if (typeof value === "string") {
       const references =
         value.match(
@@ -783,14 +793,38 @@ export function validateAssistantEditorSources(
           !userSources.some((source) => source.includes(value)) &&
           !productValues.includes(value))
       )
-        throw new Error("assistant_editor_value_unconfirmed");
+        throw new AssistantEditorSourceError(path);
     } else if (Array.isArray(value)) {
-      for (const item of value) visit(item, key);
+      for (const item of value) visit(item, key, `${path}[*]`);
     } else if (value) {
-      for (const [child, item] of Object.entries(value)) visit(item, child);
+      for (const [child, item] of Object.entries(value))
+        visit(item, child, `${path}.${child}`);
     }
   };
-  visit(change.value, change.path);
+  visit(change.value, change.path, change.path);
+}
+
+const gitCreationQuestions = {
+  en: {
+    "devops.git_flavor":
+      "Which Git size should the draft use? Choose an available Git plan or describe your capacity needs.",
+    "devops.allowed_network_ranges":
+      "Which source IP addresses or networks should be allowed to access Git? Enter your actual CIDRs. Leaving this unanswered does not authorize public access.",
+  },
+  de: {
+    "devops.git_flavor":
+      "Welche Git-Größe soll der Entwurf verwenden? Wähle einen verfügbaren Git-Tarif oder beschreibe deinen Kapazitätsbedarf.",
+    "devops.allowed_network_ranges":
+      "Welche Quell-IP-Adressen oder Netze sollen auf Git zugreifen dürfen? Gib deine tatsächlichen CIDRs an. Eine fehlende Antwort erlaubt keinen öffentlichen Zugriff.",
+  },
+};
+
+export function assistantGitQuestion(path: string, language: "de" | "en") {
+  const text =
+    gitCreationQuestions[language][
+      path as keyof typeof gitCreationQuestions.en
+    ];
+  return text ? { path, text, options: [] as string[] } : null;
 }
 
 export function applyAssistantEditorChange(
