@@ -191,7 +191,11 @@ die Ankündigung des ersten Produktionsrelease zu wiederholen.
 5. Veröffentlichte Quelle, Hinweise und bekannte Einschränkungen prüfen, dann in
    GitHub freigeben. Der Job lädt dieselben veröffentlichten Bytes, validiert
    Runner und Datenbankmigration und aktiviert erst nach Erfolg aller
-   Staging-Zweige. Danach prüft er HTTPS, STACKIT PKCE, die Zugriffssperren ohne
+   Staging-Zweige. Das App-Staging wendet das Manifest mit maskierten
+   Umgebungswerten an, lädt ein Paket hoch und baut dessen Droplet, ohne die
+   laufende App zu stoppen. `cf push --no-start` vermeiden: Die festgelegte CLI
+   stoppt damit bereits gestartete Apps. Lifecycle-Tests prüfen Staging ohne
+   Aktivierung und lehnen abweichende Paket-/Build-Nachweise ab. Danach prüft er HTTPS, STACKIT PKCE, die Zugriffssperren ohne
    Anmeldung und den getrennten Runner.
 
 Ein durch einen Menschen veröffentlichtes GitHub Release mit denselben Assets
