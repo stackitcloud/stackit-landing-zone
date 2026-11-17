@@ -36,6 +36,20 @@ access to docs. The compiled API artifact contains the generated snapshot.
 Topic text is supplied once as trusted curated rules; provenance is separate.
 Customer input/history and PIM labels remain untrusted data, not instructions.
 
+### Folder naming proposals
+
+Combined company-prefix and folder-name requests and naming-only follow-ups use
+the bounded foundation contract, including when intent classification selects
+the generic Editor path. Explicit folder naming requires a concrete display-name
+proposal for the existing keys. The server applies an explicitly proposed prefix
+when the model still returns the previous display name. The response lists the resulting names in the user's
+language; it does not substitute a root-only `rm_folders` acknowledgement.
+A follow-up may reuse the prefix proposed in the conversation before acceptance.
+Unchanged names are filtered out, and native folder keys, parent bindings and
+owner/reader metadata remain intact. Field acceptance changes the draft; saving
+and cloud execution remain separate. Synthetic qualification covers the combined
+English request and its prefix follow-up independently.
+
 ### Topic delivery contract
 
 The generic Editor proposal path previously passed topic/field metadata without

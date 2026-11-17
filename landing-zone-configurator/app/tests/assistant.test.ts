@@ -1530,7 +1530,15 @@ it("supports explicitly delegated naming without inventing IDs, new folders or I
               requirements: [],
               namingDelegation: { paths, source: evidence },
             }
-          : result,
+          : paths.includes("rm_folders")
+            ? {
+                ...result,
+                folderNames: {
+                  ...values.rm_folders,
+                  platform: { name: "Example Platform" },
+                },
+              }
+            : result,
       );
     };
   const result = await new AssistantModelServing(
@@ -2287,7 +2295,7 @@ it("uses bounded public dialogue history and validates the actual chat proposal"
   const request = vi.fn<typeof fetch>(
     withIntent("identity-foundations", "draft", async (_url, init) => {
       const body = JSON.parse(String(init?.body));
-      expect(body.messages[0].content).toContain("CURRENT STEP: Restore");
+      expect(body.messages[0].content).toContain("CURRENT STEP:");
       expect(body.messages.at(-1).content).toBe("Firma Example");
       expect(body.messages.length).toBe(4);
       expect(body.messages.at(-2)).toEqual({
@@ -3774,3 +3782,182 @@ it.each(["platform-impact-review", "audit-observability"] as const)(
     expect(request).toHaveBeenCalledTimes(2);
   },
 );
+
+it.each([false, true])(
+  "shows concrete prefixed folder names for English foundation requests (editorContract=%s), preserving metadata",
+  async (editorContract) => {
+    let draft = createCommonConfiguration("standalone", randomUUID());
+    draft = setCommonInput(draft, "company_code", "syn");
+    const folders = objectValue(
+      effectiveInput(compileCommonConfiguration(draft), "rm_folders"),
+    );
+    draft = setCommonInput(draft, "rm_folders", {
+      ...folders,
+      platform: {
+        ...objectValue(folders.platform),
+        owner_emails: ["owner@example.test"],
+        reader_emails: ["reader@example.test"],
+      },
+    });
+    const before = compileCommonConfiguration(draft);
+    const names = Object.fromEntries(
+      Object.entries(objectValue(before.rm_folders)).map(([key]) => [
+        key,
+        { name: `syn-${key}` },
+      ]),
+    );
+    const request = vi.fn<typeof fetch>(async (_url, options) => {
+      const payload = JSON.parse(String(options?.body));
+      if (payload.response_format.json_schema.name === "conversation_intent")
+        return answer({
+          topic: editorContract
+            ? "governance-folders"
+            : "configuration-contract",
+          applicationAccessLanguage: editorContract ? "en" : "de",
+          mode: "draft",
+          requirements: [],
+          editorContract,
+          editorInputs: editorContract ? ["rm_folders"] : [],
+          namingDelegation: { paths: ["rm_folders"], source: "current" },
+        });
+      expect(payload.response_format.json_schema.name).toBe(
+        "configuration_dialogue",
+      );
+      expect(payload.response_format.json_schema.schema.required).toContain(
+        "folderNames",
+      );
+      return answer({
+        replyLanguage: editorContract ? "de" : "en",
+        explanation: "Proposal.",
+        questions: [],
+        changes: [],
+        folderNames: editorContract
+          ? Object.fromEntries(
+              Object.entries(names).map(([key]) => [
+                key,
+                { name: key, prefix: "syn" },
+              ]),
+            )
+          : names,
+        references: ["governance-folders"],
+      });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      {
+        ...before,
+        "assistant.platform_draft": true,
+      },
+      [],
+      "Please change the folder names reflecting the selected prefix.",
+    );
+    expect(result.changes).toEqual([{ path: "rm_folders", value: names }]);
+    expect(result.explanation).toContain("Folder names:");
+    expect(result.explanation).toContain("syn-platform");
+    expect(result.explanation).not.toContain("Ordnernamen");
+    const after = compileCommonConfiguration(
+      applyAssistantChanges(draft, result.changes),
+    );
+    expect(after).toEqual({
+      ...before,
+      rm_folders: Object.fromEntries(
+        Object.entries(objectValue(before.rm_folders)).map(([key, value]) => [
+          key,
+          { ...objectValue(value), ...names[key] },
+        ]),
+      ),
+    });
+    expect(compileCommonConfiguration(draft)).toEqual(before);
+  },
+);
+
+it.each(["missing", "unknown-key", "iam-change", "unrequested-company"])(
+  "rejects incomplete or out-of-scope folder naming answers: %s",
+  async (kind) => {
+    const request = vi.fn<typeof fetch>(async (_url, options) => {
+      const payload = JSON.parse(String(options?.body));
+      if (payload.response_format.json_schema.name === "conversation_intent")
+        return answer({
+          topic: "governance-folders",
+          mode: "draft",
+          requirements: [],
+          namingDelegation: { paths: ["rm_folders"], source: "current" },
+        });
+      return answer({
+        explanation: "Names proposed.",
+        questions: [],
+        changes:
+          kind === "unrequested-company"
+            ? [{ path: "company_code", value: "other" }]
+            : [],
+        references: ["governance-folders"],
+        ...(kind === "missing"
+          ? {}
+          : {
+              folderNames:
+                kind === "unknown-key"
+                  ? { invented: { name: "syn-invented" } }
+                  : {
+                      platform: {
+                        name: "syn-platform",
+                        ...(kind === "iam-change"
+                          ? { owner_emails: ["other@example.test"] }
+                          : {}),
+                      },
+                    },
+            }),
+      });
+    });
+    await expect(
+      new AssistantModelServing(configuration, request).converse(
+        selection(),
+        { company_code: "syn", rm_folders: { platform: { name: "Platform" } } },
+        [],
+        "Please change the folder names reflecting the selected prefix.",
+      ),
+    ).rejects.toBeInstanceOf(AssistantInferenceError);
+  },
+);
+
+it("does not delegate folder naming from an Assistant-only folder mention when restoring foundations", async () => {
+  const request = vi.fn<typeof fetch>(async (_url, options) => {
+    const payload = JSON.parse(String(options?.body));
+    if (payload.response_format.json_schema.name === "conversation_intent")
+      return answer({
+        topic: "identity-foundations",
+        mode: "draft",
+        requirements: [],
+        namingDelegation: { paths: ["rm_folders"], source: "current" },
+      });
+    expect(
+      payload.response_format.json_schema.schema.properties,
+    ).not.toHaveProperty("folderNames");
+    return answer({
+      explanation: "Proposal.",
+      questions: [],
+      changes: [{ path: "company_name", value: "Example GmbH" }],
+      references: ["identity-foundations"],
+    });
+  });
+  const result = await new AssistantModelServing(
+    configuration,
+    request,
+  ).converse(
+    selection(),
+    {
+      company_name: null,
+      rm_folders: { platform: { name: "Platform" } },
+    },
+    [
+      { role: "user", content: "Die Firma heißt Example GmbH." },
+      { role: "assistant", content: "Zuletzt wurden Ordnernamen besprochen." },
+    ],
+    "Bitte die Grundlagen wiederherstellen.",
+  );
+  expect(result.changes).toEqual([
+    { path: "company_name", value: "Example GmbH" },
+  ]);
+});

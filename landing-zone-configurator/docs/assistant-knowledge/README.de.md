@@ -51,6 +51,21 @@ Provenienz bleibt getrennt.
 Kundeneingaben/-historie und PIM-Labels bleiben nicht vertrauenswuerdige
 Daten, keine Anweisungen.
 
+### Vorschläge für Ordnernamen
+
+Kombinierte Anfragen zu Firmenpräfix und Ordnernamen sowie reine Namens-Folgefragen
+verwenden den begrenzten Grundlagenvertrag, auch wenn die Themenzuordnung den
+allgemeinen Editor-Pfad auswählt. Eine ausdrückliche Namensanfrage verlangt
+konkrete Anzeigenamen für die vorhandenen Schlüssel. Der Server wendet ein ausdrücklich vorgeschlagenes Präfix an, wenn das Modell
+noch den bisherigen Anzeigenamen liefert. Die Antwort nennt die resultierenden
+Namen in der Sprache des Benutzers statt nur `rm_folders` zu bestätigen.
+Eine Folgefrage kann das im Gespräch vorgeschlagene Präfix bereits vor der
+Übernahme wiederverwenden. Unveränderte Namen werden ausgefiltert; native
+Ordnerschlüssel, Elternbindungen und Owner-/Reader-Metadaten bleiben erhalten.
+Die Feldübernahme ändert den Entwurf; Speichern und Cloud-Ausführung bleiben
+separate Schritte. Die synthetische Qualifikation prüft die kombinierte englische
+Anfrage und ihre Präfix-Folgefrage unabhängig voneinander.
+
 <a id="topic-delivery-contract"></a>
 
 ### Vertrag zur Themenauslieferung
