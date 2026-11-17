@@ -1,6 +1,13 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.1.1": {
+  introduction:"Assistant folder-naming fixes for the Landing Zone Configurator.",
+  changes:[
+   "Propose concrete prefixed folder names alongside company settings and reuse a previously proposed prefix in follow-up requests.",
+   "Show folder proposals in the conversation language while preserving folder identities, access settings and unrelated configuration.",
+  ],
+ },
  "v2.0.0": {
   introduction:"First production release of the Landing Zone Configurator.",
   changes:[
