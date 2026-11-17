@@ -1,6 +1,14 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.1.2": {
+  introduction:"More reliable Assistant setup conversations for the Landing Zone Configurator.",
+  changes:[
+   "Ask focused follow-up questions when a proposed Editor value lacks a confirmed source; keep grounded catalogue recommendations reviewable.",
+   "Guide central Git setup through missing size and access choices without incomplete proposals or implicit public access.",
+   "Improve English/German dialogue consistency and expand central live regressions for short requests, partial answers and follow-ups.",
+  ],
+ },
  "v2.1.1": {
   introduction:"Assistant folder-naming and deployment fixes for the Landing Zone Configurator.",
   changes:[
