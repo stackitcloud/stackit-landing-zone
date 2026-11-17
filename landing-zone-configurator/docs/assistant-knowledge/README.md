@@ -109,6 +109,24 @@ explicit empty list retain their native meaning. New drafts omit a redundant cop
 of the current organization default only when no user source pins its ID or the
 native scope field; existing and nondefault scopes are preserved.
 
+### Setup dialogue and missing choices
+
+An explicit setup request must lead to a targeted question or a grounded,
+reviewable recommendation. A native Editor proposal containing an unconfirmed
+product, address or contact is discarded in full and becomes a scoped question;
+source validation still prevents its acceptance. Other schema, scope, credential
+and authorization failures remain errors. Catalogue-grounded recommendations
+remain proposals, not proof of entitlement or execution approval.
+
+New Git proposals require size and access settings together. Git questions use
+actual customer networks as free text; an unanswered question never authorizes
+public access. The central synthetic corpus covers short English/German setup
+requests, partially supplied choices and follow-ups, alongside fully specified
+changes and advice. The continuous journey includes Git setup before selection.
+Mocked request/guard tests complement these cases; field inventory and knowledge
+delivery coverage alone do not prove natural dialogue quality. Skipped release
+qualification is explicitly not a fresh live-test result.
+
 ### Real-model qualification
 
 Changes to service facts, prompts, knowledge selection or component contracts

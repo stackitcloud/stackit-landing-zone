@@ -171,6 +171,8 @@ export type AssistantScenario = {
   requiredOverviewFields?: readonly string[];
   editorExpected?: { path: string; value: JsonValue };
   auditQuestionPaths?: readonly string[];
+  setupQuestionPaths?: readonly string[];
+  expectedLanguage?: "de" | "en";
   dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
   applicationAccess?:
@@ -680,6 +682,63 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     message:
       "Bitte Bucket-Namensschema im lokalen Entwurf ausdrücklich auf bucket_naming=project-id setzen, damit die vollständige jeweilige Projekt-ID enthalten ist. Keine sonstigen Änderungen, kein Plan oder Apply.",
     editorExpected: { path: "bucket_naming", value: "project-id" },
+  },
+  ...[
+    {
+      id: "editor-devops-setup-en",
+      message: "Please add a central git instance to the config",
+      paths: ["devops.git_flavor", "devops.allowed_network_ranges"],
+    },
+    {
+      id: "editor-devops-setup-de",
+      message:
+        "Bitte eine zentrale Git-Instanz in die Konfiguration aufnehmen.",
+      paths: ["devops.git_flavor", "devops.allowed_network_ranges"],
+    },
+    {
+      id: "editor-devops-size-only",
+      message:
+        "Please add central Git, using git-10. I have not chosen the access networks yet.",
+      paths: ["devops.allowed_network_ranges"],
+    },
+    {
+      id: "editor-devops-networks-only",
+      message:
+        "Please add central Git, accessible only from 203.0.113.0/24. I have not selected its size yet.",
+      paths: ["devops.git_flavor"],
+    },
+  ].map(({ id, message, paths }) => ({
+    id,
+    message,
+    topic: "devops-git",
+    fixture: "baseline" as const,
+    setupQuestionPaths: paths,
+    expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
+  })),
+  {
+    id: "editor-devops-followup",
+    topic: "devops-git",
+    fixture: "baseline",
+    message: "Use git-10 and allow access only from 203.0.113.0/24.",
+    history: [
+      {
+        role: "user",
+        content: "Please add a central git instance to the config",
+      },
+      {
+        role: "assistant",
+        content:
+          "Which Git size and source networks should the draft use? No choice has been made yet.",
+      },
+    ],
+    expectedLanguage: "en",
+    editorExpected: {
+      path: "devops",
+      value: {
+        git_flavor: "git-10",
+        allowed_network_ranges: ["203.0.113.0/24"],
+      },
+    },
   },
   {
     id: "editor-devops",
@@ -2048,6 +2107,45 @@ export function validateAssistantScenario(
       if (!(error instanceof Error)) throw error;
       failures.push("platform_template_proposal_not_applicable");
     }
+    return { dialogue, failures };
+  }
+  if (scenario.expectedLanguage) {
+    const text =
+      dialogue.explanation +
+      " " +
+      dialogue.questions.map((question) => question.text).join(" ");
+    if (
+      scenario.expectedLanguage === "en" &&
+      /\b(?:Welche|Welchen|Noch nichts|Bitte beantworte|gespeichert|Vorschlag|Entwurf)\b/.test(
+        text,
+      )
+    )
+      failures.push("dialogue_language_mismatch");
+    if (
+      scenario.expectedLanguage === "de" &&
+      /\b(?:Which|Nothing has|Please complete)\b/.test(text)
+    )
+      failures.push("dialogue_language_mismatch");
+  }
+  if (scenario.setupQuestionPaths) {
+    if (
+      dialogue.changes.length ||
+      !dialogue.questions.length ||
+      dialogue.questions.some(
+        (question) => !scenario.setupQuestionPaths!.includes(question.path),
+      )
+    )
+      failures.push("setup_must_ask_missing_choices_without_changes");
+    if (
+      dialogue.questions.some(
+        (question) =>
+          (question.options?.length ?? 0) > 0 ||
+          /(?:leave|leaving).*empty.*allow|192\.168|10\.0\.0|0\.0\.0\.0|git-100|git-10/i.test(
+            question.text,
+          ),
+      )
+    )
+      failures.push("setup_invented_defaults_or_network_options");
     return { dialogue, failures };
   }
   if (scenario.auditQuestionPaths) {

@@ -48,6 +48,7 @@ import {
   validateDialogue,
 } from "./dialogue.js";
 import {
+  AssistantEditorSourceError,
   assertAssistantEditorValue,
   assistantAuditCreationChoices,
   assistantAuditCreationQuestions,
@@ -61,6 +62,7 @@ import {
   assistantEditorPolicies,
   assistantEditorProposalPath,
   assistantEditorResponseSchema,
+  assistantGitQuestion,
   assistantTemplateFields,
   mergeAssistantEditorValue,
   validateAssistantEditorSources,
@@ -2759,6 +2761,15 @@ export class AssistantModelServing {
       const questions = [
         ...assistantQuestionFields()
           .filter((field) => fields.includes(field.path))
+          .filter(
+            (field) =>
+              current.devops != null ||
+              !editorRoots.has("devops") ||
+              !field.path.startsWith("devops") ||
+              (
+                assistantEditorPolicies.devops?.creationDecisions ?? []
+              ).includes(field.path),
+          )
           .map((field) => field.path),
         ...(templateTopic ? ["projectTemplates"] : []),
       ];
@@ -2815,7 +2826,8 @@ For an additional DNS zone, emit the actual collection change containing the req
 templateSetup contains source-checked USER decisions: its kinds and localNetworks are answered requirements, not questions to repeat. Its fields is the allowed template setting scope; the schema excludes unrequested services and policies. delegateNaming=true authorizes descriptive template display names and valid stable template keys; they are not Cloud IDs. When saved region and the Corporate area are unambiguous, these decisions suffice for complete name/kind/region/settings template proposals. Optional parameter policies and subnet overrides are not mandatory setup questions.
 When templateSetup.resolvedDefaults is non-null, the server has resolved every essential choice for this network-only request: use its region, and its networkAreaKey as settings.network_area_key for Corporate. Template kinds, local networks and delegated naming are already answered. Return questions=[] as required by the schema; do not ask the user to repeat native keys, naming, subnet defaults or other unrequested optional settings. Missing or ambiguous Corporate areas, missing region/naming and additional service choices retain the normal question contract.
 New component objects expose all their typed property slots: fill every explicitly requested value, use null only for unrequested native defaults. Never invent extra retention values. Required non-null creation decisions need actual user consent; otherwise ask questions with changes=[]. New map entries require all native mandatory fields, including Kubernetes region and node-pool name. Use existing nested paths for partial updates, preserving sibling values. All replies describe PROPOSALS, not completed setup. Field acceptance changes only the local draft, saving remains separate; no deployment, permissions granted, publication or Plan/Apply. Return the supplied JSON schema only.
-Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })}`,
+Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })}
+CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English CURRENT USER request set replyLanguage=en and write all explanation/questions in English. For a German request set replyLanguage=de and write German. For a values-only answer continue the latest natural-language USER turn. The language of these curated rules, schema defaults or earlier ASSISTANT text does not choose the response language. An ordinary setup request receives focused questions or a clearly labelled, grounded best-practice proposal; never blame the user for missing native field syntax.`,
           },
           {
             role: "user",
@@ -2863,7 +2875,6 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
           dialogueSchema.extend({
             replyLanguage: z
               .enum(["de", "en"])
-              .default("de")
               .describe(
                 "Language of the current user, or the latest natural-language user turn for numeric follow-ups.",
               ),
@@ -2887,14 +2898,64 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
                 : [],
             ),
           ]);
+      let responseLanguage: "de" | "en" = "de";
       try {
         const { replyLanguage, ...provided } = z
           .object({ replyLanguage: z.enum(["de", "en"]).default("de") })
           .passthrough()
           .parse(answer);
+        responseLanguage = replyLanguage;
         const dialogue = validateDialogue(provided, referenceIds);
-        changeListSchema.parse(dialogue.changes);
         questionListSchema.parse(dialogue.questions);
+        if (editorRoots.has("devops") && current.devops == null) {
+          const proposed = dialogue.changes.find(
+            (change) =>
+              change.path === "devops" &&
+              change.operation !== "default" &&
+              change.value !== null,
+          );
+          const missing = proposed
+            ? (assistantEditorPolicies.devops?.creationDecisions ?? []).filter(
+                (path) => {
+                  const choice = objectValue(
+                    proposed.value as Parameters<typeof objectValue>[0],
+                  )[path.split(".")[1] ?? ""];
+                  return (
+                    choice == null ||
+                    (typeof choice === "string" && !choice.trim()) ||
+                    (Array.isArray(choice) && !choice.length)
+                  );
+                },
+              )
+            : [];
+          for (const path of missing) {
+            const question = assistantGitQuestion(path, replyLanguage);
+            if (
+              question &&
+              !dialogue.questions.some((existing) => existing.path === path)
+            )
+              dialogue.questions.push(question);
+          }
+          dialogue.questions = dialogue.questions.map(
+            (question) =>
+              assistantGitQuestion(question.path, replyLanguage) ?? question,
+          );
+          if (
+            dialogue.questions.some((question) =>
+              question.path.startsWith("devops."),
+            )
+          ) {
+            dialogue.changes = dialogue.changes.filter(
+              (change) => change.path !== "devops",
+            );
+            if (editorRoots.size === 1)
+              dialogue.explanation =
+                replyLanguage === "en"
+                  ? "I can prepare central Git. Please complete the remaining size and access choices first. Nothing has been changed."
+                  : "Ich kann zentrales Git vorbereiten. Bitte beantworte zuerst die noch offenen Fragen zu Größe und Zugriff. Noch nichts geändert.";
+          }
+        }
+        changeListSchema.parse(dialogue.changes);
         if (
           current.audit_logs == null &&
           editorRoots.has("audit_logs") &&
@@ -3060,6 +3121,39 @@ Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })
         }
         return dialogue;
       } catch (error) {
+        if (error instanceof AssistantEditorSourceError) {
+          const path = questions
+            .filter(
+              (candidate) =>
+                !candidate.endsWith("[*]") &&
+                (error.path === candidate ||
+                  error.path.startsWith(`${candidate}.`) ||
+                  error.path.startsWith(`${candidate}[*]`)),
+            )
+            .sort((a, b) => b.length - a.length)[0];
+          if (path) {
+            const english = responseLanguage === "en";
+            return validateDialogue(
+              {
+                explanation: english
+                  ? "I need one more confirmed choice to prepare your change. Nothing has been changed."
+                  : "Für deinen Vorschlag fehlt noch eine bestätigte Auswahl. Noch nichts geändert.",
+                questions: [
+                  assistantGitQuestion(path, responseLanguage) ?? {
+                    path,
+                    text: english
+                      ? `Which value should I use for ${path}? Please provide your choice or select a verified catalogue option.`
+                      : `Welchen Wert soll ich für ${path} verwenden? Bitte nenne deine Auswahl oder wähle eine geprüfte Katalogoption.`,
+                    options: [],
+                  },
+                ],
+                changes: [],
+                references: [intent.topic],
+              },
+              referenceIds,
+            );
+          }
+        }
         if (error instanceof AssistantInferenceError) throw error;
         if (error instanceof z.ZodError)
           throw new AssistantInferenceError("dialogue_schema");

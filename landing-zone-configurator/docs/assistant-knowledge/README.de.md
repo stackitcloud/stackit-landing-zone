@@ -133,6 +133,26 @@ Neue Entwürfe lassen nur eine redundante Kopie des Organisationsstandards ohne
 ausdrücklich vorgegebene ID oder natives Scope-Feld weg. Bestehende und
 abweichende Scopes bleiben erhalten.
 
+### Einrichtungsdialog und offene Entscheidungen
+
+Ein ausdrücklicher Einrichtungswunsch führt zu einer gezielten Rückfrage oder
+einer belegten, prüfbaren Empfehlung. Enthält ein nativer Editor-Vorschlag ein
+unbestätigtes Produkt, eine Adresse oder einen Kontakt, wird er vollständig
+verworfen und durch eine Rückfrage zum betroffenen Feld ersetzt. Die
+Quellenprüfung verhindert weiterhin die Übernahme. Andere Schema-, Geltungsbereichs-,
+Zugangsdaten- und Berechtigungsfehler bleiben Fehler. Kataloggestützte Empfehlungen
+sind Vorschläge, kein Berechtigungsnachweis und keine Ausführungsfreigabe.
+
+Neue Git-Vorschläge benötigen Größe und Zugangseinstellungen zusammen. Git-Fragen
+erwarten tatsächliche Kundennetze als Freitext; eine offene Frage erlaubt keinen
+öffentlichen Zugriff. Der zentrale synthetische Korpus enthält kurze deutsche und
+englische Einrichtungswünsche, teilweise beantwortete Fragen und Folgeantworten,
+zusätzlich zu vollständig spezifizierten Änderungen und Beratung. Die durchgängige
+Journey beginnt Git mit einer Einrichtungsfrage vor der Auswahl. Simulierte
+Transport- und Schutztests ergänzen diese Fälle; Feldinventar und Wissenszustellung
+allein belegen keine Qualität natürlicher Dialoge. Eine übersprungene Release-
+Qualifikation ist ausdrücklich kein neuer Live-Testnachweis.
+
 ### Qualifikation mit echtem Modell
 
 Aenderungen an Servicefakten, Prompts, Wissensauswahl oder

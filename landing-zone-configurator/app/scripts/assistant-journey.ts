@@ -144,6 +144,14 @@ const steps: Step[] = [
     },
   },
   {
+    id: "devops-setup",
+    message:
+      "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+    reference: "devops-git",
+    roots: ["devops"],
+    questionsOnly: true,
+  },
+  {
     id: "devops",
     message:
       "Bitte nun den zentralen DevOps-Git-Dienst als Entwurf konfigurieren: git_flavor ausdrücklich git-10, allowed_network_ranges ausschließlich [203.0.113.0/24]. Der Flavor ist meine Auswahl, keine Verfügbarkeitszusage. Alle bisherigen Komponenten erhalten, nichts deployen.",

@@ -4681,3 +4681,205 @@ it.each([
     expect(assistantAuditManagedCoverage(message, [])).toBe(expected);
   },
 );
+
+it.each([
+  {
+    topic: "devops-git",
+    root: "devops",
+    value: { git_flavor: "git-10", allowed_network_ranges: ["203.0.113.0/24"] },
+    message: "Please add a central git instance to the config",
+    path: "devops.allowed_network_ranges",
+  },
+  {
+    topic: "devops-git",
+    root: "devops",
+    value: { git_flavor: "git-10", allowed_network_ranges: ["0.0.0.0/0"] },
+    message: "Please add central Git using git-10.",
+    path: "devops.allowed_network_ranges",
+  },
+  {
+    topic: "observability",
+    root: "observability",
+    value: {
+      plan_name: "Observability-Starter-EU01",
+      acl: ["203.0.113.0/24"],
+      metrics_retention_days: 30,
+    },
+    message: "Please add central monitoring, accessible from 203.0.113.0/24.",
+    path: "observability.plan_name",
+  },
+  {
+    topic: "identity-foundations",
+    root: "labels",
+    value: { contact_email: "invented@example.test" },
+    message: "Please add a contact label.",
+    path: "labels",
+  },
+])(
+  "asks a scoped follow-up instead of accepting an unconfirmed $path",
+  async ({ topic, root, value, message, path }) => {
+    const original = draft();
+    const before = structuredClone(original);
+    const native = inputDefinition(root).type;
+    const constructorValues =
+      typeof native !== "string" && native[0] === "object"
+        ? {
+            ...Object.fromEntries(
+              Object.keys(native[1]).map((key) => [key, null]),
+            ),
+            ...value,
+          }
+        : value;
+    const result = await collectionModel(
+      {
+        topic,
+        mode: "draft",
+        requirements: [],
+        editorContract: true,
+        editorInputs: [root],
+      },
+      {
+        ...response([patch(root, constructorValues)]),
+        replyLanguage: "en",
+        references: [topic],
+      },
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(original),
+      [],
+      message,
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0]?.path).toBe(path);
+    expect(result.questions[0]?.options).toEqual([]);
+    expect(JSON.stringify(result)).not.toMatch(
+      /invented@example|invented-plan|0\.0\.0\.0/,
+    );
+    expect(applyAssistantChanges(original, result.changes)).toEqual(before);
+  },
+);
+
+it("retains catalogue-grounded recommendations as reviewable draft proposals", async () => {
+  const original = draft();
+  const result = await collectionModel(
+    {
+      topic: "devops-git",
+      mode: "draft",
+      requirements: [],
+      editorContract: true,
+      editorInputs: ["devops"],
+    },
+    {
+      ...response([
+        patch("devops", {
+          git_flavor: "git-10",
+          allowed_network_ranges: ["203.0.113.0/24"],
+        }),
+      ]),
+      replyLanguage: "en",
+      references: ["devops-git"],
+    },
+  ).converse(
+    knowledgeSelection(),
+    assistantPublicValues(original),
+    [],
+    "Suggest central Git. Access only from 203.0.113.0/24.",
+    {
+      regions: [
+        {
+          region: "eu01",
+          fetchedAt: null,
+          products: {
+            gitFlavors: {
+              status: "available",
+              options: [{ value: "git-10", label: "Git small" }],
+              totalOptions: 1,
+              truncated: false,
+            },
+          },
+        },
+      ],
+    },
+  );
+  expect(result.questions).toEqual([]);
+  expect(
+    compileCommonConfiguration(applyAssistantChanges(original, result.changes))
+      .devops,
+  ).toEqual({
+    git_flavor: "git-10",
+    allowed_network_ranges: ["203.0.113.0/24"],
+  });
+});
+
+it("requires a complete new Git proposal", () => {
+  const schema = assistantEditorChangeSchema(
+    "devops",
+    undefined,
+    "serving",
+    null,
+  );
+  expect(
+    schema.safeParse(patch("devops", { git_flavor: "git-10" })).success,
+  ).toBe(false);
+  expect(
+    schema.safeParse(
+      patch("devops", { allowed_network_ranges: ["203.0.113.0/24"] }),
+    ).success,
+  ).toBe(false);
+});
+
+it.each(["de", "en"] as const)(
+  "withholds partial Git creation while a decision remains open (%s)",
+  async (language) => {
+    const result = await collectionModel(
+      {
+        topic: "devops-git",
+        mode: "draft",
+        requirements: [],
+        editorContract: true,
+        editorInputs: ["devops"],
+      },
+      {
+        ...response(
+          [
+            patch("devops", {
+              git_flavor: "",
+              allowed_network_ranges: ["203.0.113.0/24"],
+            }),
+          ],
+          [{ path: "devops.git_flavor", text: "Choose." }],
+        ),
+        replyLanguage: language,
+        references: ["devops-git"],
+      },
+      (request) => {
+        if (request.response_format.json_schema.name !== "editor_dialogue")
+          return;
+        const schema = request.response_format.json_schema.schema as {
+          required: string[];
+          properties: Record<string, unknown>;
+        };
+        expect(schema.required).toContain("replyLanguage");
+        const questions = JSON.stringify(schema.properties.questions);
+        expect(questions).toContain("devops.git_flavor");
+        expect(questions).toContain("devops.allowed_network_ranges");
+        expect(questions).not.toContain('"const":"devops"');
+      },
+    ).converse(
+      knowledgeSelection(),
+      assistantPublicValues(draft()),
+      [],
+      language === "en"
+        ? "Add central Git, only from 203.0.113.0/24."
+        : "Zentrales Git hinzufügen, nur aus 203.0.113.0/24.",
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions.map((question) => question.path)).toEqual([
+      "devops.git_flavor",
+    ]);
+    expect(result.explanation).toContain(
+      language === "en" ? "Nothing has been changed" : "Noch nichts geändert",
+    );
+  },
+);

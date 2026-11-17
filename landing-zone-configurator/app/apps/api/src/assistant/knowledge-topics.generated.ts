@@ -53,7 +53,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -127,7 +127,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -219,7 +219,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -289,7 +289,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -384,7 +384,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -455,12 +455,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "6d04daccbbbe8e65c649ce891cbe1adf4c5e6f1d8ec54a945b11569cf0735aca",
+            "7af8d5469272cec70e60b74a241622e4613844b555bd339c1cd0006cd40199a4",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -564,7 +564,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -628,7 +628,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -699,7 +699,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -790,7 +790,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -900,7 +900,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1082,7 +1082,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1213,7 +1213,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1238,8 +1238,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "devops-git",
       file: "devops-git.md",
-      version: 1,
-      checkedOn: "2026-10-10",
+      version: 2,
+      checkedOn: "2026-11-17",
       qualification: "local-draft-not-reviewed-release",
       groups: ["platform"],
       mandatory: false,
@@ -1269,7 +1269,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
+          sha256:
+            "7af8d5469272cec70e60b74a241622e4613844b555bd339c1cd0006cd40199a4",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1287,9 +1292,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/devops-git.md",
-      text: "# DevOps Git Service\n\n## Purpose\n\nExplicit managed Git, separate from GitHub login, forks and Configurator CI.\n\n## Accelerator Contract\n\ndevops=null skips the module. The root derives project, ownership and naming,\npassing git_flavor and allowed_network_ranges. git_flavor defaults to null,\nNOT git-10/git-100: null creates no Git instance. An ACL-only object does not\nenable Git. Root wiring, not child-module parameters alone, defines support.\nReal sizes and regional availability require authorized catalogues.\n\n## Dependencies\n\nManagement/governance, identity foundations, provider rights and deliberate ACLs.\nA repository fork proves neither provisioned Git nor service-account rights.\n\n## Dialogue\n\nClarify Git need, capacity, operator and access networks. The allow-all ACL\ndefault is NOT public-access consent. There is no enabled native flavor default:\nif Git is wanted without a chosen/verified flavor, explain null and ask instead\nof inventing git-10. Explicit user flavor choices are reviewable, not availability\nproof. Do not infer runners, integrations, migrations or secrets.\n\n## Examples\n\ndevops=null opts out. A chosen git_flavor plus deliberate allowed_network_ranges\ncan propose Git. git-10 illustrates syntax, not entitlement or capacity.\n\n## Limits\n\nTyped native Editor proposals change only the local draft on acceptance.\nACLs do not qualify backup/restore, migration, SSO or CI execution. No arbitrary\nGit appliances, availability, prices or performance promises.\n\n## Credentials\n\nProvisioning and Git-user access are separate. No PATs, private SSH keys, Git\npasswords or CI secrets in chat; no hidden Configurator profile-ID dependency.\n\n## Sources\n\nRoot calls, DevOps variables and provider configuration in the manifest.\nRefresh engine/source bindings after review; live product facts stay separate.",
+      text: '# DevOps Git Service\n\n## Purpose\n\nCentral managed Git, separate from GitHub login, forks and Configurator CI.\n\n## Accelerator Contract\n\nRoot derives project, ownership and naming; passes git_flavor and\nallowed_network_ranges. devops=null skips deployment. git_flavor defaults to\nnull, NOT git-10/git-100: null or an ACL-only object creates no Git instance.\nLive catalogues are needed for real sizes and regional availability.\n\n## Dependencies\n\nManagement/governance, identity foundations, provider rights and deliberate ACLs.\nA fork proves neither provisioned Git nor service-account rights.\n\n## Dialogue\n\nBroad setup requests ("Please add a central git instance to the config") start\na dialogue. Ask missing size/capacity and access decisions, preserving user\nanswers across turns. Only propose a complete new component. There is no enabled\nflavor default: ask instead of inventing git-10. A verified catalogue can ground\na labelled recommendation, never entitlement or availability. Ask actual CIDRs\nas free text, without invented examples or preset networks. A blank answer never\nmeans consent to allow all. Separate operator, runners and integrations; do not\ninfer migrations or secrets.\n\n## Examples\n\ndevops=null opts out. Selected git_flavor plus deliberate allowed_network_ranges\ncan propose Git. git-10 illustrates syntax, not entitlement or capacity.\n\n## Limits\n\nEditor acceptance changes only the local draft. ACLs do not qualify backup/restore,\nmigration, SSO or CI execution. No arbitrary Git appliances, prices, performance\nor availability promises. Root wiring, not child parameters, defines support.\n\n## Credentials\n\nProvisioning and Git-user access are separate. No PATs, SSH private keys, Git\npasswords or CI secrets in chat; no hidden Configurator profile-ID dependency.\n\n## Sources\n\nRoot calls, DevOps variables and provider configuration in the manifest.\nRefresh source bindings after review; live product facts stay separate.\n',
       sha256:
-        "272e93daa20f89e78ea5596daeae15a782626e036a7c5c2224468dac5e591666",
+        "a9bb755e1f46889b295811afa6d01bacf047405ad3db14fa66df59984822ce21",
     },
     {
       id: "platform-kubernetes",
@@ -1338,7 +1343,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1500,7 +1505,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1586,7 +1591,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1649,7 +1654,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1735,7 +1740,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "6d04daccbbbe8e65c649ce891cbe1adf4c5e6f1d8ec54a945b11569cf0735aca",
+            "7af8d5469272cec70e60b74a241622e4613844b555bd339c1cd0006cd40199a4",
         },
         {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",
@@ -1775,7 +1780,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "922cfe902b43266dcd23b8382e0d7369fbd317311c734808aa5b4a423f6b3536",
+            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",

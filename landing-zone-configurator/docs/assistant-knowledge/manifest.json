@@ -454,8 +454,8 @@
     {
       "id": "devops-git",
       "file": "devops-git.md",
-      "version": 1,
-      "checkedOn": "2026-10-10",
+      "version": 2,
+      "checkedOn": "2026-11-17",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "platform"
@@ -471,7 +471,9 @@
         "src/variables.tf",
         "src/modules/devops/variables.tf",
         "src/main.tf",
-        "src/providers.tf"
+        "src/providers.tf",
+        "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts"
       ],
       "externalSources": [],
       "scenarios": [

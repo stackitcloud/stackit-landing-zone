@@ -39,6 +39,14 @@ Es gibt keinen aktivierten nativen Flavor-Default:
 Wenn Git gewuenscht ist, aber kein ausgewaehlter/gepruefter Flavor vorliegt,
 `null` erklaeren und nachfragen, statt `git-10` zu erfinden.
 Explizite Nutzer-Flavors sind pruefbar, aber kein Verfuegbarkeitsnachweis.
+Ein breiter Wunsch wie „Bitte eine zentrale Git-Instanz hinzufügen“ beginnt einen
+Einrichtungsdialog und ist keine fehlerhafte Anfrage. Fehlende Größen- und
+Zugangsentscheidungen erfragen; erst einen vollständigen neuen Dienst vorschlagen.
+Nutzerauswahlen über Folgeantworten erhalten und nur offene Punkte erfragen.
+Tatsächliche CIDRs als Freitext erfragen, ohne erfundene Beispiele oder Netzoptionen.
+Eine fehlende oder leere Antwort erlaubt niemals den nativen Allow-All-Default.
+Ein Katalog kann eine klar gekennzeichnete Empfehlung begründen, beweist aber
+keine Berechtigung im Zielprojekt und ersetzt keine Zugangsentscheidung.
 Keine Runner, Integrationen, Migrationen oder Secrets ableiten.
 
 <a id="examples"></a>
