@@ -2,48 +2,49 @@
 
 ## Purpose
 
-Central managed Git, separate from GitHub login, forks and Configurator CI.
+Managed Git; separate from GitHub login and Configurator CI.
 
 ## Accelerator Contract
 
-Root derives project, ownership and naming; passes git_flavor and
-allowed_network_ranges. devops=null skips deployment. git_flavor defaults to
-null, NOT git-10/git-100: null or an ACL-only object creates no Git instance.
-Live catalogues are needed for real sizes and regional availability.
+Root derives project, owner and name. devops=null skips deployment;
+git_flavor=null creates no instance, even with ACLs. Inputs: git_flavor,
+allowed_network_ranges. The allow-all ACL default is not public-access consent.
 
 ## Dependencies
 
-Management/governance, identity foundations, provider rights and deliberate ACLs.
-A fork proves neither provisioned Git nor service-account rights.
+Management/governance, identity, provider rights and deliberate source networks.
+Availability/prices are live facts.
 
 ## Dialogue
 
-Broad setup requests ("Please add a central git instance to the config") start
-a dialogue. Ask missing size/capacity and access decisions, preserving user
-answers across turns. Only propose a complete new component. There is no enabled
-flavor default: ask instead of inventing git-10. A verified catalogue can ground
-a labelled recommendation, never entitlement or availability. Ask actual CIDRs
-as free text, without invented examples or preset networks. A blank answer never
-means consent to allow all. Separate operator, runners and integrations; do not
-infer migrations or secrets.
+Guide business requests, not a blank technical flavor field. Explain Git100 as
+a company-wide starting recommendation (documented up to100 users, shared repos,
+CI/CD); Git10 suits small teams/pilots up to10. Offer actual catalogue options,
+or labelled documented options if unavailable, without claiming entitlement.
+"Use a standard useful for company-wide Git" delegates the recommendation;
+retain that decision and ask only remaining access questions. Offer reuse of
+saved narrow allowlists or company/VPN egress; ask actual public source CIDRs
+only when unknown. Never infer them from company names or private SNA subnets.
+Public 0.0.0.0/0 requires explicit selection. Never use examples as consent.
+Use explicit UI language, including after quoted questions in another language.
 
 ## Examples
 
-devops=null opts out. Selected git_flavor plus deliberate allowed_network_ranges
-can propose Git. git-10 illustrates syntax, not entitlement or capacity.
+Choose size, then access; complete Editor proposals remain reviewable drafts.
+Native default is no Git, not git-10 or git-100.
 
 ## Limits
 
-Editor acceptance changes only the local draft. ACLs do not qualify backup/restore,
-migration, SSO or CI execution. No arbitrary Git appliances, prices, performance
-or availability promises. Root wiring, not child parameters, defines support.
+Provider0.114.0 flavor/ACL changes REQUIRE REPLACEMENT, not an in-place upgrade.
+Never promise no interruption/data loss or backup, restore, migration, SSO, CI
+or arbitrary appliances. Native root wiring is authoritative; no resources or rights
+are created on acceptance.
 
 ## Credentials
 
-Provisioning and Git-user access are separate. No PATs, SSH private keys, Git
-passwords or CI secrets in chat; no hidden Configurator profile-ID dependency.
+Provider and Git-user access differ. No PATs, SSH keys, passwords or CI secrets
+in chat. No hidden Configurator profile-ID dependency.
 
 ## Sources
 
-Root calls, DevOps variables and provider configuration in the manifest.
-Refresh source bindings after review; live product facts stay separate.
+Manifest binds native inputs, policy, provider and official sizing docs.

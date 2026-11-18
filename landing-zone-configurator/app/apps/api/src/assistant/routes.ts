@@ -2,6 +2,7 @@ import { PassThrough } from "node:stream";
 import {
   type AssistantFailureReason,
   assistantInferenceFailureSchema,
+  assistantLanguageSchema,
 } from "@lzc/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -174,8 +175,11 @@ export function registerAssistant(
               await assistant.removeTemplateAdvice?.(session);
               return reply.code(204).send();
             }
-            const { message } = z
-              .strictObject({ message: chatMessageSchema })
+            const { message, language } = z
+              .strictObject({
+                message: chatMessageSchema,
+                language: assistantLanguageSchema.optional(),
+              })
               .parse(request.body);
             if (request.headers.accept === "application/x-ndjson")
               return sendStream(request, reply, async (stream) => ({
@@ -183,10 +187,16 @@ export function registerAssistant(
                   session,
                   message,
                   stream,
+                  language,
                 ),
               }));
             return {
-              advice: await assistant.sendTemplateAdvice?.(session, message),
+              advice: await assistant.sendTemplateAdvice?.(
+                session,
+                message,
+                undefined,
+                language,
+              ),
             };
           },
         });
@@ -222,10 +232,11 @@ export function registerAssistant(
               conversation: await assistant.discard(session, id, request.body),
             };
           if (action === "send") {
-            const { revision, message, draft } = z
+            const { revision, message, draft, language } = z
               .strictObject({
                 revision: z.number().int().positive(),
                 message: chatMessageSchema,
+                language: assistantLanguageSchema.optional(),
                 draft: z.unknown().optional(),
               })
               .parse(request.body);
@@ -238,6 +249,7 @@ export function registerAssistant(
                   message,
                   stream,
                   draft,
+                  language,
                 ),
               }));
             return {
@@ -248,6 +260,7 @@ export function registerAssistant(
                 message,
                 undefined,
                 draft,
+                language,
               ),
             };
           }

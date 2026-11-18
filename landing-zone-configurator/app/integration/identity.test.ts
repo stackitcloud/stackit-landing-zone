@@ -248,9 +248,13 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         stored.id,
         1,
         "Welcher Plattform-Service-Account ist hinterlegt?",
+        undefined,
+        undefined,
+        "en",
       );
       const values = model.converse.mock.calls[0]?.[1];
       expect(values).toMatchObject({
+        "assistant.language": "en",
         "assistant.platform_service_account_emails": [
           "another-bound@sa.stackit.cloud",
           "bound@sa.stackit.cloud",

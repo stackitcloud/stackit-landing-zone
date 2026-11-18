@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const assistantLanguageSchema = z.enum(["de", "en"]);
+export type AssistantLanguage = z.infer<typeof assistantLanguageSchema>;
+
 export const assistantInferenceFailureSchema = z.object({
   error: z.enum(["assistant_inference_failed", "assistant_unavailable"]),
   reason: z.enum([

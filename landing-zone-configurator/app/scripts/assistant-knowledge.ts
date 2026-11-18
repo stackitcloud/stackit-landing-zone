@@ -154,6 +154,8 @@ export function buildAssistantKnowledgeTopics() {
         ) &&
           ![
             "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
+            "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
+            "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx",
             "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
             "landing-zone-configurator/app/packages/contracts/src/application-upgrades.ts",
             "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql",

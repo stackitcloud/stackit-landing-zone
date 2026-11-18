@@ -152,6 +152,7 @@ export type AssistantScenario = {
   message: string;
   fixture:
     | "baseline"
+    | "git-saved-access"
     | "foundations"
     | "folder-naming"
     | "dns-owner"
@@ -715,6 +716,70 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     setupQuestionPaths: paths,
     expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
   })),
+  {
+    id: "editor-devops-company-standard",
+    topic: "devops-git",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    message:
+      "Welche Git-Größe soll der Entwurf verwenden? Wähle einen verfügbaren Git-Tarif oder beschreibe deinen Kapazitätsbedarf.\nMy answer: just use a standard git flavor, which is usefull for a company wide git.",
+    history: [
+      {
+        role: "user",
+        content: "Please add a central git instance to the config",
+      },
+      {
+        role: "assistant",
+        content: "Welche Git-Größe soll der Entwurf verwenden?",
+      },
+    ],
+    setupQuestionPaths: ["devops.allowed_network_ranges"],
+  },
+  {
+    id: "editor-devops-company-complete",
+    topic: "devops-git",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    message: "Allow access only from 203.0.113.0/24.",
+    history: [
+      {
+        role: "user",
+        content: "Please add a central git instance to the config",
+      },
+      { role: "assistant", content: "Which starting size would you like?" },
+      {
+        role: "user",
+        content: "just use a standard git flavor useful for company-wide Git",
+      },
+      {
+        role: "assistant",
+        content:
+          "Starting size selected: Git100. Who should be able to reach it?",
+      },
+    ],
+    editorExpected: {
+      path: "devops",
+      value: {
+        git_flavor: "git-100",
+        allowed_network_ranges: ["203.0.113.0/24"],
+      },
+    },
+  },
+  {
+    id: "editor-devops-reuse-allowlist",
+    topic: "devops-git",
+    fixture: "git-saved-access",
+    expectedLanguage: "en",
+    message:
+      "Use the recommended company-wide standard and reuse the Observability allowlist for Git.",
+    editorExpected: {
+      path: "devops",
+      value: {
+        git_flavor: "git-100",
+        allowed_network_ranges: ["203.0.113.0/24"],
+      },
+    },
+  },
   {
     id: "editor-devops-followup",
     topic: "devops-git",
@@ -1496,7 +1561,19 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     delete corporate.accessProfile;
     corporate.settings.automation_role = "owner";
   }
+  if (scenario.fixture === "git-saved-access")
+    draft = setCommonInput(draft, "observability", {
+      plan_name: "Observability-Starter-EU01",
+      acl: ["203.0.113.0/24"],
+      metrics_retention_days: 30,
+      logs_retention_days: 30,
+      traces_retention_days: 30,
+      metrics_retention_days_1h_downsampling: 30,
+      metrics_retention_days_5m_downsampling: 30,
+    });
   const values = assistantPublicValues(draft);
+  if (scenario.expectedLanguage)
+    values["assistant.language"] = scenario.expectedLanguage;
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
   if (scenario.fixture === "dns-login") values.owner_email = null;
@@ -2139,13 +2216,18 @@ export function validateAssistantScenario(
     if (
       dialogue.questions.some(
         (question) =>
-          (question.options?.length ?? 0) > 0 ||
-          /(?:leave|leaving).*empty.*allow|192\.168|10\.0\.0|0\.0\.0\.0|git-100|git-10/i.test(
+          (question.options?.length ?? 0) < 2 ||
+          /(?:leave|leaving).*empty.*allow|192\.168|10\.0\.0/i.test(
             question.text,
           ),
       )
     )
-      failures.push("setup_invented_defaults_or_network_options");
+      failures.push("setup_missing_useful_grounded_choices");
+    if (
+      scenario.id === "editor-devops-company-standard" &&
+      !/Git100/.test(dialogue.explanation)
+    )
+      failures.push("company_git_recommendation_missing");
     return { dialogue, failures };
   }
   if (scenario.auditQuestionPaths) {

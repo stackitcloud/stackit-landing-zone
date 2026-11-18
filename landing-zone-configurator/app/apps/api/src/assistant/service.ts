@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  type AssistantLanguage,
   type AssistantMergeConflict,
   type AssistantProposalChange,
   assistantDiscardRequestSchema,
@@ -550,6 +551,7 @@ export class AssistantConversations {
     session: Session,
     text: string,
     stream?: AssistantStream,
+    language?: AssistantLanguage,
   ) {
     const message = chatMessageSchema.parse(text);
     if (!this.model.adviseTemplates)
@@ -581,6 +583,7 @@ export class AssistantConversations {
         message,
         await this.productCatalogues(session, ["eu01", "eu02"]),
         stream,
+        language,
       );
       stream?.signal?.throwIfAborted();
       if (recommendation.knowledgeSha256 !== buildAssistantKnowledge().sha256)
@@ -709,6 +712,7 @@ export class AssistantConversations {
     text: string,
     stream?: AssistantStream,
     localDraft?: unknown,
+    language?: AssistantLanguage,
   ) {
     const message = chatMessageSchema.parse(text);
     if (this.active >= 5) throw new AssistantError(429, "assistant_busy");
@@ -779,6 +783,7 @@ export class AssistantConversations {
       const identity = await new StackitIdentities(this.pool).status(session);
       const modelValues = {
         ...base.values,
+        ...(language ? { "assistant.language": language } : {}),
         "assistant.platform_service_account_emails":
           base.platformServiceAccountEmails,
         "assistant.user_email": identity.verified

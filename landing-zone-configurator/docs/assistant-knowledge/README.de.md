@@ -143,9 +143,22 @@ Quellenprüfung verhindert weiterhin die Übernahme. Andere Schema-, Geltungsber
 Zugangsdaten- und Berechtigungsfehler bleiben Fehler. Kataloggestützte Empfehlungen
 sind Vorschläge, kein Berechtigungsnachweis und keine Ausführungsfreigabe.
 
-Neue Git-Vorschläge benötigen Größe und Zugangseinstellungen zusammen. Git-Fragen
-erwarten tatsächliche Kundennetze als Freitext; eine offene Frage erlaubt keinen
-öffentlichen Zugriff. Der zentrale synthetische Korpus enthält kurze deutsche und
+Der Browser sendet seine gewählte `language` (`de`/`en`) bei Chat- und
+Startvorlagenberatung mit. Die API validiert sie und übergibt sie als vertrauenswürdige
+Antwort-Metadaten, getrennt von Entwurfsfeldern und zitiertem Verlauf. Modell-
+Sprachkennzeichen überschreiben diese explizite Einstellung nicht. Ältere Clients
+können sie auslassen; gespeicherter Verlauf wird weder umgeschrieben noch übersetzt.
+
+Neue Git-Vorschläge benötigen Größe und Zugriff zusammen. Ein begrenzter
+Entscheidungsklassifikator wählt nur tatsächliche Nutzerquellen und angebotene
+Tarif-/Zugangsoptionen. Feste Programmregeln liefern die dokumentierte Git100-
+Empfehlung für unternehmensweites Git, Git10-Alternativen, aktuelle Projekttarife,
+die optionale Übernahme gespeicherter enger ACLs und die Ersetzungsgrenze des
+gepinnten Providers. Nutzer müssen keine nativen Flavor-IDs recherchieren.
+Ein Wunsch nach einem sinnvollen unternehmensweiten Standard beantwortet die
+Größenwahl; sie bleibt in Zugangs-Folgefragen erhalten. Nur wirklich unbekannte
+Firmen-Ausgangs-CIDRs benötigen Freitext. Offene Fragen erlauben keinen öffentlichen
+Zugriff; öffentliche CIDRs benötigen ausdrücklich positive Nutzerevidenz. Der zentrale synthetische Korpus enthält kurze deutsche und
 englische Einrichtungswünsche, teilweise beantwortete Fragen und Folgeantworten,
 zusätzlich zu vollständig spezifizierten Änderungen und Beratung. Die durchgängige
 Journey beginnt Git mit einer Einrichtungsfrage vor der Auswahl. Simulierte

@@ -48,7 +48,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "08d92c79105d2fd65e8e33863b6a8e310db37771ecb4f012a079b185ae069390",
+            "a3abe45c5048927fff6b88ae1bf6b0273f363dd19b901ea13ce1f16cee81bacb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -450,12 +450,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "08d92c79105d2fd65e8e33863b6a8e310db37771ecb4f012a079b185ae069390",
+            "a3abe45c5048927fff6b88ae1bf6b0273f363dd19b901ea13ce1f16cee81bacb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "7af8d5469272cec70e60b74a241622e4613844b555bd339c1cd0006cd40199a4",
+            "46dc9f7e807f021e38a803703661b2099a3b984f4eb74bd330fa40651413083f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1238,7 +1238,7 @@ export const assistantKnowledgeTopics = {
     {
       id: "devops-git",
       file: "devops-git.md",
-      version: 2,
+      version: 3,
       checkedOn: "2026-11-17",
       qualification: "local-draft-not-reviewed-release",
       groups: ["platform"],
@@ -1274,7 +1274,37 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "7af8d5469272cec70e60b74a241622e4613844b555bd339c1cd0006cd40199a4",
+            "46dc9f7e807f021e38a803703661b2099a3b984f4eb74bd330fa40651413083f",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/git-dialogue.ts",
+          sha256:
+            "c766f30cf237167098d5df135a16eacf05388650d0f4f94ff64d04f26e2690a4",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
+          sha256:
+            "b49d611f01671ea26bbc311849e523c7efbfa0032912d3086bf0702b103f2ced",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/routes.ts",
+          sha256:
+            "8fa3d3277b95194b96d42cf0e2ec72fac6a478511ef3b06640b81c8545676ae0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
+          sha256:
+            "a3abe45c5048927fff6b88ae1bf6b0273f363dd19b901ea13ce1f16cee81bacb",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
+          sha256:
+            "4ba91ee9971feea0819511ae6ff39529facd691221ec5aa52621566134565b83",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx",
+          sha256:
+            "dba870729eded3f3eb22734743609e0ac04a371108f5929aa8cfbf9932414037",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
@@ -1282,7 +1312,10 @@ export const assistantKnowledgeTopics = {
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
         },
       ],
-      externalSources: [],
+      externalSources: [
+        "https://docs.stackit.cloud/products/developer-platform/git/basics/plan-size-of-git-service/",
+        "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/git/instance/resource.go",
+      ],
       scenarios: ["A08", "A24"],
       fieldPaths: [
         "devops",
@@ -1292,9 +1325,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/devops-git.md",
-      text: '# DevOps Git Service\n\n## Purpose\n\nCentral managed Git, separate from GitHub login, forks and Configurator CI.\n\n## Accelerator Contract\n\nRoot derives project, ownership and naming; passes git_flavor and\nallowed_network_ranges. devops=null skips deployment. git_flavor defaults to\nnull, NOT git-10/git-100: null or an ACL-only object creates no Git instance.\nLive catalogues are needed for real sizes and regional availability.\n\n## Dependencies\n\nManagement/governance, identity foundations, provider rights and deliberate ACLs.\nA fork proves neither provisioned Git nor service-account rights.\n\n## Dialogue\n\nBroad setup requests ("Please add a central git instance to the config") start\na dialogue. Ask missing size/capacity and access decisions, preserving user\nanswers across turns. Only propose a complete new component. There is no enabled\nflavor default: ask instead of inventing git-10. A verified catalogue can ground\na labelled recommendation, never entitlement or availability. Ask actual CIDRs\nas free text, without invented examples or preset networks. A blank answer never\nmeans consent to allow all. Separate operator, runners and integrations; do not\ninfer migrations or secrets.\n\n## Examples\n\ndevops=null opts out. Selected git_flavor plus deliberate allowed_network_ranges\ncan propose Git. git-10 illustrates syntax, not entitlement or capacity.\n\n## Limits\n\nEditor acceptance changes only the local draft. ACLs do not qualify backup/restore,\nmigration, SSO or CI execution. No arbitrary Git appliances, prices, performance\nor availability promises. Root wiring, not child parameters, defines support.\n\n## Credentials\n\nProvisioning and Git-user access are separate. No PATs, SSH private keys, Git\npasswords or CI secrets in chat; no hidden Configurator profile-ID dependency.\n\n## Sources\n\nRoot calls, DevOps variables and provider configuration in the manifest.\nRefresh source bindings after review; live product facts stay separate.\n',
+      text: '# DevOps Git Service\n\n## Purpose\n\nManaged Git; separate from GitHub login and Configurator CI.\n\n## Accelerator Contract\n\nRoot derives project, owner and name. devops=null skips deployment;\ngit_flavor=null creates no instance, even with ACLs. Inputs: git_flavor,\nallowed_network_ranges. The allow-all ACL default is not public-access consent.\n\n## Dependencies\n\nManagement/governance, identity, provider rights and deliberate source networks.\nAvailability/prices are live facts.\n\n## Dialogue\n\nGuide business requests, not a blank technical flavor field. Explain Git100 as\na company-wide starting recommendation (documented up to100 users, shared repos,\nCI/CD); Git10 suits small teams/pilots up to10. Offer actual catalogue options,\nor labelled documented options if unavailable, without claiming entitlement.\n"Use a standard useful for company-wide Git" delegates the recommendation;\nretain that decision and ask only remaining access questions. Offer reuse of\nsaved narrow allowlists or company/VPN egress; ask actual public source CIDRs\nonly when unknown. Never infer them from company names or private SNA subnets.\nPublic 0.0.0.0/0 requires explicit selection. Never use examples as consent.\nUse explicit UI language, including after quoted questions in another language.\n\n## Examples\n\nChoose size, then access; complete Editor proposals remain reviewable drafts.\nNative default is no Git, not git-10 or git-100.\n\n## Limits\n\nProvider0.114.0 flavor/ACL changes REQUIRE REPLACEMENT, not an in-place upgrade.\nNever promise no interruption/data loss or backup, restore, migration, SSO, CI\nor arbitrary appliances. Native root wiring is authoritative; no resources or rights\nare created on acceptance.\n\n## Credentials\n\nProvider and Git-user access differ. No PATs, SSH keys, passwords or CI secrets\nin chat. No hidden Configurator profile-ID dependency.\n\n## Sources\n\nManifest binds native inputs, policy, provider and official sizing docs.\n',
       sha256:
-        "a9bb755e1f46889b295811afa6d01bacf047405ad3db14fa66df59984822ce21",
+        "efc22911214e0193cb1f4a407c7c459c2b34b26a3b205bef2b5a90d69a06ddde",
     },
     {
       id: "platform-kubernetes",
@@ -1725,7 +1758,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "08d92c79105d2fd65e8e33863b6a8e310db37771ecb4f012a079b185ae069390",
+            "a3abe45c5048927fff6b88ae1bf6b0273f363dd19b901ea13ce1f16cee81bacb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
@@ -1735,12 +1768,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "809c06ba3525286e5810b84e4287c418accec1df1a91192e7fc5bf23ffed2839",
+            "b49d611f01671ea26bbc311849e523c7efbfa0032912d3086bf0702b103f2ced",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "7af8d5469272cec70e60b74a241622e4613844b555bd339c1cd0006cd40199a4",
+            "46dc9f7e807f021e38a803703661b2099a3b984f4eb74bd330fa40651413083f",
         },
         {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",

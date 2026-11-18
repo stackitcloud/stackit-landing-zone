@@ -233,21 +233,30 @@ it.each(assistantScenarios)(
     if (scenario.setupQuestionPaths) {
       expect(
         validateAssistantScenario(scenario, {
-          explanation: "Nothing changed.",
+          explanation:
+            scenario.id === "editor-devops-company-standard"
+              ? "Starting size selected: Git100. Nothing changed."
+              : "Nothing changed.",
           changes: [],
           references: [scenario.topic],
           questions: [
             {
               path: scenario.setupQuestionPaths[0],
               text: "Please choose.",
-              options: [],
+              options:
+                scenario.setupQuestionPaths[0] === "devops.git_flavor"
+                  ? ["Git100 — recommended", "Git10 — pilot"]
+                  : ["Company networks", "Specific source IPs"],
             },
           ],
         }).failures,
       ).toEqual([]);
       expect(
         validateAssistantScenario(scenario, {
-          explanation: "Nothing changed.",
+          explanation:
+            scenario.id === "editor-devops-company-standard"
+              ? "Starting size selected: Git100. Nothing changed."
+              : "Nothing changed.",
           changes: [],
           references: [scenario.topic],
           questions: [],
@@ -295,7 +304,12 @@ it.each(assistantScenarios)(
         },
         bucket_naming: "project-id",
         devops: {
-          git_flavor: "git-10",
+          git_flavor: [
+            "editor-devops-company-complete",
+            "editor-devops-reuse-allowlist",
+          ].includes(scenario.id)
+            ? "git-100"
+            : "git-10",
           allowed_network_ranges: ["203.0.113.0/24"],
         },
         federated_identity_providers: [

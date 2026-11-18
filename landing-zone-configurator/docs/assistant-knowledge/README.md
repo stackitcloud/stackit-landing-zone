@@ -118,9 +118,21 @@ source validation still prevents its acceptance. Other schema, scope, credential
 and authorization failures remain errors. Catalogue-grounded recommendations
 remain proposals, not proof of entitlement or execution approval.
 
-New Git proposals require size and access settings together. Git questions use
-actual customer networks as free text; an unanswered question never authorizes
-public access. The central synthetic corpus covers short English/German setup
+The browser sends its selected `language` (`de`/`en`) on chat and starting-template
+advice requests. The API validates it and passes it as trusted response metadata,
+separate from draft fields and quoted history. Model language labels do not
+override this explicit preference; legacy callers can omit it. Stored history is
+not rewritten or translated.
+
+New Git proposals require size and access settings together. A bounded Git decision
+classifier selects only actual user-source references and offered plan/access
+choices. Deterministic policy supplies documented company-wide Git100 guidance,
+Git10 alternatives, available project plans, optional reuse of saved narrow ACLs
+and the pinned provider's replacement limitation. It does not ask an end user to
+research native flavor IDs. A standard/company-wide recommendation request
+resolves sizing and retains that decision on access follow-ups. Only genuinely
+unknown company egress CIDRs need free text. Unanswered access never authorizes
+public reachability; public CIDRs require explicit positive user evidence. The central synthetic corpus covers short English/German setup
 requests, partially supplied choices and follow-ups, alongside fully specified
 changes and advice. The continuous journey includes Git setup before selection.
 Mocked request/guard tests complement these cases; field inventory and knowledge

@@ -1944,6 +1944,8 @@ it("requires login, current origin and CSRF for chat and rejects injected tenant
         _revision: number,
         _text: string,
         stream?: AssistantStream,
+        _draft?: unknown,
+        _language?: "de" | "en",
       ) => {
         stream?.onText("Vorläufiger Text");
         return {
@@ -2159,6 +2161,24 @@ it("requires login, current origin and CSRF for chat and rejects injected tenant
     expect(assistant.sendTemplateAdvice).toHaveBeenCalledExactlyOnceWith(
       session,
       "Choose template",
+      undefined,
+      undefined,
+    );
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: adviceUrl,
+          headers,
+          payload: { message: "Recommend a template", language: "en" },
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(assistant.sendTemplateAdvice).toHaveBeenLastCalledWith(
+      session,
+      "Recommend a template",
+      undefined,
+      "en",
     );
     expect(
       (await app.inject({ method: "DELETE", url: adviceUrl, headers }))
@@ -2241,6 +2261,36 @@ it("requires login, current origin and CSRF for chat and rejects injected tenant
       ).statusCode,
     ).toBe(200);
     expect(assistant.send).toHaveBeenCalledTimes(1);
+    const localized = await app.inject({
+      method: "POST",
+      url,
+      headers,
+      payload: {
+        revision: 1,
+        message: "Please add central Git",
+        language: "en",
+      },
+    });
+    expect(localized.statusCode).toBe(200);
+    expect(assistant.send).toHaveBeenLastCalledWith(
+      session,
+      expect.any(String),
+      1,
+      "Please add central Git",
+      undefined,
+      undefined,
+      "en",
+    );
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url,
+          headers,
+          payload: { revision: 1, message: "Hello", language: "fr" },
+        })
+      ).statusCode,
+    ).toBe(400);
     const streamed = await app.inject({
       method: "POST",
       url,

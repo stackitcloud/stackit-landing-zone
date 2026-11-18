@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "214d7e81d145ea5fa6d74cbf8e174a1b9fe8b164ac37460626108582b8af0a8b",
+  "knowledgeSha256": "f68132e00f349065708abbe824d5c775f3010ca229a700a8789bd8bbcf830a39",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "e4d6b569f36496cfe9c4c9655a18ed02a47e726e584cbd0dac7e643c8956e6df",
+    "scripts/assistant-scenarios.ts": "d0b2ba1bfbe04c0554a6e30f3000063d9900bfef2e920ed7e5ae79f55c8d7900",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "0a96248735604b037639f28c24e208263cbd1839996972a3322e71c73a9fce11",
+  "suiteSha256": "9cba088ee288b02aa2560b614c35e99ef59d1c9778a1d47e9cfbfe68fda270e8",
   "topics": [
     {
       "id": "credential-foundations",
@@ -4734,6 +4734,93 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-company-standard",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "message": "Welche Git-Größe soll der Entwurf verwenden? Wähle einen verfügbaren Git-Tarif oder beschreibe deinen Kapazitätsbedarf.\nMy answer: just use a standard git flavor, which is usefull for a company wide git.",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please add a central git instance to the config"
+            },
+            {
+              "role": "assistant",
+              "content": "Welche Git-Größe soll der Entwurf verwenden?"
+            }
+          ],
+          "setupQuestionPaths": [
+            "devops.allowed_network_ranges"
+          ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-company-complete",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "message": "Allow access only from 203.0.113.0/24.",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please add a central git instance to the config"
+            },
+            {
+              "role": "assistant",
+              "content": "Which starting size would you like?"
+            },
+            {
+              "role": "user",
+              "content": "just use a standard git flavor useful for company-wide Git"
+            },
+            {
+              "role": "assistant",
+              "content": "Starting size selected: Git100. Who should be able to reach it?"
+            }
+          ],
+          "editorExpected": {
+            "path": "devops",
+            "value": {
+              "git_flavor": "git-100",
+              "allowed_network_ranges": [
+                "203.0.113.0/24"
+              ]
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-reuse-allowlist",
+          "topic": "devops-git",
+          "fixture": "git-saved-access",
+          "expectedLanguage": "en",
+          "message": "Use the recommended company-wide standard and reuse the Observability allowlist for Git.",
+          "editorExpected": {
+            "path": "devops",
+            "value": {
+              "git_flavor": "git-100",
+              "allowed_network_ranges": [
+                "203.0.113.0/24"
+              ]
+            }
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
           ]
         },
         {

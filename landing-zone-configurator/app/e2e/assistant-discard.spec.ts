@@ -128,6 +128,7 @@ for (const context of ["configuration", "templates"] as const) {
         expect(route.request().postDataJSON()).toEqual({
           revision: 1,
           message: "Bitte jetzt nur die Grundlagen erklären.",
+          language: "de",
           draft: { ...original, name: "Unsaved preserved discard draft" },
         });
         sent++;

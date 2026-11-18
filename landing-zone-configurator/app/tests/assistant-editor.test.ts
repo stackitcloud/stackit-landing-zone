@@ -629,7 +629,9 @@ describe("topic knowledge delivery", () => {
         knowledgeSelection(),
         {},
         [],
-        "Bitte einen Vorschlag für dieses Thema vorbereiten.",
+        topic === "devops-git"
+          ? "Bitte native git_flavor-Felder für dieses Thema vorschlagen."
+          : "Bitte einen Vorschlag für dieses Thema vorbereiten.",
       );
       expect(received).toBe(true);
     },
@@ -4687,14 +4689,14 @@ it.each([
     topic: "devops-git",
     root: "devops",
     value: { git_flavor: "git-10", allowed_network_ranges: ["203.0.113.0/24"] },
-    message: "Please add a central git instance to the config",
+    message: "Please configure git_flavor for central Git.",
     path: "devops.allowed_network_ranges",
   },
   {
     topic: "devops-git",
     root: "devops",
     value: { git_flavor: "git-10", allowed_network_ranges: ["0.0.0.0/0"] },
-    message: "Please add central Git using git-10.",
+    message: "Please configure git_flavor=git-10 for central Git.",
     path: "devops.allowed_network_ranges",
   },
   {
@@ -4784,7 +4786,7 @@ it("retains catalogue-grounded recommendations as reviewable draft proposals", a
     knowledgeSelection(),
     assistantPublicValues(original),
     [],
-    "Suggest central Git. Access only from 203.0.113.0/24.",
+    "Suggest git_flavor for central Git. Access only from 203.0.113.0/24.",
     {
       regions: [
         {
@@ -4871,8 +4873,8 @@ it.each(["de", "en"] as const)(
       assistantPublicValues(draft()),
       [],
       language === "en"
-        ? "Add central Git, only from 203.0.113.0/24."
-        : "Zentrales Git hinzufügen, nur aus 203.0.113.0/24.",
+        ? "Configure git_flavor, only from 203.0.113.0/24."
+        : "git_flavor konfigurieren, nur aus 203.0.113.0/24.",
     );
     expect(result.changes).toEqual([]);
     expect(result.questions.map((question) => question.path)).toEqual([
