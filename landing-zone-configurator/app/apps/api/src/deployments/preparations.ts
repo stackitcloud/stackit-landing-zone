@@ -106,7 +106,12 @@ export function preparationTfvars(
   >,
 ) {
   const values = recordValues(manifest.configuration);
-  if (manifest.accelerator.commit === platformUpgradeAcceleratorCommit) {
+  if (
+    [
+      platformUpgradeAcceleratorCommit,
+      "6398834bf20a4f24ea81c1f7dd0627025b4a81ce",
+    ].includes(manifest.accelerator.commit)
+  ) {
     const namespace = z.uuid().parse(manifest.platformContractNamespace);
     return serializeTfvars({
       ...values,
@@ -362,6 +367,7 @@ export class Preparations {
           // explicit reconciliation. Never make a fresh/empty bootstrap here.
           const compatibleSources = [
             platformUpgradeAcceleratorCommit,
+            "6398834bf20a4f24ea81c1f7dd0627025b4a81ce",
             "c83f3d910ab20131d1cba898023317c0e818843b",
             "c4b43c36af198985980b17626c48d357795e3fbd",
           ];

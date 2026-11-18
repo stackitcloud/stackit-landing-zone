@@ -2554,77 +2554,103 @@ describe.skipIf(!enabled)(
       },
     );
 
-    it("allows a reviewed current-root bootstrap correction only for the exact reconciled checkpoint without changing state", async () => {
-      const test = await failedCheckpoint(true);
-      const preparations = new Preparations(
-        pool,
-        test.repositories,
-        test.profiles,
-        true,
-        platformUpgradeAcceleratorCommit,
-      );
-      const request = {
-        source: "database" as const,
-        configurationId: test.configurationId,
-        revision: 1,
-        credentialId: test.credentialId,
-        platformUpgrade: {
-          confirm: true as const,
-          acceleratorCommit: platformUpgradeAcceleratorCommit,
-        },
-      } as const;
-      await expect(
-        preparations.create(test.owner, null, request),
-      ).rejects.toMatchObject({ code: "platform_upgrade_state_unavailable" });
-      await test.plans.reconcile(test.owner, test.run.id, {
-        confirmRetainState: true,
-        stateVersion: test.checkpoint.stateVersion,
-        checkpointSha256: test.checkpoint.checkpointSha256,
-      });
-      const key = stableStateKey(test.owner, test.manifest);
-      const before = (
-        await migration!.query(
-          "SELECT version,ciphertext,backend_id,lock_run_id FROM lzc.platform_states WHERE state_key=$1",
-          [key],
-        )
-      ).rows;
-      const starts = test.runner.start.mock.calls.length;
-      const prepared = await preparations.create(test.owner, null, request);
-      expect(
-        (await preparations.list(test.owner)).find(
-          (item) => item.id === prepared.id,
-        )?.manifest.accelerator.commit,
-      ).toBe(platformUpgradeAcceleratorCommit);
-      expect(
-        (
+    it.each([
+      platformUpgradeAcceleratorCommit,
+      "6398834bf20a4f24ea81c1f7dd0627025b4a81ce",
+    ])(
+      "allows a reviewed bootstrap correction from %s only for the exact reconciled checkpoint without changing state",
+      async (source) => {
+        const test = await failedCheckpoint(true);
+        if (source !== platformUpgradeAcceleratorCommit) {
+          // Import a synthetic historical preparation; production records stay immutable.
+          await admin!.query(
+            "BEGIN; SET LOCAL session_replication_role=replica",
+          );
+          try {
+            await admin!.query(
+              "UPDATE lzc.deployment_preparations SET manifest=jsonb_set(manifest,'{accelerator,commit}',to_jsonb($2::text)) WHERE id=(SELECT preparation_id FROM lzc.plan_runs WHERE id=$1)",
+              [test.run.id, source],
+            );
+            await admin!.query("COMMIT");
+          } catch (error) {
+            await admin!.query("ROLLBACK");
+            throw error;
+          }
+        }
+        const preparations = new Preparations(
+          pool,
+          test.repositories,
+          test.profiles,
+          true,
+          platformUpgradeAcceleratorCommit,
+        );
+        const request = {
+          source: "database" as const,
+          configurationId: test.configurationId,
+          revision: 1,
+          credentialId: test.credentialId,
+          platformUpgrade: {
+            confirm: true as const,
+            acceleratorCommit: platformUpgradeAcceleratorCommit,
+          },
+        } as const;
+        await expect(
+          preparations.create(test.owner, null, request),
+        ).rejects.toMatchObject({ code: "platform_upgrade_state_unavailable" });
+        await test.plans.reconcile(test.owner, test.run.id, {
+          confirmRetainState: true,
+          stateVersion: test.checkpoint.stateVersion,
+          checkpointSha256: test.checkpoint.checkpointSha256,
+        });
+        const key = stableStateKey(test.owner, test.manifest);
+        const before = (
           await migration!.query(
             "SELECT version,ciphertext,backend_id,lock_run_id FROM lzc.platform_states WHERE state_key=$1",
             [key],
           )
-        ).rows,
-      ).toEqual(before);
-      expect(test.runner.start).toHaveBeenCalledTimes(starts);
-      const fresh = await test.plans.start(test.owner, test.token, prepared.id);
-      expect(
-        (
-          await migration!.query(
-            "SELECT state_key,state_version FROM lzc.plan_runs WHERE id=$1",
-            [fresh.id],
-          )
-        ).rows[0],
-      ).toMatchObject({
-        state_key: key,
-        state_version: test.checkpoint.stateVersion,
-      });
-      await test.plans.cancel(test.owner, fresh.id);
-      await migration!.query(
-        "UPDATE lzc.platform_states SET version=version+1 WHERE state_key=$1",
-        [key],
-      );
-      await expect(
-        preparations.create(test.owner, null, request),
-      ).rejects.toMatchObject({ code: "platform_upgrade_state_unavailable" });
-    });
+        ).rows;
+        const starts = test.runner.start.mock.calls.length;
+        const prepared = await preparations.create(test.owner, null, request);
+        expect(
+          (await preparations.list(test.owner)).find(
+            (item) => item.id === prepared.id,
+          )?.manifest.accelerator.commit,
+        ).toBe(platformUpgradeAcceleratorCommit);
+        expect(
+          (
+            await migration!.query(
+              "SELECT version,ciphertext,backend_id,lock_run_id FROM lzc.platform_states WHERE state_key=$1",
+              [key],
+            )
+          ).rows,
+        ).toEqual(before);
+        expect(test.runner.start).toHaveBeenCalledTimes(starts);
+        const fresh = await test.plans.start(
+          test.owner,
+          test.token,
+          prepared.id,
+        );
+        expect(
+          (
+            await migration!.query(
+              "SELECT state_key,state_version FROM lzc.plan_runs WHERE id=$1",
+              [fresh.id],
+            )
+          ).rows[0],
+        ).toMatchObject({
+          state_key: key,
+          state_version: test.checkpoint.stateVersion,
+        });
+        await test.plans.cancel(test.owner, fresh.id);
+        await migration!.query(
+          "UPDATE lzc.platform_states SET version=version+1 WHERE state_key=$1",
+          [key],
+        );
+        await expect(
+          preparations.create(test.owner, null, request),
+        ).rejects.toMatchObject({ code: "platform_upgrade_state_unavailable" });
+      },
+    );
 
     it("reconciles only explicitly reviewed checkpoints once and preserves state for a corrected fresh plan", async () => {
       const test = await failedCheckpoint();
