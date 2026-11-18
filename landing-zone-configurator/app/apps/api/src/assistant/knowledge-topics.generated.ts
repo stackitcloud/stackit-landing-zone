@@ -65,6 +65,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
+        },
       ],
       externalSources: [
         "https://docs.stackit.cloud/platform/access-and-identity/service-accounts/how-tos/manage-service-account-keys/",
@@ -143,6 +148,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [
@@ -241,6 +251,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
+        },
       ],
       externalSources: [],
       scenarios: ["A01", "A21", "A23"],
@@ -315,6 +330,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [],
@@ -426,6 +446,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
+        },
       ],
       externalSources: [],
       scenarios: ["A03", "A16", "A23"],
@@ -490,7 +515,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "15168cf4055cce1dc8c6490c97c4d4718789ad5e1f3dd5d36c9c686a9f7255c5",
+            "5fa2d24dc2c068ee6ce8a6b9df2d0a257d20944d3fb26e5eaa4c5fd81a9f0023",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -506,6 +531,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [
@@ -616,6 +646,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
+        },
       ],
       externalSources: [],
       scenarios: ["A03", "A16", "A23", "A24"],
@@ -684,6 +719,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [],
@@ -760,6 +800,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [
@@ -856,6 +901,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [],
@@ -971,6 +1021,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [],
@@ -1159,6 +1214,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
+        },
       ],
       externalSources: [],
       scenarios: ["A13", "A16", "A23", "A24"],
@@ -1295,6 +1355,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
+        },
       ],
       externalSources: [],
       scenarios: ["A13", "A16", "A23"],
@@ -1349,7 +1414,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "15168cf4055cce1dc8c6490c97c4d4718789ad5e1f3dd5d36c9c686a9f7255c5",
+            "5fa2d24dc2c068ee6ce8a6b9df2d0a257d20944d3fb26e5eaa4c5fd81a9f0023",
         },
         {
           path: "src/modules/landing-zone/8-git.tf",
@@ -1370,6 +1435,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [
@@ -1446,6 +1516,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [],
@@ -1614,6 +1689,11 @@ export const assistantKnowledgeTopics = {
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
+        },
       ],
       externalSources: [
         "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/iaas/network/resource.go",
@@ -1660,9 +1740,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/project-templates.md",
-      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nTemplates/IAM.\n\n## Accelerator Contract\n\nlanding_zones:corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies.\nAutomatic=null:Corporate resolves regional SNA default_prefix_length before Plan; numeric to Provider0.114; preserve DNS.\nProvider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance; regional SNA; separate credentials. Public!=Corporate; namespaces:Platform K8s.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Preserve settings. "100 projects"=capacity!=examples/quota; reserve Platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile!=order input: schemaVersion=1,mode=granular;\ninitialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs. Default191=184+7 keys; automation184.\nVM-only narrower +keys. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Keys use ALL SA rights, also elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.\nADD keys=seven, requester default; preserve owner/SKE/automation.\nDefaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.\nAll project rights incl.IAM selectable.\nADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.\nSKE IAM!=K8s RBAC; no default IAM role/member admin.\nOwner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.\nAtomic; no legacy roles.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email; ambiguity asks.\nWorkload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.\nPublication needs owner; additive grants; nothing saved/executed.\n\n\nProject Git: settings.git={enabled,flavor,acl}; default disabled, one managed instance/project.\nPolicy: fixed/bounded input git.enabled/git.flavor/git.acl. Explicit nonempty source CIDRs.\nPublic managed endpoint: SNA/firewall or separate project instances cannot make it private. Public source ACLs; Git-capable Runner; old orders unchanged.\nflavor IDs: git-10 <=10, git-100 <=100 users/instance (Git10/Git100 are labels). Above100: separate instances/architecture;\nno invented larger flavor/federation. Provider0.114 flavor/ACL changes replace.\n\n## Examples\n\n/28:Automatic+DNS.\n\n## Limits\n\nVersion/State bound; review migrations; never delete State. Match region/area/DNS. Empty roles/ACLs!=security; live acceptance.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs.\n\n## Sources\n\nIaC.\n',
+      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nTemplates/IAM.\n\n## Accelerator Contract\n\nlanding_zones:corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies.\nAutomatic=null:Corporate resolves regional SNA default_prefix_length before Plan; numeric to Provider0.114; preserve DNS.\nProvider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance; regional SNA; separate credentials. Public!=Corporate; namespaces:Platform K8s.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Preserve settings. "100 projects"=capacity!=examples/quota; reserve Platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile!=order input: schemaVersion=1,mode=granular;\ninitialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs. Default191=184+7 keys; automation184.\nVM-only narrower +keys. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Keys use ALL SA rights, also elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.\nADD keys=seven, requester default; preserve owner/SKE/automation.\nDefaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.\nAll project rights incl.IAM selectable.\nADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.\nSKE IAM!=K8s RBAC; no default IAM role/member admin.\nOwner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.\nAtomic; no legacy roles.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email; ambiguity asks.\nWorkload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.\nPublication needs owner; additive grants; nothing saved/executed.\n\n\nProject Git: settings.git={enabled,flavor,acl}; disabled; one instance/project.\nPolicy: fixed/bounded input git.enabled/git.flavor/git.acl. Explicit nonempty source CIDRs.\nPublic endpoint, never SNA/firewall-private. Public source ACLs; Git-capable Runner; old orders unchanged.\nIDs: git-10 <=10, git-100 <=100 users/instance; Git10/Git100=labels. Above100: separate instances/architecture;\nno invented larger flavor/federation. Team/project instances partition users, NEVER make endpoints private. Provider0.114 flavor/ACL changes replace.\n\n## Examples\n\n/28:Automatic+DNS.\n\n## Limits\n\nVersion/State bound; review migrations; never delete State. Match region/area/DNS. Empty roles/ACLs!=security; live acceptance.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs.\n\n## Sources\n\nIaC.\n',
       sha256:
-        "5a8ce02b3c25ed5046b81d2a2d35b56f5ca13df4e3b15db040d3c724b1305281",
+        "47f1a0b20f63254c542e113f05c2fcc60c43cead231c6a9840f7fa36b4405889",
     },
     {
       id: "sandbox-projects",
@@ -1709,6 +1789,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [],
@@ -1777,6 +1862,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [],
@@ -1857,7 +1947,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "15168cf4055cce1dc8c6490c97c4d4718789ad5e1f3dd5d36c9c686a9f7255c5",
+            "5fa2d24dc2c068ee6ce8a6b9df2d0a257d20944d3fb26e5eaa4c5fd81a9f0023",
         },
         {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",
@@ -1908,6 +1998,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
           sha256:
             "f39f022cb7937e53e7e0b603b2c007e6dfbc3daf15af5a6e525e7aafbc14b2ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+          sha256:
+            "f36592dd17219bda680038d4e49107415818c4e852e33c717d9652b0cc3c7ae3",
         },
       ],
       externalSources: [],

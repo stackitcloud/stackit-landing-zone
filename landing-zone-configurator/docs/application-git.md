@@ -25,7 +25,9 @@ versions, orders, State keys and resource identities remain unchanged. Publish a
 new template version and explicitly select its supported execution source before
 adding Git to an existing application. Review the resulting Plan. With the pinned
 STACKIT provider 0.114.0, Git flavor **and ACL** changes replace the instance;
-plan repository/data migration separately before approving those changes.
+the Configurator’s non-destructive Application upgrade guard rejects those replacements. A separately reviewed repository/data migration is required; publishing a template version does not migrate Git data.
+
+Enabling Git does not expand the template’s existing project IAM profile. Select any required Git service permissions deliberately; Git user onboarding remains a separate operation.
 
 ## Independent Accelerator use
 

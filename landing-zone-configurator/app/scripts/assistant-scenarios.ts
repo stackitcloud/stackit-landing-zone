@@ -2173,6 +2173,13 @@ export function validateAssistantScenario(
       )
     )
       failures.push("git_user_limit_exceeded");
+    if (
+      scenario.sourceGuidance === "git-user-limit" &&
+      /multiple central Git instances[\s\S]{0,160}(?:root devops|devops object)/i.test(
+        text,
+      )
+    )
+      failures.push("git_central_instance_cardinality_invented");
   }
   if (scenario.sourceGuidance === "project-git") {
     const text = dialogue.explanation;
@@ -2183,7 +2190,7 @@ export function validateAssistantScenario(
     )
       failures.push("git_display_label_used_as_flavor");
     if (
-      /private reachability requires.{0,100}(?:dedicated|separate).{0,50}(?:Git instance|project)/i.test(
+      /private (?:reachability|access) requires.{0,100}(?:dedicated|separate).{0,50}(?:Git instance|project)/i.test(
         text,
       )
     )

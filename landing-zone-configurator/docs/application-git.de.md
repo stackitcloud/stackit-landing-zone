@@ -29,7 +29,9 @@ bleiben unverändert. Für Git in einer bestehenden Application eine neue
 Template-Version veröffentlichen und deren unterstützte Ausführungsquelle
 explizit auswählen. Den resultierenden Plan prüfen. Beim gepinnten STACKIT-Provider
 0.114.0 ersetzen Änderungen von Git-Flavor **und ACL** die Instanz;
-Repository-/Datenmigration vor Freigabe solcher Änderungen separat planen.
+der Schutz vor destruktiven Application-Upgrades im Configurator weist diese Ersetzungen ab. Eine separat geprüfte Repository-/Datenmigration ist nötig; die Veröffentlichung einer Template-Version migriert keine Git-Daten.
+
+Die Git-Aktivierung erweitert das vorhandene Projekt-IAM-Profil des Templates nicht. Benötigte Git-Service-Rechte gezielt auswählen; die Einrichtung von Git-Nutzern bleibt ein separater Vorgang.
 
 ## Accelerator unabhängig nutzen
 

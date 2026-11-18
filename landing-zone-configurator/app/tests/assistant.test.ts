@@ -3066,6 +3066,7 @@ it("bundles fresh structured service knowledge and selects mandatory dependencie
                 "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
                 "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
                 "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
+                "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
               ].includes(path),
           ),
       }),
@@ -3961,4 +3962,26 @@ it("does not delegate folder naming from an Assistant-only folder mention when r
   expect(result.changes).toEqual([
     { path: "company_name", value: "Example GmbH" },
   ]);
+});
+
+it("renders reviewed architecture facts from current intent without a prose-generation request", async () => {
+  const message =
+    "How can an Application template offer Git, and is it private in SNA?";
+  let requests = 0;
+  const model = new AssistantModelServing(configuration, async () => {
+    requests++;
+    return answer({
+      topic: "project-templates",
+      mode: "advice",
+      adviceTask: "architecture-advice",
+      requirements: [],
+      reviewedArchitecture: [{ fact: "application-git", quote: message }],
+    });
+  });
+  const result = await model.converse(selection(), {}, [], message);
+  expect(requests).toBe(1);
+  expect(result.explanation).toContain("git-100");
+  expect(result.explanation).toContain("does not make this endpoint private");
+  expect(result.changes).toEqual([]);
+  expect(result.references).toContain("project-templates");
 });

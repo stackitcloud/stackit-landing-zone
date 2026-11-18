@@ -153,6 +153,10 @@ Transport- und Schutztests ergänzen diese Fälle; Feldinventar und Wissenszuste
 allein belegen keine Qualität natürlicher Dialoge. Eine übersprungene Release-
 Qualifikation ist ausdrücklich kein neuer Live-Testnachweis.
 
+### Geprüfte Architekturgrenzen
+
+Bei dokumentierten festen Grenzen und Ausführungsgarantien wählt das Modell eine geschlossene Faktenkennung und ein exaktes Zitat aus der aktuellen Nutzerfrage. Die Anwendung stellt die geprüfte deutsche/englische Antwort dar, ohne dass das Modell diese Grenze umformuliert. Die ersten Fakten behandeln Git-Instanzkapazität und -Topologie, Erreichbarkeit von Application-Git sowie S3-/Datenbankkoordination. Sie erlauben weder Entwurfsänderungen noch Ausführung und benötigen das passende ausgewählte Wissensthema. Andere Beratung und Konfigurationsvorschläge nutzen ihre bisherigen Abläufe. Erweiterungen benötigen Quellbindungen, beide Sprachen und positive/negative Faktentests.
+
 ### Qualifikation mit echtem Modell
 
 Aenderungen an Servicefakten, Prompts, Wissensauswahl oder

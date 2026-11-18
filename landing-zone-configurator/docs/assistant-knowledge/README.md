@@ -127,6 +127,10 @@ Mocked request/guard tests complement these cases; field inventory and knowledge
 delivery coverage alone do not prove natural dialogue quality. Skipped release
 qualification is explicitly not a fresh live-test result.
 
+### Reviewed architecture boundaries
+
+For documented hard limits and execution guarantees, the model selects a closed fact identifier and an exact quote from the current user question. The application renders the reviewed English/German answer without letting the model rewrite that boundary. The initial facts cover Git instance capacity/topology, Application Git reachability and S3/database coordination. They authorize no draft change or execution and require the corresponding selected knowledge topic. Ordinary advice and configuration proposals keep their existing flows. Add source bindings, both locales and positive/negative factual tests when extending this registry.
+
 ### Real-model qualification
 
 Changes to service facts, prompts, knowledge selection or component contracts

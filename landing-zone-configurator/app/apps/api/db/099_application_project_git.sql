@@ -25,6 +25,8 @@ BEGIN
  FOREACH signature IN ARRAY ARRAY['lzc_auth.request_application_upgrade(uuid,uuid,uuid,uuid,uuid,jsonb,boolean)','lzc_auth.request_application_platform_upgrade(uuid,uuid,uuid,uuid,uuid,boolean)'] LOOP
   definition:=pg_get_functiondef(signature::regprocedure);
   definition:=replace(definition,'source<>'||old_source,'source NOT IN ('||old_source||','||new_source||')');
+  IF strpos(definition,'upgrade_application_execution(p_session,p_instance,'||old_source)=0 THEN RAISE EXCEPTION 'project_git_audit_upgrade_anchor_missing: %',signature; END IF;
+  definition:=replace(definition,'upgrade_application_execution(p_session,p_instance,'||old_source,'upgrade_application_execution(p_session,p_instance,'||new_source);
   definition:=replace(definition,' THEN RAISE EXCEPTION ''application_upgrade_removal_blocked''',
    ' OR (coalesce(ordered.resolved_settings#>>''{git,enabled}'',''false'')=''true'' AND coalesce(settings#>>''{git,enabled}'',''false'')<>''true'') THEN RAISE EXCEPTION ''application_upgrade_removal_blocked''');
   EXECUTE definition;

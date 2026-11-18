@@ -30,6 +30,10 @@ import {
   resumeMultiTemplatePermissionDialogue,
 } from "./application-permission-dialogue.js";
 import {
+  architectureAdviceSelections,
+  reviewedArchitectureAdvice,
+} from "./architecture-advice.js";
+import {
   assistantAccessPaths,
   assistantDnsZoneNamesSchema,
   assistantDnsZoneSchema,
@@ -1225,6 +1229,7 @@ export class AssistantModelServing {
       ? customApplicationAccessIntent
       : allApplicationAccessIntents;
     const intentSchema = z.strictObject({
+      reviewedArchitecture: architectureAdviceSelections,
       applicationAccessLanguage: z
         .enum(["de", "en"])
         .default("de")
@@ -1812,6 +1817,23 @@ export class AssistantModelServing {
       !classifiedIntent.applicationAccess
     )
       throw new AssistantInferenceError("intent_evidence");
+
+    if (classifiedIntent.mode === "advice") {
+      const advice = reviewedArchitectureAdvice(
+        classifiedIntent.reviewedArchitecture,
+        message,
+        classifiedIntent.applicationAccessLanguage,
+        context.rules.map((rule) => rule.id),
+      );
+      if (advice) {
+        const dialogue = validateDialogue(
+          advice,
+          context.rules.map((rule) => rule.id),
+        );
+        stream?.onText(dialogue.explanation);
+        return dialogue;
+      }
+    }
 
     const policyBoundary = () => {
       const policyOverview = context.topics.find(
@@ -4018,6 +4040,14 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
                   role: "system" as const,
                   content:
                     "NETWORK SIZING FACTS (apply only when relevant; explain only these relevant facts, no invented release numbers): distinguish TEMPLATE network_prefix_length from PROVIDER ipv4_prefix_length. The EXACT SAME STACKIT provider 0.114.0 is used before AND after the Accelerator module fix. No provider upgrade fixes this. Provider inputs {prefix:null,DNS:configured or []} -> INVALID before AND after; {prefix:null,DNS:null} -> automatic accepted. FIXED Corporate module, not the provider, READS actual regional SNA default during Plan; template null -> module resolves SNA default -> provider receives NUMERIC prefix and UNCHANGED DNS. Thus DNS is neither required to make Automatic work nor disabled by the fix. Native module source changed; provider validation did not. Never call this a provider-version fix; topic version2 and checkedOn are knowledge metadata, not software releases. Do not reverse the old failure condition. For SNA default28: template null -> provider prefix28, not null. Always state that Automatic does not guarantee free SNA capacity or available addresses; allocation still depends on current cloud usage and reserved platform/firewall space. Existing published sources need new corrected version/order; this conversation saves or executes nothing. For a sizing question answer sizing, not an unsolicited field/default overview. Distinguish the corrected source from the deployed service: existing old versions are not fixed by this advice.",
+                },
+              ]
+            : []),
+          ...(intent.adviceTask === "architecture-advice" && selectedTopic
+            ? [
+                {
+                  role: "system" as const,
+                  content: `CURRENT ARCHITECTURE QUESTION: Answer the actual question with this selected reviewed source. Keep capacity partitioning separate from network reachability: moving a managed service to another project does not change its endpoint type. Do not append an undocumented workaround. Use the exact native configuration scope and values from the source; central objects and project-template objects are not interchangeable. No changes, execution, or setup questionnaire. Source: ${context.rules.find((rule) => rule.id === selectedTopic.id)?.text ?? ""}`,
                 },
               ]
             : []),
