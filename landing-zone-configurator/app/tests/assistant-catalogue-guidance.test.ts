@@ -10,6 +10,7 @@ import {
   enrichCatalogueQuestions,
   ensureDraftNotice,
   groundCatalogueDialogue,
+  resolveAssistantLanguage,
   withoutCataloguePresentation,
 } from "../apps/api/src/assistant/catalogue-guidance.js";
 import {
@@ -501,4 +502,39 @@ it("keeps the shared selector regression matrix complete when catalogues are add
   expect(new Set(bindings.map(([, field]) => field))).toEqual(
     new Set(cloudCatalogueFields),
   );
+});
+
+it("resolves language across services from UI preference or actual user turns, never assistant history", () => {
+  const history = [
+    {
+      role: "user" as const,
+      content: "Please propose a short company prefix.",
+    },
+    { role: "assistant" as const, content: "Welche Ordnernamen?" },
+  ];
+  expect(
+    resolveAssistantLanguage(
+      undefined,
+      history,
+      "Please change the folder names reflecting the selected prefix.",
+    ),
+  ).toBe("en");
+  expect(resolveAssistantLanguage(undefined, history, "syn")).toBe("en");
+  expect(
+    resolveAssistantLanguage("en", history, "Welche Größe? Meine Antwort: 100"),
+  ).toBe("en");
+  expect(
+    resolveAssistantLanguage(
+      undefined,
+      history,
+      "Welche Größe? My answer: Use a company-wide standard.",
+    ),
+  ).toBe("en");
+  expect(
+    resolveAssistantLanguage(
+      undefined,
+      [],
+      "Bitte eine zentrale Firewall hinzufügen.",
+    ),
+  ).toBe("de");
 });

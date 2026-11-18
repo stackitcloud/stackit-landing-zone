@@ -37,6 +37,7 @@ import {
   englishNativeOverview,
   ensureDraftNotice,
   groundCatalogueDialogue,
+  resolveAssistantLanguage,
 } from "./catalogue-guidance.js";
 import {
   assistantAccessPaths,
@@ -442,14 +443,17 @@ function modelCatalogueContext(
 export function catalogueFacts(
   context: AssistantCatalogueContext,
   message: string,
+  language: AssistantLanguage = "de",
 ) {
   if (!/vpn|flavou?r|leistungsklass|maschinentyp/i.test(message)) return "";
+  const en = language === "en";
   const vpnOnly = /vpn/i.test(message);
-  return context.regions
+  const body = context.regions
     .flatMap((region) => {
       if (region.pim?.status !== "available") return [];
       const skus = region.pim.skus.filter(
         (sku) =>
+          sku.region === region.region &&
           /^(?:no|false)?$/i.test(sku.deprecated ?? "") &&
           (vpnOnly
             ? sku.productName === "VPN"
@@ -463,21 +467,25 @@ export function catalogueFacts(
             ? `${attributes.maxBandWidth} Mbit/s`
             : null,
           attributes?.maxConnections != null
-            ? `${attributes.maxConnections} Verbindungen`
+            ? `${attributes.maxConnections} ${en ? "connections" : "Verbindungen"}`
             : null,
           attributes?.vCPU != null ? `${attributes.vCPU} vCPU` : null,
           attributes?.ram != null
-            ? `RAM: ${attributes.ram} (PIM-Wert, Einheit nicht verifiziert)`
+            ? `RAM: ${attributes.ram} (${en ? "raw PIM value, unit unverified" : "PIM-Wert, Einheit nicht verifiziert"})`
             : null,
         ].filter(Boolean);
-        return `${sku.title}: ${facts.join(", ") || "keine Leistungsmerkmale geliefert"}`;
+        return `${sku.title}: ${facts.join(", ") || (en ? "no supplied performance characteristics" : "keine Leistungsmerkmale geliefert")}`;
       });
       return [
-        `Öffentliche PIM-Produktdaten für ${region.region} (Abruf ${region.pim.fetchedAt}):\n${lines.join("\n")}\n${region.pim.truncated || skus.length > 8 ? "Begrenzter Ausschnitt. " : ""}Keine Zusage zur Bestellbarkeit im Zielprojekt.`,
+        `${en ? "Public PIM product data for" : "Öffentliche PIM-Produktdaten für"} ${region.region} (${en ? "retrieved" : "Abruf"} ${region.pim.fetchedAt}):\n${lines.join("\n")}\n${region.pim.truncated || skus.length > 8 ? (en ? "Limited excerpt. " : "Begrenzter Ausschnitt. ") : ""}`,
       ];
     })
-    .join("\n\n")
-    .slice(0, 1500);
+    .join("\n\n");
+  if (!body) return "";
+  const notice = en
+    ? "This does not confirm orderability in the target project."
+    : "Keine Zusage zur Bestellbarkeit im Zielprojekt.";
+  return `${body.slice(0, 1499 - notice.length)}\n${notice}`;
 }
 
 export function modelServingConfiguration(environment: NodeJS.ProcessEnv) {
@@ -900,9 +908,11 @@ export class AssistantModelServing {
       publicValues && typeof publicValues === "object"
         ? (publicValues as Record<string, unknown>)
         : {};
-    const language =
-      assistantLanguageSchema.optional().parse(current["assistant.language"]) ??
-      (/\b(?:please|which|what|configure)\b/i.test(message) ? "en" : "de");
+    const language = resolveAssistantLanguage(
+      assistantLanguageSchema.optional().parse(current["assistant.language"]),
+      history,
+      message,
+    );
     const catalogueGuard = catalogues.regions.some((region) =>
       Object.values(region.products).some(
         (part) => part.status === "available" && part.options.length,
@@ -920,6 +930,7 @@ export class AssistantModelServing {
       catalogues,
       templateHistory,
       guardedStream,
+      language,
     );
     const grounded = ensureDraftNotice(
       groundCatalogueDialogue(result, current, catalogues, language),
@@ -937,6 +948,7 @@ export class AssistantModelServing {
     catalogues: AssistantCatalogueContext = { regions: [] },
     templateHistory: { role: "user" | "assistant"; content: string }[] = [],
     stream?: AssistantStream,
+    responseLanguage?: AssistantLanguage,
   ) {
     const context = assistantKnowledgeContext(selection);
     chatMessageSchema.parse(message);
@@ -944,9 +956,10 @@ export class AssistantModelServing {
       publicValues && typeof publicValues === "object"
         ? (publicValues as Record<string, unknown>)
         : {};
-    const language = assistantLanguageSchema
+    const explicitLanguage = assistantLanguageSchema
       .optional()
       .parse(current["assistant.language"]);
+    const language = explicitLanguage ?? responseLanguage;
     const complete: typeof this.complete = (
       messages,
       schema,
@@ -3036,8 +3049,8 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
         ],
         assistantEditorResponseSchema(
           dialogueSchema.extend({
-            replyLanguage: (language
-              ? z.literal(language)
+            replyLanguage: (explicitLanguage
+              ? z.literal(explicitLanguage)
               : z.enum(["de", "en"])
             ).describe(
               "Language of the current user, or the latest natural-language user turn for numeric follow-ups.",
@@ -4997,11 +5010,13 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
       }
       if (networkFirst && intent.networkScope === "sna-and-firewall")
         dialogue.explanation = `${dialogue.explanation.slice(0, 2650)}\n\nDer ausdrückliche Firewall-Auftrag${intent.firewallAvailability === "ha" ? " mit HA" : ""} bleibt erhalten. Dafür fehlen noch die SNA-Voraussetzungen; nach deren Klärung kann der Firewall-Vorschlag folgen. Keine Cloud-Ausführung.`;
-      const facts = firewallTopic ? "" : catalogueFacts(catalogues, message);
+      const facts = firewallTopic
+        ? ""
+        : catalogueFacts(catalogues, message, language);
       return facts
         ? {
             ...dialogue,
-            explanation: `$facts\n\n$dialogue.explanation`.slice(0, 3000),
+            explanation: `${facts}\n\n${dialogue.explanation}`.slice(0, 3000),
           }
         : dialogue;
     } catch (error) {
@@ -5022,6 +5037,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
     language?: AssistantLanguage,
   ) {
     chatMessageSchema.parse(message);
+    language = resolveAssistantLanguage(language, history, message);
     const knowledge = buildAssistantKnowledge();
     const adviceContext = assistantKnowledgeContext({
       engineRevision: knowledge.engineRevision,

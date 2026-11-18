@@ -1751,6 +1751,14 @@ it("renders verified PIM performance facts independently of omitted model prose"
   expect(facts).not.toContain("500 Mbit/s");
   expect(facts).not.toContain("billing-100");
   expect(facts).toContain("Keine Zusage zur Bestellbarkeit");
+  const english = catalogueFacts(
+    context,
+    "Which VPN flavors are offered?",
+    "en",
+  );
+  expect(english).toContain("100 Mbit/s");
+  expect(english).toContain("does not confirm orderability");
+  expect(english).not.toMatch(/Öffentliche|Verbindungen|Keine Zusage/);
   expect(catalogueFacts(context, "Firma Example")).toBe("");
 });
 
