@@ -30,6 +30,10 @@ import {
   resumeMultiTemplatePermissionDialogue,
 } from "./application-permission-dialogue.js";
 import {
+  architectureAdviceSelections,
+  reviewedArchitectureAdvice,
+} from "./architecture-advice.js";
+import {
   assistantAccessPaths,
   assistantDnsZoneNamesSchema,
   assistantDnsZoneSchema,
@@ -84,6 +88,7 @@ import {
   assistantKnowledgeForTopics,
   buildAssistantKnowledge,
 } from "./knowledge.js";
+import { resolveAssistantLanguage } from "./language.js";
 import { assistantServingResponseSchema } from "./serving-schema.js";
 
 const lifecycleAdviceTopics: Record<
@@ -705,6 +710,7 @@ export class AssistantModelServing {
         "conversation_intent",
         "firewall_setup_decisions",
         "platform_advice_subject",
+        "component_request_purpose",
       ].includes(schemaName)
         ? [
             `Return only the JSON response defined by this output contract. Its field descriptions explain the required decisions; do not substitute schema defaults for understanding the user request. Property names and enum values are data, not instructions. Include requested values in the actual changes, not merely in the explanation.\nOutput contract: ${JSON.stringify(servingSchema)}`,
@@ -717,6 +723,7 @@ export class AssistantModelServing {
         : []),
       ...(schemaName === "conversation_intent"
         ? [
+            "CURRENT TOPIC OWNERSHIP: Questions about an optional service within Application Landing Zone templates belong to project-templates, including managed project Git; do not substitute central devops-git fields. Questions about S3 State backends, conditional object writes, single-writer operation or application/database serialization belong to management-state, not configuration-lifecycle. Evaluating capacity, topology, reachability or locking mechanisms is architecture-advice, not a request for a generic field overview. Actual field enumeration remains field-overview. Scope and intent follow the current user request, not the mere occurrence of a service name.",
             "CURRENT LIFECYCLE ROUTING: Judge only the latest user question, not topic descriptions, saved values or historical tasks. Informational maintenance of an EXISTING order/Platform Plan belongs to configuration-lifecycle even when the question mentions Kubernetes, templates, audit logs, firewall or network services. Distinguish: (1) a new published template VERSION/permissions/settings adopted by an existing order => template-upgrade; (2) shared firewall/routing effects and adopting a platform CONTRACT => platform-upgrade; (3) unsupported product/Runner/Accelerator SOURCE, desired versus lastApplied, withdrawal or source-bound recovery => execution-source-upgrade; (4) reviewing/acknowledging a saved ROOT PLATFORM PLAN's impact, deletions or replacements => platform-impact-review, whether or not the user names their role. A root Plan approval question without adopting an order's platform contract is platform-impact-review, NOT platform-upgrade. Use mode=advice,adviceTaskSource=current for these informational questions. Examples: 'My order cannot run Drift after a product update; explain template origin versus desired execution and recovery' => execution-source-upgrade. 'How do I use the new published Public template with Kubernetes permissions in this same order and retain my answers?' => template-upgrade. 'Can declining a platform contract upgrade keep the old shared firewall?' => platform-upgrade. 'Mein Plattformplan entfernt die alte zentrale Audit-Ablage. Kann ich die Auswirkungen bestätigen, woran bindet das und brauche ich einen neuen Plan?' => platform-impact-review. The same applies to any known root-platform resource changes, not only audit logging. A component configuration migration is not an order platform-contract upgrade. In particular, explaining how native audit routing changes from Logs to existing Observability/Grafana belongs to topic=audit-logs, adviceTask=field-overview, even when the user calls this an upgrade and asks whether orders need updates. Reserve platform-upgrade for adopting a different order platform contract or shared firewall effects. A new component setup or an actual draft/proposal instruction is not one of these information tasks; preserve draft handling and the latest topic switch. CURRENT FOLLOW-UP ROUTING: A short direct answer to the latest unresolved configuration question continues its requested draft. For an exact existing folder choice after the server asks the target of a pending reader/owner assignment, use topic=governance-folders, mode=draft, and accessAssignment.source for the original USER assignment request, not the assistant question. Saved values alone never authorize assignments; no unresolved question means no continuation.",
           ]
         : []),
@@ -1223,6 +1230,7 @@ export class AssistantModelServing {
       ? customApplicationAccessIntent
       : allApplicationAccessIntents;
     const intentSchema = z.strictObject({
+      reviewedArchitecture: architectureAdviceSelections,
       applicationAccessLanguage: z
         .enum(["de", "en"])
         .default("de")
@@ -1406,13 +1414,14 @@ export class AssistantModelServing {
           "platform-upgrade",
           "execution-source-upgrade",
           "field-overview",
+          "architecture-advice",
           "capability-boundary",
           "policy-request",
           "other",
         ])
         .default("other")
         .describe(
-          "For current informational existing-order or Platform Apply questions select topic=configuration-lifecycle,mode=advice,adviceTaskSource=current. Choose the subject of the LATEST USER QUESTION: template-upgrade means adopting a published same-family template VERSION or revised template permissions/settings in an EXISTING order, including retained answers and self-service approval. Mentioning the Platform Owner is not itself a shared platform change. platform-upgrade means shared platform/firewall/routing effects and adopting the actual approved platform CONTRACT in an existing order. execution-source-upgrade means product/Runner/Accelerator SOURCE compatibility, origin/desired/lastApplied, withdrawn packages or interrupted-job recovery; comparing template origin while discussing execution remains this task. platform-impact-review means deciding whether a saved ROOT PLATFORM PLAN with dependent Applications, deletions or replacements may Apply, and what impact acknowledgement binds. The user need not name their role: the saved root Plan and its impact approval are the subject. That is not configuring audit/firewall services and not an order's template/contract upgrade. These tasks only explain workflows: actual proposal/setup requests remain draft/other. Never infer the current task from historical questions or component words alone. application-access for current advice about Application project IAM permission profiles, granular VM versus full owner, initial project owner or workload automation rights (topic=project-templates,mode=advice); never use it for actual proposals or unrelated network/IPv4 fields. NUR die LETZTE Nutzernachricht bewerten: capability-boundary bei der Frage, ob Accelerator/Chat Firewall-Regeln oder NAT ueberhaupt konfigurieren kann; policy-request bei einem Auftrag, Firewall-Regeln, NAT, Aliase oder Routen zu definieren/vorzuschlagen. Beide verwenden topic=firewall-policy, adviceTaskSource=current und haben Vorrang vor einem laufenden Infrastruktur-Setup. Fruehere Regelfragen sind KEIN aktueller Auftrag. Eine Antwort mit unbekannter Verkehrskapazitaet hat adviceTask=other. field-overview fuer aktuelle Informationsfragen nach nativen konfigurierbaren Feldern, Defaults oder Grenzen, ohne Einrichtungsauftrag. Das gilt auch fuer eine VPN-Felduebersicht mit der Frage, wie PSKs separat hinterlegt werden (keine geheimen Werte). Sonst other.",
+          "For current informational existing-order or Platform Apply questions select topic=configuration-lifecycle,mode=advice,adviceTaskSource=current. Choose the subject of the LATEST USER QUESTION: template-upgrade means adopting a published same-family template VERSION or revised template permissions/settings in an EXISTING order, including retained answers and self-service approval. Mentioning the Platform Owner is not itself a shared platform change. platform-upgrade means shared platform/firewall/routing effects and adopting the actual approved platform CONTRACT in an existing order. execution-source-upgrade means product/Runner/Accelerator SOURCE compatibility, origin/desired/lastApplied, withdrawn packages or interrupted-job recovery; comparing template origin while discussing execution remains this task. platform-impact-review means deciding whether a saved ROOT PLATFORM PLAN with dependent Applications, deletions or replacements may Apply, and what impact acknowledgement binds. The user need not name their role: the saved root Plan and its impact approval are the subject. That is not configuring audit/firewall services and not an order's template/contract upgrade. These tasks only explain workflows: actual proposal/setup requests remain draft/other. Never infer the current task from historical questions or component words alone. application-access for current advice about Application project IAM permission profiles, granular VM versus full owner, initial project owner or workload automation rights (topic=project-templates,mode=advice); never use it for actual proposals or unrelated network/IPv4 fields. NUR die LETZTE Nutzernachricht bewerten: capability-boundary bei der Frage, ob Accelerator/Chat Firewall-Regeln oder NAT ueberhaupt konfigurieren kann; policy-request bei einem Auftrag, Firewall-Regeln, NAT, Aliase oder Routen zu definieren/vorzuschlagen. Beide verwenden topic=firewall-policy, adviceTaskSource=current und haben Vorrang vor einem laufenden Infrastruktur-Setup. Fruehere Regelfragen sind KEIN aktueller Auftrag. Eine Antwort mit unbekannter Verkehrskapazitaet hat adviceTask=other. architecture-advice for evaluating a concrete workload, capacity/user limit, architecture choice, service reachability or State concurrency/recovery mechanism. Answer that question using the reviewed topic, rather than replacing it with a generic field list. This includes whether Git100 serves 250 users, per-project Git reachability in SNA and conditional-S3 versus database coordination. field-overview only for an actual request to enumerate native configurable fields/defaults, without an architecture or workload decision or setup request. Das gilt auch fuer eine VPN-Felduebersicht mit der Frage, wie PSKs separat hinterlegt werden (keine geheimen Werte). Sonst other.",
         ),
       adviceTaskSource: z
         .enum(["current", "none"])
@@ -1681,16 +1690,71 @@ export class AssistantModelServing {
     if (!intentResult.success)
       throw new AssistantInferenceError("intent_schema");
     const classifiedIntent = intentResult.data;
+    if (classifiedIntent.mode === "advice")
+      classifiedIntent.applicationAccessLanguage = resolveAssistantLanguage(
+        undefined,
+        history,
+        message,
+      );
+    const componentRoots =
+      context.topics
+        .find((topic) => topic.id === classifiedIntent.topic)
+        ?.inputs.filter((input) => assistantEditorInputs.includes(input)) ?? [];
     if (
       classifiedIntent.mode === "advice" &&
-      classifiedIntent.adviceTaskSource === "current" &&
-      Object.hasOwn(
-        assistantApplicationUpgradeAdvice,
-        classifiedIntent.adviceTask,
-      ) &&
-      lifecycleAdviceTopics[
-        classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
-      ].has(classifiedIntent.topic)
+      componentRoots.length === 1 &&
+      Object.hasOwn(assistantEditorPolicies, componentRoots[0]!)
+    ) {
+      const purposeSchema = z.strictObject({
+        purpose: z.enum(["information", "prepare-draft"]),
+        quote: z.string().min(1).max(1200).nullable(),
+      });
+      const checkedPurpose = purposeSchema.safeParse(
+        await this.complete(
+          [
+            {
+              role: "system",
+              content:
+                "Determine the purpose of the CURRENT USER message for this supported component. prepare-draft means the user explicitly asks to add, configure or prepare a reviewable configuration proposal. Missing size, access networks or other choices do NOT turn that request into an information question: the setup flow must ask for them. Preparing a local draft is neither saving nor cloud execution; 'do not deploy' does not defer a draft request. information means asking about fields, defaults, capabilities or architecture, or explicitly deferring proposal preparation. Earlier assistant messages or requests do not select the current purpose. Ambiguous intent stays information. For prepare-draft copy a nonempty exact current USER quote establishing the request; otherwise quote=null. Do not answer the question, invent settings, or perform any changes.",
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                component: classifiedIntent.topic,
+                message,
+              }),
+            },
+          ],
+          assistantEditorResponseSchema(purposeSchema),
+          "component_request_purpose",
+          undefined,
+          stream?.signal,
+        ),
+      );
+      if (!checkedPurpose.success)
+        throw new AssistantInferenceError("intent_schema");
+      const purpose = checkedPurpose.data;
+      if (purpose.purpose === "prepare-draft") {
+        if (!purpose.quote || !message.includes(purpose.quote))
+          throw new AssistantInferenceError("intent_evidence");
+        classifiedIntent.mode = "draft";
+        classifiedIntent.adviceTask = "other";
+        classifiedIntent.adviceTaskSource = "none";
+        classifiedIntent.editorContract = true;
+        classifiedIntent.editorInputs = componentRoots;
+      }
+    }
+    if (
+      classifiedIntent.mode === "advice" &&
+      ((classifiedIntent.adviceTaskSource === "current" &&
+        Object.hasOwn(
+          assistantApplicationUpgradeAdvice,
+          classifiedIntent.adviceTask,
+        ) &&
+        lifecycleAdviceTopics[
+          classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
+        ].has(classifiedIntent.topic)) ||
+        classifiedIntent.topic === "audit-logs")
     ) {
       // A workflow label can confuse a root Plan, template or order contract.
       // Verify this narrow subject from the latest question alone, without the large
@@ -1727,11 +1791,18 @@ export class AssistantModelServing {
           throw new AssistantInferenceError("invalid_scope");
         classifiedIntent.topic = "audit-logs";
         classifiedIntent.adviceTask = "field-overview";
-      } else {
+      } else if (subject.data.task !== "other") {
         classifiedIntent.adviceTask = subject.data.task;
-        if (subject.data.task === "other")
-          classifiedIntent.adviceTaskSource = "none";
-        else classifiedIntent.topic = "configuration-lifecycle";
+        classifiedIntent.adviceTaskSource = "current";
+        classifiedIntent.topic = "configuration-lifecycle";
+      } else if (
+        Object.hasOwn(
+          assistantApplicationUpgradeAdvice,
+          classifiedIntent.adviceTask,
+        )
+      ) {
+        classifiedIntent.adviceTask = "other";
+        classifiedIntent.adviceTaskSource = "none";
       }
     }
     // A closed current-turn workflow task owns its lifecycle topic. Requiring
@@ -1803,6 +1874,23 @@ export class AssistantModelServing {
       !classifiedIntent.applicationAccess
     )
       throw new AssistantInferenceError("intent_evidence");
+
+    if (classifiedIntent.mode === "advice") {
+      const advice = reviewedArchitectureAdvice(
+        classifiedIntent.reviewedArchitecture,
+        message,
+        classifiedIntent.applicationAccessLanguage,
+        context.rules.map((rule) => rule.id),
+      );
+      if (advice) {
+        const dialogue = validateDialogue(
+          advice,
+          context.rules.map((rule) => rule.id),
+        );
+        stream?.onText(dialogue.explanation);
+        return dialogue;
+      }
+    }
 
     const policyBoundary = () => {
       const policyOverview = context.topics.find(
@@ -2810,7 +2898,16 @@ export class AssistantModelServing {
           : []),
       ]);
       const referenceIds = topicKnowledge.rules.map((rule) => rule.id);
-      stream?.onText("Editor-Vorschlag wird geprüft. Noch nichts gespeichert.");
+      const editorLanguage = resolveAssistantLanguage(
+        undefined,
+        history,
+        message,
+      );
+      stream?.onText(
+        editorLanguage === "en"
+          ? "Checking the Editor proposal. Nothing has been saved."
+          : "Editor-Vorschlag wird geprüft. Noch nichts gespeichert.",
+      );
       const answer = await this.complete(
         [
           {
@@ -2827,7 +2924,7 @@ templateSetup contains source-checked USER decisions: its kinds and localNetwork
 When templateSetup.resolvedDefaults is non-null, the server has resolved every essential choice for this network-only request: use its region, and its networkAreaKey as settings.network_area_key for Corporate. Template kinds, local networks and delegated naming are already answered. Return questions=[] as required by the schema; do not ask the user to repeat native keys, naming, subnet defaults or other unrequested optional settings. Missing or ambiguous Corporate areas, missing region/naming and additional service choices retain the normal question contract.
 New component objects expose all their typed property slots: fill every explicitly requested value, use null only for unrequested native defaults. Never invent extra retention values. Required non-null creation decisions need actual user consent; otherwise ask questions with changes=[]. New map entries require all native mandatory fields, including Kubernetes region and node-pool name. Use existing nested paths for partial updates, preserving sibling values. All replies describe PROPOSALS, not completed setup. Field acceptance changes only the local draft, saving remains separate; no deployment, permissions granted, publication or Plan/Apply. Return the supplied JSON schema only.
 Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })}
-CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English CURRENT USER request set replyLanguage=en and write all explanation/questions in English. For a German request set replyLanguage=de and write German. For a values-only answer continue the latest natural-language USER turn. The language of these curated rules, schema defaults or earlier ASSISTANT text does not choose the response language. An ordinary setup request receives focused questions or a clearly labelled, grounded best-practice proposal; never blame the user for missing native field syntax.`,
+CURRENT RESPONSE LANGUAGE: ${editorLanguage === "en" ? "English" : "German"}. Your JSON must contain replyLanguage. For an English CURRENT USER request set replyLanguage=en and write all explanation/questions in English. For a German request set replyLanguage=de and write German. For a values-only answer continue the latest natural-language USER turn. The language of these curated rules, schema defaults or earlier ASSISTANT text does not choose the response language. An ordinary setup request receives focused questions or a clearly labelled, grounded best-practice proposal; never blame the user for missing native field syntax.`,
           },
           {
             role: "user",
@@ -2900,10 +2997,11 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
           ]);
       let responseLanguage: "de" | "en" = "de";
       try {
-        const { replyLanguage, ...provided } = z
+        const { replyLanguage: _modelLanguage, ...provided } = z
           .object({ replyLanguage: z.enum(["de", "en"]).default("de") })
           .passthrough()
           .parse(answer);
+        const replyLanguage = editorLanguage;
         responseLanguage = replyLanguage;
         const dialogue = validateDialogue(provided, referenceIds);
         questionListSchema.parse(dialogue.questions);
@@ -3788,7 +3886,9 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
               targetAreaKeys.map((key) => [
                 key,
                 firewallValues[key] != null
-                  ? responseFirewallSchema(firewallValues[key]).optional()
+                  ? requestedHa && objectValue(firewallValues[key]).ha == null
+                    ? responseFirewallSchema(firewallValues[key])
+                    : responseFirewallSchema(firewallValues[key]).optional()
                   : responseFirewallSchema(null),
               ]),
             ),
@@ -3929,6 +4029,28 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
           context.rules.map((rule) => rule.id),
         );
       }
+      const requiredHaProposal =
+        firewallDraft &&
+        canProposeFirewall &&
+        !hasNewFirewall &&
+        requestedHa &&
+        existingFirewalls.some((firewall) => firewall.ha == null);
+      const firewallChanges = z
+        .array(
+          z.strictObject({
+            path: z.literal(
+              singleFirewallForm
+                ? "connectivity.firewall"
+                : "connectivity.firewalls",
+            ),
+            value: firewallSchema,
+          }),
+        )
+        .min(requiredHaProposal ? 1 : 0)
+        .max(canProposeFirewall ? 1 : 0)
+        .describe(
+          "ONE coherent native firewall patch when requested HA is absent on an existing appliance and technical prerequisites are available. Business sizing/traffic follow-ups do not defer this reviewable HA patch. Preserve all other saved fields and native IP defaults. Otherwise at most one patch; missing technical prerequisites mean no changes and targeted questions.",
+        );
       if (dnsSettingsDraft || foundationDraft || networkDraft || firewallDraft)
         stream?.onText("Vorschlag wird geprüft. Noch nichts gespeichert.");
       const result = await this.complete(
@@ -3987,7 +4109,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
               ? "DNS CONTRACT: Suitable DNS settings delegate reviewable name, description and TTL proposals and a known contact default, not invented contacts, ACLs, new topology or execution. Existing DNS keys stay stable; no identity/folder naming delegation needed. Current configuration values are the authoritative saved baseline, even if older conversation messages describe a previous value or a name-only limitation. Reuse the saved domain unless the latest user explicitly requests a domain change; distinguish dns_name (domain) from name (display name). Preserve an existing DNS contact; for an unset contact propose saved owner_email, otherwise verified assistant.user_email, stating its source. Do not claim a saved value was just changed. Explain settings and missing business facts. Never ask whether to accept a proposal: dedicated field-selection controls handle that decision."
               : foundationDraft
                 ? `NAMING CONTRACT: ${JSON.stringify(delegation)} is bounded naming delegation extracted from user requirements. Use explicitly supplied company names as written. For delegated company_code choose a concise resource naming abbreviation; for delegated rm_folders propose suitable names (1-40 chars) for EXISTING keys in currentPublicScalarValues.rm_folders. Without delegation use names explicitly supplied by the user or ask. rm_folders is the only supported nested governance patch: partial existing keys to {name:string}, never descriptions, owner_emails, reader_emails or new keys. Preserve all other metadata and internal/resource IDs. The existing organization_id is the sole UUID draft exception: reuse only the exact user-supplied UUID, never infer access or change tenant binding. owner_email may use actual user requirements, the saved owner address or verified assistant.user_email as a reviewable default. Naming delegation never permits guessing region, emails, grants, parent IDs or credentials. Prepare supported proposals now, not repeated naming questions. Say proposed, not saved or deployed. Missing foundation requirements remain questions, not invented values.`
-                : `${intent.topic === "configuration-lifecycle" ? "UPGRADE ADVICE: Distinguish three different bindings. A TEMPLATE upgrade is not merely changing a Git source: Platform Owner publishes a forward path within the SAME template family; requester opens order Updates, retains previous parameter answers, supplies new required answers, previews and confirms desired snapshot; same order/project/State/backend; then NEW actual Plan and separate normal Apply. Disallowed infrastructure/service/account/credential deletion/replacement and unknown evidence are hard-blocked, no checkbox bypass; exact-Plan project custom-role and role-assignment removals/replacements can be sensitive IAM transitions. The published path EXECUTION policy alone decides approval, independently of old/new NEW-ORDER policies. Explicit requester self-service lets Application Owner review a fresh Plan and confirm Apply WITHOUT additional Platform Owner approval. Separate Plan approval mode requires exact-Plan approval, even for ordinary changes. Editing a path appends a new immutable publication; existing targets/Plans retain their recorded policy, so adopt the new path and create a fresh Plan rather than retroactively unlocking old Plans. A PLATFORM update immediately changes shared firewall/routes for ALL dependent Applications; declining a contract upgrade cannot preserve a private old firewall. Before Platform Apply, dependency impact gate binds Plan/artifact/State/dependency set and blocks unknown/incomplete evidence, active executions/Recovery and changed State; the Platform Owner decides known deletions/replacements after reviewing Plan changes, counts, data-loss risk and affected Applications, with explicit impact acknowledgement and separate destructive Apply approval. AFTER a successful, proven Platform Apply, Platform Owner publishes the ACTUAL resulting approved platform contract and a forward contract path. The Application Owner explicitly adopts that contract for the SAME order, possibly keeping the same template version. Your answer MUST explicitly explain that the order contract binding does NOT update automatically: shared cloud changes already affect it, but adopting a new contract is a separate explicit action. Never claim that declining an upgrade automatically binds the order to the new contract, or that a template upgrade only changes Git source. These are separate from EXECUTION-SOURCE upgrades. Only for an Accelerator source upgrade, explicitly include BOTH a fresh Plan review (changes/replacements/deletions) AND the normal separate explicit Apply approval. The upgrade action itself only changes desired source; it never starts either operation. Preserve the same order/project/State identity. Distinguish immutable template origin, desired source, and last successful Apply source. lastApplied is neither the actual current State nor the source to use for interrupted-job Recovery. Failed Apply can change State/resources; Recovery uses the interrupted job source and blocks upgrade until reconciled. Withdrawn sources cannot execute; unresolved Recovery needs an operator-provided reviewed compatible package. Do not recommend reordering or promise unchanged failed State/no data loss. Chat performs no upgrade or execution. " : ""}ADVICE CONTRACT: The current topic is ${intent.topic}. Answer the actual question fully from that topic's reviewed Accelerator Contract and Limits, with its native field names and supported values. Cite that topic, not only a dependency. Distinguish native Accelerator/editor fields from the narrower chat patch whitelist: unsupported chat patches do NOT mean those fields are immutable or absent in the editor. A fields overview lists concrete fields and limits in explanation; never merely announce a list, replace the answer with follow-up questions, or invent missing features. Questions only resolve actual missing requirements for the current topic, never unrelated components. No changes or saved/deployed claim in advice mode. For governance, distinguish rm_folder_parent_id and organization roles from the names-only chat patch: names 1-40 characters; meaningful folder descriptions are rejected, not silently ignored. For sandbox projects the only native fields are project_name, project_owner_email and optional owner_emails; no native expiry or budget controls. For firewall policy list firewall_config aliases, routes, rules, outbound_nat and port_forwards, endpoint/TLS and pass/block/reject with in/out; explain external bootstrap and explicit HA policy synchronization separately from CARP/pfsync, without starting the infrastructure capacity questionnaire.`,
+                : `${intent.topic === "configuration-lifecycle" ? "UPGRADE ADVICE: Distinguish three different bindings. A TEMPLATE upgrade is not merely changing a Git source: Platform Owner publishes a forward path within the SAME template family; requester opens order Updates, retains previous parameter answers, supplies new required answers, previews and confirms desired snapshot; same order/project/State/backend; then NEW actual Plan and separate normal Apply. Disallowed infrastructure/service/account/credential deletion/replacement and unknown evidence are hard-blocked, no checkbox bypass; exact-Plan project custom-role and role-assignment removals/replacements can be sensitive IAM transitions. The published path EXECUTION policy alone decides approval, independently of old/new NEW-ORDER policies. Explicit requester self-service lets Application Owner review a fresh Plan and confirm Apply WITHOUT additional Platform Owner approval. Separate Plan approval mode requires exact-Plan approval, even for ordinary changes. Editing a path appends a new immutable publication; existing targets/Plans retain their recorded policy, so adopt the new path and create a fresh Plan rather than retroactively unlocking old Plans. A PLATFORM update immediately changes shared firewall/routes for ALL dependent Applications; declining a contract upgrade cannot preserve a private old firewall. Before Platform Apply, dependency impact gate binds Plan/artifact/State/dependency set and blocks unknown/incomplete evidence, active executions/Recovery and changed State; the Platform Owner decides known deletions/replacements after reviewing Plan changes, counts, data-loss risk and affected Applications, with explicit impact acknowledgement and separate destructive Apply approval. AFTER a successful, proven Platform Apply, Platform Owner publishes the ACTUAL resulting approved platform contract and a forward contract path. The Application Owner explicitly adopts that contract for the SAME order, possibly keeping the same template version. Your answer MUST explicitly explain that the order contract binding does NOT update automatically: shared cloud changes already affect it, but adopting a new contract is a separate explicit action. Never claim that declining an upgrade automatically binds the order to the new contract, or that a template upgrade only changes Git source. These are separate from EXECUTION-SOURCE upgrades. Only for an Accelerator source upgrade, explicitly include BOTH a fresh Plan review (changes/replacements/deletions) AND the normal separate explicit Apply approval. The upgrade action itself only changes desired source; it never starts either operation. Preserve the same order/project/State identity. Distinguish immutable template origin, desired source, and last successful Apply source. lastApplied is neither the actual current State nor the source to use for interrupted-job Recovery. Failed Apply can change State/resources; Recovery uses the interrupted job source and blocks upgrade until reconciled. Withdrawn sources cannot execute; unresolved Recovery needs an operator-provided reviewed compatible package. Do not recommend reordering or promise unchanged failed State/no data loss. Chat performs no upgrade or execution. " : ""}ADVICE CONTRACT: The current topic is ${intent.topic}. Do not invent an implementation path contrary to reviewed Limits: public managed endpoints cannot become SNA-private merely by firewall rules; independent instances are not federation; use exact documented native flavor IDs, never display labels as values. A service architecture recommendation must use the actual supported central versus per-project fields.  Answer the actual question fully from that topic's reviewed Accelerator Contract and Limits, with its native field names and supported values. Cite that topic, not only a dependency. Distinguish native Accelerator/editor fields from the narrower chat patch whitelist: unsupported chat patches do NOT mean those fields are immutable or absent in the editor. A fields overview lists concrete fields and limits in explanation; never merely announce a list, replace the answer with follow-up questions, or invent missing features. Questions only resolve actual missing requirements for the current topic, never unrelated components. No changes or saved/deployed claim in advice mode. For governance, distinguish rm_folder_parent_id and organization roles from the names-only chat patch: names 1-40 characters; meaningful folder descriptions are rejected, not silently ignored. For sandbox projects the only native fields are project_name, project_owner_email and optional owner_emails; no native expiry or budget controls. For firewall policy list firewall_config aliases, routes, rules, outbound_nat and port_forwards, endpoint/TLS and pass/block/reject with in/out; explain external bootstrap and explicit HA policy synchronization separately from CARP/pfsync, without starting the infrastructure capacity questionnaire.`,
           },
           ...history
             .slice(-12)
@@ -3998,6 +4120,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
                 {
                   role: "system" as const,
                   content:
+                    `CURRENT RESPONSE LANGUAGE: ${intent.applicationAccessLanguage === "en" ? "English. All explanation and questions MUST be in English." : "German. All explanation and questions MUST be in German."} Curated notes and earlier assistant messages do not choose the language. ` +
                     "ANSWER COMPLETENESS: Put the complete factual answer in explanation itself, in the user's language. Use compact bullets and at most 2400 characters, leaving room within the 3000-character response contract. Group equivalent central/regional forms and nested field families instead of repeating long paths in prose. An introduction announcing rules or a list is not an answer: actually include the requested fields, supported values, limits and exclusions from the reviewed topic. Contract names, versions, dates and references are provenance, not substitutes for those facts. For project-template network sizing, distinguish template null from the effective non-null provider prefix: use the reviewed topic facts, explain which layer reads the SNA default and keeps DNS, and never invert the failing null+DNS combination. A requested Automatic choice needs no numeric sizing question. State that inherited size does not guarantee available addresses. Explain native defaults, including null meaning no optional service instance, where relevant; do not promote illustrative enabled values to defaults. For a pure fields/defaults/limits overview return questions=[]: no configuration decisions are missing to answer that informational request. Otherwise questions may ask only genuinely missing business decisions after the factual answer; never request technical IDs, secrets or bootstrap credentials, or move the answer's facts into questions. Before finishing, check that explanation stands alone without an absent continuation or a promised list. Do not invent facts, propose changes or claim anything was saved or executed.",
                 },
               ]
@@ -4008,6 +4131,14 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
                   role: "system" as const,
                   content:
                     "NETWORK SIZING FACTS (apply only when relevant; explain only these relevant facts, no invented release numbers): distinguish TEMPLATE network_prefix_length from PROVIDER ipv4_prefix_length. The EXACT SAME STACKIT provider 0.114.0 is used before AND after the Accelerator module fix. No provider upgrade fixes this. Provider inputs {prefix:null,DNS:configured or []} -> INVALID before AND after; {prefix:null,DNS:null} -> automatic accepted. FIXED Corporate module, not the provider, READS actual regional SNA default during Plan; template null -> module resolves SNA default -> provider receives NUMERIC prefix and UNCHANGED DNS. Thus DNS is neither required to make Automatic work nor disabled by the fix. Native module source changed; provider validation did not. Never call this a provider-version fix; topic version2 and checkedOn are knowledge metadata, not software releases. Do not reverse the old failure condition. For SNA default28: template null -> provider prefix28, not null. Always state that Automatic does not guarantee free SNA capacity or available addresses; allocation still depends on current cloud usage and reserved platform/firewall space. Existing published sources need new corrected version/order; this conversation saves or executes nothing. For a sizing question answer sizing, not an unsolicited field/default overview. Distinguish the corrected source from the deployed service: existing old versions are not fixed by this advice.",
+                },
+              ]
+            : []),
+          ...(intent.adviceTask === "architecture-advice" && selectedTopic
+            ? [
+                {
+                  role: "system" as const,
+                  content: `CURRENT ARCHITECTURE QUESTION: Answer the actual question with this selected reviewed source. Keep capacity partitioning separate from network reachability: moving a managed service to another project does not change its endpoint type. Do not append an undocumented workaround. Use the exact native configuration scope and values from the source; central objects and project-template objects are not interchangeable. No changes, execution, or setup questionnaire. Source: ${context.rules.find((rule) => rule.id === selectedTopic.id)?.text ?? ""}`,
                 },
               ]
             : []),
@@ -4031,6 +4162,15 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
         ],
         z.toJSONSchema(
           dialogueSchema.extend({
+            ...(intent.adviceTask === "architecture-advice"
+              ? {
+                  replyLanguage: z
+                    .enum(["en", "de"])
+                    .describe(
+                      "Required response language of the CURRENT USER question: English means en with all explanation/questions in English, German means de. Curated German field notes and earlier Assistant text do not select language.",
+                    ),
+                }
+              : {}),
             ...(foundationDraft
               ? {
                   replyLanguage: z
@@ -4101,21 +4241,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
                         : 8,
               ),
             changes: firewallDraft
-              ? z
-                  .array(
-                    z.strictObject({
-                      path: z.literal(
-                        singleFirewallForm
-                          ? "connectivity.firewall"
-                          : "connectivity.firewalls",
-                      ),
-                      value: firewallSchema,
-                    }),
-                  )
-                  .max(canProposeFirewall ? 1 : 0)
-                  .describe(
-                    "At most ONE coherent native firewall patch; combine all requested fields in it. New appliances require every mandatory field and requested HA together. Missing prerequisites mean changes=[], ask targeted questions. NEVER split a path across entries.",
-                  )
+              ? firewallChanges
               : z
                   .array(
                     z.union([
@@ -4292,6 +4418,8 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
       if (!draftAllowed && dialogue.changes.length > 0)
         throw new Error("assistant_invalid_scope");
       if (firewallDraft) {
+        if (!firewallChanges.safeParse(dialogue.changes).success)
+          throw new Error("assistant_invalid_scope");
         if (!canProposeFirewall && dialogue.changes.length)
           throw new Error("assistant_invalid_scope");
         const catalogueFields = {

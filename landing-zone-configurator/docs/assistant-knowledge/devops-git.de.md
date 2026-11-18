@@ -49,6 +49,16 @@ Ein Katalog kann eine klar gekennzeichnete Empfehlung begründen, beweist aber
 keine Berechtigung im Zielprojekt und ersetzt keine Zugangsentscheidung.
 Keine Runner, Integrationen, Migrationen oder Secrets ableiten.
 
+Sizing berücksichtigt dokumentierte Grenzen: Git10 bis10, Git100 bis100 Nutzer
+pro Instanz sowie gemeinsame Repositories/CI/CD. Bei Unklarheit geplante Git-Nutzer
+und Wachstum klären; unternehmensweit belegt nicht höchstens100 Nutzer. Darüber
+getrennte Team-/Application-Projektinstanzen oder eine andere Architektur besprechen,
+keinen größeren Flavor erfinden. Instanzen bieten keine transparente Föderation.
+Application-Templates können eigenes verwaltetes Git über git.enabled/flavor/acl
+bereitstellen; vor Vorschlägen zentrale Plattform und gewünschtes Projekt-Template
+unterscheiden.
+Die nativen Flavor-IDs lauten `git-10` und `git-100`; Git10/Git100 sind Anzeigenamen. Das zentrale `devops`-Objekt erzeugt eine Instanz; weitere Team-/Projektinstanzen werden über Projekt-Git getrennt bereitgestellt.
+
 <a id="examples"></a>
 
 ## Beispiele

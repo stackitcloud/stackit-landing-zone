@@ -1868,6 +1868,13 @@ button.template-node:hover {
   max-width: 100%;
   overflow-wrap: anywhere;
 }
+.info-banner.application-access-profile {
+  flex-direction: column;
+  align-items: stretch;
+}
+.info-banner.application-access-profile button {
+  align-self: flex-start;
+}
 .application-access-profile input:not([type="checkbox"]),
 .application-access-profile select {
   width: 100%;

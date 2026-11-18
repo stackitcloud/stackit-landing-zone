@@ -324,8 +324,9 @@ not an approved infrastructure Plan.
 After reviewing the proposal, the Application Owner explicitly approves
 **Run reviewed state repair**, including release of the checked orphan lock and
 fresh replanning. A separate, single-use Runner rechecks the proposal, releases
-only that lock and publishes the candidate through native OpenTofu locking and
-serial/lineage checks. It never runs an infrastructure Apply. The service then
+only that lock and publishes the candidate through native OpenTofu with
+serial/lineage checks under the Configurator database reservation. The S3 lockfile
+is an additional signal; it does not provide atomic exclusion at the tested endpoint. It never runs an infrastructure Apply. The service then
 independently verifies the resulting remote State and absence of a lock before
 allowing a **new Cloud Plan on the same order**. Review that Plan before Apply.
 The old saved Plan remains unusable.
@@ -431,3 +432,5 @@ Use the header bell to open your workspace inbox and personally select email top
 and German/English under **Email notifications**. The inviter can optionally email
 a recipient-bound invitation. See [Notifications and email](notifications.md) for
 events, delivery states and retained access checks.
+
+[State coordination and external access](../../docs/state-locking.md).

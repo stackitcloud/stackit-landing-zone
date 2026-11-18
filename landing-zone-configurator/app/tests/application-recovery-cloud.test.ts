@@ -81,6 +81,7 @@ function fixture(
       };
     else if (url.includes("secrets-manager")) value = { instances: [] };
     else if (url.includes("argus")) value = { instances: [], message: "ok" };
+    else if (url.includes("git.api.stackit.cloud")) value = { instances: [] };
     else if (url.endsWith("/keys")) value = { items: [{ id: "existing-key" }] };
     else throw new Error("Unexpected endpoint");
     change?.(url, value);
@@ -420,3 +421,67 @@ it("rejects repeated audit pagination and never follows an API-provided endpoint
     ),
   ).rejects.toThrow("cloud-inventory-incomplete");
 });
+
+it("reads ready Git metadata only when the managed service is in scope", async () => {
+  const { cloud, calls } = fixture((url, value) => {
+    if (url.includes("git.api.stackit.cloud"))
+      value.instances = [
+        {
+          id: projectId,
+          name: "application-git",
+          flavor: "git-100",
+          acl: ["203.0.113.0/24"],
+          state: "Ready",
+          password: "not-returned",
+        },
+      ];
+  });
+  const inventory = await cloud.read(
+    { projectId, region: "eu01", ownerEmail, git: true },
+    key,
+  );
+  expect(inventory.gitComplete).toBe(true);
+  expect(inventory.gitInstances).toEqual([
+    {
+      id: projectId,
+      name: "application-git",
+      flavor: "git-100",
+      acl: ["203.0.113.0/24"],
+    },
+  ]);
+  expect(JSON.stringify(inventory)).not.toContain("not-returned");
+  expect(
+    calls.filter((call) => call.url.includes("git.api.stackit.cloud")),
+  ).toEqual([
+    expect.objectContaining({
+      url: `https://git.api.stackit.cloud/v1beta/projects/${projectId}/instances`,
+      init: expect.objectContaining({ method: "GET" }),
+    }),
+  ]);
+  const other = fixture();
+  await other.cloud.read({ projectId, region: "eu01", ownerEmail }, key);
+  expect(
+    other.calls.some((call) => call.url.includes("git.api.stackit.cloud")),
+  ).toBe(false);
+});
+
+it.each(["Creating", "Updating", "Deleting", "Error"])(
+  "does not adopt a Git instance in %s state",
+  async (state) => {
+    const { cloud } = fixture((url, value) => {
+      if (url.includes("git.api.stackit.cloud"))
+        value.instances = [
+          {
+            id: projectId,
+            name: "application-git",
+            flavor: "git-100",
+            acl: [],
+            state,
+          },
+        ];
+    });
+    await expect(
+      cloud.read({ projectId, region: "eu01", ownerEmail, git: true }, key),
+    ).rejects.toThrow();
+  },
+);

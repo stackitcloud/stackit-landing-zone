@@ -1247,7 +1247,7 @@ it("moves an existing order to the reviewed audit-capable source when the reques
   expect(context.candidate).toMatchObject({
     platformRevision: f.to,
     versionId: f.version,
-    sourceRevision: "c83f3d910ab20131d1cba898023317c0e818843b",
+    sourceRevision: "2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a",
   });
   expect(context.candidate.executionBindingId).toEqual(expect.any(String));
   const stored = (

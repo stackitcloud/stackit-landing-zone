@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceSha256": "ef9ad5d43e0fff5fb0bbb7f0e29e8caf86ae2e2a2362348c0fe4d268f039e128",
+  "sourceSha256": "78181893e1049bf39abfd4da5cb9b13f59832f8e1086b7e13b6735bd794d6d68",
   "variables": [
     {
       "name": "bucket_naming",
@@ -1742,6 +1742,22 @@
               ]
             ],
             "env": "string",
+            "git": [
+              "object",
+              {
+                "acl": [
+                  "list",
+                  "string"
+                ],
+                "enabled": "bool",
+                "flavor": "string"
+              },
+              [
+                "acl",
+                "enabled",
+                "flavor"
+              ]
+            ],
             "network_area_key": "string",
             "network_enabled": "bool",
             "network_prefix_length": "number",
@@ -1784,6 +1800,7 @@
             "corporate",
             "custom_roles",
             "env",
+            "git",
             "network_area_key",
             "network_enabled",
             "network_prefix_length",
@@ -1805,6 +1822,11 @@
               "corporate": true,
               "custom_roles": [],
               "env": "dev",
+              "git": {
+                "acl": null,
+                "enabled": null,
+                "flavor": null
+              },
               "network_area_key": "default",
               "network_enabled": false,
               "network_prefix_length": null,
@@ -1819,6 +1841,13 @@
               "secretsmanager_enabled": true
             },
             "children": {
+              "git": {
+                "values": {
+                  "acl": [],
+                  "enabled": false,
+                  "flavor": "git-10"
+                }
+              },
               "observability": {
                 "values": {
                   "acl": [],
@@ -1837,7 +1866,7 @@
     },
     {
       "name": "landing_zone_namespace_services",
-      "line": 724,
+      "line": 729,
       "description": "Map of namespace-service configurations per landing zone key. If a key is present, namespace service is enabled for that landing zone.",
       "type": [
         "map",

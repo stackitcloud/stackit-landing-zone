@@ -332,6 +332,7 @@ export function ProjectTemplates({
                       ? [
                           "env",
                           "observability",
+                          "git",
                           "network_enabled",
                           "network_prefix_length",
                         ]

@@ -50,6 +50,9 @@ const defaults: Record<string, JsonValue> = {
   env: "dev",
   secretsmanager_enabled: true,
   "observability.enabled": false,
+  "git.enabled": false,
+  "git.flavor": "git-10",
+  "git.acl": [],
   "observability.plan_name": "Observability-Starter-EU01",
 };
 
@@ -270,6 +273,10 @@ export function TemplateParameters({
     "landing_zones[*].observability.plan_name",
     template.region,
   );
+  const gitCatalogue = useCatalogueOptions(
+    "landing_zones[*].git.flavor",
+    template.region,
+  );
   const projectRoles = useCatalogueOptions(
     "role_assignments[*].role",
     template.region,
@@ -278,7 +285,11 @@ export function TemplateParameters({
     (field) =>
       (field.path !== "role_assignments" || !template.accessProfile) &&
       (field.path !== "observability.plan_name" ||
-        templateObservabilityConfigurable(template)),
+        templateObservabilityConfigurable(template)) &&
+      (!field.path.startsWith("git.") ||
+        field.path === "git.enabled" ||
+        template.parameterPolicy?.fields["git.enabled"]?.source === "input" ||
+        read(template.settings, "git.enabled") === true),
   );
   const policy: TemplateParameterPolicy = template.parameterPolicy ?? {
     schema_version: 1,
@@ -488,6 +499,27 @@ export function TemplateParameters({
                   ? t("Bei Bestellung auswählbar")
                   : t("Automatisch verknüpft")}
             </summary>
+            {field.path === "git.enabled" && (
+              <p>
+                {t(
+                  "Eigene verwaltete Git-Instanz im Application-Projekt. Bestehendes zentrales Git bleibt davon unabhängig.",
+                )}
+              </p>
+            )}
+            {field.path === "git.flavor" && (
+              <p>
+                {t(
+                  "Git10: bis zu 10 Nutzer. Git100: bis zu 100 Nutzer pro Instanz. Für mehr Nutzer eine Aufteilung oder andere Architektur planen.",
+                )}
+              </p>
+            )}
+            {field.path === "git.acl" && (
+              <p>
+                {t(
+                  "Öffentliche Quellnetze der Git-Nutzer und Runner angeben. Eine SNA-Anbindung des Projekts macht diesen verwalteten Git-Service nicht privat erreichbar.",
+                )}
+              </p>
+            )}
             <div className="field">
               <label htmlFor={`${template.id}-${field.path}-source`}>
                 {t("Wertquelle:")} {t(field.label)}
@@ -523,13 +555,18 @@ export function TemplateParameters({
                                         String(current),
                                       ]),
                                     ]
-                                  : field.path === "observability.plan_name" &&
-                                      catalogue?.length
+                                  : (field.path === "observability.plan_name" ||
+                                        field.path === "git.flavor") &&
+                                      (field.path === "git.flavor"
+                                        ? gitCatalogue
+                                        : catalogue
+                                      )?.length
                                     ? [
                                         ...new Set([
-                                          ...catalogue.map(
-                                            (option) => option.value,
-                                          ),
+                                          ...(field.path === "git.flavor"
+                                            ? (gitCatalogue ?? [])
+                                            : (catalogue ?? [])
+                                          ).map((option) => option.value),
                                           String(current),
                                         ]),
                                       ]
@@ -555,7 +592,9 @@ export function TemplateParameters({
                 choices={
                   field.path === "observability.plan_name"
                     ? catalogue?.map((o) => o.value)
-                    : undefined
+                    : field.path === "git.flavor"
+                      ? gitCatalogue?.map((o) => o.value)
+                      : undefined
                 }
                 onChange={(value) =>
                   onChange({

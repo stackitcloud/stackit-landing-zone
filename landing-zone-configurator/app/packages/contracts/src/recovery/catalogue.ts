@@ -19,4 +19,5 @@ export const applicationRecoveryStrategies = {
   stackit_service_account_key: "revoke-lost-secret",
   stackit_secretsmanager_instance: "import",
   stackit_observability_instance: "import",
+  stackit_git: "import",
 } as const;

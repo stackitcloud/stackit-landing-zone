@@ -181,7 +181,7 @@ User decision: adopt existing [LZA bootstrap](https://github.com/stackitcloud/st
 
 At the separately approved first Apply, the management module creates the customer state bucket with credentials. Afterwards Runner migrates with `tofu init -migrate-state`; the API confirms migration only after comparing state hash and remote version/ETag and bound state version. Only then is the HTTP primary state removed. The verified management service account is used subsequently. The S3 backend uses `use_lockfile = true`. Application instances each receive their own keys `applications/<tenant-id>/<instance-id>/terraform.tfstate`; platform, Application and Configurator infrastructure states remain separate.
 
-Legacy state mappings are blocked with `legacy_state_migration_required` and require explicit mapping/migration, not new empty state. For `state_failed` or unconfirmed migration, explicit state reconciliation is required before resumption; a completed S3 copy can be confirmed without another Apply as described below. Other recovery cases still need a protected export. Runner transmits checked, encrypted recovery evidence and removes local error states only after matching durable receipt confirmation. This does not guarantee automatic complete restoration after every hard Runner loss; reconciliation and operational recovery remain necessary. No real cloud S3 lock test was performed. No customer Apply was executed in this implementation.
+Legacy state mappings are blocked with `legacy_state_migration_required` and require explicit mapping/migration, not new empty state. For `state_failed` or unconfirmed migration, explicit state reconciliation is required before resumption; a completed S3 copy can be confirmed without another Apply as described below. Other recovery cases still need a protected export. Runner transmits checked, encrypted recovery evidence and removes local error states only after matching durable receipt confirmation. This does not guarantee automatic complete restoration after every hard Runner loss; reconciliation and operational recovery remain necessary. The independent EU01 test found conditional S3 writes ineffective; see the linked State coordination contract. No customer Apply was executed in this implementation.
 
 <a id="konfiguration-nach-fehlgeschlagenem-bootstrap-apply-korrigieren"></a>
 ## Correcting configuration after a failed bootstrap Apply
@@ -515,3 +515,5 @@ can then create a fresh Plan for the same order; the old Apply is not replayed.
 Infrastructure, remote State and State locks are not modified. A running runner,
 an unavailable observation or any evidence of execution leaves the job blocked;
 an interrupted Apply that already began uses the existing Recovery procedure.
+
+[Database state serialization and S3 locking limits](../../docs/state-locking.md).

@@ -127,6 +127,14 @@ Mocked request/guard tests complement these cases; field inventory and knowledge
 delivery coverage alone do not prove natural dialogue quality. Skipped release
 qualification is explicitly not a fresh live-test result.
 
+Policy-backed Editor services verify an informational label against the current request before returning advice. An explicit setup request remains a draft request when choices are missing; the existing typed flow asks for those choices. The verifier receives only component and current message, requires exact user evidence for a draft request, and cannot invent values or authorize persistence/execution.
+
+Audit advice is also checked against the closed current-question subject before returning a field overview. A concrete root Plan impact/Apply question receives lifecycle guidance; ordinary audit fields and query-store migration retain their audit topic. Historical questions and private drafts are not input to this subject check.
+
+### Reviewed architecture boundaries
+
+For documented hard limits and execution guarantees, the model selects a closed fact identifier and an exact quote from the current user question. The application renders the reviewed English/German answer without letting the model rewrite that boundary. The initial facts cover Git instance capacity/topology, Application Git reachability and S3/database coordination. They authorize no draft change or execution and require the corresponding selected knowledge topic. Ordinary advice and configuration proposals keep their existing flows. Add source bindings, both locales and positive/negative factual tests when extending this registry.
+
 ### Real-model qualification
 
 Changes to service facts, prompts, knowledge selection or component contracts
@@ -172,7 +180,7 @@ dedicated setup-scope/evidence classifier. A general field hint such as `ha`
 must not bypass it: continuing broad setup with HA retains the remaining
 traffic, capacity and interruption decisions. An explicit narrow native update
 remains a field update, even after an earlier broad setup conversation, and does
-not add unrelated setup questions. If no bounded user-evidence fragments exist,
+not add unrelated setup questions. When HA is requested for an existing appliance and technical prerequisites are known, the response must include its typed HA patch even while business follow-ups remain open. The same minimum and per-area requirements are enforced in the response schema and server validation; existing native IP defaults remain omitted. If no bounded user-evidence fragments exist,
 evidence fields permit only null rather than an empty enumeration.
 
 Intent and evidence schema descriptions are also sent in the classifier's system

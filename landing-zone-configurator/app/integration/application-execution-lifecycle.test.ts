@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { applicationExecutionCurrentRevision } from "@lzc/contracts";
 import pg from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { checkRunnerStart } from "../apps/api/src/applications/runner-start.js";
@@ -30,7 +31,7 @@ const runtime = new pg.Pool({
   password: "runtime-test-only",
 });
 const old = "9e7fb46c329aca32e878ce1f0ea3b944ea240354";
-const latest = "c83f3d910ab20131d1cba898023317c0e818843b";
+const latest = applicationExecutionCurrentRevision;
 let owner: Session;
 let outsider: Session;
 

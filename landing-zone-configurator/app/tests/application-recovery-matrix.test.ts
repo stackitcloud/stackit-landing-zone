@@ -34,6 +34,7 @@ function fullFixture() {
         },
       ],
       secretsmanager_enabled: true,
+      git: { enabled: true, flavor: "git-100", acl: ["203.0.113.0/24"] },
       observability: { enabled: true, plan_name: "observability-small" },
     },
     platform_contract: {
@@ -81,6 +82,15 @@ function fullFixture() {
         name: `${prefix.slice(0, 23)}-${createHash("sha256").update(prefix).digest("hex").slice(0, 8)}`,
         platformDefault: false,
         accessKeyIds: [],
+      },
+    ],
+    gitComplete: true,
+    gitInstances: [
+      {
+        id: "git-instance",
+        name: prefix.slice(0, 31),
+        flavor: "git-100",
+        acl: ["203.0.113.0/24"],
       },
     ],
     customRolesComplete: true,
@@ -137,7 +147,7 @@ function fullFixture() {
     instanceId: variables.application.instance_id,
   };
   const imports = deriveApplicationRecoveryImports(input);
-  expect(imports).toHaveLength(14);
+  expect(imports).toHaveLength(15);
   expect([...new Set(imports.map((i) => i.type))].sort()).toEqual(
     Object.entries(applicationRecoveryStrategies)
       .filter(([, strategy]) => strategy === "import")
@@ -203,7 +213,7 @@ it("recovers every retained/missing subset across all importable Application res
         instanceId: f.input.instanceId,
         imports,
       }).candidateResources,
-    ).toBe(15);
+    ).toBe(16);
   }
 }, 60000);
 it.each([
@@ -528,4 +538,33 @@ it("preserves a fully saved audit ingestion token and only discards its incomple
   expect(() =>
     deriveApplicationRecoveryRevocations({ ...f.input, state: original() }),
   ).toThrow("checkpoint-invalid");
+});
+
+it("fails closed for Git inventory gaps or mismatched managed Git size/access", () => {
+  const f = fullFixture();
+  for (const patch of [
+    { gitComplete: false },
+    {
+      gitInstances: [
+        { ...f.input.inventory.gitInstances[0]!, flavor: "git-10" },
+      ],
+    },
+    {
+      gitInstances: [
+        { ...f.input.inventory.gitInstances[0]!, acl: ["0.0.0.0/0"] },
+      ],
+    },
+    {
+      gitInstances: [
+        f.input.inventory.gitInstances[0]!,
+        { ...f.input.inventory.gitInstances[0]!, id: "another-git" },
+      ],
+    },
+  ])
+    expect(() =>
+      deriveApplicationRecoveryImports({
+        ...f.input,
+        inventory: { ...f.input.inventory, ...patch },
+      }),
+    ).toThrow();
 });

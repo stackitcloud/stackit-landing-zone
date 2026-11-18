@@ -2,48 +2,41 @@
 
 ## Purpose
 
-Central managed Git, separate from GitHub login, forks and Configurator CI.
+Git !=GitHub login/forks/Configurator CI.
 
 ## Accelerator Contract
 
-Root derives project, ownership and naming; passes git_flavor and
-allowed_network_ranges. devops=null skips deployment. git_flavor defaults to
-null, NOT git-10/git-100: null or an ACL-only object creates no Git instance.
-Live catalogues are needed for real sizes and regional availability.
+Root derives project/owner/name; inputs git_flavor,allowed_network_ranges.
+devops=null skips; git_flavor=null (default), even with ACLs, creates no Git.
+Catalogue !=entitlement/prices.
 
 ## Dependencies
 
-Management/governance, identity foundations, provider rights and deliberate ACLs.
-A fork proves neither provisioned Git nor service-account rights.
+Management/governance/identity/rights/ACLs; fork!=Git/SA rights.
 
 ## Dialogue
 
-Broad setup requests ("Please add a central git instance to the config") start
-a dialogue. Ask missing size/capacity and access decisions, preserving user
-answers across turns. Only propose a complete new component. There is no enabled
-flavor default: ask instead of inventing git-10. A verified catalogue can ground
-a labelled recommendation, never entitlement or availability. Ask actual CIDRs
-as free text, without invented examples or preset networks. A blank answer never
-means consent to allow all. Separate operator, runners and integrations; do not
-infer migrations or secrets.
+Retain answers; complete grounded proposals.
+git-10 (Git10) <=10 users; git-100 (Git100) <=100 per instance, shared repositories/CI/CD. Size for intended Git users and
+growth; company-wide does not imply <=100. Above100 discuss separate team/project instances or another
+architecture, not an invented larger flavor. Multiple instances are not federated Git. Root devops is one central instance; use project Git for separate team/project instances.
+Optional project Git: git.enabled/flavor/acl. Clarify central versus selected project-template scope; never change both silently.
+Ask missing access/public egress CIDRs. Company/private SNA/examples/blank answers do not grant public access. Distinguish operators/runners/integrations.
 
 ## Examples
 
-devops=null opts out. Selected git_flavor plus deliberate allowed_network_ranges
-can propose Git. git-10 illustrates syntax, not entitlement or capacity.
+git_flavor+explicit ACL proposes central Git; project Git is separate/default disabled.
 
 ## Limits
 
-Editor acceptance changes only the local draft. ACLs do not qualify backup/restore,
-migration, SSO or CI execution. No arbitrary Git appliances, prices, performance
-or availability promises. Root wiring, not child parameters, defines support.
+Editor: local draft only; no arbitrary appliances/prices/performance/availability claims.
+Pinned Provider0.114 flavor AND ACL changes replace Git; review repository/data migration.
+ACL!=backup/restore/migration/SSO/CI.
 
 ## Credentials
 
-Provisioning and Git-user access are separate. No PATs, SSH private keys, Git
-passwords or CI secrets in chat; no hidden Configurator profile-ID dependency.
+Provisioning !=Git-user access. No PATs/SSH/passwords/CI secrets/hidden IDs.
 
 ## Sources
 
-Root calls, DevOps variables and provider configuration in the manifest.
-Refresh source bindings after review; live product facts stay separate.
+Native inputs/resources and official sizing docs.

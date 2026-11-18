@@ -313,6 +313,37 @@ function collectionModel(
     },
     vi.fn<typeof fetch>(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
+      if (
+        body.response_format.json_schema.name === "component_request_purpose"
+      ) {
+        return Response.json({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify({
+                  purpose: "information",
+                  quote: null,
+                }),
+              },
+            },
+          ],
+        });
+      }
+      if (body.response_format.json_schema.name === "platform_advice_subject") {
+        return Response.json({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify({ task: "other" }),
+              },
+            },
+          ],
+        });
+      }
       inspect?.(body);
       return new Response(
         JSON.stringify({
@@ -4850,7 +4881,7 @@ it.each(["de", "en"] as const)(
           ],
           [{ path: "devops.git_flavor", text: "Choose." }],
         ),
-        replyLanguage: language,
+        replyLanguage: language === "en" ? "de" : "en",
         references: ["devops-git"],
       },
       (request) => {

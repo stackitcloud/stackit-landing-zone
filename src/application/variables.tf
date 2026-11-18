@@ -26,6 +26,11 @@ variable "application" {
     network_enabled        = optional(bool, false)
     network_prefix_length  = optional(number, null)
     secretsmanager_enabled = bool
+    git = optional(object({
+      enabled = optional(bool, false)
+      flavor  = optional(string, "git-10")
+      acl     = optional(list(string), [])
+    }), {})
     custom_roles = optional(list(object({
       name        = string
       description = string
@@ -44,6 +49,10 @@ variable "application" {
   })
   description = "Resolved application instance supplied manually or by the Configurator. Identity and deployment authorization are enforced by the caller's IAM permissions."
 
+  validation {
+    condition     = !var.application.git.enabled || (can(regex("^git-[0-9]+$", var.application.git.flavor)) && length(var.application.git.acl) > 0 && alltrue([for cidr in var.application.git.acl : can(cidrhost(cidr, 0))]))
+    error_message = "Enabled project Git requires a valid flavor and explicit source CIDRs."
+  }
   validation {
     condition     = var.application.initial_owner_email == null ? true : can(regex("^[^@\\s]+@[^@\\s]+$", var.application.initial_owner_email))
     error_message = "Initial project owner must be an email address or omitted for legacy requester ownership."

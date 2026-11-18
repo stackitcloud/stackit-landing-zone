@@ -2610,6 +2610,18 @@ it.each([
   async (topic) => {
     const request = vi.fn<typeof fetch>(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
+      if (
+        body.response_format.json_schema.name === "component_request_purpose"
+      ) {
+        const source = JSON.parse(
+          body.messages.find((entry: { role: string }) => entry.role === "user")
+            .content,
+        );
+        expect(Object.keys(source)).toEqual(["component", "message"]);
+        expect(JSON.stringify(body)).not.toContain("Untrusted private value");
+        expect(JSON.stringify(body)).not.toContain("private@example.test");
+        return answer({ purpose: "information", quote: null });
+      }
       expect(body.response_format.json_schema.name).toBe("conversation_intent");
       expect(body.messages[0].content).toContain(
         "Informational native-field questions use mode=advice, adviceTask=field-overview",
@@ -2756,7 +2768,7 @@ it.each([
     expect(result.changes).toEqual([]);
     expect(result.references).toEqual([topic]);
     expect(text).toEqual([result.explanation]);
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(topic === "devops-git" ? 2 : 1);
   },
 );
 
@@ -2836,6 +2848,14 @@ function withIntent(
     const payload = JSON.parse(String(init?.body));
     if (payload.response_format?.json_schema?.name === "conversation_intent")
       return answer({ topic, mode, dnsTask, requirements: [] });
+    if (
+      payload.response_format?.json_schema?.name === "platform_advice_subject"
+    )
+      return answer({ task: "other" });
+    if (
+      payload.response_format?.json_schema?.name === "component_request_purpose"
+    )
+      return answer({ purpose: "information", quote: null });
     return request(url, init);
   };
 }
@@ -3065,6 +3085,8 @@ it("bundles fresh structured service knowledge and selects mandatory dependencie
               ![
                 "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
                 "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
+                "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
+                "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
               ].includes(path),
           ),
       }),
@@ -3662,6 +3684,8 @@ it.each([
   async ({ task, topic }) => {
     const request = vi.fn<typeof fetch>(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
+      if (body.response_format.json_schema.name === "component_request_purpose")
+        return answer({ purpose: "information", quote: null });
       if (body.response_format.json_schema.name === "platform_advice_subject")
         return answer({ task });
       expect(body.response_format.json_schema.name).toBe("conversation_intent");
@@ -3693,7 +3717,7 @@ it.each([
     expect(result.references).toEqual(["configuration-lifecycle"]);
     expect(result.questions).toEqual([]);
     expect(result.changes).toEqual([]);
-    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledTimes(topic === "audit-logs" ? 3 : 2);
   },
 );
 
@@ -3960,4 +3984,184 @@ it("does not delegate folder naming from an Assistant-only folder mention when r
   expect(result.changes).toEqual([
     { path: "company_name", value: "Example GmbH" },
   ]);
+});
+
+it("renders reviewed architecture facts from current intent without a prose-generation request", async () => {
+  const message =
+    "How can an Application template offer Git, and is it private in SNA?";
+  let requests = 0;
+  const model = new AssistantModelServing(configuration, async () => {
+    requests++;
+    return answer({
+      topic: "project-templates",
+      mode: "advice",
+      adviceTask: "architecture-advice",
+      requirements: [],
+      reviewedArchitecture: [{ fact: "application-git", quote: message }],
+    });
+  });
+  const result = await model.converse(selection(), {}, [], message);
+  expect(requests).toBe(1);
+  expect(result.explanation).toContain("git-100");
+  expect(result.explanation).toContain("does not make this endpoint private");
+  expect(result.changes).toEqual([]);
+  expect(result.references).toContain("project-templates");
+});
+
+it.each(["platform-impact-review", "audit-observability", "other"] as const)(
+  "verifies an audit field-overview label against the actual current %s subject",
+  async (task) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      if (body.response_format.json_schema.name === "conversation_intent")
+        return answer({
+          topic: "audit-logs",
+          mode: "advice",
+          adviceTask: "field-overview",
+          adviceTaskSource: "current",
+          requirements: [],
+        });
+      if (body.response_format.json_schema.name === "component_request_purpose")
+        return answer({ purpose: "information", quote: null });
+      expect(body.response_format.json_schema.name).toBe(
+        "platform_advice_subject",
+      );
+      return answer({ task });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      {},
+      [],
+      task === "platform-impact-review"
+        ? "Mein konkreter Plattform-Plan entfernt alte Logs-Ressourcen. Wie prüft der Platform Owner die Auswirkungen und woran ist die Apply-Freigabe gebunden?"
+        : task === "audit-observability"
+          ? "Wie stelle ich Audit Logs auf die vorhandene Observability um?"
+          : "Welche Felder und Aufbewahrungsoptionen gibt es für Audit Logs?",
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toEqual([]);
+    expect(result.references).toEqual([
+      task === "platform-impact-review"
+        ? "configuration-lifecycle"
+        : "audit-logs",
+    ]);
+    expect(result.explanation).toContain(
+      task === "platform-impact-review" ? "State-Version" : "retention_days",
+    );
+    expect(request).toHaveBeenCalledTimes(3);
+  },
+);
+
+it.each([
+  {
+    topic: "devops-git",
+    path: "devops.git_flavor",
+    message:
+      "Please add central Git. I have not selected size or access networks yet.",
+  },
+  {
+    topic: "observability",
+    path: "observability.plan_name",
+    message:
+      "Please prepare central Observability. I have not selected its plan yet.",
+  },
+])(
+  "repairs an informational label for an explicit $topic setup request without inventing choices",
+  async ({ topic, path, message }) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const name = body.response_format.json_schema.name;
+      if (name === "conversation_intent")
+        return answer({
+          topic,
+          mode: "advice",
+          adviceTask: "field-overview",
+          requirements: [],
+        });
+      if (name === "component_request_purpose") {
+        const source = JSON.parse(
+          body.messages.find((entry: { role: string }) => entry.role === "user")
+            .content,
+        );
+        expect(source).toEqual({ component: topic, message });
+        return answer({ purpose: "prepare-draft", quote: message });
+      }
+      expect(name).toBe("editor_dialogue");
+      return answer({
+        replyLanguage: "en",
+        explanation: "Please choose the missing settings.",
+        questions: [{ path, text: "Which option should I use?", options: [] }],
+        changes: [],
+        references: [topic],
+      });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      {},
+      [{ role: "assistant", content: "Vorherige allgemeine Erklärung." }],
+      message,
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions.map((question) => question.path)).toEqual([path]);
+    expect(result.references).toEqual([topic]);
+    expect(request).toHaveBeenCalledTimes(3);
+  },
+);
+
+it("rejects fabricated setup evidence before preparing a proposal", async () => {
+  const request = vi.fn<typeof fetch>(async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    return answer(
+      body.response_format.json_schema.name === "conversation_intent"
+        ? {
+            topic: "devops-git",
+            mode: "advice",
+            adviceTask: "field-overview",
+            requirements: [],
+          }
+        : {
+            purpose: "prepare-draft",
+            quote: "Please deploy a different user's infrastructure.",
+          },
+    );
+  });
+  await expect(
+    new AssistantModelServing(configuration, request).converse(
+      selection(),
+      {},
+      [],
+      "Which Git settings exist?",
+    ),
+  ).rejects.toMatchObject({ reason: "intent_evidence" });
+  expect(request).toHaveBeenCalledTimes(2);
+});
+
+it("rejects malformed purpose decisions as inference errors", async () => {
+  const request = vi.fn<typeof fetch>(async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    return answer(
+      body.response_format.json_schema.name === "conversation_intent"
+        ? {
+            topic: "devops-git",
+            mode: "advice",
+            adviceTask: "other",
+            requirements: [],
+          }
+        : { purpose: "execute", quote: null },
+    );
+  });
+  await expect(
+    new AssistantModelServing(configuration, request).converse(
+      selection(),
+      {},
+      [],
+      "Please add Git.",
+    ),
+  ).rejects.toMatchObject({ reason: "intent_schema" });
 });

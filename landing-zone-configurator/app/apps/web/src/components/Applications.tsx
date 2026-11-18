@@ -114,6 +114,10 @@ const errors: Record<string, string> = {
     "Der Runner ist noch aktiv oder sein Ende ist nicht nachgewiesen. Bitte später erneut prüfen.",
   application_plan_recovery_runner_unavailable:
     "Der Zustand des Runners konnte nicht eindeutig geprüft werden. Bitte später erneut prüfen.",
+  state_backend_already_managed:
+    "Dieser S3-State-Pfad ist bereits einer anderen verwalteten Landing Zone zugeordnet. Wähle einen eigenen State-Pfad.",
+  state_backend_binding_invalid:
+    "Die State-Zuordnung ist ungültig. Prüfe das ausgewählte Backend.",
   application_plan_recovery_state_locked:
     "Der Application-State ist gesperrt. Keine Freigabe möglich; die Sperre wird nicht verändert.",
   application_plan_recovery_state_invalid:

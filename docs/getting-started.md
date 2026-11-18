@@ -460,3 +460,5 @@ With the default `gateway_api = true`, the SKE DNS extension configures External
 
 > [!NOTE]
 > The SKE DNS extension does not install Gateway API CRDs. The optional Envoy Gateway demo installs them automatically. For other Gateway API implementations, install compatible CRDs separately. Once the CRDs are available, ExternalDNS is configured during the next cluster reconcile; no additional OpenTofu apply is required.
+
+[State coordination](state-locking.md).

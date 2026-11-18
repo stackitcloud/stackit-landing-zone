@@ -1,4 +1,26 @@
 export const englishMessages: Record<string, string> = {
+  "Über den Configurator koordiniert": "Coordinated by the Configurator",
+  "Der Configurator koordiniert seine Ausführungen auf diesem State. Starte dafür keine parallelen CLI- oder Pipeline-Läufe.":
+    "The Configurator coordinates its executions against this state. Do not run CLI or pipeline operations against it in parallel.",
+  "Eigene verwaltete Git-Instanz im Application-Projekt. Bestehendes zentrales Git bleibt davon unabhängig.":
+    "A dedicated managed Git instance in the application project. Existing central Git remains independent.",
+  "Git10: bis zu 10 Nutzer. Git100: bis zu 100 Nutzer pro Instanz. Für mehr Nutzer eine Aufteilung oder andere Architektur planen.":
+    "Git10: up to 10 users. Git100: up to 100 users per instance. For more users, plan separate instances or another architecture.",
+  "Öffentliche Quellnetze der Git-Nutzer und Runner angeben. Eine SNA-Anbindung des Projekts macht diesen verwalteten Git-Service nicht privat erreichbar.":
+    "Specify public source networks for Git users and runners. Connecting the project to SNA does not give this managed Git service private network access.",
+  "Dieser S3-State-Pfad ist bereits einer anderen verwalteten Landing Zone zugeordnet. Wähle einen eigenen State-Pfad.":
+    "This S3 state path already belongs to another managed landing zone. Choose a separate state path.",
+  "Die State-Zuordnung ist ungültig. Prüfe das ausgewählte Backend.":
+    "The state binding is invalid. Check the selected backend.",
+  "Projekt-Git benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.":
+    "Project Git requires a new template version using the current Runner source.",
+  "Projekt-Git": "Project Git",
+  "Git-Zugriffsquellen": "Git source networks",
+  "Git: Eine gültige Leistungsklasse ist erforderlich.":
+    "Git: A valid plan is required.",
+  "Git: Mindestens ein gültiges Quellnetz ist erforderlich.":
+    "Git: At least one valid source network is required.",
+
   "Die Änderung konnte nicht gespeichert werden. Bitte versuche es später erneut.":
     "The change could not be saved. Please try again later.",
   "Erstelle einen Arbeitsbereich oder öffne eine Einladung, um gemeinsam zu arbeiten.":
