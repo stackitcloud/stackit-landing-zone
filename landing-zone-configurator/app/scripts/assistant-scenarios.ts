@@ -898,6 +898,32 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     setupQuestionPaths: ["devops.git_flavor", "devops.allowed_network_ranges"],
   })),
   {
+    id: "editor-devops-capacity-narrowed",
+    topic: "devops-git",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    message:
+      "Limit this shared Git instance to 80 users. Use git-100 and allow only 203.0.113.0/24.",
+    history: [
+      {
+        role: "user",
+        content: "Please add central Git for all our 150 developers.",
+      },
+      {
+        role: "assistant",
+        content:
+          "Git100 supports at most 100 users per instance. Discuss separate team instances or narrow this instance's scope?",
+      },
+    ],
+    editorExpected: {
+      path: "devops",
+      value: {
+        git_flavor: "git-100",
+        allowed_network_ranges: ["203.0.113.0/24"],
+      },
+    },
+  },
+  {
     id: "editor-devops-company-standard",
     topic: "devops-git",
     fixture: "baseline",

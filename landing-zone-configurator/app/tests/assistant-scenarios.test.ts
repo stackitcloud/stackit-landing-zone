@@ -341,6 +341,7 @@ it.each(assistantScenarios)(
           git_flavor: [
             "editor-devops-company-complete",
             "editor-devops-reuse-allowlist",
+            "editor-devops-capacity-narrowed",
           ].includes(scenario.id)
             ? "git-100"
             : "git-10",

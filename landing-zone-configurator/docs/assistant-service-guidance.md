@@ -23,6 +23,9 @@ another flavor selection. Separate instances do not imply federation, automatic
 load distribution or aggregated guaranteed capacity. The central `devops` input
 configures one instance; additional instances require separate reviewed configuration.
 
+Literal confirmed user counts are retained independently of flavor classification. An incompatible later plan selection cannot discard them; an explicit narrower scope can replace them. This initial reviewed numeric-limit policy covers Git, without inventing limits for other products.
+
+
 ## Shared catalogue selection
 
 `packages/contracts/src/cloud-catalogue-fields.ts` is the shared field-to-catalogue

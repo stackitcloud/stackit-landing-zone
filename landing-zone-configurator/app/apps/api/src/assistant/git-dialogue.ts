@@ -2,6 +2,10 @@ import type { AssistantLanguage } from "@lzc/contracts";
 import { type JsonValue, objectValue } from "@lzc/domain";
 import { z } from "zod";
 import type { AssistantCatalogueContext } from "./model-serving.js";
+import {
+  confirmedServiceUserCount,
+  reviewedUserLimits,
+} from "./service-requirements.js";
 
 const cidr = z.union([z.cidrv4(), z.cidrv6()]);
 const reviewedPlans = ["git-100", "git-10"];
@@ -94,7 +98,20 @@ export function gitSetupDialogue(
     const index = inputs.sources.findIndex((entry) => entry.id === id);
     return index >= start ? inputs.sources[index]?.text : undefined;
   };
-  if (decision.planChoice === "larger" && source(decision.planSource))
+  const requiredUsers = confirmedServiceUserCount(
+    inputs.sources
+      .filter(
+        (entry, index) =>
+          index >= start || /\bgit\b/i.test(answerOnly(entry.text)),
+      )
+      .map((entry) => entry.text),
+  );
+  const limits = reviewedUserLimits.gitFlavors;
+  const maximumUsers = Math.max(...Object.values(limits));
+  if (
+    (requiredUsers !== undefined && requiredUsers > maximumUsers) ||
+    (decision.planChoice === "larger" && source(decision.planSource))
+  )
     return {
       explanation: en
         ? "Git100 supports at most 100 users per instance; Git10 supports at most 10. Automatic storage growth does not increase the user limit. Your requirement exceeds one documented instance. Consider separate team/project instances, each within its own user limit, or reduce the initial scope. This does not provide one shared instance, automatic federation or a capacity guarantee. The central devops setting configures one Git instance; additional instances require separate reviewed configuration. Nothing has been saved or deployed."
@@ -134,6 +151,40 @@ export function gitSetupDialogue(
         : decision.planChoice
       : null;
   const plan = selected && inputs.plans.includes(selected) ? selected : null;
+  const selectedUserLimit =
+    plan && Object.hasOwn(limits, plan)
+      ? limits[plan as keyof typeof limits]
+      : undefined;
+  if (
+    requiredUsers !== undefined &&
+    selectedUserLimit !== undefined &&
+    requiredUsers > selectedUserLimit
+  )
+    return {
+      explanation: en
+        ? `The selected ${plan} allows at most ${selectedUserLimit} users per instance, but your confirmed scope is ${requiredUsers} users. Git100 allows at most 100. Choose a suitable documented plan or explicitly narrow the scope; nothing has been saved or deployed.`
+        : `Der gewählte ${plan} erlaubt höchstens ${selectedUserLimit} Nutzer pro Instanz, euer bestätigter Umfang ist aber ${requiredUsers} Nutzer. Git100 erlaubt höchstens 100. Wähle einen passenden dokumentierten Tarif oder begrenze den Umfang ausdrücklich; nichts gespeichert oder deployt.`,
+      questions: [
+        {
+          path: "devops.git_flavor",
+          answerType: "requirements" as const,
+          text: en
+            ? "How should we resolve the size conflict?"
+            : "Wie sollen wir den Größenkonflikt lösen?",
+          options: en
+            ? [
+                "Discuss Git100 for up to 100 users",
+                `Limit this instance to at most ${selectedUserLimit} users`,
+              ]
+            : [
+                "Git100 für bis zu 100 Nutzer besprechen",
+                `Diese Instanz auf höchstens ${selectedUserLimit} Nutzer begrenzen`,
+              ],
+        },
+      ],
+      changes: [],
+      references: ["devops-git"],
+    };
   // A literal choice to reuse one existing allowlist is already a complete
   // selection; it must not depend on a second model interpretation.
   const latest = answerOnly(inputs.sources.at(-1)?.text ?? "");

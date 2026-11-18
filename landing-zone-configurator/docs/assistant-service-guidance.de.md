@@ -24,6 +24,9 @@ anfänglichen Umfang. Getrennte Instanzen bedeuten keine Föderation, automatisc
 Lastverteilung oder garantierte Gesamtkapazität. Der zentrale `devops`-Input
 konfiguriert eine Instanz; weitere Instanzen benötigen separat geprüfte Konfiguration.
 
+Wörtlich bestätigte Nutzerzahlen bleiben unabhängig von der Flavor-Klassifikation erhalten. Eine spätere unpassende Tarifauswahl kann sie nicht verwerfen; ein ausdrücklich kleinerer Umfang kann sie ersetzen. Diese erste geprüfte Regel für numerische Grenzen deckt Git ab und erfindet keine Grenzen anderer Produkte.
+
+
 ## Gemeinsame Katalogauswahl
 
 `packages/contracts/src/cloud-catalogue-fields.ts` ordnet die Felder ihren

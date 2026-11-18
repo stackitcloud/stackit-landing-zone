@@ -127,6 +127,7 @@ export const assistantKnowledgeSharedSources: readonly string[] = [
   "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
   "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
   "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+  "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
   "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
   "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
 ];

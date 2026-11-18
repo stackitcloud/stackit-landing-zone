@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "571d3d417137d8b2bbb049c498f5756e0662793560f3e4cc7144de4b6a604f0b",
+  "knowledgeSha256": "75f0915e1085fc65c8d666d5bcf3fc915aaeb273210f07baa599164da53e2b68",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "dc697bbd78955671dbb8ec995c0eaf76d778199b36d4f9490e18e93fe3f71248",
+    "scripts/assistant-scenarios.ts": "1906209cb90e547dcc90520a524a5d6766929bc1caa3e714abb0a1b454d964ad",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "09bafd674e0ad861a8d2fed679b8d96bd05e783d4c723e7adf133c94bb8b40ae",
+  "suiteSha256": "fa91a4e831ad8dd3094a589e5e53696c03b8f24650517215e7ebf32a4d04b8eb",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5335,6 +5335,37 @@
             "devops.git_flavor",
             "devops.allowed_network_ranges"
           ],
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-capacity-narrowed",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "message": "Limit this shared Git instance to 80 users. Use git-100 and allow only 203.0.113.0/24.",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please add central Git for all our 150 developers."
+            },
+            {
+              "role": "assistant",
+              "content": "Git100 supports at most 100 users per instance. Discuss separate team instances or narrow this instance's scope?"
+            }
+          ],
+          "editorExpected": {
+            "path": "devops",
+            "value": {
+              "git_flavor": "git-100",
+              "allowed_network_ranges": [
+                "203.0.113.0/24"
+              ]
+            }
+          },
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

@@ -412,3 +412,83 @@ it.each(["en", "de"] as const)(
     );
   },
 );
+
+it("does not let a Git100 choice discard a confirmed 150-user scope even if the classifier starts at the latest reply", () => {
+  const { inputs } = fixture("Use git-100 and allow only 203.0.113.0/24.", [
+    {
+      role: "user",
+      content: "Please add central Git for all our 150 developers.",
+    },
+  ]);
+  const result = gitSetupDialogue(
+    inputs,
+    {
+      ...empty,
+      planChoice: "git-100",
+      planSource: "current",
+      networkChoice: "explicit",
+      networkSource: "current",
+      networkEvidence: "203.0.113.0/24",
+    },
+    "en",
+  );
+  expect(result.changes).toEqual([]);
+  expect(result.explanation).toContain("100 users per instance");
+  expect(result.questions[0]?.answerType).toBe("requirements");
+});
+it("allows an explicit narrower Git scope and does not inherit a different service's user count", () => {
+  for (const history of [
+    [
+      {
+        role: "user" as const,
+        content: "Please configure Observability for all our 150 developers.",
+      },
+    ],
+    [
+      {
+        role: "user" as const,
+        content: "Please add central Git for all our 150 developers.",
+      },
+    ],
+  ]) {
+    const { inputs } = fixture(
+      "Limit the shared Git instance to 80 users. Use git-100 and allow only 203.0.113.0/24.",
+      history,
+    );
+    const result = gitSetupDialogue(
+      inputs,
+      {
+        ...empty,
+        planChoice: "git-100",
+        planSource: "current",
+        networkChoice: "explicit",
+        networkSource: "current",
+        networkEvidence: "203.0.113.0/24",
+      },
+      "en",
+    );
+    expect(result.changes[0]?.value).toEqual({
+      git_flavor: "git-100",
+      allowed_network_ranges: ["203.0.113.0/24"],
+    });
+  }
+});
+it("requires resolving an explicitly undersized Git10 selection for 20 developers", () => {
+  const { inputs } = fixture(
+    "Please add central Git for 20 developers using git-10 and allow only 203.0.113.0/24.",
+  );
+  const result = gitSetupDialogue(
+    inputs,
+    {
+      ...empty,
+      planChoice: "git-10",
+      planSource: "current",
+      networkChoice: "explicit",
+      networkSource: "current",
+      networkEvidence: "203.0.113.0/24",
+    },
+    "en",
+  );
+  expect(result.changes).toEqual([]);
+  expect(result.explanation).toContain("at most 10 users per instance");
+});
