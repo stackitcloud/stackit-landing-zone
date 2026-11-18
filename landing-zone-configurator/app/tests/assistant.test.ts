@@ -3065,6 +3065,7 @@ it("bundles fresh structured service knowledge and selects mandatory dependencie
               ![
                 "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
                 "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
+                "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
               ].includes(path),
           ),
       }),

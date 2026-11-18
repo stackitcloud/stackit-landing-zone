@@ -265,6 +265,8 @@ export function registerApplications(
       if (error instanceof Error && "code" in error && error.code === "40001") {
         if (
           [
+            "state_backend_already_managed",
+            "state_backend_binding_invalid",
             "application_order_quota_exceeded",
             "application_order_quota_changed",
             "application_order_decision_conflict",

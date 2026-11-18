@@ -61,6 +61,17 @@ export function registerPlans(
       ) {
         return reply.code(409).send({ error: error.message });
       }
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "40001" &&
+        [
+          "state_locked",
+          "state_backend_already_managed",
+          "state_backend_binding_invalid",
+        ].includes(error.message)
+      )
+        return reply.code(409).send({ error: error.message });
       if (error instanceof CredentialError || error instanceof RepositoryError)
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)

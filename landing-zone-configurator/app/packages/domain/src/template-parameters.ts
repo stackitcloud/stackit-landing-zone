@@ -35,6 +35,24 @@ export const templateParameterFields = (
       sources: ["fixed", "input", "binding"],
     },
     {
+      path: "git.enabled",
+      label: "Projekt-Git",
+      type: "boolean",
+      sources: ["fixed", "input"],
+    },
+    {
+      path: "git.flavor",
+      label: "Git-Leistungsklasse",
+      type: "string",
+      sources: ["fixed", "input"],
+    },
+    {
+      path: "git.acl",
+      label: "Git-Zugriffsquellen",
+      type: "string-list",
+      sources: ["fixed", "input"],
+    },
+    {
       path: "role_assignments",
       label: "Projektrollen der verantwortlichen Person",
       type: "role-assignments",
@@ -96,6 +114,9 @@ const defaults: Record<TemplateParameterPath, JsonValue> = {
   "observability.plan_name": "Observability-Starter-EU01",
   "observability.acl": [],
   role_assignments: [],
+  "git.enabled": false,
+  "git.flavor": "git-10",
+  "git.acl": [],
 };
 export const projectRoleAssignmentSchema = z.strictObject({
   role: z.string().min(1).max(256),
@@ -167,7 +188,10 @@ function validValue(
     throw new Error(
       `${field.label}: Eine Liste ausgefüllter Textwerte ist erforderlich.`,
     );
-  if (path === "observability.acl" && source?.source === "input") {
+  if (
+    (path === "observability.acl" || path === "git.acl") &&
+    source?.source === "input"
+  ) {
     if (
       !Array.isArray(value) ||
       !value.length ||
@@ -176,7 +200,7 @@ function validValue(
       )
     )
       throw new Error(
-        "Observability-Zugriffsquellen: Mindestens ein freigegebenes gültiges CIDR-Netz ist erforderlich; eine leere ACL wird nicht als Bestelleingabe zugelassen.",
+        `${field.label}: Mindestens ein freigegebenes gültiges CIDR-Netz ist erforderlich; eine leere ACL wird nicht als Bestelleingabe zugelassen.`,
       );
   }
   if (source?.source === "input" && source.choices) {
@@ -245,11 +269,13 @@ export function validateTemplateParameterPolicy(
     if (
       (path === "env" ||
         path === "observability.plan_name" ||
+        path === "git.flavor" ||
+        path === "git.acl" ||
         path === "observability.acl") &&
       (!source.choices ||
         (!source.choices.length &&
           !(
-            path === "observability.acl" &&
+            (path === "observability.acl" || path === "git.acl") &&
             source.required &&
             source.default === undefined
           )))
@@ -302,7 +328,18 @@ export function resolveTemplateParameters(
   }[] = [];
   for (const field of templateParameterFields) {
     if (template.kind === "sandbox") break;
-    const source = fields[field.path];
+    if (
+      field.path.startsWith("git.") &&
+      template.settings.git === undefined &&
+      !Object.keys(fields).some((path) => path.startsWith("git."))
+    )
+      continue;
+    const source =
+      field.path.startsWith("git.") &&
+      field.path !== "git.enabled" &&
+      objectValue(settings.git).enabled !== true
+        ? undefined
+        : fields[field.path];
     let value = get(settings, field.path);
     if (source?.source === "context") {
       const email = context
@@ -378,6 +415,21 @@ export function resolveTemplateParameters(
       };
     }
     put(settings, field.path, value);
+  }
+  const git = objectValue(settings.git);
+  if (git.enabled === true) {
+    if (typeof git.flavor !== "string" || !/^git-[0-9]+$/.test(git.flavor))
+      throw new Error("Git: Eine gültige Leistungsklasse ist erforderlich.");
+    if (
+      !Array.isArray(git.acl) ||
+      !git.acl.length ||
+      git.acl.some(
+        (cidr) => !z.union([z.cidrv4(), z.cidrv6()]).safeParse(cidr).success,
+      )
+    )
+      throw new Error(
+        "Git: Mindestens ein gültiges Quellnetz ist erforderlich.",
+      );
   }
   const observability = objectValue(settings.observability);
   delete observability.access_source;

@@ -25,6 +25,7 @@ export const applicationStateRecoveryImportSchema = z.strictObject({
     "stackit_objectstorage_credentials_group",
     "stackit_secretsmanager_instance",
     "stackit_observability_instance",
+    "stackit_git",
     "stackit_network",
     "stackit_service_account",
     "stackit_authorization_project_role_assignment",

@@ -136,6 +136,10 @@ const failures: Record<string, string> = {
     "Das gespeicherte Plan-Artefakt konnte nicht bestätigt werden. Erstelle und prüfe einen neuen Plan.",
   runner_package_changed:
     "Der Runner wurde aktualisiert. Erstelle und prüfe einen neuen Plan, bevor du Apply freigibst.",
+  state_backend_already_managed:
+    "Dieser S3-State-Pfad ist bereits einer anderen verwalteten Landing Zone zugeordnet. Wähle einen eigenen State-Pfad.",
+  state_backend_binding_invalid:
+    "Die State-Zuordnung ist ungültig. Prüfe das ausgewählte Backend.",
   state_locked:
     "Der State ist durch eine andere Ausführung gesperrt. Prüfe den Ausführungsstatus.",
   apply_already_started:

@@ -207,3 +207,14 @@ Entwürfe können die Rechte gezielt ergänzen; veröffentlichte Versionen und
 Bestellungen benötigen weiterhin Veröffentlichung und geprüften Upgrade-Pfad.
 
 Der neue Standard umfasst Server-Sicherungen mit Zeitplänen, Wiederherstellung, Server-Updates mit Zeitplänen, Server Agent/Run Command sowie Volume-Backups und Snapshots. Der Agent muss auf dem Server installiert sein; IAM-Rechte allein installieren ihn nicht. Run Command erlaubt Befehlsausführung auf dem Server. Bereits veröffentlichte Versionen und explizite Rechteprofile werden nicht automatisch erweitert. Neue Rechte werden über eine neue Template-Version und einen freigegebenen Upgrade-Pfad übernommen.
+
+
+Projekt-Git: optionaler verwalteter STACKIT-Service über settings.git={enabled,flavor,acl}.
+Standardmäßig deaktiviert; eine Instanz pro Application-Projekt. Template-Policies
+können git.enabled/git.flavor/git.acl fest vorgeben oder begrenzt auswählbar machen.
+Explizite, nicht leere Quell-CIDRs sind erforderlich. Corporate/SNA macht Git nicht
+privat; die ACL prüft öffentliche Ausgangs-IPs. Git-fähige Runner-Quelle erforderlich;
+alte Bestellungen bleiben unverändert. Git10 bis10, Git100 bis100 Nutzer pro Instanz.
+Darüber Team-/Projektinstanzen oder andere Architektur besprechen, keinen größeren
+zentralen Flavor erfinden. Instanzen sind nicht föderiert. Provider0.114 ersetzt
+Git bei Flavor-/ACL-Änderung.

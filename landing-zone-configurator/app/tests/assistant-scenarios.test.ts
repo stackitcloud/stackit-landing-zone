@@ -26,6 +26,15 @@ import {
   validateAssistantScenario,
 } from "../scripts/assistant-scenarios.js";
 
+const sourceGuidanceExamples = {
+  "git-user-limit":
+    "Git100 supports up to 100 users per instance. For 250 users, use separate project or team instances, or assess another architecture; these are independent services.",
+  "project-git":
+    "Project Git is optional: enabled, flavor and source ACL are controlled by the template. The managed endpoint remains public; SNA membership does not make it private.",
+  "state-coordination":
+    "Conditional writes cannot provide lockfile exclusion on the tested endpoint. Standalone CLI requires an organizational single-writer policy. The Configurator database coordinates jobs. Native support has no announced date.",
+};
+
 const dnsRoleExplanation =
   "Primary verwaltet die führenden DNS-Einträge bei STACKIT und wird für neue Firmenzonen empfohlen. Secondary repliziert eine Kopie vom externen Primary. Beide sind autoritativ. Der Zonentyp bezeichnet nicht public/private oder die Sichtbarkeit. Der native Accelerator kann die benötigten Primary-Server für Secondary nicht konfigurieren.";
 
@@ -323,29 +332,31 @@ it.each(assistantScenarios)(
     } else if (scenario.fixture === "baseline") {
       expect(
         validateAssistantScenario(scenario, {
-          explanation: scenario.platformImpactReview
-            ? "Der Platform Owner entscheidet über Löschungen und Ersetzungen nach Prüfung möglicher Datenverluste und betroffener Applications. Bestätigung bindet Artefakt-Hash, State und Abhängigkeiten. Neuer Plan, Apply separat; Observability bleibt Ziel."
-            : scenario.id === "application-upgrade-self-service-advice"
-              ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen bestehender Infrastruktur werden blockiert. Bei eigenständiger Durchführung ist keine zusätzliche Platform-Owner-Freigabe erforderlich."
-              : scenario.applicationUpgrade === "template"
-                ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen werden blockiert."
-                : scenario.applicationUpgrade === "platform"
-                  ? "Gemeinsame Änderungen betreffen alle abhängigen Applications. Abhängigkeitsprüfung und Plan-Freigabe stehen vor Apply. Danach den tatsächlich entstandenen Plattformvertrag und den Pfad veröffentlichen. Die Vertragsbindung wechselt nicht automatisch. Der Application Owner übernimmt ihn ausdrücklich. Keine private alte Firewall."
-                  : scenario.executionLifecycle
-                    ? "Ursprüngliche Template-Revision bleibt erhalten. Die gewünschte Quelle bleibt gebunden; zuletzt angewendet ändert sich erst nach erfolgreichem Apply. Bestehende Bestellung und State bleiben erhalten. Ein neuer Plan und die normale Apply-Freigabe sind erforderlich. Zurückgezogene Quellen brauchen einen geprüften Ersatz, keine Neubestellung; der Chat führt kein Upgrade aus."
-                    : scenario.applicationAccess === "advice"
-                      ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv. Der Besteller erhält 191 Rechte mit projektweiter Schlüsselverwaltung; Automation erhält 184 Workload-Rechte."
-                      : scenario.corporateIpv4 === "advice"
-                        ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
-                        : [
-                              "vpn",
-                              "platform-kubernetes",
-                              "firewall-access-bootstrap",
-                            ].includes(scenario.topic)
-                          ? buildAssistantKnowledge().topics.find(
-                              (topic) => topic.id === scenario.topic,
-                            )?.fieldOverview
-                          : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
+          explanation: scenario.sourceGuidance
+            ? sourceGuidanceExamples[scenario.sourceGuidance]
+            : scenario.platformImpactReview
+              ? "Der Platform Owner entscheidet über Löschungen und Ersetzungen nach Prüfung möglicher Datenverluste und betroffener Applications. Bestätigung bindet Artefakt-Hash, State und Abhängigkeiten. Neuer Plan, Apply separat; Observability bleibt Ziel."
+              : scenario.id === "application-upgrade-self-service-advice"
+                ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen bestehender Infrastruktur werden blockiert. Bei eigenständiger Durchführung ist keine zusätzliche Platform-Owner-Freigabe erforderlich."
+                : scenario.applicationUpgrade === "template"
+                  ? "Der Platform Owner veröffentlicht einen Upgrade-Pfad. Antworten und State bleiben erhalten. Ein neuer Plan und separate Apply-Freigabe sind erforderlich. Löschungen und Ersetzungen werden blockiert."
+                  : scenario.applicationUpgrade === "platform"
+                    ? "Gemeinsame Änderungen betreffen alle abhängigen Applications. Abhängigkeitsprüfung und Plan-Freigabe stehen vor Apply. Danach den tatsächlich entstandenen Plattformvertrag und den Pfad veröffentlichen. Die Vertragsbindung wechselt nicht automatisch. Der Application Owner übernimmt ihn ausdrücklich. Keine private alte Firewall."
+                    : scenario.executionLifecycle
+                      ? "Ursprüngliche Template-Revision bleibt erhalten. Die gewünschte Quelle bleibt gebunden; zuletzt angewendet ändert sich erst nach erfolgreichem Apply. Bestehende Bestellung und State bleiben erhalten. Ein neuer Plan und die normale Apply-Freigabe sind erforderlich. Zurückgezogene Quellen brauchen einen geprüften Ersatz, keine Neubestellung; der Chat führt kein Upgrade aus."
+                      : scenario.applicationAccess === "advice"
+                        ? "Granulare VM-Rechte empfohlen. IDP bestätigt Identität; Projekt-IAM ist separat. Zentraler initialer Owner und Workload-Automation sind getrennt. Voller Owner bleibt Kundenwahl; geerbte Rechte sind additiv. Der Besteller erhält 191 Rechte mit projektweiter Schlüsselverwaltung; Automation erhält 184 Workload-Rechte."
+                        : scenario.corporateIpv4 === "advice"
+                          ? "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert."
+                          : [
+                                "vpn",
+                                "platform-kubernetes",
+                                "firewall-access-bootstrap",
+                              ].includes(scenario.topic)
+                            ? buildAssistantKnowledge().topics.find(
+                                (topic) => topic.id === scenario.topic,
+                              )?.fieldOverview
+                            : `Nur Beratung, keine Speicherung oder Ausfuehrung. ${scenario.requiredOverviewFields?.join(", ") ?? ""}. Namen 1-40 Zeichen; Beschreibungen nicht unterstützt und abgelehnt. pass, block, reject; explizite Synchronisierung. ${scenario.dnsRole ? dnsRoleExplanation : ""} git_flavor=null erstellt keine Git-Instanz; git-10 ist kein automatisch aktivierter Standard.`,
           questions: [],
           changes: [],
           references: [scenario.topic],
@@ -1299,3 +1310,50 @@ it.each(assistantScenarios.filter((s) => s.auditQuestionPaths))(
     ).toContain("audit_unanswered_decisions_not_preserved");
   },
 );
+
+it.each(Object.entries(sourceGuidanceExamples))(
+  "rejects generic and contradictory %s advice",
+  (kind, explanation) => {
+    const scenario = assistantScenarios.find(
+      (entry) => entry.sourceGuidance === kind,
+    )!;
+    const answer = {
+      explanation,
+      questions: [],
+      changes: [],
+      references: [scenario.topic],
+    };
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        explanation: "Configuration is available.",
+      }).failures,
+    ).toContain("documented_service_boundary_missing");
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        explanation: `${explanation} Die Einstellungen bleiben unverändert.`,
+      }).failures,
+    ).toContain("dialogue_language_mismatch");
+  },
+);
+
+it("rejects managed Git private attachment and display-label flavor inventions", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.sourceGuidance === "project-git",
+  )!;
+  const answer = { questions: [], changes: [], references: [scenario.topic] };
+  for (const [suffix, error] of [
+    [
+      "Private reachability requires a dedicated Git instance per project.",
+      "project_git_private_attachment_invented",
+    ],
+    ["The flavor must be 'Git100'.", "git_display_label_used_as_flavor"],
+  ])
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        explanation: `${sourceGuidanceExamples["project-git"]} ${suffix}`,
+      }).failures,
+    ).toContain(error);
+});

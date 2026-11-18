@@ -53,6 +53,7 @@ import { inWorkspace } from "../integration/fixture-workspace.js";
 const enabled = process.env.LZC_PLAN_DATABASE_TEST === "true";
 const container = `lzc-platform-plan-test-${randomUUID()}`;
 let admin: pg.Client | undefined;
+let testAdminConnection: pg.ClientConfig;
 let migration: pg.Client | undefined;
 let pool: pg.Pool;
 let identity = 5000;
@@ -124,6 +125,7 @@ describe.skipIf(!enabled)(
         port: Number(binding.HostPort),
         database: "configurator_test",
       };
+      testAdminConnection = { ...config, user: "postgres", password };
       for (let attempt = 0; attempt < 60; attempt++) {
         const candidate = new pg.Client({
           ...config,
@@ -581,6 +583,88 @@ describe.skipIf(!enabled)(
       };
     }
 
+    it("atomically binds a physical state path once across controllers and workspaces", async () => {
+      const first = await session(),
+        second = await session();
+      const descriptor = {
+        endpoint: "https://object.storage.eu01.onstackit.cloud",
+        bucket: `lock-${randomUUID()}`,
+        key: "platform.tfstate",
+      };
+      const bind = (owner: Session, id: string) => {
+        const client = new pg.Client(testAdminConnection);
+        return (async () => {
+          await client.connect();
+          try {
+            await client.query(
+              "SELECT lzc_auth.bind_managed_state_target($1,$2,'platform',$3)",
+              [descriptor, owner.tenantId, id],
+            );
+          } finally {
+            await client.end();
+          }
+        })();
+      };
+      const results = await Promise.allSettled([
+        bind(first, "first"),
+        bind(second, "second"),
+      ]);
+      expect(
+        results.filter((entry) => entry.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        results.filter((entry) => entry.status === "rejected"),
+      ).toHaveLength(1);
+      const winner = results[0]?.status === "fulfilled" ? first : second;
+      const id = winner === first ? "first" : "second";
+      await expect(bind(winner, id)).resolves.toBeUndefined();
+      await expect(bind(winner, "another-state")).rejects.toMatchObject({
+        code: "40001",
+        message: "state_backend_already_managed",
+      });
+      await withTenant(pool, winner, async (client) => {
+        await expect(
+          client.query(
+            "SELECT lzc_auth.bind_managed_state_target($1,$2,'platform',$3)",
+            [descriptor, winner.tenantId, id],
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+      });
+    });
+
+    it("keeps a claimed expired or cancelled plan exclusive until verified cleanup", async () => {
+      const test = await fixture();
+      const run = await test.plans.start(
+        test.owner,
+        test.token,
+        test.preparationId,
+      );
+      const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
+      await test.plans.input(ticket);
+      await test.plans.cancel(test.owner, run.id);
+      await expect(
+        test.plans.start(test.owner, test.token, test.preparationId),
+      ).rejects.toMatchObject({ message: "state_locked" });
+      const bound = (
+        await admin!.query(
+          "SELECT runner_app_id FROM lzc.plan_runs WHERE id=$1",
+          [run.id],
+        )
+      ).rows[0];
+      await admin!.query(
+        "INSERT INTO lzc.runner_cleanup_receipts(app_id,runner_id,kind) VALUES($1,$2,'plan')",
+        [bound.runner_app_id, run.id],
+      );
+      const fresh = await test.plans.start(
+        test.owner,
+        test.token,
+        test.preparationId,
+      );
+      expect(fresh.id).not.toBe(run.id);
+      await test.plans.cancel(test.owner, fresh.id);
+    });
+
     it("blocks live-incompatible retention before preparing and uses reviewed fallback when catalogue loading fails", async () => {
       const test = await fixture(false, true);
       if (test.manifest.configuration.schemaVersion !== 3)
@@ -844,7 +928,7 @@ describe.skipIf(!enabled)(
           backendKind === "s3"
             ? await test.backends.register(test.owner, {
                 descriptor: {
-                  bucket: "initial-platform-state",
+                  bucket: `initial-${test.configurationId}`,
                   endpoint: "https://object.storage.eu01.onstackit.cloud",
                   region: "eu01",
                   key: "terraform.tfstate",

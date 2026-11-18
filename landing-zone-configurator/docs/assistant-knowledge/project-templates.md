@@ -38,6 +38,13 @@ Public+Corporate: ONE common missing owner; preserve explicit owners.
 Workload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.
 Publication needs owner; additive grants; nothing saved/executed.
 
+
+Project Git: settings.git={enabled,flavor,acl}; default disabled, one managed instance/project.
+Policy: fixed/bounded input git.enabled/git.flavor/git.acl. Explicit nonempty source CIDRs.
+Public managed endpoint: SNA/firewall or separate project instances cannot make it private. Public source ACLs; Git-capable Runner; old orders unchanged.
+flavor IDs: git-10 <=10, git-100 <=100 users/instance (Git10/Git100 are labels). Above100: separate instances/architecture;
+no invented larger flavor/federation. Provider0.114 flavor/ACL changes replace.
+
 ## Examples
 
 /28:Automatic+DNS.

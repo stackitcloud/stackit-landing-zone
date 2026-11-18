@@ -277,8 +277,13 @@ export function StateBackends({
             <dt>{t("Region")}</dt>
             <dd>eu01</dd>
             <dt>{t("State-Locking")}</dt>
-            <dd>{t("S3-Lockfile")}</dd>
+            <dd>{t("Über den Configurator koordiniert")}</dd>
           </dl>
+          <p className="field-hint">
+            {t(
+              "Der Configurator koordiniert seine Ausführungen auf diesem State. Starte dafür keine parallelen CLI- oder Pipeline-Läufe.",
+            )}
+          </p>
           <button type="submit" className="button secondary" disabled={busy}>
             {t("Backend registrieren")}
           </button>

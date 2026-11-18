@@ -53,6 +53,13 @@ const legacyApplicationTemplateSchema = z.strictObject({
   target_keys: z.array(key).min(1),
   apply_policy: z.enum(["approval-required", "direct"]),
   services: z.strictObject({
+    git: z
+      .strictObject({
+        enabled: z.boolean(),
+        flavor: z.string().regex(/^git-[0-9]+$/),
+        acl: z.array(z.union([z.cidrv4(), z.cidrv6()])).max(100),
+      })
+      .optional(),
     secretsmanager_enabled: z.boolean(),
     observability: z.strictObject({
       enabled: z.boolean(),
@@ -153,6 +160,7 @@ export function compileApplicationPlan(input: {
     (template.access_profile || template.automation_role !== undefined) &&
     ![
       "08ac257de1548c8ec5e83dae1a79373711c3d644",
+      "c83f3d910ab20131d1cba898023317c0e818843b",
       applicationExecutionCurrentRevision,
     ].includes(template.accelerator_revision)
   )
@@ -166,7 +174,9 @@ export function compileApplicationPlan(input: {
               env: template.env,
               network_enabled: template.network_enabled,
               network_prefix_length: template.network_prefix_length,
-              ...template.services,
+              secretsmanager_enabled: template.services.secretsmanager_enabled,
+              observability: template.services.observability,
+              ...(template.services.git ? { git: template.services.git } : {}),
               ...(template.automation_role
                 ? { automation_role: template.automation_role }
                 : {}),
@@ -228,7 +238,7 @@ export function compileApplicationPlan(input: {
         ...resolvedServices,
         ...resolveApplicationAccessProfile(
           template.schema_version === 2 ? template.access_profile : undefined,
-          resolvedServices,
+          z.record(z.string(), z.json()).parse(resolvedServices),
           context.verified_stackit_email,
         ),
       },

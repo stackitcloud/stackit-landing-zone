@@ -3456,7 +3456,10 @@ export class Applications {
     const platform = contract(approved).document;
     if (
       platform.targets[published.target_key]?.audit_router &&
-      execution.revision !== applicationExecutionCurrentRevision
+      ![
+        "c83f3d910ab20131d1cba898023317c0e818843b",
+        applicationExecutionCurrentRevision,
+      ].includes(execution.revision)
     )
       throw new ApplicationError(
         409,
@@ -3495,6 +3498,7 @@ export class Applications {
           ? []
           : (settings.role_assignments ?? []),
         services: {
+          ...(settings.git !== undefined ? { git: settings.git } : {}),
           secretsmanager_enabled: settings.secretsmanager_enabled === true,
           observability: {
             enabled: observability.enabled === true,

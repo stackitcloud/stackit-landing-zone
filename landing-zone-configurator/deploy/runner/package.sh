@@ -43,7 +43,7 @@ fi
 cp ../deploy/runner/run-plan.sh ../deploy/runner/runner.tfrc "$runner_dir/"
 platform_commit=a256f6896d11134fdc351786f1be5eba4e56b2e2
 if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
-	platform_commit=6398834bf20a4f24ea81c1f7dd0627025b4a81ce
+	platform_commit=2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a
 else
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi
@@ -69,7 +69,7 @@ test -z "$(find "$runner_dir/accelerator" -type f \( -name '*.tfstate' -o -name 
 application_sources=()
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	mkdir -p "$runner_dir/application-src"
-	application_commit=c83f3d910ab20131d1cba898023317c0e818843b
+	application_commit=2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a
 	if [[ "${LZC_HOSTED_EXECUTION_PACKAGE:-false}" == "true" ]]; then
 		git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$application_commit"
 	fi

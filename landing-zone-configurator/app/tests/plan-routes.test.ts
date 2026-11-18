@@ -150,6 +150,34 @@ it("requires session, CSRF and explicit new-deployment confirmation; exposes no 
       ).statusCode,
     ).toBe(401);
     expect(plans.input).not.toHaveBeenCalled();
+    for (const code of [
+      "state_locked",
+      "state_backend_already_managed",
+      "state_backend_binding_invalid",
+    ]) {
+      plans.start.mockRejectedValueOnce(
+        Object.assign(new Error(code), { code: "40001" }),
+      );
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/plans",
+        headers,
+        payload,
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toEqual({ error: code });
+    }
+    plans.start.mockRejectedValueOnce(
+      Object.assign(new Error("private-sql-details"), { code: "40001" }),
+    );
+    const hidden = await app.inject({
+      method: "POST",
+      url: "/api/v1/plans",
+      headers,
+      payload,
+    });
+    expect(hidden.statusCode).toBe(503);
+    expect(hidden.body).not.toContain("private-sql-details");
   } finally {
     await app.close();
   }

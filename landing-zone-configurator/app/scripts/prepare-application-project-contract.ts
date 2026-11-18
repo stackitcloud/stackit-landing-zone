@@ -17,7 +17,7 @@ const target = process.argv[2];
 if (!target?.startsWith("/"))
   throw new Error("Absolute fixture directory required");
 if (
-  applicationMvpAcceleratorCommit !== "c83f3d910ab20131d1cba898023317c0e818843b"
+  applicationMvpAcceleratorCommit !== "2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a"
 )
   throw new Error(
     "Requalify Application project scope for the new Runner source",
@@ -29,11 +29,13 @@ const modernNetworking = [
   "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
   "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
   "08ac257de1548c8ec5e83dae1a79373711c3d644",
+  "c83f3d910ab20131d1cba898023317c0e818843b",
   applicationMvpAcceleratorCommit,
 ].includes(executionRevision);
 const automaticNetworking = [
   "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
   "08ac257de1548c8ec5e83dae1a79373711c3d644",
+  "c83f3d910ab20131d1cba898023317c0e818843b",
   applicationMvpAcceleratorCommit,
 ].includes(executionRevision);
 mkdirSync(resolve(target, "src"), { recursive: true });
@@ -140,6 +142,15 @@ for (const region of ["eu01", "eu02"]) {
           custom_roles: [],
           role_assignments: [],
           services: {
+            ...(executionRevision === applicationMvpAcceleratorCommit
+              ? {
+                  git: {
+                    enabled: observability,
+                    flavor: "git-100",
+                    acl: ["203.0.113.0/24"],
+                  },
+                }
+              : {}),
             secretsmanager_enabled: true,
             observability: {
               enabled: observability,
@@ -239,6 +250,14 @@ for (const region of ["eu01", "eu02"]) {
   assert {
     condition = local.target.region == "${region}" && local.target.folder_id == "platform-folder" && local.target.corporate == ${corporate} && var.application.owner_email == "owner@stackit.cloud" ${modernNetworking ? '&& var.bucket_naming == "project-id"' : ""}
     error_message = "Compiled owner, platform target, region and unique bucket default must be preserved."
+  }
+  ${
+    executionRevision === applicationMvpAcceleratorCommit
+      ? `assert {
+    condition = var.application.git.enabled == ${observability} && var.application.git.flavor == "git-100" && var.application.git.acl[0] == "203.0.113.0/24"
+    error_message = "Compiled project Git selection and explicit access must reach the native root."
+  }`
+      : ""
   }
   assert {
     condition = var.application.observability.enabled == ${observability} && var.application.observability.plan_name == "Observability-Starter-${region.toUpperCase()}" && var.application.observability.acl[0] == "203.0.113.8/32"

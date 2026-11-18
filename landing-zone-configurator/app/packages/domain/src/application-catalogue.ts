@@ -20,6 +20,7 @@ export const applicationAcceleratorRevisionSchema = z.enum([
   "9e7fb46c329aca32e878ce1f0ea3b944ea240354",
   "1ed855609d4dcbfded6759c7c8b4fabf7bd6725d",
   "08ac257de1548c8ec5e83dae1a79373711c3d644",
+  "c83f3d910ab20131d1cba898023317c0e818843b",
   applicationExecutionCurrentRevision,
 ]);
 
@@ -84,11 +85,22 @@ export function validateApplicationPublication(input: unknown) {
     template.accessProfile &&
     ![
       "08ac257de1548c8ec5e83dae1a79373711c3d644",
+      "c83f3d910ab20131d1cba898023317c0e818843b",
       applicationExecutionCurrentRevision,
     ].includes(publication.acceleratorRevision)
   )
     throw new Error(
       "Dieses Rechteprofil benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.",
+    );
+  if (
+    (template.settings.git !== undefined ||
+      Object.keys(template.parameterPolicy?.fields ?? {}).some((path) =>
+        path.startsWith("git."),
+      )) &&
+    publication.acceleratorRevision !== applicationExecutionCurrentRevision
+  )
+    throw new Error(
+      "Projekt-Git benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.",
     );
   validateProjectTemplateDraft(template);
   validateApplicationAccessProfile(
@@ -156,11 +168,19 @@ export function applicationPlanScopeIssues(
     (template.accessProfile || settings.automation_role !== undefined) &&
     ![
       "08ac257de1548c8ec5e83dae1a79373711c3d644",
+      "c83f3d910ab20131d1cba898023317c0e818843b",
       applicationExecutionCurrentRevision,
     ].includes(acceleratorRevision)
   )
     issues.push(
       "Dieses Rechteprofil benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.",
+    );
+  if (
+    settings.git !== undefined &&
+    acceleratorRevision !== applicationExecutionCurrentRevision
+  )
+    issues.push(
+      "Projekt-Git benötigt eine neue Template-Version mit der aktuellen Runner-Quelle.",
     );
   if (template.kind === "sandbox")
     issues.push("Sandbox-Bestellungen sind noch nicht ausführbar.");

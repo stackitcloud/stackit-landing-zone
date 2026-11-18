@@ -495,6 +495,7 @@ export class ApplicationStateRecoveries {
           initial_owner_email: z.email().nullable().optional(),
           target_key: z.string(),
           custom_roles: z.array(z.unknown()).optional(),
+          git: z.object({ enabled: z.boolean() }).optional(),
         }),
         platform_contract: z.object({
           organization_id: z.uuid().optional(),
@@ -535,6 +536,7 @@ export class ApplicationStateRecoveries {
         ownerEmail:
           vars.application.initial_owner_email ?? vars.application.owner_email,
         customRoles: !!vars.application.custom_roles?.length,
+        git: vars.application.git?.enabled === true,
         ...(target.audit_router
           ? {
               audit: {

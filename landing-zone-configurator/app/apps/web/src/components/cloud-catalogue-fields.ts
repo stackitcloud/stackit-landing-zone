@@ -73,6 +73,8 @@ export function catalogueField(
     if (path.endsWith(".image_id")) return "bastionImages";
     if (path.endsWith(".availability_zone")) return "bastionAvailabilityZones";
   }
+  if (path === "git.flavor" || path.endsWith(".git.flavor"))
+    return "gitFlavors";
   if (path.endsWith(".git_flavor")) return "gitFlavors";
   if (path.includes(".vpn.") && path.endsWith(".plan_id")) return "vpnPlans";
   if (

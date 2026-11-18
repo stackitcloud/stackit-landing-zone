@@ -81,3 +81,13 @@ keine versteckte Configurator-Profil-ID-Abhaengigkeit.
 Root-Aufrufe, DevOps-Variablen und Provider-Konfiguration im Manifest.
 Engine-/Quellbindungen nach Pruefung erneuern; aktuelle Produktdaten bleiben
 getrennt.
+
+
+Sizing berücksichtigt dokumentierte Grenzen: Git10 bis10, Git100 bis100 Nutzer
+pro Instanz sowie gemeinsame Repositories/CI/CD. Bei Unklarheit geplante Git-Nutzer
+und Wachstum klären; unternehmensweit belegt nicht höchstens100 Nutzer. Darüber
+getrennte Team-/Application-Projektinstanzen oder eine andere Architektur besprechen,
+keinen größeren Flavor erfinden. Instanzen bieten keine transparente Föderation.
+Application-Templates können eigenes verwaltetes Git über git.enabled/flavor/acl
+bereitstellen; vor Vorschlägen zentrale Plattform und gewünschtes Projekt-Template
+unterscheiden.

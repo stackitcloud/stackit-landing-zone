@@ -100,3 +100,12 @@ Root- und Management-Implementierung sowie Deployment-Zugangsdaten-Dokumentation
 sind im Manifest per Fingerprint gebunden. Ressourcen-/Bootstrap-Aenderungen
 vor Neugenerierung erneut pruefen; kein Quellenstand beweist betriebliche
 Recovery-Qualifikation.
+
+
+EU01-S3 erzwingt keine bedingten Schreibzugriffe: use_lockfile=true allein ist kein
+gegenseitiger Ausschluss (Issue262). Native Funktion angefragt, ohne Umsetzungstermin.
+Standalone-CLI/Pipelines benötigen organisatorischen Einzelzugriff pro State.
+Der Configurator nutzt atomare PostgreSQL-Ausführungs-/Dispatch-Sperren und ordnet
+jeden physischen S3-Pfad genau einem logischen State zu. Ticketablauf belegt keinen
+gestoppten Runner; bestätigte Bereinigung/Recovery-Klärung erforderlich. Externe
+Schreiber und unabhängige Datenbanken sind nicht abgedeckt.

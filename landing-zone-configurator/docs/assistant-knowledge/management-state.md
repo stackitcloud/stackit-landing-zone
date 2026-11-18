@@ -2,52 +2,46 @@
 
 ## Purpose
 
-Management project, state storage and operating identities; distinguish optional
-monitoring and the backend of the current Accelerator deployment.
+Management/State; monitoring!=backend.
 
 ## Accelerator Contract
 
-module.management always exists under the governance platform folder; no
-management_enabled switch. Root inputs derive ownership, naming and labels.
-Secrets Manager is a foundation, independent of workload secretsmanager_enabled.
-Backend bootstrap/configuration is a separate execution prerequisite.
-
-bucket_naming defaults to project-id: all management/workload bucket names contain
-the full owning project UUID and distinct purpose suffixes within 63 characters.
-STACKIT names are global. Explicit legacy preserves existing bucket names; never
-switch existing buckets without reviewing replacement/migration. A failed Apply
-with no buckets can keep its original project/state and use project-id naming.
+module.management always exists under the governance platform folder; no management_enabled.
+Root derives owner/names/labels. Foundation SM!=workload secretsmanager_enabled.
+Separate backend bootstrap. bucket_naming=project-id embeds full project UUID/purpose
+within63 chars; global names. Explicit legacy preserves names; review replacement/migration before
+switching. Failed Apply with no buckets can retain project/State and use project-id naming.
 
 ## Dependencies
 
-Governance, naming and credentials. Monitoring, audit and federation stay optional.
+Governance/naming/credentials; optional monitoring/audit/federation.
 
 ## Dialogue
 
-“Only SNA first” scopes the draft change, not a targeted cloud operation. Full
-native Apply includes management and other enabled inputs. Discuss ownership,
-lifecycle and recovery without requesting state or credentials.
+"Only SNA first" scopes the draft, not a targeted Apply: full native Apply includes management and enabled inputs.
+Discuss lifecycle/recovery without State/credentials.
+EU01 S3 ignores conditional writes: use_lockfile=true is not mutual exclusion (issue262).
+Native feature requested, no date. Standalone: organizational single writer per State.
+Configurator uses PostgreSQL execution/dispatch guards and one logical owner per physical S3 path.
+Ticket expiry does not prove a stopped Runner; require cleanup/recovery clearance.
+External writers/separate databases are not coordinated.
 
 ## Examples
 
-observability=null, audit_logs=null, federated_identity_providers=[] disables
-optional services, not management/governance. This is not a complete run.
+observability=null,audit_logs=null,federated_identity_providers=[] disables optional services, not foundations.
 
 ## Limits
 
-A bucket proves no backend setup, migration, encryption, locking or recovery.
-Never pull/mutate state as a chat action. Plan, Apply, Destroy, recovery and
-publication require separate authorization. No targeted Terraform workaround.
-A source correction may reuse a failed Bootstrap checkpoint only after explicit
-owner reconciliation of its exact state version, with supported pinned provenance
-and no lock, migration, separate recovery or active run. Use a new preparation
-and reviewed Plan; never restart with empty state or retry the consumed Plan.
+Bucket!=configured backend/encryption/locking/recovery. Never read/mutate State in chat.
+Separate approval for Plan/Apply/Destroy/recovery/publication; no targeted Terraform workaround.
+Reuse failed Bootstrap checkpoint only after explicit exact-version owner reconciliation, supported pinned
+source and no lock/migration/separate recovery/active run. New preparation/reviewed Plan; never empty
+State or replay of consumed Plan.
 
 ## Credentials
 
-Use approved external bindings. No keys, passphrases, state or plans in chat.
+Approved external bindings; no keys/passphrases/State/plans in chat.
 
 ## Sources
 
-Fingerprint root/management and credential docs. Re-review before regeneration;
-source snapshots do not qualify operational recovery.
+Root/management/credential/State sources; no recovery qualification.
