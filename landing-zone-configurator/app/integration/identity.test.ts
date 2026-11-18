@@ -2019,7 +2019,13 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     const model = {
       converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
         explanation: "Review only. Nothing saved.",
-        questions: [{ path: "devops.git_flavor", text: "Which Git plan?" }],
+        questions: [
+          {
+            path: "devops.git_flavor",
+            answerType: "catalogue",
+            text: "Which Git plan?",
+          },
+        ],
         changes: [
           { path: "company_name", value: "Reviewed catalogue company" },
         ],

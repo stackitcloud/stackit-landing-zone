@@ -39,6 +39,11 @@ Service-Wissen und einen Regressionstest des gemeinsamen Selektors. Produkte
 ohne Katalogadapter werden nicht stillschweigend mit Flavors anderer Produkte
 abgedeckt.
 
+Rückfragen unterscheiden fachliche Anforderungen ausdrücklich von der
+Katalogauswahl. Eine Frage zu Last oder Wiederherstellung bleibt eine fachliche
+Frage, auch wenn ihre Antwort die Flavor-Wahl beeinflusst. Nur die konkrete
+Produktauswahl erhält einen Katalogselektor.
+
 Der Server ergänzt die Auswahldaten nach der Prüfung des Modelldialogs. Er nutzt
 reale Werte und Bezeichnungen aus dem Zielprojekt und der Zielregion samt
 Abrufzeitpunkt, Status und Hinweis auf unvollständige Ausschnitte. Die Oberfläche
@@ -88,7 +93,18 @@ Service-Fakten gehören ins geprüfte Wissen, Feldzuordnungen in die gemeinsame
 Zuordnung und Darstellung in die gemeinsame Rückfragenkomponente. Die englische
 UI-Sprache wird ausdrücklich übergeben; englische technische Übersichten nutzen
 die gepflegten englischen Service-Texte statt deutscher Ersatztexte. Alte
-Kundennachrichten und Ressourcennamen werden nicht übersetzt.
+Kundennachrichten und Ressourcennamen werden nicht übersetzt. Ältere Anfragen ohne
+UI-Sprache verwenden die letzte natürlichsprachliche Nutzerantwort, auch bei
+kurzen Folgeantworten. Firewall- und SNA-Rückfragen folgen demselben Sprachvertrag.
+
+Bei einem bestätigten Entwurfswunsch wird eine leere Modellantwort ohne Änderungen
+und Rückfragen einmal mit gleichem Kontext und Schema zur Konkretisierung
+aufgefordert: tatsächlicher typisierter Entwurf oder wirklich fehlende Rückfrage.
+Bei Firewall-Einrichtung bleibt der ausdrückliche Wunsch nach reiner
+Anforderungsklärung ohne Änderungsvorschlag erhalten. Beratung und Entwurf nutzen
+dieselben zweisprachigen fachlichen Antwortoptionen.
+Alle Quellen-, Umfangs- und Übernahmeprüfungen gelten weiter; daraus entsteht keine
+Ausführungsberechtigung.
 
 `npm run assistant:generate` ausführen, generierte Ausgabe formatieren und
 `npm run check` ausführen. Die Tests prüfen jede zugeordnete Service-Familie,

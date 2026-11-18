@@ -36,6 +36,10 @@ catalogue adapter requires a registry entry, source-bound service facts and a
 cross-service selector regression. Products that do not yet expose a catalogue
 adapter are not silently covered by another product's flavors.
 
+Questions explicitly distinguish business requirements from catalogue selections.
+A workload or recovery question stays a business question even when its answer
+will inform a flavor field; only an actual product selection receives a picker.
+
 The server authors picker metadata after validating the model's dialogue. It uses
 actual option values and labels for the selected project/region, with source age,
 status and truncation information. The UI provides the conversational subset,
@@ -82,7 +86,16 @@ Keep service facts in the reviewed knowledge, field bindings in the shared
 registry, and rendering in the shared question component. English UI language
 is explicit request metadata; English technical overviews use reviewed English
 service texts instead of German fallback copy. Historical customer messages and
-resource names are not translated.
+resource names are not translated. Legacy requests without a UI language use the
+latest natural-language user answer, including short follow-ups. Firewall and SNA
+questions use the same language contract.
+
+For a confirmed draft request, an empty model response with neither changes nor
+questions triggers one bounded semantic repair using the same context and schema.
+It must supply a concrete typed draft or a genuinely missing question. Firewall
+setup preserves an explicit request to clarify requirements without proposing
+changes; the same bilingual business choices serve consultation and draft turns. All source,
+scope and acceptance checks still run; the repair grants no execution permission.
 
 Run `npm run assistant:generate`, format generated output and run `npm run check`.
 Relevant tests cover every mapped service family, source/region matching,

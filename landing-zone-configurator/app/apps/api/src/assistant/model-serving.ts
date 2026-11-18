@@ -5,6 +5,7 @@ import {
   assistantLanguageSchema,
   assistantProposalFields,
   assistantProposalValue,
+  assistantQuestionAnswerTypeSchema,
   catalogueField,
 } from "@lzc/contracts";
 import {
@@ -34,6 +35,7 @@ import {
 } from "./application-permission-dialogue.js";
 import {
   assistantGuidancePolicy,
+  emptyDraftResponse,
   englishNativeOverview,
   ensureDraftNotice,
   groundCatalogueDialogue,
@@ -81,6 +83,7 @@ import {
   assistantFirewallHaSchema,
   assistantFirewallPatchChanged,
   assistantFirewallPatchSchema,
+  assistantFirewallRequirementQuestions,
   assistantFirewallSchema,
   assistantFirewallsPatchSchema,
   assistantNetworkCapacity,
@@ -960,13 +963,49 @@ export class AssistantModelServing {
       .optional()
       .parse(current["assistant.language"]);
     const language = explicitLanguage ?? responseLanguage;
-    const complete: typeof this.complete = (
+    let draftRequested = false;
+    const complete: typeof this.complete = async (
       messages,
       schema,
       schemaName,
       output,
       signal,
-    ) => this.complete(messages, schema, schemaName, output, signal, language);
+    ) => {
+      const result = await this.complete(
+        messages,
+        schema,
+        schemaName,
+        output,
+        signal,
+        language,
+      );
+      if (
+        !draftRequested ||
+        !["editor_dialogue", "configuration_dialogue"].includes(
+          schemaName ?? "",
+        ) ||
+        !emptyDraftResponse(result)
+      )
+        return result;
+      const repaired = await this.complete(
+        [
+          ...messages,
+          {
+            role: "system",
+            content:
+              "The previous draft response contained neither changes nor questions. This is not an actionable response. Use the confirmed request, current values and resolved defaults already supplied. Emit actual typed changes for the requested local draft, including desired values for an idempotent request; otherwise ask only genuinely missing requirements. Do not merely promise that settings will be configured. This repair never permits new facts, changed scope, persistence, rights or execution.",
+          },
+        ],
+        schema,
+        schemaName,
+        output,
+        signal,
+        language,
+      );
+      // Existing deterministic handlers can still materialize a clarification or
+      // verify a no-op; all normal schema/source/scope checks run afterwards.
+      return repaired;
+    };
     const namingSources = new Map<string, string>([
       ["current", message],
       ...history.flatMap((entry, index): [string, string][] =>
@@ -1924,7 +1963,10 @@ export class AssistantModelServing {
         throw new AssistantInferenceError("unknown_reference");
       const dialogue = validateDialogue(
         {
-          explanation: `${classifiedIntent.mode === "advice" ? policyOverview : assistantFirewallPolicyLimit}\n\nDer Landing Zone Accelerator kann OPNsense-Firewall-Regeln, Aliase, Routen, ausgehendes NAT und Port-Forwarding nativ über firewall_config verwalten. Der aktuelle Chat unterstützt jedoch nur Firewall-Infrastruktur und HA als übernehmbare Vorschläge, nicht das komplexe Regel-/NAT-Objekt. Deine Verkehrs- und Regelantworten sind Anforderungen; daraus wurden noch keine Regeln konfiguriert.\n\nDer gemeinsame Editor enthält unter Betrieb → Firewall-Regeln generische native Felder; das ist noch keine geführte oder ausführungsqualifizierte Policy-Verwaltung. Infrastruktur und HA allein gewährleisten weder Isolation noch Internetzugriff oder NAT. Die bestehende Policy wird nicht automatisch ersetzt. API-Zugang und Erreichbarkeit der Appliance sowie ein geprüftes Plan/Apply bleiben separate Voraussetzungen für native Policy-Ausführung. Es wurde nichts geändert.`,
+          explanation:
+            language === "en"
+              ? "The Landing Zone Accelerator can manage OPNsense aliases, routes, rules, outbound_nat and port_forwards natively through firewall_config, with endpoint and insecure controlling API access and TLS verification. Rules support pass/block/reject and in/out directions. The current Assistant offers firewall infrastructure and HA proposals; it cannot produce or accept complex rule/NAT policy objects. Guided policy editing is not supported yet (GitHub issue #101); the firewall administrator maintains policy in OPNsense. Traffic and rule answers are requirements, not applied rules. The generic editor fields under Operations → Firewall rules are not a guided, execution-qualified policy workflow. Infrastructure and HA alone do not establish isolation, Internet access or NAT; the existing policy is not automatically replaced. Appliance API access, reachability and separately reviewed Plan/Apply remain prerequisites. Nothing has been saved or deployed."
+              : `${classifiedIntent.mode === "advice" ? policyOverview : assistantFirewallPolicyLimit}\n\nDer Landing Zone Accelerator kann OPNsense-Firewall-Regeln, Aliase, Routen, ausgehendes NAT und Port-Forwarding nativ über firewall_config verwalten. Der aktuelle Chat unterstützt jedoch nur Firewall-Infrastruktur und HA als übernehmbare Vorschläge, nicht das komplexe Regel-/NAT-Objekt. Deine Verkehrs- und Regelantworten sind Anforderungen; daraus wurden noch keine Regeln konfiguriert.\n\nDer gemeinsame Editor enthält unter Betrieb → Firewall-Regeln generische native Felder; das ist noch keine geführte oder ausführungsqualifizierte Policy-Verwaltung. Infrastruktur und HA allein gewährleisten weder Isolation noch Internetzugriff oder NAT. Die bestehende Policy wird nicht automatisch ersetzt. API-Zugang und Erreichbarkeit der Appliance sowie ein geprüftes Plan/Apply bleiben separate Voraussetzungen für native Policy-Ausführung. Es wurde nichts geändert.`,
           changes: [],
           questions: [],
           references: [
@@ -2544,6 +2586,7 @@ export class AssistantModelServing {
           ),
       ),
     };
+    draftRequested = intent.mode === "draft";
     if (
       intent.mode === "draft" &&
       intent.editorContract &&
@@ -2948,6 +2991,7 @@ export class AssistantModelServing {
       const questionContracts = questions.map((path) =>
         z.strictObject({
           path: z.literal(path),
+          answerType: assistantQuestionAnswerTypeSchema.optional(),
           text: z.string().min(1).max(600),
           options: assistantEditorPolicies[
             path.split(".")[0] ?? ""
@@ -2964,6 +3008,7 @@ export class AssistantModelServing {
           : z.union(questionContracts)
         : z.strictObject({
             path: z.string().max(300),
+            answerType: assistantQuestionAnswerTypeSchema.optional(),
             text: z.string().min(1).max(600),
             options: assistantQuestionOptionsSchema,
             multiple: z.boolean().optional(),
@@ -3345,10 +3390,8 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
       }
     }
     let setupDecisions: z.infer<typeof requirementQuotesSchema> | null = null;
-    if (
-      ["firewall-infrastructure", "firewall-policy"].includes(intent.topic) &&
-      (intent.mode === "draft" || requirementSources.length > 1)
-    ) {
+    let firewallConsultationOnly = false;
+    if (["firewall-infrastructure", "firewall-policy"].includes(intent.topic)) {
       const quoteSources = [
         ...new Set(
           requirementSources
@@ -3385,6 +3428,12 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
           `Choose a USER evidence ID, never write or paraphrase a quote. Unanswered means JSON null, never 'unknown' or 'not specified'. ${requirementQuotesSchema.shape[field].description ?? ""}`,
         );
       const evidenceSchema = requirementQuotesSchema.extend({
+        proposalDeferred: evidence
+          .optional()
+          .default(null)
+          .describe(
+            "Choose a latest-user-message evidence ID explicitly requesting clarification only, no infrastructure changes or no proposal yet. Otherwise null. This suppresses draft changes for this turn without forgetting the ongoing setup request.",
+          ),
         setupRequest: selection("setupRequest"),
         haRequest: selection("haRequest"),
         traffic: selection("traffic"),
@@ -3402,7 +3451,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
             {
               role: "system",
               content:
-                "Ordne den laufenden Firewall-Dialog anhand tatsächlicher Nutzeraussagen ein. Antworte pro Belegfeld ausschließlich mit einer ID aus userEvidence oder JSON null, niemals mit freiem Text, true/false, 'unknown' oder 'not specified'. Frageformulierungen sind keine Antworten. scope=setup bei breiter Einrichtung oder Fortsetzung ihrer Rückfragen; Antworten zu Regeln oder unbekanntem Traffic beenden den Einrichtungsauftrag NICHT. setupRequest belegt den ursprünglichen breiten Auftrag. scope=field-update bei gezielter Änderung einzelner nativer Felder (z.B. NUR HA/Backup-Zone/vhid) oder konkretem vollständigem Appliance-Patch, nicht bei beantworteten Geschäftsfragen. scope=advice bei isolierter Beratung ohne laufenden Einrichtungsauftrag. Explizite Themenwechsel haben Vorrang. haRequest belegt ausdrücklich gewünschte Hochverfügbarkeit. traffic belegt gewählte Verkehrswege. capacity belegt bezifferten Durchsatz oder Verbindungen, z.B. 500 Mbit/s und 10000 Verbindungen. capacityDeferred belegt ausdrücklich noch unbekannten Traffic, z.B. 'kann ich heute noch nicht beziffern'; fehlender Benchmark bei bekannten Zahlen gehört NICHT hierher. operations belegt tolerierbare Unterbrechungszeit. operator belegt den Betreiber, z.B. Firewall-Admin. policy belegt konkrete Allow/Deny/NAT-Anforderungen, nicht bloß Verkehrswege. Bewahre frühere beantwortete Punkte. Unbeantwortete Felder sind null. Keine technischen Werte, Regeln, Berechtigungen oder Ausführung erfinden.",
+                "Ordne den laufenden Firewall-Dialog anhand tatsächlicher Nutzeraussagen ein. Antworte pro Belegfeld ausschließlich mit einer ID aus userEvidence oder JSON null, niemals mit freiem Text, true/false, 'unknown' oder 'not specified'. Frageformulierungen sind keine Antworten. scope=setup bei breiter Einrichtung oder Fortsetzung ihrer Rückfragen, auch wenn zunächst nur Anforderungen geklärt und noch keine Änderungen vorgeschlagen werden sollen; Antworten zu Regeln oder unbekanntem Traffic beenden den Einrichtungsauftrag NICHT. setupRequest belegt den ursprünglichen breiten Auftrag. scope=field-update bei gezielter Änderung einzelner nativer Felder (z.B. NUR HA/Backup-Zone/vhid) oder konkretem vollständigem Appliance-Patch, nicht bei beantworteten Geschäftsfragen. scope=advice bei isolierter Beratung ohne laufenden Einrichtungsauftrag. Explizite Themenwechsel haben Vorrang. haRequest belegt ausdrücklich gewünschte Hochverfügbarkeit. traffic belegt gewählte Verkehrswege. capacity belegt bezifferten Durchsatz oder Verbindungen, z.B. 500 Mbit/s und 10000 Verbindungen. capacityDeferred belegt ausdrücklich noch unbekannten Traffic, z.B. 'kann ich heute noch nicht beziffern'; fehlender Benchmark bei bekannten Zahlen gehört NICHT hierher. operations belegt tolerierbare Unterbrechungszeit. operator belegt den Betreiber, z.B. Firewall-Admin. policy belegt konkrete Allow/Deny/NAT-Anforderungen, nicht bloß Verkehrswege. Bewahre frühere beantwortete Punkte. Unbeantwortete Felder sind null. Keine technischen Werte, Regeln, Berechtigungen oder Ausführung erfinden.",
             },
             {
               role: "system",
@@ -3432,6 +3481,10 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
         if (!source) throw new AssistantInferenceError("intent_evidence");
         return source.text;
       };
+      const deferredQuote = quote(classified.data.proposalDeferred);
+      if (deferredQuote && !message.includes(deferredQuote))
+        throw new AssistantInferenceError("intent_evidence");
+      firewallConsultationOnly = deferredQuote !== null;
       setupDecisions = {
         ...classified.data,
         setupRequest: quote(classified.data.setupRequest),
@@ -4030,6 +4083,24 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
         targetAreaKeys.length > 0 &&
         (!hasNewFirewall || areaKeys.length <= 1 || intent.allFirewalls) &&
         (!singleFirewallForm || targetAreaKeys.length === areaKeys.length);
+      if (firewallSetup && firewallConsultationOnly) {
+        return validateDialogue(
+          {
+            explanation:
+              language === "en"
+                ? "Let us clarify the remaining firewall requirements. Your confirmed answers are retained; no infrastructure changes are proposed or saved."
+                : "Wir klären die noch offenen Firewall-Anforderungen. Bestätigte Antworten bleiben erhalten; keine Infrastrukturänderungen vorgeschlagen oder gespeichert.",
+            questions: assistantFirewallRequirementQuestions(
+              nextDecision,
+              firewallSetup.operator,
+              language,
+            ),
+            changes: [],
+            references: ["firewall-infrastructure"],
+          },
+          context.rules.map((rule) => rule.id),
+        );
+      }
       if (firewallDraft && !canProposeFirewall) {
         const prefix = singleFirewallForm
           ? "connectivity.firewall"
@@ -4095,7 +4166,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
             ? "Die native Engine unterstützt regionale Firewalls, der Chat-Vertrag derzeit nur zentrale Single-/Map-Formen. Bitte regionale Infrastruktur im Editor konfigurieren; keine Umwandlung."
             : "Für den Firewall-/HA-Vorschlag fehlen noch die abgefragten bestätigten Angaben. Angeforderte HA bleibt erhalten; ich erfinde weder freie Subnetze noch Produktverfügbarkeit.";
         const network = Object.values(currentAreas)
-          .flatMap(assistantNetworkCapacity)
+          .flatMap((area) => assistantNetworkCapacity(area, language))
           .join("\n");
         return validateDialogue(
           {
@@ -4250,6 +4321,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
                     .describe(
                       "True when several choices can apply together, such as traffic categories. False for mutually exclusive choices. This is a reply mode, not permission.",
                     ),
+                  answerType: assistantQuestionAnswerTypeSchema.optional(),
                   options: assistantQuestionOptionsSchema
                     .unwrap()
                     .describe(
@@ -4908,17 +4980,22 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
             change.path === "connectivity.network_area"
               ? { default: assistantNetworkAreaSchema.parse(change.value) }
               : assistantNetworkAreasSchema.parse(change.value);
-          return Object.entries(areas).map(
-            ([key, area]) =>
-              `SNA-Bereich ${key}: Adresspool ${area.ranges.join(", ")}, Transfernetz ${area.transfer_network}, Projektpräfixe /${area.min_prefix_length} bis /${area.max_prefix_length}, Standard /${area.default_prefix_length}${area.name !== undefined ? `, Name ${area.name}` : ""}${area.default_nameservers !== undefined ? `, Nameserver ${area.default_nameservers.join(", ") || "nicht gesetzt"}` : ""}. ${assistantNetworkCapacity(area).join(" ")}`,
+          return Object.entries(areas).map(([key, area]) =>
+            language === "en"
+              ? `SNA area ${key}: address pool ${area.ranges.join(", ")}, transfer network ${area.transfer_network}, project prefixes /${area.min_prefix_length} to /${area.max_prefix_length}, default /${area.default_prefix_length}${area.name !== undefined ? `, name ${area.name}` : ""}${area.default_nameservers !== undefined ? `, nameservers ${area.default_nameservers.join(", ") || "not set"}` : ""}. ${assistantNetworkCapacity(area, language).join(" ")}`
+              : `SNA-Bereich ${key}: Adresspool ${area.ranges.join(", ")}, Transfernetz ${area.transfer_network}, Projektpräfixe /${area.min_prefix_length} bis /${area.max_prefix_length}, Standard /${area.default_prefix_length}${area.name !== undefined ? `, Name ${area.name}` : ""}${area.default_nameservers !== undefined ? `, Nameserver ${area.default_nameservers.join(", ") || "nicht gesetzt"}` : ""}. ${assistantNetworkCapacity(area, language).join(" ")}`,
           );
         });
-        dialogue.explanation = `Ich schlage folgende SNA-Einstellungen zur Prüfung vor:\n${details.join("\n").slice(0, 2500)}\n\nNoch nichts gespeichert. Erst die ausdrückliche Übernahme der ausgewählten Felder speichert die Konfiguration, ohne Cloud-Bereitstellung. DNS-, Firewall- und VPN-Einstellungen bleiben erhalten; Erreichbarkeit und Berechtigungen sind ungeprüft.`;
+        dialogue.explanation =
+          language === "en"
+            ? `I propose these SNA settings for review:\n${details.join("\n").slice(0, 2500)}\n\nNothing has been saved. Accepting fields changes the local draft; saving and cloud execution are separate. Existing DNS, firewall and VPN settings are preserved; connectivity and permissions have not been verified.`
+            : `Ich schlage folgende SNA-Einstellungen zur Prüfung vor:\n${details.join("\n").slice(0, 2500)}\n\nNoch nichts gespeichert. Erst die ausdrückliche Übernahme der ausgewählten Felder speichert die Konfiguration, ohne Cloud-Bereitstellung. DNS-, Firewall- und VPN-Einstellungen bleiben erhalten; Erreichbarkeit und Berechtigungen sind ungeprüft.`;
       }
       if (firewallDraft) {
+        if (firewallConsultationOnly) dialogue.changes = [];
         const network = Object.entries(currentAreas)
           .flatMap(([key, area]) =>
-            assistantNetworkCapacity(area).map(
+            assistantNetworkCapacity(area, language).map(
               (capacity) => `SNA ${key}: ${capacity}`,
             ),
           )
@@ -4930,7 +5007,9 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
           })),
         ).map((field) => `${field.path}: ${field.value}`);
         const notice =
-          "Noch nichts gespeichert. Übernahme ändert nur den lokalen Entwurf; Konfiguration speichern bleibt separat. Neue Appliances benötigen alle Pflichtfelder zusammen; eine neue HA-Konfiguration benötigt ihre Backup-Zone. Kein Deployment; Plan und Apply brauchen separate Prüfung und Freigabe. HA garantiert weder Firewall-Durchsatz noch automatisches Failover der öffentlichen Eingangs-IP. DNS, SNA, VPN und Berechtigungen bleiben unverändert.";
+          language === "en"
+            ? "Nothing has been saved. Acceptance changes only the local draft; saving remains separate. New appliances need all mandatory fields together; new HA requires a backup zone. Plan and Apply need separate review and approval. HA guarantees neither firewall throughput nor automatic failover of the public ingress IP. Existing DNS, SNA, VPN and permissions are preserved."
+            : "Noch nichts gespeichert. Übernahme ändert nur den lokalen Entwurf; Konfiguration speichern bleibt separat. Neue Appliances benötigen alle Pflichtfelder zusammen; eine neue HA-Konfiguration benötigt ihre Backup-Zone. Kein Deployment; Plan und Apply brauchen separate Prüfung und Freigabe. HA garantiert weder Firewall-Durchsatz noch automatisches Failover der öffentlichen Eingangs-IP. DNS, SNA, VPN und Berechtigungen bleiben unverändert.";
         const body = [
           network.slice(0, 900),
           firewallSetup ? assistantFirewallPolicyLimit : "",
@@ -4978,38 +5057,65 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
         ]
           .filter(Boolean)
           .join("\n\n");
-        dialogue.explanation = `${body.slice(0, 3000 - notice.length - 2)}\n\n${notice}`;
+        const englishBody = [
+          network.slice(0, 900),
+          firewallSetup
+            ? "Infrastructure provisioning and firewall policy are separate. The firewall administrator manages application-specific allow/deny and NAT rules; no rules are configured by this proposal."
+            : "",
+          firewallSetup
+            ? [
+                "Confirmed requirements (not applied firewall rules):",
+                firewallSetup.traffic
+                  ? `Traffic: ${firewallSetup.traffic.slice(0, 200)}`
+                  : "",
+                firewallSetup.policy
+                  ? `Policy requirements: ${firewallSetup.policy}`
+                  : "",
+                firewallSetup.capacity
+                  ? `Capacity ${firewallSetup.capacityDeferred ? "not yet quantified; sizing/benchmark pending" : "requirement, not measured capability"}: ${firewallSetup.capacity.slice(0, 300)}`
+                  : "",
+                firewallSetup.operator
+                  ? `Operator: ${firewallSetup.operator.slice(0, 150)}`
+                  : "",
+                firewallSetup.operations
+                  ? `Interruption tolerance: ${firewallSetup.operations.slice(0, 150)}`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join("\n")
+            : "",
+          firewallSetup
+            ? existingFirewalls
+                .filter((firewall) => firewall.name != null)
+                .map(
+                  (firewall) =>
+                    `Existing firewall draft: ${firewall.name}, primary zone ${firewall.zone}, VM ${firewall.flavor}, LAN ${firewall.lan_network_range}, WAN ${firewall.wan_network_range}. These draft values are preserved; they do not verify suitable sizing or tested traffic paths.`,
+                )
+                .join("\n")
+                .slice(0, 1000)
+            : "",
+          details.length
+            ? `Firewall proposal for review:\n${details.join("\n")}`
+            : hadFirewallChanges && !dialogue.questions.length
+              ? "The requested values already match the current draft; no new firewall change is proposed."
+              : "Some requirements still need clarification. Existing draft values remain in place; no capacity or configured-policy claim is implied.",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+        dialogue.explanation = `${(language === "en" ? englishBody : body).slice(0, 3000 - notice.length - 2)}\n\n${notice}`;
         if (firewallSetup) {
-          const followups: Record<
-            keyof typeof decisionPaths,
-            Dialogue["questions"][number]
-          > = {
-            traffic: {
-              path: decisionPaths.traffic,
-              text: "Welche Verkehrswege sollen über die zentrale Firewall laufen? Gleicher Subnetzverkehr ist nicht automatisch ein gerouteter Firewall-Pfad. Die Antwort beschreibt den Infrastrukturbedarf, nicht Firewall-Regeln; diese pflegt der Firewall-Admin.",
-              options: [
-                "Internet-Verkehr",
-                "Zwischen Projekten",
-                "Zu externen Netzen",
-              ],
-              multiple: true,
-            },
-            capacity: {
-              path: decisionPaths.capacity,
-              text: "Welchen Spitzen-Durchsatz und wie viele parallele Verbindungen erwartest du? Die gespeicherte VM-Größe bleibt erhalten; Projektzahlen und Produktnamen allein belegen keine ausreichende Leistung.",
-            },
-            operations: {
-              path: decisionPaths.operations,
-              text: firewallSetup.operator
-                ? "Welche maximale Unterbrechung bei Ausfall oder Wartung ist tolerierbar? Der bereits benannte Firewall-Betrieb bleibt erhalten; HA allein belegt keine bestimmte Ausfallzeit."
-                : "Welche maximale Unterbrechung bei Ausfall oder Wartung ist tolerierbar und wer übernimmt den Firewall-Betrieb? Bereits angeforderte HA bleibt erhalten; eine bestimmte Ausfallzeit ist damit noch nicht nachgewiesen.",
-            },
-          };
-          dialogue.questions = nextDecision ? [followups[nextDecision]] : [];
+          dialogue.questions = assistantFirewallRequirementQuestions(
+            nextDecision,
+            firewallSetup.operator,
+            language,
+          );
         }
       }
       if (networkFirst && intent.networkScope === "sna-and-firewall")
-        dialogue.explanation = `${dialogue.explanation.slice(0, 2650)}\n\nDer ausdrückliche Firewall-Auftrag${intent.firewallAvailability === "ha" ? " mit HA" : ""} bleibt erhalten. Dafür fehlen noch die SNA-Voraussetzungen; nach deren Klärung kann der Firewall-Vorschlag folgen. Keine Cloud-Ausführung.`;
+        dialogue.explanation =
+          language === "en"
+            ? `${dialogue.explanation.slice(0, 2650)}\n\nThe explicit firewall request${intent.firewallAvailability === "ha" ? " including HA" : ""} is retained. SNA prerequisites still need clarification before a firewall proposal can follow. No cloud execution.`
+            : `${dialogue.explanation.slice(0, 2650)}\n\nDer ausdrückliche Firewall-Auftrag${intent.firewallAvailability === "ha" ? " mit HA" : ""} bleibt erhalten. Dafür fehlen noch die SNA-Voraussetzungen; nach deren Klärung kann der Firewall-Vorschlag folgen. Keine Cloud-Ausführung.`;
       const facts = firewallTopic
         ? ""
         : catalogueFacts(catalogues, message, language);

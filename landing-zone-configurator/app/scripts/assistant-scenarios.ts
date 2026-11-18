@@ -156,6 +156,7 @@ export type AssistantScenario = {
     | "baseline"
     | "git-saved-access"
     | "service-catalogues"
+    | "service-firewall-business"
     | "foundations"
     | "folder-naming"
     | "dns-owner"
@@ -178,6 +179,7 @@ export type AssistantScenario = {
   setupQuestionPaths?: readonly string[];
   catalogueQuestion?: { path: string; field: string };
   answeredCatalogueChoice?: { path: string; value: string };
+  requirementsQuestion?: string;
   expectedLanguage?: "de" | "en";
   dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
@@ -721,6 +723,36 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     setupQuestionPaths: paths,
     expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
   })),
+  {
+    id: "catalogue-firewall-business-en",
+    topic: "firewall-infrastructure",
+    fixture: "service-firewall-business",
+    expectedLanguage: "en",
+    message:
+      "Please help me set up a central HA firewall for internet and inter-project traffic. Start by clarifying the remaining business requirements; do not propose infrastructure changes yet.",
+    requirementsQuestion: "connectivity.firewall.flavor",
+  },
+  {
+    id: "catalogue-firewall-capacity-followup-en",
+    topic: "firewall-infrastructure",
+    fixture: "service-firewall-business",
+    expectedLanguage: "en",
+    history: [
+      {
+        role: "user",
+        content:
+          "Please help me set up a central HA firewall for internet and inter-project traffic.",
+      },
+      {
+        role: "assistant",
+        content:
+          "What peak throughput and concurrent connection count do you expect?",
+      },
+    ],
+    message:
+      "Traffic is not yet quantifiable. Keep the current VM size as a provisional baseline and validate capacity separately. Please continue with the remaining requirements; do not change the infrastructure yet.",
+    requirementsQuestion: "connectivity.firewall.ha",
+  },
   {
     id: "catalogue-kubernetes-machine-choice",
     topic: "platform-kubernetes",
@@ -1393,7 +1425,10 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     });
   }
   history.push(...(scenario.history ?? []));
-  if (scenario.fixture === "firewall-metro")
+  if (
+    scenario.fixture === "firewall-metro" ||
+    scenario.fixture === "service-firewall-business"
+  )
     draft = commonConfigurationFromValues(template, draft.id, draft.name, {
       ...compileCommonConfiguration(draft),
       connectivity: {
@@ -1670,7 +1705,8 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     values["assistant.user_email"] = "login@example.test";
   const catalogues: AssistantCatalogueContext = {
     regions:
-      scenario.fixture === "firewall-metro"
+      scenario.fixture === "firewall-metro" ||
+      scenario.fixture === "service-firewall-business"
         ? [
             {
               region: "eu01",
@@ -1698,6 +1734,17 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
           ]
         : [],
   };
+  if (scenario.fixture === "service-firewall-business") {
+    catalogues.regions[0]!.products.bastionMachineTypes = {
+      status: "available",
+      totalOptions: 2,
+      truncated: false,
+      options: [
+        { value: "c1.2", label: "c1.2" },
+        { value: "c1.4", label: "c1.4" },
+      ],
+    };
+  }
   if (scenario.fixture === "service-catalogues") {
     catalogues.regions = [
       {
@@ -2295,6 +2342,25 @@ export function validateAssistantScenario(
       failures.push("platform_template_proposal_not_applicable");
     }
     return { dialogue, failures };
+  }
+  if (scenario.requirementsQuestion) {
+    const presented = enrichCatalogueQuestions(
+      dialogue,
+      fixture.values,
+      fixture.catalogues,
+      scenario.expectedLanguage ?? "de",
+    );
+    const question = presented.questions.find(
+      (question) => question.path === scenario.requirementsQuestion,
+    );
+    if (
+      dialogue.changes.length ||
+      !question ||
+      question.answerType !== "requirements" ||
+      question.catalogue ||
+      !question.options?.length
+    )
+      failures.push("business_requirements_replaced_by_technical_picker");
   }
   if (scenario.answeredCatalogueChoice) {
     if (

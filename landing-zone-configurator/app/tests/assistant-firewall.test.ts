@@ -94,6 +94,7 @@ function model(
     setupQuotes?: Record<"traffic" | "capacity" | "operations", string | null>;
     setupScope?: "setup" | "field-update" | "advice";
     setupRequest?: string;
+    proposalDeferred?: string;
     haRequest?: string;
     capacityDeferred?: boolean;
     operator?: string;
@@ -135,6 +136,7 @@ function model(
               schemaName === "firewall_setup_decisions"
                 ? {
                     scope: setupScope,
+                    proposalDeferred: source(targets.proposalDeferred ?? null),
                     setupRequest: source(
                       targets.setupRequest ??
                         (setupScope === "setup"
@@ -1550,4 +1552,68 @@ it("requires explicitly requested existing native fields in the answer contract"
     "flavor",
     "name",
   ]);
+});
+
+it("keeps a consultation-only setup turn as helpful business questions without draft changes", async () => {
+  const f = fixture();
+  const message =
+    "Help set up central HA firewall for internet traffic. Clarify requirements only; do not propose changes yet.";
+  const { engine } = model(
+    proposal,
+    "sna-and-firewall",
+    "advice",
+    "firewall-infrastructure",
+    "ha",
+    {
+      setupScope: "setup",
+      setupRequest: message,
+      proposalDeferred: message,
+      setupQuotes: { traffic: message, capacity: null, operations: null },
+    },
+  );
+  const result = await engine.converse(
+    f.selection,
+    { ...f.values, "assistant.language": "en" },
+    [],
+    message,
+  );
+  expect(result.changes).toEqual([]);
+  expect(result.questions).toEqual([
+    expect.objectContaining({
+      path: "connectivity.firewall.flavor",
+      answerType: "requirements",
+      options: expect.arrayContaining([
+        expect.stringContaining("provisional baseline"),
+      ]),
+    }),
+  ]);
+  expect(result.explanation).not.toContain("Firewall proposal for review");
+});
+
+it("rejects consultation-only evidence that is not in the current user request", async () => {
+  const f = fixture();
+  const { engine } = model(
+    proposal,
+    "sna-and-firewall",
+    "draft",
+    "firewall-infrastructure",
+    "ha",
+    {
+      setupScope: "setup",
+      proposalDeferred: "A previous request must not suppress this turn.",
+    },
+  );
+  await expect(
+    engine.converse(
+      f.selection,
+      f.values,
+      [
+        {
+          role: "user",
+          content: "A previous request must not suppress this turn.",
+        },
+      ],
+      "Set up the firewall now.",
+    ),
+  ).rejects.toMatchObject({ reason: "intent_evidence" });
 });

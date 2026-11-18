@@ -6,6 +6,7 @@ import {
 import { expect, it } from "vitest";
 import {
   configuredCatalogueRegions,
+  emptyDraftResponse,
   englishNativeOverview,
   enrichCatalogueQuestions,
   ensureDraftNotice,
@@ -56,6 +57,7 @@ function dialogue(path: string): Dialogue {
     questions: [
       {
         path,
+        answerType: "catalogue",
         text: "Which option fits your needs?",
         options: ["Candidate plan-a", "Help me estimate my needs"],
       },
@@ -428,6 +430,7 @@ it("bounds the real model request separately from picker data and withholds ungr
               questions: [
                 {
                   path: "platform_kubernetes[*].cluster.node_pools[*].machine_type",
+                  answerType: "catalogue",
                   text: "Which 16 GB machine?",
                   options: ["vm-0"],
                 },
@@ -537,4 +540,61 @@ it("resolves language across services from UI preference or actual user turns, n
       "Bitte eine zentrale Firewall hinzufügen.",
     ),
   ).toBe("de");
+});
+
+it("does not replace workload questions with flavor pickers merely because they use a size field", () => {
+  const original = dialogue("connectivity.firewalls[*].flavor");
+  original.questions[0]!.answerType = "requirements";
+  original.questions[0]!.text =
+    "What peak throughput and connection count do you expect?";
+  const result = enrichCatalogueQuestions(
+    original,
+    {},
+    context("bastionMachineTypes"),
+    "en",
+  );
+  expect(result.questions[0]).not.toHaveProperty("catalogue");
+  expect(
+    groundCatalogueDialogue(original, {}, context("bastionMachineTypes"), "en"),
+  ).toEqual(original);
+});
+
+it("keeps a Git user-count estimation question as a business requirement even with available flavors", async () => {
+  const { gitDialogueInputs, gitSetupDialogue } = await import(
+    "../apps/api/src/assistant/git-dialogue.js"
+  );
+  const input = context("gitFlavors");
+  const sources = gitDialogueInputs({}, [], "Help me estimate the size", input);
+  const result = gitSetupDialogue(
+    sources,
+    {
+      setupSource: "current",
+      planChoice: "estimate",
+      planSource: "current",
+      networkChoice: null,
+      networkSource: null,
+      networkEvidence: null,
+    },
+    "en",
+  );
+  expect(result.questions[0]?.answerType).toBe("requirements");
+  expect(
+    enrichCatalogueQuestions(result, {}, input, "en").questions[0],
+  ).not.toHaveProperty("catalogue");
+});
+
+it("does not mistake typed folder naming payloads for empty draft promises", () => {
+  expect(
+    emptyDraftResponse({
+      questions: [],
+      changes: [],
+      folderNames: { platform: { name: "syn-Platform", prefix: "syn" } },
+    }),
+  ).toBe(false);
+  expect(
+    emptyDraftResponse({ questions: [], changes: [], folderNames: null }),
+  ).toBe(true);
+  expect(
+    emptyDraftResponse({ questions: [{ path: "company_name" }], changes: [] }),
+  ).toBe(false);
 });

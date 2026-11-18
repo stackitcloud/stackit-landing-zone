@@ -1,4 +1,7 @@
-import { catalogueField } from "@lzc/contracts";
+import {
+  assistantQuestionAnswerTypeSchema,
+  catalogueField,
+} from "@lzc/contracts";
 import {
   assessCommonConfiguration,
   type CommonConfiguration,
@@ -162,6 +165,7 @@ export const dialogueSchema = z.strictObject({
       z.strictObject({
         path: z.string().max(300),
         text: z.string().min(1).max(600),
+        answerType: assistantQuestionAnswerTypeSchema.optional(),
         options: assistantQuestionOptionsSchema,
         multiple: z.boolean().optional(),
       }),
@@ -377,6 +381,8 @@ export function validateDialogue(
   if (
     result.questions.some(
       (question) =>
+        (question.answerType === "catalogue" &&
+          catalogueField(question.path) === null) ||
         (question.path !== "projectTemplates" &&
           !editable.some((field) => field.path === question.path)) ||
         /\b(?:plan|project|projekt|organization|organisation|gateway|tenant)[\s_-]*id\b|\buuid\b|interne[\s]+kennung/i.test(

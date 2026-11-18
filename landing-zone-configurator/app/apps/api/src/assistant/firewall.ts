@@ -1,6 +1,8 @@
 import { isDeepStrictEqual } from "node:util";
+import type { AssistantLanguage } from "@lzc/contracts";
 import { objectValue } from "@lzc/domain";
 import { z } from "zod";
+import type { Dialogue } from "./dialogue.js";
 
 export const assistantFirewallHaSchema = z.strictObject({
   backup_zone: z.string().trim().min(1).max(100),
@@ -56,7 +58,10 @@ export function assistantSubnet(cidr: string) {
   return { prefix, start, end: start + size, size };
 }
 
-export function assistantNetworkCapacity(area: unknown) {
+export function assistantNetworkCapacity(
+  area: unknown,
+  language: AssistantLanguage = "de",
+) {
   const values = objectValue(area as Parameters<typeof objectValue>[0]);
   if (
     !Array.isArray(values.ranges) ||
@@ -71,7 +76,9 @@ export function assistantNetworkCapacity(area: unknown) {
     const pool = assistantSubnet(range);
     return prefix >= pool.prefix
       ? [
-          `${range} enthält rechnerisch ${2 ** (prefix - pool.prefix)} /${prefix}-Subnetze mit je ${2 ** (32 - prefix)} Adressen vor Infrastrukturreservierungen. Keine Zusage zu freien Projektnetzen, Quoten oder Firewall-Durchsatz.`,
+          language === "en"
+            ? `${range} mathematically contains ${2 ** (prefix - pool.prefix)} /${prefix} subnets with ${2 ** (32 - prefix)} addresses each before infrastructure reservations. This does not confirm free project networks, quotas or firewall throughput.`
+            : `${range} enthält rechnerisch ${2 ** (prefix - pool.prefix)} /${prefix}-Subnetze mit je ${2 ** (32 - prefix)} Adressen vor Infrastrukturreservierungen. Keine Zusage zu freien Projektnetzen, Quoten oder Firewall-Durchsatz.`,
         ]
       : [];
   });
@@ -205,4 +212,75 @@ export function validateAssistantFirewall(
     throw new Error("assistant_firewall_addresses_invalid");
   if (firewall.ha?.backup_zone === firewall.zone)
     throw new Error("assistant_firewall_backup_zone_invalid");
+}
+
+export function assistantFirewallRequirementQuestions(
+  nextDecision: "traffic" | "capacity" | "operations" | undefined,
+  operator: string | null,
+  language: AssistantLanguage | undefined,
+): Dialogue["questions"] {
+  const decisionPaths = {
+    traffic: "connectivity.firewall.lan_network_range",
+    capacity: "connectivity.firewall.flavor",
+    operations: "connectivity.firewall.ha",
+  };
+  const followups: Record<
+    keyof typeof decisionPaths,
+    Dialogue["questions"][number]
+  > = {
+    traffic: {
+      path: decisionPaths.traffic,
+      text: "Welche Verkehrswege sollen über die zentrale Firewall laufen? Gleicher Subnetzverkehr ist nicht automatisch ein gerouteter Firewall-Pfad. Die Antwort beschreibt den Infrastrukturbedarf, nicht Firewall-Regeln; diese pflegt der Firewall-Admin.",
+      options: ["Internet-Verkehr", "Zwischen Projekten", "Zu externen Netzen"],
+      multiple: true,
+    },
+    capacity: {
+      path: decisionPaths.capacity,
+      text: "Welchen Spitzen-Durchsatz und wie viele parallele Verbindungen erwartest du? Die gespeicherte VM-Größe bleibt erhalten; Projektzahlen und Produktnamen allein belegen keine ausreichende Leistung.",
+    },
+    operations: {
+      path: decisionPaths.operations,
+      text: operator
+        ? "Welche maximale Unterbrechung bei Ausfall oder Wartung ist tolerierbar? Der bereits benannte Firewall-Betrieb bleibt erhalten; HA allein belegt keine bestimmte Ausfallzeit."
+        : "Welche maximale Unterbrechung bei Ausfall oder Wartung ist tolerierbar und wer übernimmt den Firewall-Betrieb? Bereits angeforderte HA bleibt erhalten; eine bestimmte Ausfallzeit ist damit noch nicht nachgewiesen.",
+    },
+  };
+  for (const question of Object.values(followups))
+    question.answerType = "requirements";
+  followups.capacity.options =
+    language === "en"
+      ? [
+          "Traffic is not yet quantifiable; retain the current VM size as a provisional baseline and validate capacity separately",
+          "I will provide peak throughput and concurrent connection requirements",
+        ]
+      : [
+          "Traffic ist noch nicht bezifferbar; aktuelle VM-Größe vorläufig beibehalten und Kapazität separat prüfen",
+          "Ich gebe Spitzen-Durchsatz und gleichzeitige Verbindungen an",
+        ];
+  if (language === "en") {
+    followups.traffic.text =
+      "Which traffic paths should use the central firewall? Traffic within one subnet is not automatically routed through it. This describes infrastructure needs; the firewall administrator manages rules.";
+    followups.traffic.options = [
+      "Internet traffic",
+      "Between projects",
+      "To external networks",
+    ];
+    followups.capacity.text =
+      "What peak throughput and concurrent connection count do you expect? The current VM size is preserved; project counts and product names alone do not prove sufficient performance.";
+    followups.operations.text = operator
+      ? "What maximum interruption is acceptable during failure or maintenance? The named operator is retained; HA alone does not establish a recovery time."
+      : "What maximum interruption is acceptable during failure or maintenance, and who operates the firewall? Requested HA is retained without a recovery-time guarantee.";
+    followups.operations.options = operator
+      ? [
+          "Requirement: maximum two minutes interruption",
+          "Requirement: maximum ten minutes interruption",
+          "I will state the tolerated interruption",
+        ]
+      : [
+          "Requirement: maximum two minutes interruption; our platform team operates the firewall",
+          "Requirement: maximum ten minutes interruption; our platform team operates the firewall",
+          "I will state the tolerated interruption and operator",
+        ];
+  }
+  return nextDecision ? [followups[nextDecision]] : [];
 }

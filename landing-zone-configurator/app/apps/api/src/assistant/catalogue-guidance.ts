@@ -9,7 +9,7 @@ import { type JsonValue, objectValue } from "@lzc/domain";
 import type { Dialogue } from "./dialogue.js";
 import type { AssistantCatalogueContext } from "./model-serving.js";
 
-export const assistantGuidancePolicy = `SERVICE CONSULTATION, for every topic: Ask about the user's goal, initial scale, availability and access only when relevant and still unknown. Retain answered decisions across turns. Do not send users away to research technical flavor names. For a catalogue-backed decision ask at the exact editable field path, so the application can present its project/region catalogue with descriptions. Offer a small, relevant set of business choices and explain tradeoffs using reviewed facts. A request to recommend a sensible starting point delegates a reviewed recommendation, not permission to invent service facts, networks, credentials, entitlement, prices or in-place upgrades. If a recommendation lacks evidence, ask a focused business question with useful choices rather than repeating a blank technical field. A missing catalogue is not an empty offering or proof that a product is unavailable. Existing rights, save, Plan and Apply boundaries remain mandatory. Never ask again for an already answered decision unless requirements changed or a conflict needs resolving.`;
+export const assistantGuidancePolicy = `SERVICE CONSULTATION, for every topic: Ask about the user's goal, initial scale, availability and access only when relevant and still unknown. Retain answered decisions across turns. Do not send users away to research technical flavor names. When the question schema supports answerType, mark actual catalogue-option choices as answerType=catalogue and business goals/load/traffic/recovery questions as answerType=requirements, even when their path is a flavor field. Only catalogue questions for fields listed in questionCatalogues receive a product picker. For a catalogue-backed decision ask at the exact editable field path, so the application can present its project/region catalogue with descriptions. Offer a small, relevant set of business choices and explain tradeoffs using reviewed facts. A request to recommend a sensible starting point delegates a reviewed recommendation, not permission to invent service facts, networks, credentials, entitlement, prices or in-place upgrades. If a recommendation lacks evidence, ask a focused business question with useful choices rather than repeating a blank technical field. A missing catalogue is not an empty offering or proof that a product is unavailable. Existing rights, save, Plan and Apply boundaries remain mandatory. Never ask again for an already answered decision unless requirements changed or a conflict needs resolving. A draft request with sufficient confirmed inputs must emit actual typed changes, never only promise that settings will be configured. When the desired values already match, emit the desired patch so the application can verify the no-op. Otherwise ask a focused question about genuinely missing information.`;
 
 export function configuredCatalogueRegions(
   current: Record<string, unknown>,
@@ -88,6 +88,7 @@ export function enrichCatalogueQuestions(
   return {
     ...dialogue,
     questions: dialogue.questions.map((question) => {
+      if (question.answerType !== "catalogue") return question;
       const field = catalogueField(question.path);
       const region = catalogueQuestionRegion(question.path, current);
       const snapshot = catalogues.regions.find(
@@ -204,6 +205,9 @@ export function withoutCataloguePresentation(dialogue: Dialogue): Dialogue {
     questions: dialogue.questions.map((question) => ({
       path: question.path,
       text: question.text,
+      ...(question.answerType !== undefined
+        ? { answerType: question.answerType }
+        : {}),
       ...(question.options ? { options: question.options } : {}),
       ...(question.multiple !== undefined
         ? { multiple: question.multiple }
@@ -324,6 +328,7 @@ export function groundCatalogueDialogue(
       );
       return {
         path: question.path,
+        answerType: "catalogue" as const,
         text: labels[field]?.[language === "en" ? 0 : 1] ?? question.text,
         options,
         ...(question.multiple !== undefined
@@ -404,4 +409,29 @@ export function resolveAssistantLanguage(
     if (german || english) return german >= english ? "de" : "en";
   }
   return "de";
+}
+
+export function emptyDraftResponse(value: unknown) {
+  if (!value || typeof value !== "object") return false;
+  const data = value as Record<string, unknown>;
+  if (
+    data.folderNames &&
+    typeof data.folderNames === "object" &&
+    !Array.isArray(data.folderNames) &&
+    Object.values(data.folderNames).some(
+      (folder) =>
+        folder &&
+        typeof folder === "object" &&
+        ["name", "prefix"].some(
+          (key) => typeof (folder as Record<string, unknown>)[key] === "string",
+        ),
+    )
+  )
+    return false;
+  return (
+    Array.isArray(data.questions) &&
+    data.questions.length === 0 &&
+    Array.isArray(data.changes) &&
+    data.changes.length === 0
+  );
 }

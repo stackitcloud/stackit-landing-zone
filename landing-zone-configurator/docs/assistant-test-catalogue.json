@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "a6759b9750239e02163ab165b69510cf7feecbd105e8f1d02b7933f76fe658b8",
+  "knowledgeSha256": "d36abae837835cc6a8d39d9b14b1f826b2a4c0307587702c0a771ab5427604b2",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "6335e3246bdc8b99fb4a12502a38781eea660b6fd2ccd40bac167e20b9a889a3",
+    "scripts/assistant-scenarios.ts": "594b9fb33dca16c4c9c88f4dc2978fad192d8b157b0afd9c9dbfb6d8fb9efe05",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "c057cd0ba8a21b271840d744c929528f1c9ddfe364a138c868c6dc7bc7a61f6d",
+  "suiteSha256": "6ce9932ce345a3fed69f3dad6b3c0dd6710f40378e130c338905c70cd36add4c",
   "topics": [
     {
       "id": "credential-foundations",
@@ -2671,6 +2671,46 @@
         }
       ],
       "cases": [
+        {
+          "id": "catalogue-firewall-business-en",
+          "topic": "firewall-infrastructure",
+          "fixture": "service-firewall-business",
+          "expectedLanguage": "en",
+          "message": "Please help me set up a central HA firewall for internet and inter-project traffic. Start by clarifying the remaining business requirements; do not propose infrastructure changes yet.",
+          "requirementsQuestion": "connectivity.firewall.flavor",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "catalogue-firewall-capacity-followup-en",
+          "topic": "firewall-infrastructure",
+          "fixture": "service-firewall-business",
+          "expectedLanguage": "en",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please help me set up a central HA firewall for internet and inter-project traffic."
+            },
+            {
+              "role": "assistant",
+              "content": "What peak throughput and concurrent connection count do you expect?"
+            }
+          ],
+          "message": "Traffic is not yet quantifiable. Keep the current VM size as a provisional baseline and validate capacity separately. Please continue with the remaining requirements; do not change the infrastructure yet.",
+          "requirementsQuestion": "connectivity.firewall.ha",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
         {
           "id": "firewall-metro-dialogue-policy-definition",
           "topic": "firewall-infrastructure",

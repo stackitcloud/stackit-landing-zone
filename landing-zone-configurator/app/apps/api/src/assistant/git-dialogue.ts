@@ -180,10 +180,17 @@ export function gitSetupDialogue(
   const lifecycle = en
     ? "Plan for your expected initial usage: changing the Git plan or allowlist through this Accelerator currently replaces the instance. A later change needs separate review and migration planning."
     : "Plane für die erwartete anfängliche Nutzung: Eine Git-Tarif- oder Allowlist-Änderung über diesen Accelerator ersetzt derzeit die Instanz. Eine spätere Änderung braucht eine separate Prüfung und Migrationsplanung.";
-  const questions: { path: string; text: string; options: string[] }[] = [];
+  const questions: {
+    path: string;
+    text: string;
+    options: string[];
+    answerType?: "catalogue" | "requirements";
+  }[] = [];
   if (!plan)
     questions.push({
       path: "devops.git_flavor",
+      answerType:
+        decision.planChoice === "estimate" ? "requirements" : "catalogue",
       text:
         decision.planChoice === "estimate"
           ? en

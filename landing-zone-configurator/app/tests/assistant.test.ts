@@ -1182,7 +1182,12 @@ it("answers central HA firewall decision questions without enabling bootstrap or
   );
   expect(result.explanation.length).toBeLessThan(500);
   expect(result.questions).toEqual([]);
-  const payload = JSON.parse(String(request.mock.calls[1]?.[1]?.body));
+  const payload = request.mock.calls
+    .map(([, options]) => JSON.parse(String(options?.body)))
+    .find(
+      (body) =>
+        body.response_format.json_schema.name === "configuration_dialogue",
+    );
   const changes = payload.response_format.json_schema.schema.properties.changes;
   expect(changes.maxItems).toBe(0);
   const questions =
@@ -1433,6 +1438,18 @@ it("keeps ambiguous all-communication requirements open even when the classifier
         topic: "firewall-infrastructure",
         mode: "advice",
         requirements: [{ decision: "traffic", quote: "alle Kommunikation" }],
+      });
+    if (payload.response_format.json_schema.name === "firewall_setup_decisions")
+      return answer({
+        scope: "advice",
+        setupRequest: null,
+        haRequest: null,
+        traffic: null,
+        capacity: null,
+        capacityDeferred: null,
+        operations: null,
+        operator: null,
+        policy: null,
       });
     expect(
       payload.response_format.json_schema.schema.properties.questions.items
@@ -2896,6 +2913,22 @@ function withIntent(
     const payload = JSON.parse(String(init?.body));
     if (payload.response_format?.json_schema?.name === "conversation_intent")
       return answer({ topic, mode, dnsTask, requirements: [] });
+    if (
+      payload.response_format?.json_schema?.name ===
+        "firewall_setup_decisions" &&
+      mode === "advice"
+    )
+      return answer({
+        scope: "advice",
+        setupRequest: null,
+        haRequest: null,
+        traffic: null,
+        capacity: null,
+        capacityDeferred: null,
+        operations: null,
+        operator: null,
+        policy: null,
+      });
     return request(url, init);
   };
 }
@@ -3302,7 +3335,7 @@ it.each(["audit-logs", "observability", "dns-zones"] as const)(
     expect(result.explanation).not.toContain("Unterbrechung");
     if (topic === "audit-logs") {
       expect(result.explanation).not.toContain("noch keinen übernehmbaren");
-      expect(request).toHaveBeenCalledTimes(2);
+      expect(request).toHaveBeenCalledTimes(3);
     }
     expect(values).toEqual(before);
   },
@@ -3618,7 +3651,7 @@ it.each([
         "Scoped normal response; no action or update.",
       );
       expect(result.changes).toEqual([]);
-      expect(request).toHaveBeenCalledTimes(2);
+      expect(request).toHaveBeenCalledTimes(intent.mode === "draft" ? 3 : 2);
     }
   },
 );
@@ -3661,7 +3694,7 @@ it.each([
       "Current scoped answer; no changes or execution.",
     );
     expect(result.explanation).not.toContain("min_prefix_length=24");
-    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledTimes(intent.mode === "draft" ? 3 : 2);
   },
 );
 
@@ -4014,5 +4047,35 @@ it("does not delegate folder naming from an Assistant-only folder mention when r
   );
   expect(result.changes).toEqual([
     { path: "company_name", value: "Example GmbH" },
+  ]);
+});
+
+it("repairs one empty draft response into actual typed changes instead of a spoken promise", async () => {
+  let draftCalls = 0;
+  const request = withIntent("identity-foundations", "draft", async () => {
+    draftCalls++;
+    return answer({
+      explanation: "The company name will be configured.",
+      questions: [],
+      changes:
+        draftCalls === 1
+          ? []
+          : [{ path: "company_name", value: "SharedRepairCompany" }],
+      references: ["identity-foundations"],
+      replyLanguage: "en",
+    });
+  });
+  const result = await new AssistantModelServing(
+    configuration,
+    request,
+  ).converse(
+    selection(),
+    {},
+    [],
+    "Please set company_name to SharedRepairCompany.",
+  );
+  expect(draftCalls).toBe(2);
+  expect(result.changes).toEqual([
+    { path: "company_name", value: "SharedRepairCompany" },
   ]);
 });

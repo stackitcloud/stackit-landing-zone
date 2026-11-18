@@ -47,16 +47,19 @@ test("service questions share a searchable described picker and send selected va
       questions: [
         {
           path: "devops.git_flavor",
+          answerType: "catalogue",
           text: "Which Git starting plan?",
           options: ["Git100", "Help me estimate my needs"],
         },
         {
           path: "connectivity.vpn.plan_id",
+          answerType: "catalogue",
           text: "Which VPN plan?",
           options: [],
         },
         {
           path: "observability.plan_name",
+          answerType: "catalogue",
           text: "Which Observability plan?",
           options: [],
         },

@@ -313,6 +313,28 @@ function collectionModel(
     },
     vi.fn<typeof fetch>(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
+      if (body.response_format.json_schema.name === "firewall_setup_decisions")
+        return Response.json({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify({
+                  scope: "advice",
+                  setupRequest: null,
+                  haRequest: null,
+                  traffic: null,
+                  capacity: null,
+                  capacityDeferred: null,
+                  operations: null,
+                  operator: null,
+                  policy: null,
+                }),
+              },
+            },
+          ],
+        });
       inspect?.(body);
       return new Response(
         JSON.stringify({
