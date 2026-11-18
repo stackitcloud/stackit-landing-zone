@@ -124,6 +124,8 @@ export function validateKnowledgeManifest(input: unknown) {
 }
 
 export const assistantKnowledgeSharedSources: readonly string[] = [
+  "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+  "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
   "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
   "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
   "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
@@ -166,6 +168,8 @@ export function buildAssistantKnowledgeTopics() {
             "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
             "landing-zone-configurator/app/packages/contracts/src/application-upgrades.ts",
             "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql",
+            "landing-zone-configurator/app/apps/api/db/098_managed_state_serialization.sql",
+            "docs/state-locking.md",
           ].includes(path))
       )
         throw new Error("Knowledge source outside approved code/documentation");

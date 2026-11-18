@@ -139,8 +139,8 @@
     {
       "id": "management-state",
       "file": "management-state.md",
-      "version": 2,
-      "checkedOn": "2026-10-21",
+      "version": 3,
+      "checkedOn": "2026-11-18",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "management"
@@ -162,7 +162,9 @@
         "landing-zone-configurator/docs/common-feature-model.md",
         "landing-zone-configurator/docs/deployment-credentials.md",
         "landing-zone-configurator/app/apps/api/src/deployments/preparations.ts",
-        "landing-zone-configurator/app/packages/domain/src/initial-plan.ts"
+        "landing-zone-configurator/app/packages/domain/src/initial-plan.ts",
+        "landing-zone-configurator/app/apps/api/db/098_managed_state_serialization.sql",
+        "docs/state-locking.md"
       ],
       "externalSources": [],
       "scenarios": [
@@ -472,14 +474,14 @@
         "src/modules/devops/variables.tf",
         "src/main.tf",
         "src/providers.tf",
-        "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/git-dialogue.ts",
-        "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/routes.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
         "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
-        "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx"
+        "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx",
+        "src/modules/landing-zone/8-git.tf",
+        "landing-zone-configurator/app/packages/domain/src/template-parameters.ts"
       ],
       "externalSources": [
         "https://docs.stackit.cloud/products/developer-platform/git/basics/plan-size-of-git-service/",
@@ -528,8 +530,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 8,
-      "checkedOn": "2026-11-06",
+      "version": 9,
+      "checkedOn": "2026-11-18",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"

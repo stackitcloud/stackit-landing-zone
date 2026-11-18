@@ -458,3 +458,75 @@ it("new preset drafts expose stage input while explicit legacy copies retain fix
     ),
   ).toBe(true);
 });
+
+it("keeps project Git absent from legacy templates", () => {
+  expect(resolveTemplateParameters(template()).settings).not.toHaveProperty(
+    "git",
+  );
+});
+
+it("resolves only approved project Git choices and source networks", () => {
+  const input = template();
+  input.settings.git = { enabled: false, flavor: "git-10", acl: [] };
+  input.parameterPolicy = {
+    schema_version: 1,
+    fields: {
+      "git.enabled": { source: "input", required: true },
+      "git.flavor": {
+        source: "input",
+        required: true,
+        choices: ["git-10", "git-100"],
+      },
+      "git.acl": {
+        source: "input",
+        required: true,
+        choices: ["203.0.113.0/24", "198.51.100.0/24"],
+      },
+    },
+  };
+  const result = resolveTemplateParameters(input, {
+    "git.enabled": true,
+    "git.flavor": "git-100",
+    "git.acl": ["203.0.113.0/24"],
+  });
+  expect(result.settings.git).toEqual({
+    enabled: true,
+    flavor: "git-100",
+    acl: ["203.0.113.0/24"],
+  });
+  expect(result.provenance["git.flavor"]?.source).toBe("input");
+  expect(
+    resolveTemplateParameters(input, { "git.enabled": false }).settings.git,
+  ).toEqual({ enabled: false, flavor: "git-10", acl: [] });
+  for (const extra of [
+    { "git.flavor": "git-1000" },
+    { "git.acl": [] },
+    { "git.acl": ["0.0.0.0/0"] },
+    { "git.acl": ["invalid"] },
+  ])
+    expect(() =>
+      resolveTemplateParameters(input, {
+        "git.enabled": true,
+        "git.flavor": "git-10",
+        "git.acl": ["203.0.113.0/24"],
+        ...extra,
+      }),
+    ).toThrow();
+});
+
+it("requires explicit access even for fixed project Git", () => {
+  const input = template();
+  input.settings.git = { enabled: true, flavor: "git-100", acl: [] };
+  expect(() => resolveTemplateParameters(input)).toThrow("Quellnetz");
+  input.settings.git = {
+    enabled: true,
+    flavor: "git-100",
+    acl: ["203.0.113.0/24"],
+  };
+  expect(resolveTemplateParameters(input).settings.git).toEqual(
+    input.settings.git,
+  );
+  expect(() =>
+    resolveTemplateParameters(input, { "git.flavor": "git-10" }),
+  ).toThrow("überschrieben");
+});

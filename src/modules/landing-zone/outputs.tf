@@ -89,3 +89,8 @@ output "project_access" {
     automation_role     = stackit_authorization_project_role_assignment.sa_owner.role
   }
 }
+
+output "git_instance_id" {
+  description = "Optional managed Git instance ID in the Application project; no credentials."
+  value       = try(stackit_git.this[0].instance_id, null)
+}

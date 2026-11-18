@@ -2704,3 +2704,60 @@ it("refuses policy adoption after an Apply has been prepared", async () => {
     }),
   ).rejects.toThrow("application_upgrade_withdrawal_blocked");
 });
+
+it("adds project Git through an immutable template upgrade and rejects altered access at admission", async () => {
+  const git = { enabled: true, flavor: "git-100", acl: ["203.0.113.0/24"] };
+  const f = await fixture({ targetSettings: { git } });
+  const selected = await request(f, (await edge(f)).id);
+  const job = await plan(f, selected.candidate);
+  expect(job.inputs.variables.application).toHaveProperty("git", git);
+  const before = (
+    await admin.query(
+      "SELECT resolved_settings FROM lzc.application_instances WHERE id=$1",
+      [f.instance],
+    )
+  ).rows[0];
+  expect(before.resolved_settings).not.toHaveProperty("git");
+  expect(job.inputs.stateKey).toBe(
+    `applications/${owner.tenantId}/${f.instance}/terraform.tfstate`,
+  );
+  await expect(
+    plan(f, selected.candidate, {
+      variables: {
+        ...job.inputs.variables,
+        application: {
+          ...job.inputs.variables.application,
+          git: { ...git, acl: ["0.0.0.0/0"] },
+        },
+      },
+    }),
+  ).rejects.toMatchObject({ code: "42501" });
+});
+
+it("does not release unresolved application State for drift or destroy just because credentials expired", async () => {
+  const f = await fixture();
+  const selected = await request(f, (await edge(f)).id);
+  const job = await plan(f, selected.candidate);
+  await imported(() =>
+    admin.query(
+      "INSERT INTO lzc.application_dispatches(job_id,tenant_id,instance_id,owner_user_id,approved_by,approval_session_id,status,finished_at) VALUES($1,$2,$3,$4,$5,$6,'reconciliation_required',now()-interval '1 hour')",
+      [
+        job.id,
+        owner.tenantId,
+        f.instance,
+        owner.userId,
+        engineer.userId,
+        engineer.id,
+      ],
+    ),
+  );
+  for (const purpose of ["standard", "drift", "destroy"]) {
+    const row = (
+      await admin.query(
+        "SELECT lzc_auth.application_execution_blocked($1,$2,$3,$4) AS blocked",
+        [randomUUID(), f.instance, owner.tenantId, purpose],
+      )
+    ).rows[0];
+    expect(row.blocked).toBe(true);
+  }
+});

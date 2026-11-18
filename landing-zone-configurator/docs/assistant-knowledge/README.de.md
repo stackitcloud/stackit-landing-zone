@@ -175,6 +175,10 @@ Qualifikation ist ausdrücklich kein neuer Live-Testnachweis.
 
 Editor-Services mit Policy prüfen eine Informationsklassifikation gegen die aktuelle Anfrage. Ausdrückliche Einrichtungswünsche behalten bei fehlenden Angaben ihren typisierten Rückfrageablauf. Die Prüfung erhält nur Komponente und aktuelle Nachricht und verlangt vor der Entwurfsvorbereitung ein exaktes aktuelles Nutzerzitat. Dieselbe Absichtsprüfung kann eine durch exakte Nutzerevidenz belegte Root-Planprüfung erkennen. Dieser bestätigte Workflow hat Vorrang vor dem erwähnten Service und wird nicht durch die spätere Komponententhemen-Klassifikation überschrieben. Andere Audit-Beratung prüft separat das aktuelle Thema. Bei bekannten Appliances ohne angeforderte HA ist der typisierte Vorschlag verpflichtend, sofern die technischen Voraussetzungen vorliegen; reine Beratungsrunden bleiben Rückfragen ohne Änderungen.
 
+### Geprüfte Architekturgrenzen
+
+Bei dokumentierten festen Grenzen und Ausführungsgarantien wählt das Modell eine geschlossene Faktenkennung und ein exaktes Zitat aus der aktuellen Nutzerfrage. Die Anwendung stellt die geprüfte deutsche/englische Antwort dar, ohne dass das Modell diese Grenze umformuliert. Die ersten Fakten behandeln Git-Instanzkapazität und -Topologie, Erreichbarkeit von Application-Git sowie S3-/Datenbankkoordination. Sie erlauben weder Entwurfsänderungen noch Ausführung und benötigen das passende ausgewählte Wissensthema. Andere Beratung und Konfigurationsvorschläge nutzen ihre bisherigen Abläufe. Erweiterungen benötigen Quellbindungen, beide Sprachen und positive/negative Faktentests.
+
 ### Qualifikation mit echtem Modell
 
 Aenderungen an Servicefakten, Prompts, Wissensauswahl oder
@@ -231,7 +235,7 @@ Ein allgemeiner Feldhinweis wie `ha` darf ihn nicht umgehen: Eine breite
 Einrichtungsfortsetzung mit HA behaelt die noch offenen Entscheidungen zu
 Verkehr, Kapazitaet und Unterbrechung bei. Eine ausdrueckliche gezielte native
 Aenderung bleibt auch nach einem frueheren breiten Einrichtungsdialog eine
-Feldaenderung und erzeugt keine fremden Einrichtungsfragen.
+Feldaenderung und erzeugt keine fremden Einrichtungsfragen. Bei angeforderter HA fuer eine vorhandene Appliance mit bekannten technischen Voraussetzungen muss die Antwort den typisierten HA-Vorschlag enthalten, auch wenn fachliche Rueckfragen offen sind. Antwortschema und Servervalidierung erzwingen denselben Mindestumfang pro ausgewaehltem Bereich; native IP-Defaults bleiben ungesetzt.
 Gibt es keine begrenzten Nutzerbeleg-Fragmente, erlauben Belegfelder nur null
 statt einer leeren Aufzaehlung.
 

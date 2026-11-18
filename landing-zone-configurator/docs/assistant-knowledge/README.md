@@ -148,6 +148,10 @@ qualification is explicitly not a fresh live-test result.
 
 Policy-backed Editor services verify an informational label against the current request. Explicit setup requests keep their typed follow-up flow when choices are missing. The verifier receives only component/current message and requires an exact current-user quote before draft preparation. The same purpose check can select an exact-evidence-backed root Plan review. That verified workflow takes precedence over the mentioned service and cannot be overwritten by the later component-subject classifier. Other Audit advice separately checks the current subject. Known existing appliances missing requested HA require the typed patch when technical prerequisites are available; consultation-only turns remain questions without changes.
 
+### Reviewed architecture boundaries
+
+For documented hard limits and execution guarantees, the model selects a closed fact identifier and an exact quote from the current user question. The application renders the reviewed English/German answer without letting the model rewrite that boundary. The initial facts cover Git instance capacity/topology, Application Git reachability and S3/database coordination. They authorize no draft change or execution and require the corresponding selected knowledge topic. Ordinary advice and configuration proposals keep their existing flows. Add source bindings, both locales and positive/negative factual tests when extending this registry.
+
 ### Real-model qualification
 
 Changes to service facts, prompts, knowledge selection or component contracts
@@ -193,7 +197,7 @@ dedicated setup-scope/evidence classifier. A general field hint such as `ha`
 must not bypass it: continuing broad setup with HA retains the remaining
 traffic, capacity and interruption decisions. An explicit narrow native update
 remains a field update, even after an earlier broad setup conversation, and does
-not add unrelated setup questions. If no bounded user-evidence fragments exist,
+not add unrelated setup questions. When HA is requested for an existing appliance and technical prerequisites are known, the response must include its typed HA patch even while business follow-ups remain open. The same minimum and per-area requirements are enforced in the response schema and server validation; existing native IP defaults remain omitted. If no bounded user-evidence fragments exist,
 evidence fields permit only null rather than an empty enumeration.
 
 Intent and evidence schema descriptions are also sent in the classifier's system

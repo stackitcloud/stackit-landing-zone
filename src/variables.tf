@@ -689,6 +689,11 @@ variable "landing_zones" {
       description = string
       permissions = list(string)
     })), [])
+    git = optional(object({
+      enabled = optional(bool, false)
+      flavor  = optional(string, "git-10")
+      acl     = optional(list(string), [])
+    }), {})
     observability = optional(object({
       enabled   = optional(bool, false)
       plan_name = optional(string, "Observability-Starter-EU01")

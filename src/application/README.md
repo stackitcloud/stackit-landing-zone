@@ -214,3 +214,4 @@ migration and completed Configurator dispatch. Mock tests are not cloud acceptan
 | ---- | ----------- |
 | <a name="output_application_resources"></a> [application\_resources](#output\_application\_resources) | Non-secret resource references; never publish service credentials or complete state. |
 <!-- END_TF_DOCS -->
+[State coordination](../../docs/state-locking.md).

@@ -134,3 +134,18 @@ variable "observability" {
   description = "Optional observability instance configuration in the landing zone project."
   default     = {}
 }
+
+variable "git" {
+  type = object({
+    enabled = optional(bool, false)
+    flavor  = optional(string, "git-10")
+    acl     = optional(list(string), [])
+  })
+  description = "Optional managed STACKIT Git instance in this project. Access uses public source-IP ACLs, not private SNA attachment. Enabled Git requires explicit source networks; an explicit /0 permits public access."
+  default     = {}
+
+  validation {
+    condition     = !var.git.enabled || (can(regex("^git-[0-9]+$", var.git.flavor)) && length(var.git.acl) > 0 && alltrue([for cidr in var.git.acl : can(cidrhost(cidr, 0))]))
+    error_message = "Enabled Git requires a valid Git flavor and a non-empty list of valid source CIDRs."
+  }
+}

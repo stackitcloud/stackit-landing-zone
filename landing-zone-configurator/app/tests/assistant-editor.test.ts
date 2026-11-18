@@ -4895,7 +4895,7 @@ it.each(["de", "en"] as const)(
           ],
           [{ path: "devops.git_flavor", text: "Choose." }],
         ),
-        replyLanguage: language,
+        replyLanguage: language === "en" ? "de" : "en",
         references: ["devops-git"],
       },
       (request) => {

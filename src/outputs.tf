@@ -178,6 +178,7 @@ output "landing_zone_projects" {
       secretsmanager_instance_id     = v.secretsmanager_instance_id
       observability_instance_id      = v.observability_instance_id
       observability_grafana_url      = v.observability_grafana_url
+      git_instance_id                = v.git_instance_id
       observability_metrics_push_url = v.observability_metrics_push_url
       landing_zone_type              = v.landing_zone_type
       connected_network_area_id      = v.connected_network_area_id == null ? "" : v.connected_network_area_id
@@ -190,6 +191,7 @@ output "landing_zone_projects" {
       secretsmanager_instance_id     = v.secretsmanager_instance_id
       observability_instance_id      = v.observability_instance_id
       observability_grafana_url      = v.observability_grafana_url
+      git_instance_id                = v.git_instance_id
       observability_metrics_push_url = v.observability_metrics_push_url
       landing_zone_type              = v.landing_zone_type
       connected_network_area_id      = v.connected_network_area_id == null ? "" : v.connected_network_area_id
@@ -202,6 +204,7 @@ output "landing_zone_projects" {
       secretsmanager_instance_id     = v.secretsmanager_instance_id
       observability_instance_id      = v.observability_instance_id
       observability_grafana_url      = v.observability_grafana_url
+      git_instance_id                = v.git_instance_id
       observability_metrics_push_url = v.observability_metrics_push_url
       landing_zone_type              = v.landing_zone_type
       connected_network_area_id      = v.connected_network_area_id == null ? "" : v.connected_network_area_id

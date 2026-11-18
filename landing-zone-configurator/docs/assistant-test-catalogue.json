@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "ed56bc8d72095f61e238adc6ecee0547778cce35f408ba26facc8539a709a1ac",
+  "knowledgeSha256": "a53c19f84f6fa9e145cb1667ce03f3723e4ad8563dfdfb16dc13855021706058",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "1906209cb90e547dcc90520a524a5d6766929bc1caa3e714abb0a1b454d964ad",
+    "scripts/assistant-scenarios.ts": "1e6309bd9d5dbfb11720263474762b49344e67d0c95632d60f93d30f2ece9b4d",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "fa91a4e831ad8dd3094a589e5e53696c03b8f24650517215e7ebf32a4d04b8eb",
+  "suiteSha256": "030ec1dbc6a7fdefac03cf639b00ea3675bcbd87be38345da41235c416ba1dc1",
   "topics": [
     {
       "id": "credential-foundations",
@@ -985,6 +985,19 @@
         }
       ],
       "cases": [
+        {
+          "id": "state-s3-coordination-advice",
+          "topic": "management-state",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "sourceGuidance": "state-coordination",
+          "message": "How is concurrent State access protected on STACKIT EU01 if conditional S3 writes are not enforced? Explain direct CLI and Configurator operation and whether native locking has an announced implementation date. Advice only; no execution or changes.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "editor-project-unique-buckets",
           "topic": "management-state",
@@ -5180,6 +5193,19 @@
       ],
       "cases": [
         {
+          "id": "git-company-wide-user-limit",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "sourceGuidance": "git-user-limit",
+          "message": "We expect 250 Git users. Explain whether a single Git100 instance can serve them and propose an architecture using this Accelerator. Advice only; do not change configuration.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
           "id": "editor-devops-setup-en",
           "message": "Please add a central git instance to the config",
           "topic": "devops-git",
@@ -6399,6 +6425,56 @@
           "catalogue": null
         },
         {
+          "path": "landing_zones[*].git",
+          "group": "projects",
+          "type": "object",
+          "optional": true,
+          "proposalPath": "landing_zones",
+          "responsibility": "user",
+          "mode": "propose-validated-draft",
+          "catalogue": null
+        },
+        {
+          "path": "landing_zones[*].git.acl",
+          "group": "projects",
+          "type": "list",
+          "optional": true,
+          "proposalPath": "landing_zones",
+          "responsibility": "user",
+          "mode": "propose-validated-draft",
+          "catalogue": null
+        },
+        {
+          "path": "landing_zones[*].git.acl[*]",
+          "group": "projects",
+          "type": "string",
+          "optional": false,
+          "proposalPath": "landing_zones",
+          "responsibility": "user",
+          "mode": "propose-validated-draft",
+          "catalogue": null
+        },
+        {
+          "path": "landing_zones[*].git.enabled",
+          "group": "projects",
+          "type": "bool",
+          "optional": true,
+          "proposalPath": "landing_zones",
+          "responsibility": "user",
+          "mode": "propose-validated-draft",
+          "catalogue": null
+        },
+        {
+          "path": "landing_zones[*].git.flavor",
+          "group": "projects",
+          "type": "string",
+          "optional": true,
+          "proposalPath": "landing_zones",
+          "responsibility": "user",
+          "mode": "propose-validated-draft",
+          "catalogue": "gitFlavors"
+        },
+        {
           "path": "landing_zones[*].network_area_key",
           "group": "projects",
           "type": "string",
@@ -6580,6 +6656,19 @@
         }
       ],
       "cases": [
+        {
+          "id": "application-project-git-advice",
+          "topic": "project-templates",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "sourceGuidance": "project-git",
+          "message": "Explain how an Application Landing Zone template can provide its own managed STACKIT Git instance. Which settings must its Platform Owner control, and does corporate SNA make Git privately reachable? Advice only; do not edit any project or template.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "application-access-profile-advice",
           "topic": "project-templates",

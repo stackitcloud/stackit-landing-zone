@@ -640,6 +640,7 @@ it("keeps native primary and HA IP defaults out of a metro-zone HA response sche
     .response_format.json_schema.schema;
   const properties =
     schema.properties.changes.items.properties.value.properties;
+  expect(schema.properties.changes.minItems).toBe(1);
   expect(properties).not.toHaveProperty("lan_ip");
   expect(properties).not.toHaveProperty("wan_ip");
   for (const field of ["backup_lan_ip", "backup_wan_ip", "lan_vip"])

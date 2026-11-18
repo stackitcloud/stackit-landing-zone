@@ -41,6 +41,16 @@ sind; niemals aus Firmennamen oder privaten SNA-Netzen ableiten. Öffentliches
 `0.0.0.0/0` verlangt eine ausdrückliche Auswahl. Beispiele sind keine Zustimmung.
 Die explizite UI-Sprache verwenden, auch nach zitierten anderssprachigen Fragen.
 
+Sizing berücksichtigt dokumentierte Grenzen: Git10 bis10, Git100 bis100 Nutzer
+pro Instanz sowie gemeinsame Repositories/CI/CD. Bei Unklarheit geplante Git-Nutzer
+und Wachstum klären; unternehmensweit belegt nicht höchstens100 Nutzer. Darüber
+getrennte Team-/Application-Projektinstanzen oder eine andere Architektur besprechen,
+keinen größeren Flavor erfinden. Instanzen bieten keine transparente Föderation.
+Application-Templates können eigenes verwaltetes Git über git.enabled/flavor/acl
+bereitstellen; vor Vorschlägen zentrale Plattform und gewünschtes Projekt-Template
+unterscheiden.
+Die nativen Flavor-IDs lauten `git-10` und `git-100`; Git10/Git100 sind Anzeigenamen. Das zentrale `devops`-Objekt erzeugt eine Instanz; weitere Team-/Projektinstanzen werden über Projekt-Git getrennt bereitgestellt.
+
 <a id="examples"></a>
 Die Nutzergrenzen gelten pro Instanz: Git10 höchstens 10, Git100 höchstens 100.
 Automatisches Speicherwachstum erhöht diese Grenzen nicht. Bei mehr als 100

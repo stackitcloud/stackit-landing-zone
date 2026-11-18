@@ -181,6 +181,7 @@ export type AssistantScenario = {
   answeredCatalogueChoice?: { path: string; value: string };
   requirementsQuestion?: string;
   expectedLanguage?: "de" | "en";
+  sourceGuidance?: "git-user-limit" | "project-git" | "state-coordination";
   dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
   applicationAccess?:
@@ -266,6 +267,33 @@ const firewallDeferredCapacity =
   "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen.";
 
 export const assistantScenarios: readonly AssistantScenario[] = [
+  {
+    id: "git-company-wide-user-limit",
+    topic: "devops-git",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    sourceGuidance: "git-user-limit",
+    message:
+      "We expect 250 Git users. Explain whether a single Git100 instance can serve them and propose an architecture using this Accelerator. Advice only; do not change configuration.",
+  },
+  {
+    id: "application-project-git-advice",
+    topic: "project-templates",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    sourceGuidance: "project-git",
+    message:
+      "Explain how an Application Landing Zone template can provide its own managed STACKIT Git instance. Which settings must its Platform Owner control, and does corporate SNA make Git privately reachable? Advice only; do not edit any project or template.",
+  },
+  {
+    id: "state-s3-coordination-advice",
+    topic: "management-state",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    sourceGuidance: "state-coordination",
+    message:
+      "How is concurrent State access protected on STACKIT EU01 if conditional S3 writes are not enforced? Explain direct CLI and Configurator operation and whether native locking has an announced implementation date. Advice only; no execution or changes.",
+  },
   {
     id: "dns-zone-role-advice",
     topic: "dns-zones",
@@ -2504,6 +2532,65 @@ export function validateAssistantScenario(
     )
       failures.push("catalogue_choice_not_grounded");
   }
+  if (scenario.sourceGuidance) {
+    const text =
+      dialogue.explanation +
+      " " +
+      dialogue.questions.map((q) => q.text).join(" ");
+    if (dialogue.changes.length) failures.push("advice_changed_configuration");
+    const required =
+      scenario.sourceGuidance === "git-user-limit"
+        ? [
+            /100/,
+            /(?:separate|multiple|project|team)/i,
+            /(?:limit|maximum|up to|exceed|cannot|not support)/i,
+          ]
+        : scenario.sourceGuidance === "project-git"
+          ? [
+              /git/i,
+              /(?:enabled|activat|opt.in|optional)/i,
+              /(?:flavor|plan|size)/i,
+              /(?:acl|source|allowlist)/i,
+              /(?:public|not private|does not.*private)/i,
+            ]
+          : [
+              /(?:postgres|database)/i,
+              /(?:CLI|single.writer|one.writer|organizational)/i,
+              /(?:conditional|lockfile)/i,
+              /(?:no .{0,45}(?:date|schedule|timeline)|not .{0,45}(?:scheduled|announced)|unscheduled)/i,
+            ];
+    if (required.some((fact) => !fact.test(text)))
+      failures.push("documented_service_boundary_missing");
+    if (
+      scenario.sourceGuidance === "git-user-limit" &&
+      /(?:Git100|single instance).{0,35}(?:supports|handles|allows) 250/i.test(
+        text,
+      )
+    )
+      failures.push("git_user_limit_exceeded");
+    if (
+      scenario.sourceGuidance === "git-user-limit" &&
+      /multiple central Git instances[\s\S]{0,160}(?:root devops|devops object)/i.test(
+        text,
+      )
+    )
+      failures.push("git_central_instance_cardinality_invented");
+  }
+  if (scenario.sourceGuidance === "project-git") {
+    const text = dialogue.explanation;
+    if (
+      /(?:flavor.{0,80}(?:must be|choosing|set to|=)[^\n]{0,40}["'`]Git(?:10|100)["'`]|`git\.flavor`[^\n]{0,35}`Git(?:10|100)`)/i.test(
+        text,
+      )
+    )
+      failures.push("git_display_label_used_as_flavor");
+    if (
+      /private (?:reachability|access) requires.{0,100}(?:dedicated|separate).{0,50}(?:Git instance|project)/i.test(
+        text,
+      )
+    )
+      failures.push("project_git_private_attachment_invented");
+  }
   if (scenario.expectedLanguage) {
     const text =
       dialogue.explanation +
@@ -2511,7 +2598,7 @@ export function validateAssistantScenario(
       dialogue.questions.map((question) => question.text).join(" ");
     if (
       scenario.expectedLanguage === "en" &&
-      /\b(?:Welche|Welchen|Noch nichts|Bitte beantworte|gespeichert|Vorschlag|Entwurf)\b/.test(
+      /\b(?:Welche|Welchen|Noch nichts|Bitte beantworte|gespeichert|Vorschlag|Entwurf|Gemäß|Benutzer|Instanz|Einstellungen|standardmäßig|Datenbank)\b/.test(
         text,
       )
     )

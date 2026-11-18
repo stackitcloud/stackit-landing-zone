@@ -112,6 +112,18 @@ export const recoveryCloudInventorySchema = z.strictObject({
     )
     .max(1000)
     .default([]),
+  gitComplete: z.boolean().default(false),
+  gitInstances: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1).max(256),
+        name: z.string().max(256),
+        flavor: z.string().min(1).max(256),
+        acl: z.array(z.union([z.cidrv4(), z.cidrv6()])).max(100),
+      }),
+    )
+    .max(1000)
+    .default([]),
   customRoles: z
     .array(
       z.strictObject({
@@ -193,6 +205,13 @@ const variables = z.object({
       .max(100)
       .optional(),
     secretsmanager_enabled: z.boolean().optional(),
+    git: z
+      .object({
+        enabled: z.boolean(),
+        flavor: z.string(),
+        acl: z.array(z.string()),
+      })
+      .optional(),
     observability: z
       .object({ enabled: z.boolean(), plan_name: z.string() })
       .optional(),
@@ -575,6 +594,25 @@ export function deriveApplicationRecoveryImports(input: {
       resourceId: `${projectId},${observability.id}`,
     });
   }
+  if (a.git?.enabled && !cloud.gitComplete)
+    throw new Error("cloud-inventory-incomplete");
+  unique(cloud.gitInstances, (git) => git.id);
+  const git = exactOne(cloud.gitInstances);
+  if (git) {
+    if (
+      !a.git?.enabled ||
+      git.name !== prefix.slice(0, 31).toLowerCase().replaceAll(" ", "-") ||
+      git.flavor !== a.git.flavor ||
+      JSON.stringify([...git.acl].sort()) !==
+        JSON.stringify([...a.git.acl].sort())
+    )
+      throw new Error("cloud-resource-ambiguous");
+    adopt({
+      address: "module.application.stackit_git.this[0]",
+      type: "stackit_git",
+      resourceId: `${projectId},${git.id}`,
+    });
+  }
   if (a.custom_roles?.length && !cloud.customRolesComplete)
     throw new Error("cloud-inventory-incomplete");
   unique(cloud.customRoles, (r) => r.id);
@@ -609,6 +647,7 @@ export function deriveApplicationRecoveryImports(input: {
       "stackit_objectstorage_credentials_group",
       "stackit_secretsmanager_instance",
       "stackit_observability_instance",
+      "stackit_git",
       "stackit_telemetrylink",
     ].indexOf(type);
   return imports.sort((a, b) => priority(a.type) - priority(b.type));

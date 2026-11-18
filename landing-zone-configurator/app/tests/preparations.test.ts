@@ -296,6 +296,15 @@ it("binds a preparation to the saved configuration, code revision, secret versio
   expect(upgraded.organization).toEqual(manifest.organization);
   expect(upgraded.tfvarsSha256).not.toBe(manifest.tfvarsSha256);
   expect(preparationTfvars(upgraded)).toContain(tenantId);
+  expect(
+    preparationTfvars({
+      ...upgraded,
+      accelerator: {
+        ...upgraded.accelerator,
+        commit: "6398834bf20a4f24ea81c1f7dd0627025b4a81ce",
+      },
+    }),
+  ).toBe(preparationTfvars(upgraded));
   expect(preparationTfvars(manifest)).toBe(snapshot.tfvars);
   expect(manifest.accelerator.commit).toBe(acceleratorCommit);
   expect(manifest.platformContractNamespace).toBeUndefined();

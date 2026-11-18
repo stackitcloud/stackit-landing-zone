@@ -446,3 +446,71 @@ test("corporate Observability does not require an ACL network relationship", asy
     "Eingeschaltet",
   );
 });
+
+test("project Git is opt-in, retains size/access and previews the separate managed service", async ({
+  page,
+}, testInfo) => {
+  let writes = 0;
+  page.on("request", (request) => {
+    if (
+      request.url().includes("/api/") &&
+      !["GET", "HEAD"].includes(request.method())
+    )
+      writes++;
+  });
+  await page.goto("/templates/standalone");
+  await page
+    .getByRole("button", { name: "Konfiguration erstellen", exact: true })
+    .click();
+  await openTemplateDrafts(page);
+  const template = page.locator("section.project-card").first();
+  await expect(
+    template.getByText("Git-Leistungsklasse · Fest vorgegeben", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await template
+    .getByText("Projekt-Git · Fest vorgegeben", { exact: true })
+    .click();
+  const enabled = template.getByLabel("Fester Wert: Projekt-Git", {
+    exact: true,
+  });
+  await expect(enabled).toHaveValue("false");
+  await enabled.selectOption("true");
+  await template
+    .getByText("Git-Leistungsklasse · Fest vorgegeben", { exact: true })
+    .click();
+  const flavor = template.getByLabel("Fester Wert: Git-Leistungsklasse", {
+    exact: true,
+  });
+  await flavor.fill("git-100");
+  await template
+    .getByText("Git-Zugriffsquellen · Fest vorgegeben", { exact: true })
+    .click();
+  const acl = template.getByLabel("Fester Wert: Git-Zugriffsquellen", {
+    exact: true,
+  });
+  await acl.fill("203.0.113.0/24");
+  await acl.blur();
+  await expect(template).toContainText("bis zu 100 Nutzer pro Instanz");
+  await template.getByText("Bestellung testen", { exact: true }).click();
+  await expect(template.locator(".parameter-preview")).toContainText("git-100");
+  await expect(template.locator(".parameter-preview")).toContainText(
+    "203.0.113.0/24",
+  );
+  await enabled.selectOption("false");
+  await expect(flavor).toHaveCount(0);
+  await enabled.selectOption("true");
+  await template
+    .getByText("Git-Leistungsklasse · Fest vorgegeben", { exact: true })
+    .click();
+  await expect(flavor).toHaveValue("git-100");
+  await template
+    .getByText("Git-Zugriffsquellen · Fest vorgegeben", { exact: true })
+    .click();
+  await expect(acl).toHaveValue("203.0.113.0/24");
+  expect(writes).toBe(0);
+  await template.screenshot({
+    path: testInfo.outputPath("project-git-template.png"),
+  });
+});

@@ -4,16 +4,16 @@
   "status": "concept-coverage-not-ai-qualification",
   "sourceDigests": {
     "packages/domain/src/features.ts": "14892476a20d32f3f6c873648ce98d54c3b73fb6ea50beaa10d2b08bdd3d3e7d",
-    "packages/domain/src/accelerator-inputs.json": "ecb8cfb96839c88aff198029d5371121be20f4f81a49a635fc4d4414c2467061",
+    "packages/domain/src/accelerator-inputs.json": "1ddd9ed15d0c02c7ba53e1aad4200faa4c78321cdeee861412e3b66d757a0c49",
     "packages/domain/src/catalogue.json": "0c9fc73cbfff4eb0ea2e9956165646e409fbff107cbf9ca1eb3b78a25dca2059",
     "packages/domain/src/project-templates.ts": "dd7e1abfb945376e37f54e5126d110a28a2673fe9f4a5e6bb202dfd116560ff4",
-    "packages/domain/src/template-parameters.ts": "ea2cb1e272f4f51da6bc68ea78895febe128b83f2b3022371a5aeeb666120e0a",
+    "packages/domain/src/template-parameters.ts": "7fcf163c6fbb766a0d40cdc7fa0a6832071b094365fca5eed586368b17dddfcb",
     "packages/domain/src/common-validation.ts": "fa801f254244eaf9124d7d406aeac95321f55b8d3c1750e9738a37f2d2d8291c",
     "packages/domain/src/observability-plans.ts": "04b12f2744c453ff44f7b386ba6d6b7052b53f66fc483d46e9d5af0f5f75bbe5",
     "packages/domain/src/common-document.ts": "64e00aa276f0186b9d4fa70ae88ec13703766a317f1317cbfd6bab790673cb40",
     "packages/domain/src/editor-document.ts": "b807d40f04b7739cab026d43a412ed9252d22cb9bd1034fbad858825308c1345",
-    "packages/domain/src/application-catalogue.ts": "c427a1af77ef556cd9ef6fc784f59bd7da4c1ea4ef425824ea1f49fff9c0ee04",
-    "packages/domain/src/application-plan.ts": "fdfa84c952c89939554b6699fb516c8a22b3e82c38c7d561254d18266b93ea0f"
+    "packages/domain/src/application-catalogue.ts": "854436aea42efbf44886ef02b6ee57322b87b03c8e7a9820e40185b11bde78a3",
+    "packages/domain/src/application-plan.ts": "08628eb4bf4bf7997628924cb0bf372c30ceacc9d8410d31d726e792969d8616"
   },
   "groups": [
     {
@@ -6694,6 +6694,76 @@
     },
     {
       "path": "landing_zones[*].env",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].git",
+      "group": "projects",
+      "sensitive": false,
+      "type": "object",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].git.acl",
+      "group": "projects",
+      "sensitive": false,
+      "type": "list",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].git.acl[*]",
+      "group": "projects",
+      "sensitive": false,
+      "type": "string",
+      "optional": false,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].git.enabled",
+      "group": "projects",
+      "sensitive": false,
+      "type": "bool",
+      "optional": true,
+      "commonEditor": "form",
+      "assistantMode": "analyze-question-propose-validated-diff",
+      "scenarios": [
+        "A10",
+        "A14"
+      ],
+      "qualification": "not-qualified"
+    },
+    {
+      "path": "landing_zones[*].git.flavor",
       "group": "projects",
       "sensitive": false,
       "type": "string",

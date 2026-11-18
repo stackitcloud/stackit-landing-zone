@@ -98,6 +98,7 @@ const managedTypes = new Set([
   "stackit_service_account_key",
   "stackit_secretsmanager_instance",
   "stackit_observability_instance",
+  "stackit_git",
 ]);
 const planSchema = z.object({
   format_version: z.literal("1.2"),
@@ -227,6 +228,7 @@ export function classifyApplicationUpgradePlan(
     )
       add("plan-project-change", path, "sensitive");
     else if (
+      resource.type === "stackit_git" ||
       resource.type === "stackit_observability_instance" ||
       resource.type === "stackit_secretsmanager_instance"
     )

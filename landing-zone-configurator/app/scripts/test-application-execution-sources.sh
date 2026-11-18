@@ -14,7 +14,7 @@ node --input-type=module -e 'import {writeFileSync} from "node:fs";const p=JSON.
 checked_revisions="$(node --input-type=module -e 'import {applicationExecutionRevisions} from "./packages/contracts/dist/index.js";console.log(applicationExecutionRevisions.join("\n"))')"
 [[ -n "$checked_revisions" ]] || { echo "No reviewed Application sources enumerated." >&2; exit 1; }
 # Explicit review guard; the packaging regression checks this against the registry.
-expected_sources=7
+expected_sources=8
 enumerated_sources=0
 seen_revisions=" "
 while IFS= read -r revision; do

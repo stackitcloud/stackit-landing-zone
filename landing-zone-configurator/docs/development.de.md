@@ -190,3 +190,5 @@ vor dem Reload nach und prüft danach das neue Plattform-Template samt
 Parameterrichtlinie.
 
 [Gemeinsame Assistant-Service-Beratung und Katalogauswahl](assistant-service-guidance.de.md).
+
+[Projekt-Git](application-git.de.md).

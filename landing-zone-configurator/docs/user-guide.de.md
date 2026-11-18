@@ -367,7 +367,9 @@ Nach Prüfung bestätigt der Application Owner ausdrücklich
 **Geprüfte State-Reparatur ausführen**, einschließlich des Lösens der geprüften
 verwaisten Sperre und eines neuen Plans. Ein separater, einmaliger Runner prüft
 den Vorschlag erneut, löst ausschließlich diese Sperre und veröffentlicht die
-Kopie über natives OpenTofu mit Sperre sowie Serial-/Lineage-Prüfung. Er führt
+Kopie über natives OpenTofu mit Serial-/Lineage-Prüfung unter der
+Datenbankreservierung des Configurators. Das S3-Lockfile ist ein zusätzliches
+Signal und stellt am geprüften Endpunkt keinen atomaren Ausschluss her. Er führt
 keinen Infrastruktur-Apply aus. Erst wenn der Dienst anschließend den entfernten
 State und die freie Sperre unabhängig bestätigt hat, ist ein **neuer Cloud-Plan
 derselben Bestellung** möglich. Prüfe diesen vor Apply. Der alte gespeicherte
@@ -490,3 +492,5 @@ Die Glocke im Kopfbereich öffnet den Posteingang. Unter **E-Mail-Benachrichtigu
 wählt jeder Benutzer Themen und Deutsch/Englisch selbst. Einladende können eine
 empfängergebundene Einladung per E-Mail senden. Ereignisse, Versandzustände und
 Zugriffsprüfungen stehen unter [Benachrichtigungen und E-Mail](notifications.de.md).
+
+[State-Koordination und externe Zugriffe](../../docs/state-locking.de.md).

@@ -233,3 +233,5 @@ sind keine Cloud-Abnahme.
 | ---- | ----------- |
 | <a name="output_application_resources"></a> [application\_resources](#output\_application\_resources) | Non-secret resource references; never publish service credentials or complete state. |
 <!-- END_TF_DOCS -->
+
+[State-Koordination](../../docs/state-locking.de.md).

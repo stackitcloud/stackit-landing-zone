@@ -58,6 +58,7 @@ module "application" {
   firewall_next_hop_ip   = try(local.target.corporate, false) ? try(local.target.firewall_next_hop_ip, null) : null
   ipv4_nameservers       = try(local.target.corporate, false) ? try(local.target.ipv4_nameservers, null) : null
   secretsmanager_enabled = var.application.secretsmanager_enabled
+  git                    = var.application.git
   observability          = var.application.observability
   labels                 = local.application_labels
 
@@ -75,5 +76,6 @@ output "application_resources" {
     project_network            = module.application.project_network
     secretsmanager_instance_id = module.application.secretsmanager_instance_id
     observability_instance_id  = module.application.observability_instance_id
+    git_instance_id            = module.application.git_instance_id
   }
 }

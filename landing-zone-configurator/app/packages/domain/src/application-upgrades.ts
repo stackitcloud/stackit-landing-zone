@@ -241,6 +241,7 @@ export function assessApplicationTemplateUpgrade(input: {
       "network_enabled",
       "secretsmanager_enabled",
       "observability.enabled",
+      "git.enabled",
     ])
       if (
         get(currentSettings, path) === true &&
@@ -280,7 +281,7 @@ export function assessApplicationTemplateUpgrade(input: {
         add("network-change", `settings.${key}`, "sensitive");
       else if (/key|credential|rotation/.test(key))
         add("key-change", `settings.${key}`, "sensitive");
-      else if (["observability", "secretsmanager_enabled"].includes(key))
+      else if (["observability", "secretsmanager_enabled", "git"].includes(key))
         add("service-change", `settings.${key}`, "sensitive");
       else add("unknown-setting-change", `settings.${key}`, "blocked");
     }

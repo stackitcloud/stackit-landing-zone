@@ -328,7 +328,11 @@ it.each([
   );
   expect(JSON.stringify(result)).not.toMatch(/DO-NOT-EMIT|secret@example/);
 });
-it.each(["stackit_observability_instance", "stackit_secretsmanager_instance"])(
+it.each([
+  "stackit_observability_instance",
+  "stackit_secretsmanager_instance",
+  "stackit_git",
+])(
   "classifies all non-destructive %s service changes conservatively",
   (type) => {
     for (const actions of [["create"], ["update"]]) {

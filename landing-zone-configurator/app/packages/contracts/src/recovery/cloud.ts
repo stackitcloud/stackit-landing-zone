@@ -23,6 +23,7 @@ type RecoveryCloudInput = {
   routing?: z.infer<typeof scopeSchema>;
   audit?: { projectId: string; routerId: string; instanceId: string };
   customRoles?: boolean;
+  git?: boolean;
   migrationOwners?: string[];
 };
 const text = z.string().min(1).max(256);
@@ -280,6 +281,7 @@ export class StackitRecoveryCloud {
           .strictObject({ projectId: uuid, routerId: uuid, instanceId: uuid })
           .optional(),
         customRoles: z.boolean().optional(),
+        git: z.boolean().optional(),
         migrationOwners: z.array(z.email()).max(100).optional(),
       })
       .parse(input);
@@ -428,6 +430,28 @@ export class StackitRecoveryCloud {
         message: z.string().max(2000),
       })
       .parse(rawObservability).instances;
+    const gitInstances = input.git
+      ? z
+          .strictObject({
+            instances: z
+              .array(
+                z.object({
+                  id: text,
+                  name: text,
+                  flavor: text,
+                  acl: z.array(z.union([z.cidrv4(), z.cidrv6()])).max(100),
+                  state: z.literal("Ready"),
+                }),
+              )
+              .max(999),
+          })
+          .parse(
+            await get(
+              `https://git.api.stackit.cloud/v1beta/projects/${projectId}/instances`,
+            ),
+          )
+          .instances.map(({ state: _state, ...instance }) => instance)
+      : [];
     const serviceAccounts = [];
     // Bounded metadata reads; never request private key payloads. STACKIT
     // authorizes this path with a literal @; %40 currently yields a false 403.
@@ -642,6 +666,8 @@ export class StackitRecoveryCloud {
           }
         : null,
       routingTables,
+      gitComplete: input.git === true,
+      gitInstances,
       secretsManagers: secrets.map((s) => ({ id: s.id, name: s.name })),
       observability: observability.map((i) => ({
         id: i.id,

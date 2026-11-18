@@ -8976,11 +8976,11 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             );
           }
         }
-        const maintenance = await freshPlan("Application maintenance");
+        const failedMaintenance = await freshPlan("Application maintenance");
         const failedApply = await delegatedApplications.startApply(
           owner,
-          maintenance.id,
-          { artifactSha256: maintenance.sha },
+          failedMaintenance.id,
+          { artifactSha256: failedMaintenance.sha },
         );
         const failedTicket = delegatedTicket;
         await delegatedApplications.runnerInput(failedTicket, ticketPackage);
@@ -8989,7 +8989,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             stage,
           });
         await expect(
-          delegatedApplications.startPlan(owner, maintenance.ordered.id, {
+          delegatedApplications.startPlan(owner, failedMaintenance.ordered.id, {
             idempotencyKey: randomUUID(),
             purpose: "destroy",
           }),
@@ -8999,7 +8999,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           errorCode: "apply_failed",
         });
         await expect(
-          delegatedApplications.startPlan(owner, maintenance.ordered.id, {
+          delegatedApplications.startPlan(owner, failedMaintenance.ordered.id, {
             idempotencyKey: randomUUID(),
             purpose: "drift",
           }),
@@ -9022,10 +9022,25 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           )
         ).rows;
         await expect(
-          delegatedApplications.startPlan(owner, maintenance.ordered.id, {
+          delegatedApplications.startPlan(owner, failedMaintenance.ordered.id, {
             idempotencyKey: randomUUID(),
           }),
         ).rejects.toMatchObject({ code: "40001" });
+        // Expiry is not proof that the previous writer stopped, for any purpose.
+        for (const purpose of ["drift", "destroy"] as const)
+          await expect(
+            delegatedApplications.startPlan(
+              owner,
+              failedMaintenance.ordered.id,
+              {
+                idempotencyKey: randomUUID(),
+                purpose,
+              },
+            ),
+          ).rejects.toMatchObject({ code: "40001" });
+        const maintenance = await freshPlan(
+          "Independent application maintenance",
+        );
         const originalPreview = await delegatedRunner.preview({
           bytes: Buffer.alloc(0),
           sha256: "a".repeat(64),

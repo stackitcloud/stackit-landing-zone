@@ -87,6 +87,7 @@ export const labels: Record<string, string> = {
   flavor: "Leistungsklasse",
   gateway: "Gateway",
   gateway_api: "Gateway-Unterstützung",
+  git: "Projekt-Git",
   git_flavor: "Git-Leistungsklasse",
   ha: "Hochverfügbarkeit",
   image: "Container-Abbild",

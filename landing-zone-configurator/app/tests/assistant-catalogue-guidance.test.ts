@@ -26,6 +26,8 @@ const bindings = [
   ["landing_zones[*].custom_roles[*].permissions[*]", "projectPermissions"],
   ["landing_zones[*].role_assignments[*].role", "projectRoles"],
   ["devops.git_flavor", "gitFlavors"],
+  ["git.flavor", "gitFlavors"],
+  ["landing_zones[*].git.flavor", "gitFlavors"],
   ["connectivity.vpn.plan_id", "vpnPlans"],
   [
     "platform_kubernetes[*].cluster.kubernetes_version_min",

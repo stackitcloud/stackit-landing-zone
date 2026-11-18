@@ -58,6 +58,14 @@ weiterhin verpflichtende Basisressourcen und andere aktivierte Eingaben.
 Backend-Eigentuemerschaft, Lebenszyklus, Aufbewahrung und
 Betriebsverantwortung erfragen, ohne State oder Passwoerter anzufordern.
 
+EU01-S3 erzwingt keine bedingten Schreibzugriffe: use_lockfile=true allein ist kein
+gegenseitiger Ausschluss (Issue262). Native Funktion angefragt, ohne Umsetzungstermin.
+Standalone-CLI/Pipelines benötigen organisatorischen Einzelzugriff pro State.
+Der Configurator nutzt atomare PostgreSQL-Ausführungs-/Dispatch-Sperren und ordnet
+jeden physischen S3-Pfad genau einem logischen State zu. Ticketablauf belegt keinen
+gestoppten Runner; bestätigte Bereinigung/Recovery-Klärung erforderlich. Externe
+Schreiber und unabhängige Datenbanken sind nicht abgedeckt.
+
 <a id="examples"></a>
 
 ## Beispiele

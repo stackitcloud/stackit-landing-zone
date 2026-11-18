@@ -80,6 +80,10 @@ const errors: Record<string, string> = {
     "Der aktuelle Accelerator-Stand ist für neue Vorbereitungen nicht freigegeben. Bitte die Runner-Konfiguration prüfen lassen.",
   platform_upgrade_state_unavailable:
     "Für den Accelerator-Wechsel ist der vorhandene S3-State oder ein ausdrücklich geprüfter, unterstützter Bootstrap-Checkpoint erforderlich. Prüfe den Checkpoint und offene Ausführungen; deine Konfiguration bleibt erhalten.",
+  state_backend_already_managed:
+    "Dieser S3-State-Pfad ist bereits einer anderen verwalteten Landing Zone zugeordnet. Wähle einen eigenen State-Pfad.",
+  state_backend_binding_invalid:
+    "Die State-Zuordnung ist ungültig. Prüfe das ausgewählte Backend.",
   state_locked:
     "Der Plattform-State ist durch eine laufende Ausführung gesperrt. Prüfe den Ausführungsstatus und warte auf deren Abschluss.",
   backend_not_found:

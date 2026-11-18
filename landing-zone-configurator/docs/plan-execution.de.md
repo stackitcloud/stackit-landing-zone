@@ -393,8 +393,7 @@ benötigen weiterhin einen geschützten Export. Der Runner übermittelt einen ge
 verschlüsselten Recovery-Nachweis und entfernt lokale Fehlerstates erst nach
 passender dauerhafter Empfangsbestätigung. Das garantiert keine automatische
 vollständige Wiederherstellung nach jedem harten Runner-Verlust; Abgleich und
-operative Recovery bleiben erforderlich. Ein echter Cloud-S3-Lock-Test wurde
-nicht durchgeführt. Kein Kunden-Apply wurde in dieser Umsetzung ausgeführt.
+operative Recovery bleiben erforderlich. Die unabhängige Prüfung in [Issue #262](https://github.com/stackitcloud/stackit-landing-zone/issues/262) zeigt, dass bedingte S3-Schreibzugriffe am geprüften EU01-Endpunkt keinen gegenseitigen Ausschluss erzwingen. Die Serialisierung verwalteter Ausführungen liegt deshalb in der Datenbank. Kein Kunden-Apply wurde in dieser Umsetzung ausgeführt.
 
 <a id="correcting-configuration-after-a-failed-bootstrap-apply"></a>
 
@@ -1037,3 +1036,5 @@ nicht wiederholt. Infrastruktur, entfernter State und State-Sperren werden nicht
 verändert. Ein laufender Runner, eine nicht verfügbare Beobachtung oder Hinweise
 auf eine begonnene Ausführung lassen den Job gesperrt. Ein bereits begonnener,
 unterbrochener Apply verwendet das bestehende Recovery-Verfahren.
+
+[State-Serialisierung in der Datenbank und S3-Locking-Grenzen](../../docs/state-locking.de.md).
