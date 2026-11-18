@@ -294,6 +294,7 @@ module "landing_zone" {
   custom_roles           = each.value.custom_roles
   observability          = each.value.observability
   secretsmanager_enabled = each.value.secretsmanager_enabled
+  git                    = each.value.git
   firewall_next_hop_ip   = each.value.corporate ? try(module.connectivity[0].firewall_next_hop_ip[each.value.network_area_key], null) : null
 }
 
@@ -319,6 +320,7 @@ module "landing_zone_eu01" {
   custom_roles           = each.value.custom_roles
   observability          = each.value.observability
   secretsmanager_enabled = each.value.secretsmanager_enabled
+  git                    = each.value.git
   firewall_next_hop_ip   = each.value.corporate ? try(module.connectivity_eu01[0].firewall_next_hop_ip[each.value.network_area_key], null) : null
 }
 
@@ -344,5 +346,6 @@ module "landing_zone_eu02" {
   custom_roles           = each.value.custom_roles
   observability          = each.value.observability
   secretsmanager_enabled = each.value.secretsmanager_enabled
+  git                    = each.value.git
   firewall_next_hop_ip   = each.value.corporate ? try(module.connectivity_eu02[0].firewall_next_hop_ip[each.value.network_area_key], null) : null
 }

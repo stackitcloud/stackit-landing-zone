@@ -475,3 +475,54 @@ run "application_legacy_contract_keeps_audit_disabled" {
     error_message = "Historical platform contracts must not silently create audit resources."
   }
 }
+
+run "project_git_disabled_by_default" {
+  command = plan
+  assert {
+    condition = module.application.git_instance_id == null
+    error_message = "Existing application templates must not create Git implicitly."
+  }
+}
+
+run "project_git_requires_explicit_access" {
+  command = plan
+  variables {
+    application = {
+      tenant_id = "11111111-2222-4333-8444-555555555555"
+      instance_id = "11111111-2222-4333-8444-555555555555"
+      platform_revision = "11111111-2222-4333-8444-555555555555"
+      template_id = "project-git"
+      template_version = 1
+      name = "Project Git"
+      owner_email = "owner@example.com"
+      target_key = "public"
+      secretsmanager_enabled = false
+      observability = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+      git = { enabled = true, flavor = "git-100", acl = [] }
+    }
+  }
+  expect_failures = [var.application]
+}
+
+run "project_git_enabled" {
+  command = apply
+  variables {
+    application = {
+      tenant_id = "11111111-2222-4333-8444-555555555555"
+      instance_id = "11111111-2222-4333-8444-555555555555"
+      platform_revision = "11111111-2222-4333-8444-555555555555"
+      template_id = "project-git"
+      template_version = 1
+      name = "Project Git"
+      owner_email = "owner@example.com"
+      target_key = "public"
+      secretsmanager_enabled = false
+      observability = { enabled = false, plan_name = "Observability-Starter-EU01", acl = [] }
+      git = { enabled = true, flavor = "git-100", acl = ["203.0.113.0/24"] }
+    }
+  }
+  assert {
+    condition = module.application.git_instance_id != null
+    error_message = "An explicitly enabled project Git must be provisioned and returned without credentials."
+  }
+}

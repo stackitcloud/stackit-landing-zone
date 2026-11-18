@@ -46,6 +46,7 @@ No modules.
 | [stackit_authorization_project_role_assignment.sa_owner](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_role_assignment) | resource |
 | [stackit_authorization_project_role_assignment.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/authorization_project_role_assignment) | resource |
 | [stackit_dns_zone.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/dns_zone) | resource |
+| [stackit_git.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/git) | resource |
 | [stackit_network.this](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/network) | resource |
 | [stackit_objectstorage_bucket.default](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/objectstorage_bucket) | resource |
 | [stackit_objectstorage_bucket.tfstate](https://registry.terraform.io/providers/stackitcloud/stackit/latest/docs/resources/objectstorage_bucket) | resource |
@@ -71,6 +72,7 @@ No modules.
 | <a name="input_custom_roles"></a> [custom\_roles](#input\_custom\_roles) | List of custom roles to create for the project. | <pre>list(object({<br/>    name        = string<br/>    description = string<br/>    permissions = list(string)<br/>  }))</pre> | n/a | yes |
 | <a name="input_dns_zone_name"></a> [dns\_zone\_name](#input\_dns\_zone\_name) | Full DNS zone domain name for this landing zone. Set to null to skip DNS zone creation. | `string` | `null` | no |
 | <a name="input_firewall_next_hop_ip"></a> [firewall\_next\_hop\_ip](#input\_firewall\_next\_hop\_ip) | IP address of the firewall next hop. | `string` | `null` | no |
+| <a name="input_git"></a> [git](#input\_git) | Optional managed STACKIT Git instance in this project. Access uses public source-IP ACLs, not private SNA attachment. Enabled Git requires explicit source networks; an explicit /0 permits public access. | <pre>object({<br/>    enabled = optional(bool, false)<br/>    flavor  = optional(string, "git-10")<br/>    acl     = optional(list(string), [])<br/>  })</pre> | `{}` | no |
 | <a name="input_ipv4_nameservers"></a> [ipv4\_nameservers](#input\_ipv4\_nameservers) | List of IPv4 nameservers for the network. Null takes the network area defaults on creation and leaves an existing network untouched. | `list(string)` | `null` | no |
 | <a name="input_labels"></a> [labels](#input\_labels) | Additional labels to apply to all resources. | `map(string)` | `{}` | no |
 | <a name="input_naming_pattern"></a> [naming\_pattern](#input\_naming\_pattern) | Naming prefix for all resources in this module, e.g. "myco-pltfm-hub-prod". | `string` | n/a | yes |
@@ -93,6 +95,7 @@ No modules.
 | <a name="output_connected_network_area_id"></a> [connected\_network\_area\_id](#output\_connected\_network\_area\_id) | The ID of the connected network area. |
 | <a name="output_dns_zone_dns_name"></a> [dns\_zone\_dns\_name](#output\_dns\_zone\_dns\_name) | The DNS name of the landing zone's child DNS zone. |
 | <a name="output_dns_zone_id"></a> [dns\_zone\_id](#output\_dns\_zone\_id) | The ID of the landing zone's child DNS zone. |
+| <a name="output_git_instance_id"></a> [git\_instance\_id](#output\_git\_instance\_id) | Optional managed Git instance ID in the Application project; no credentials. |
 | <a name="output_landing_zone_type"></a> [landing\_zone\_type](#output\_landing\_zone\_type) | The type of the landing zone, either 'corporate' or 'public'. |
 | <a name="output_observability_grafana_admin_password"></a> [observability\_grafana\_admin\_password](#output\_observability\_grafana\_admin\_password) | The Grafana admin password of the optional landing zone observability instance. |
 | <a name="output_observability_grafana_admin_user"></a> [observability\_grafana\_admin\_user](#output\_observability\_grafana\_admin\_user) | The Grafana admin username of the optional landing zone observability instance. |
