@@ -173,7 +173,7 @@ Transport- und Schutztests ergänzen diese Fälle; Feldinventar und Wissenszuste
 allein belegen keine Qualität natürlicher Dialoge. Eine übersprungene Release-
 Qualifikation ist ausdrücklich kein neuer Live-Testnachweis.
 
-Editor-Services mit Policy prüfen eine Informationsklassifikation gegen die aktuelle Anfrage. Ausdrückliche Einrichtungswünsche behalten bei fehlenden Angaben ihren typisierten Rückfrageablauf. Die Prüfung erhält nur Komponente und aktuelle Nachricht und verlangt vor der Entwurfsvorbereitung ein exaktes aktuelles Nutzerzitat. Audit-Beratung prüft separat das aktuelle Thema, damit Fragen zu Auswirkungen eines Root-Plans und zur Apply-Freigabe die Lifecycle-Anleitung erhalten. Bei bekannten Appliances ohne angeforderte HA ist der typisierte Vorschlag verpflichtend, sofern die technischen Voraussetzungen vorliegen; reine Beratungsrunden bleiben Rückfragen ohne Änderungen.
+Editor-Services mit Policy prüfen eine Informationsklassifikation gegen die aktuelle Anfrage. Ausdrückliche Einrichtungswünsche behalten bei fehlenden Angaben ihren typisierten Rückfrageablauf. Die Prüfung erhält nur Komponente und aktuelle Nachricht und verlangt vor der Entwurfsvorbereitung ein exaktes aktuelles Nutzerzitat. Dieselbe Absichtsprüfung kann eine durch exakte Nutzerevidenz belegte Root-Planprüfung erkennen. Dieser bestätigte Workflow hat Vorrang vor dem erwähnten Service und wird nicht durch die spätere Komponententhemen-Klassifikation überschrieben. Andere Audit-Beratung prüft separat das aktuelle Thema. Bei bekannten Appliances ohne angeforderte HA ist der typisierte Vorschlag verpflichtend, sofern die technischen Voraussetzungen vorliegen; reine Beratungsrunden bleiben Rückfragen ohne Änderungen.
 
 ### Qualifikation mit echtem Modell
 

@@ -1834,6 +1834,7 @@ export class AssistantModelServing {
       ...intentResult.data,
       ...(language ? { applicationAccessLanguage: language } : {}),
     };
+    let verifiedRootPlanReview = false;
     const componentRoots =
       context.topics
         .find((topic) => topic.id === classifiedIntent.topic)
@@ -1844,7 +1845,7 @@ export class AssistantModelServing {
       Object.hasOwn(assistantEditorPolicies, componentRoots[0]!)
     ) {
       const purposeSchema = z.strictObject({
-        purpose: z.enum(["information", "prepare-draft"]),
+        purpose: z.enum(["information", "prepare-draft", "plan-review"]),
         quote: z.string().min(1).max(1200).nullable(),
       });
       const checkedPurpose = purposeSchema.safeParse(
@@ -1853,7 +1854,7 @@ export class AssistantModelServing {
             {
               role: "system",
               content:
-                "Determine the purpose of the CURRENT USER message for this supported component. prepare-draft means the user explicitly asks to add, configure or prepare a reviewable configuration proposal. Missing size, access networks or other choices do NOT turn that request into an information question: the setup flow must ask for them. Preparing a local draft is neither saving nor cloud execution; 'do not deploy' does not defer a draft request. information means asking about fields, defaults, capabilities or architecture, or explicitly deferring proposal preparation. Earlier assistant messages or requests do not select the current purpose. Ambiguous intent stays information. For prepare-draft copy a nonempty exact current USER quote establishing the request; otherwise quote=null. Do not answer the question, invent settings, or perform any changes.",
+                "Determine the purpose of the CURRENT USER message for this supported component. prepare-draft means the user explicitly asks to add, configure or prepare a reviewable configuration proposal. Missing size, access networks or other choices do NOT turn that request into an information question: the setup flow must ask for them. Preparing a local draft is neither saving nor cloud execution; 'do not deploy' does not defer a draft request. plan-review means asking how to assess impacts, approve or acknowledge an already computed ROOT PLATFORM PLAN, what its approval is bound to, who decides destructive impacts, or whether an old Plan can be unblocked. This has priority over the service mentioned in the Plan (including audit migration or unchanged Application links); it is guidance, not execution or a new draft. information means general fields, capabilities, architecture, migration/routing instructions without concrete root Plan approval questions, or explicitly deferring draft preparation. Earlier assistant messages or requests do not select the current purpose. Ambiguous intent stays information. For prepare-draft or plan-review copy a nonempty exact current USER quote establishing that purpose; otherwise quote=null. Do not answer the question, invent settings, or perform any changes.",
             },
             {
               role: "user",
@@ -1872,9 +1873,23 @@ export class AssistantModelServing {
       if (!checkedPurpose.success)
         throw new AssistantInferenceError("intent_schema");
       const purpose = checkedPurpose.data;
-      if (purpose.purpose === "prepare-draft") {
-        if (!purpose.quote || !message.includes(purpose.quote))
-          throw new AssistantInferenceError("intent_evidence");
+      if (
+        purpose.purpose !== "information" &&
+        (!purpose.quote || !message.includes(purpose.quote))
+      )
+        throw new AssistantInferenceError("intent_evidence");
+      if (purpose.purpose === "plan-review") {
+        if (
+          !context.topics.some(
+            (topic) => topic.id === "configuration-lifecycle",
+          )
+        )
+          throw new AssistantInferenceError("invalid_scope");
+        classifiedIntent.topic = "configuration-lifecycle";
+        classifiedIntent.adviceTask = "platform-impact-review";
+        classifiedIntent.adviceTaskSource = "current";
+        verifiedRootPlanReview = true;
+      } else if (purpose.purpose === "prepare-draft") {
         classifiedIntent.mode = "draft";
         classifiedIntent.adviceTask = "other";
         classifiedIntent.adviceTaskSource = "none";
@@ -1884,6 +1899,7 @@ export class AssistantModelServing {
     }
     if (
       classifiedIntent.mode === "advice" &&
+      !verifiedRootPlanReview &&
       ((classifiedIntent.adviceTaskSource === "current" &&
         Object.hasOwn(
           assistantApplicationUpgradeAdvice,

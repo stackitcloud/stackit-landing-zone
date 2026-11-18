@@ -4260,3 +4260,59 @@ it("rejects malformed purpose decisions as inference errors", async () => {
     ),
   ).rejects.toMatchObject({ reason: "intent_schema" });
 });
+
+it.each(["devops-git", "observability", "audit-logs"])(
+  "keeps a verified root Plan decision ahead of the mentioned %s service",
+  async (topic) => {
+    const message =
+      "My computed root platform Plan removes old resources and updates shared services. How does the Platform Owner approve these destructive impacts and what is that confirmation bound to? Guidance only.";
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      if (body.response_format.json_schema.name === "conversation_intent")
+        return answer({
+          topic,
+          mode: "advice",
+          adviceTask: "field-overview",
+          requirements: [],
+        });
+      expect(body.response_format.json_schema.name).toBe(
+        "component_request_purpose",
+      );
+      return answer({ purpose: "plan-review", quote: message });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(selection(), {}, [], message);
+    expect(result.references).toEqual(["configuration-lifecycle"]);
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toEqual([]);
+    expect(request).toHaveBeenCalledTimes(2);
+  },
+);
+it("rejects fabricated root Plan review evidence", async () => {
+  const request = vi.fn<typeof fetch>(async (_url, init) =>
+    answer(
+      JSON.parse(String(init?.body)).response_format.json_schema.name ===
+        "conversation_intent"
+        ? {
+            topic: "audit-logs",
+            mode: "advice",
+            adviceTask: "field-overview",
+            requirements: [],
+          }
+        : {
+            purpose: "plan-review",
+            quote: "Approve a different private platform Plan.",
+          },
+    ),
+  );
+  await expect(
+    new AssistantModelServing(configuration, request).converse(
+      selection(),
+      {},
+      [],
+      "Which Audit fields exist?",
+    ),
+  ).rejects.toMatchObject({ reason: "intent_evidence" });
+});

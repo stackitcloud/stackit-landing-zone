@@ -146,7 +146,7 @@ Mocked request/guard tests complement these cases; field inventory and knowledge
 delivery coverage alone do not prove natural dialogue quality. Skipped release
 qualification is explicitly not a fresh live-test result.
 
-Policy-backed Editor services verify an informational label against the current request. Explicit setup requests keep their typed follow-up flow when choices are missing. The verifier receives only component/current message and requires an exact current-user quote before draft preparation. Audit advice separately checks the current subject so root Plan/Apply impact questions receive lifecycle guidance. Known existing appliances missing requested HA require the typed patch when technical prerequisites are available; consultation-only turns remain questions without changes.
+Policy-backed Editor services verify an informational label against the current request. Explicit setup requests keep their typed follow-up flow when choices are missing. The verifier receives only component/current message and requires an exact current-user quote before draft preparation. The same purpose check can select an exact-evidence-backed root Plan review. That verified workflow takes precedence over the mentioned service and cannot be overwritten by the later component-subject classifier. Other Audit advice separately checks the current subject. Known existing appliances missing requested HA require the typed patch when technical prerequisites are available; consultation-only turns remain questions without changes.
 
 ### Real-model qualification
 
