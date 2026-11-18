@@ -29,6 +29,12 @@ import type { Session } from "../auth/store.js";
 import type { PostgresCloudCatalogues } from "../credentials/catalogues.js";
 import { withTenant } from "../storage/database.js";
 import {
+  configuredCatalogueRegions,
+  enrichCatalogueQuestions,
+  type PresentedDialogue,
+  withoutCataloguePresentation,
+} from "./catalogue-guidance.js";
+import {
   applyAssistantChanges,
   assistantEmailListSchema,
   assistantFolderPatchSchema,
@@ -78,7 +84,7 @@ type Conversation = {
   knowledge_hash: string;
   expires_at: Date;
   messages: Message[];
-  proposal: Dialogue | null;
+  proposal: PresentedDialogue | null;
   proposal_baseline: Record<string, unknown> | null;
 };
 type Configuration = { id: string; revision: number; document: unknown };
@@ -444,9 +450,9 @@ export class AssistantConversations {
               source: "https://pim.api.stackit.cloud/v2",
               fetchedAt: pim?.fetchedAt ?? null,
               products: pim?.products ?? [],
-              skus: skus.slice(0, 100),
+              skus,
               totalSkus: skus.length,
-              truncated: skus.length > 100,
+              truncated: false,
             },
             products: Object.fromEntries(
               fields.map((field) => {
@@ -458,10 +464,7 @@ export class AssistantConversations {
                     options:
                       part?.status === "available"
                         ? part.options
-                            .slice(
-                              0,
-                              field === "projectPermissions" ? 2000 : 50,
-                            )
+                            .slice(0, 2000)
                             .map(({ value, label, capabilities }) => ({
                               value,
                               label,
@@ -469,9 +472,7 @@ export class AssistantConversations {
                             }))
                         : [],
                     totalOptions: part?.options.length ?? 0,
-                    truncated:
-                      (part?.options.length ?? 0) >
-                      (field === "projectPermissions" ? 2000 : 50),
+                    truncated: (part?.options.length ?? 0) > 2000,
                   },
                 ];
               }),
@@ -790,7 +791,11 @@ export class AssistantConversations {
           ? (identity.identity?.email ?? null)
           : null,
       };
-      const proposal = validateDialogue(
+      const catalogues = await this.productCatalogues(
+        session,
+        configuredCatalogueRegions(base.values),
+      );
+      const validatedProposal = validateDialogue(
         await this.model.converse(
           {
             engineRevision: knowledge.engineRevision,
@@ -806,9 +811,7 @@ export class AssistantConversations {
                 : entry.content,
           })),
           message,
-          await this.productCatalogues(session, [
-            base.values.region === "eu02" ? "eu02" : "eu01",
-          ]),
+          catalogues,
           base.context?.messages ?? [],
           stream,
         ),
@@ -819,6 +822,12 @@ export class AssistantConversations {
             ? identity.identity?.email
             : undefined,
         },
+      );
+      const proposal = enrichCatalogueQuestions(
+        validatedProposal,
+        base.values,
+        catalogues,
+        language ?? "de",
       );
       stream?.signal?.throwIfAborted();
       const catalogue = await this.loadObservabilityCatalogue(
@@ -1134,7 +1143,7 @@ export class AssistantConversations {
           "assistant_common_configuration_required",
         );
       const proposal = validateDialogue(
-        row.proposal,
+        withoutCataloguePresentation(row.proposal),
         buildAssistantKnowledge().rules.map((rule) => rule.id),
         {
           serviceAccountEmails: await preparedPlatformServiceAccountEmails(

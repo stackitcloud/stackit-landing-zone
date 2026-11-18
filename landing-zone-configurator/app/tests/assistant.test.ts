@@ -1411,7 +1411,9 @@ it("continues a firewall conversation semantically across follow-ups and honors 
       configuration,
       request,
     ).converse(selection(), {}, history, turn.message);
-    expect(result.explanation).toBe(turn.explanation);
+    expect(result.explanation).toBe(
+      `${turn.explanation}\n\nNoch nichts gespeichert.`,
+    );
     expect(result.questions).toEqual([
       { path: turn.path, text: turn.question },
     ]);
@@ -1865,7 +1867,7 @@ it("bounds dialogue changes to known public scalar inputs and rejects secret ass
       },
       ["configuration-contract"],
     ),
-  ).toThrow();
+  ).not.toThrow();
   expect(() =>
     validateDialogue(
       {
@@ -3043,6 +3045,7 @@ import {
 } from "../apps/api/src/assistant/knowledge.js";
 import { assistantKnowledgeTopics } from "../apps/api/src/assistant/knowledge-topics.generated.js";
 import {
+  assistantKnowledgeSharedSources,
   buildAssistantKnowledgeTopics,
   validateKnowledgeManifest,
   validateKnowledgeText,
@@ -3110,13 +3113,7 @@ it("bundles fresh structured service knowledge and selects mandatory dependencie
         // Shared transport/Editor sources are generated, not manifest input entries.
         sources: sources
           .map((entry) => entry.path)
-          .filter(
-            (path) =>
-              ![
-                "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
-                "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
-              ].includes(path),
-          ),
+          .filter((path) => !assistantKnowledgeSharedSources.includes(path)),
       }),
     ),
   };

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
+import { catalogueField } from "@lzc/contracts";
 import {
   applicationProjectPermissionNames,
   applicationServiceAccountKeyPermissions,
@@ -23,6 +24,7 @@ import {
   type MultiTemplatePermissionContext,
   multiTemplatePermissionHistoryText,
 } from "../apps/api/src/assistant/application-permission-dialogue.js";
+import { enrichCatalogueQuestions } from "../apps/api/src/assistant/catalogue-guidance.js";
 import {
   applyAssistantChanges,
   proposeAssistantAccess,
@@ -153,6 +155,7 @@ export type AssistantScenario = {
   fixture:
     | "baseline"
     | "git-saved-access"
+    | "service-catalogues"
     | "foundations"
     | "folder-naming"
     | "dns-owner"
@@ -173,6 +176,8 @@ export type AssistantScenario = {
   editorExpected?: { path: string; value: JsonValue };
   auditQuestionPaths?: readonly string[];
   setupQuestionPaths?: readonly string[];
+  catalogueQuestion?: { path: string; field: string };
+  answeredCatalogueChoice?: { path: string; value: string };
   expectedLanguage?: "de" | "en";
   dnsRole?: "roles" | "secondary" | "draft";
   templateExpected?: ("public" | "corporate")[];
@@ -715,6 +720,83 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     fixture: "baseline" as const,
     setupQuestionPaths: paths,
     expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
+  })),
+  {
+    id: "catalogue-kubernetes-machine-choice",
+    topic: "platform-kubernetes",
+    fixture: "service-catalogues",
+    expectedLanguage: "en",
+    message:
+      "Please configure a central Kubernetes cluster in eu01 with a default node pool. Before proposing any changes, ask me to choose from the available node machine sizes, using understandable labels. I have not selected a machine type yet.",
+    catalogueQuestion: {
+      path: "platform_kubernetes[*].cluster.node_pools[*].machine_type",
+      field: "machineTypes",
+    },
+  },
+  {
+    id: "catalogue-vpn-plan-choice",
+    topic: "vpn",
+    fixture: "service-catalogues",
+    expectedLanguage: "en",
+    message:
+      "Please configure a central VPN connection for our company. Before proposing any changes, ask me to choose a VPN plan from the available project offerings. I have not selected a plan yet; do not ask me to look up an internal plan ID.",
+    catalogueQuestion: { path: "connectivity.vpn.plan_id", field: "vpnPlans" },
+  },
+  {
+    id: "catalogue-observability-plan-choice",
+    topic: "observability",
+    fixture: "service-catalogues",
+    expectedLanguage: "en",
+    message:
+      "Please configure central Observability for our landing zone. Before proposing any changes, ask me to choose from the available Observability plans with useful choices. I have not selected a plan yet.",
+    catalogueQuestion: {
+      path: "observability.plan_name",
+      field: "observabilityPlans",
+    },
+  },
+  ...[
+    {
+      id: "catalogue-kubernetes-followup",
+      topic: "platform-kubernetes",
+      path: "platform_kubernetes[*].cluster.node_pools[*].machine_type",
+      value: "g1.4",
+      request:
+        "Please configure central Kubernetes in eu01 with a default node pool.",
+      question: "Which node machine size should we use?",
+      message:
+        "Use g1.4 for the node machines. Retain this choice and ask me for any other missing setup information. Do not propose configuration changes yet.",
+    },
+    {
+      id: "catalogue-vpn-followup",
+      topic: "vpn",
+      path: "connectivity.vpn.plan_id",
+      value: "vpn-medium",
+      request: "Please configure central VPN for our company.",
+      question: "Which offered VPN plan should we use?",
+      message:
+        "Use the offered vpn-medium plan. Retain this choice and ask me for the other missing VPN requirements. Do not propose configuration changes yet.",
+    },
+    {
+      id: "catalogue-observability-followup",
+      topic: "observability",
+      path: "observability.plan_name",
+      value: "Observability-Medium",
+      request: "Please configure central Observability for our landing zone.",
+      question: "Which offered Observability plan should we use?",
+      message:
+        "Use Observability-Medium. Retain this choice and ask me for the other missing monitoring requirements. Do not propose configuration changes yet.",
+    },
+  ].map((entry) => ({
+    id: entry.id,
+    topic: entry.topic,
+    fixture: "service-catalogues" as const,
+    expectedLanguage: "en" as const,
+    history: [
+      { role: "user" as const, content: entry.request },
+      { role: "assistant" as const, content: entry.question },
+    ],
+    message: entry.message,
+    answeredCatalogueChoice: { path: entry.path, value: entry.value },
   })),
   {
     id: "editor-devops-company-standard",
@@ -1616,6 +1698,34 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
           ]
         : [],
   };
+  if (scenario.fixture === "service-catalogues") {
+    catalogues.regions = [
+      {
+        region: "eu01",
+        fetchedAt: "2026-11-18T00:00:00Z",
+        products: Object.fromEntries(
+          ["machineTypes", "vpnPlans", "observabilityPlans"].map((field) => [
+            field,
+            {
+              status: "available" as const,
+              totalOptions: 3,
+              truncated: false,
+              options: (field === "machineTypes"
+                ? ["g1.2", "g1.4", "g1.8"]
+                : field === "vpnPlans"
+                  ? ["vpn-small", "vpn-medium", "vpn-large"]
+                  : [
+                      "Observability-Small",
+                      "Observability-Medium",
+                      "Observability-Large",
+                    ]
+              ).map((value) => ({ value, label: value })),
+            },
+          ]),
+        ),
+      },
+    ];
+  }
   if (
     scenario.applicationAccess?.startsWith("both-kubernetes-mixed-") ||
     scenario.applicationAccess === "both-kubernetes-followup"
@@ -2185,6 +2295,55 @@ export function validateAssistantScenario(
       failures.push("platform_template_proposal_not_applicable");
     }
     return { dialogue, failures };
+  }
+  if (scenario.answeredCatalogueChoice) {
+    if (
+      dialogue.changes.length ||
+      dialogue.questions.some(
+        (question) => question.path === scenario.answeredCatalogueChoice!.path,
+      ) ||
+      !dialogue.explanation.includes(scenario.answeredCatalogueChoice.value)
+    )
+      failures.push("answered_service_choice_lost_or_repeated");
+  }
+  if (scenario.catalogueQuestion) {
+    if (
+      /\b\d+(?:[.,]\d+)?\s*(?:v?CPU|GB|GiB|MB|MiB|Mbit|Gbit)\b/i.test(
+        dialogue.explanation +
+          dialogue.questions
+            .map(
+              (question) => question.text + (question.options ?? []).join(" "),
+            )
+            .join(" "),
+      )
+    )
+      failures.push("unprovided_catalogue_performance_claim");
+    const presented = enrichCatalogueQuestions(
+      dialogue,
+      fixture.values,
+      fixture.catalogues,
+      scenario.expectedLanguage ?? "de",
+    );
+    const question = presented.questions.find(
+      (question) => question.path === scenario.catalogueQuestion!.path,
+    );
+    if (
+      dialogue.changes.length ||
+      !question?.catalogue ||
+      question.catalogue.status !== "available" ||
+      question.catalogue.options.length !== 3
+    )
+      failures.push("catalogue_choice_not_presented_without_changes");
+    if (
+      question &&
+      question.catalogue?.options.some(
+        (option) =>
+          !fixture.catalogues.regions[0]?.products[
+            scenario.catalogueQuestion!.field
+          ]?.options.some((known) => known.value === option.value),
+      )
+    )
+      failures.push("catalogue_choice_not_grounded");
   }
   if (scenario.expectedLanguage) {
     const text =
@@ -2967,9 +3126,11 @@ export function buildAssistantScenarioInventory() {
       .digest("hex"),
     topics: knowledge.topics.map((topic) => ({
       id: topic.id,
-      fields: knowledge.fields.filter((field) =>
-        (topic.fieldPaths as readonly string[]).includes(field.path),
-      ),
+      fields: knowledge.fields
+        .filter((field) =>
+          (topic.fieldPaths as readonly string[]).includes(field.path),
+        )
+        .map((field) => ({ ...field, catalogue: catalogueField(field.path) })),
       cases: assistantScenarios
         .filter((scenario) => scenario.topic === topic.id)
         .map((scenario) => ({

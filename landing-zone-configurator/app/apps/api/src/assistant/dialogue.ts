@@ -1,3 +1,4 @@
+import { catalogueField } from "@lzc/contracts";
 import {
   assessCommonConfiguration,
   type CommonConfiguration,
@@ -292,7 +293,8 @@ export function assistantQuestionFields() {
       !field.sensitive &&
       field.commonEditor !== "not-effective" &&
       !/^firewall_(?:admin_|api_|bootstrap$)/.test(field.path) &&
-      !/(?:^|[._])id$|_id$/.test(field.path),
+      (!/(?:^|[._])id$|_id$/.test(field.path) ||
+        catalogueField(field.path) !== null),
   );
 }
 

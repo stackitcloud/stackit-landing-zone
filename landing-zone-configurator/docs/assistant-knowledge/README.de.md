@@ -1,6 +1,13 @@
 <a id="assistant-service-knowledge"></a>
 
 # Assistant-Servicewissen
+Der [gemeinsame Vertrag zur Service-Beratung](../assistant-service-guidance.de.md)
+gilt für alle Themen. Editor und Assistant teilen dieselbe Feld-Katalog-Zuordnung;
+Auswahlfragen nutzen serverseitig erzeugte Projekt-/Regionsoptionen,
+Beschreibungen und zugeordnete PIM-Merkmale. Auswahloberfläche, Entwurfshinweise
+und geprüfte englische Feldübersichten sind gemeinsames Verhalten. Neue Services
+erweitern Zuordnung/Adapter und geprüfte Fakten statt einer weiteren eigenen
+Rückfragenoberfläche.
 
 [English](README.md) | [Deutsch](README.de.md)
 
@@ -350,7 +357,6 @@ anschließend nicht übernommen werden kann. Ein qualifizierter Release erforder
 weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
 quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
 Übernahmebedingungen bleiben unverändert.
-
 
 
 

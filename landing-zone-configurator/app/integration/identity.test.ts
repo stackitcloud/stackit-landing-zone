@@ -971,14 +971,14 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     expect(catalogues.automatic).toHaveBeenCalledTimes(2);
     expect(catalogues.automatic).toHaveBeenCalledWith(alice, "eu01");
     expect(contexts[0]?.regions[0]?.products.vpnPlans).toMatchObject({
-      truncated: true,
+      truncated: false,
       totalOptions: 55,
       options: expect.arrayContaining([
         { value: "opaque-0", label: "Current plan 1-0" },
       ]),
     });
     expect(contexts[0]?.regions[0]?.products.vpnPlans?.options).toHaveLength(
-      50,
+      55,
     );
     expect(contexts[1]?.regions[0]?.products.vpnPlans?.options[0]?.label).toBe(
       "Current plan 2-0",
@@ -1990,6 +1990,79 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     ).toEqual(["remote@example.test", "added@example.test"]);
     expect((await configurations.get(alice, stored.id))?.draft).toEqual(remote);
     await configurations.remove(alice, stored.id, 2);
+  });
+
+  it("persists catalogue presentation without treating it as consent or bypassing proposal validation", async () => {
+    const configurations = new Configurations(pool);
+    const original = createEditorConfiguration("standalone", randomUUID());
+    const stored = await configurations.create(alice, original);
+    const empty = { status: "unavailable" as const, options: [] };
+    const automatic = vi.fn(
+      async (
+        _session: Session,
+        region: "eu01" | "eu02",
+      ): Promise<CloudCatalogue> => ({
+        region,
+        projectId: "00000000-0000-4000-8000-000000000055",
+        fetchedAt: new Date().toISOString(),
+        gitFlavors: {
+          status: "available",
+          options: [{ value: "git-100", label: "Git100" }],
+        },
+        vpnPlans: empty,
+        kubernetesVersions: empty,
+        machineTypes: empty,
+        availabilityZones: empty,
+        volumeTypes: empty,
+      }),
+    );
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
+        explanation: "Review only. Nothing saved.",
+        questions: [{ path: "devops.git_flavor", text: "Which Git plan?" }],
+        changes: [
+          { path: "company_name", value: "Reviewed catalogue company" },
+        ],
+        references: ["configuration-contract"],
+      })),
+    };
+    const assistant = new AssistantConversations(pool, model, { automatic });
+    const result = await assistant.send(
+      alice,
+      stored.id,
+      1,
+      "Prepare a company name proposal and show Git options",
+      undefined,
+      undefined,
+      "en",
+    );
+    expect(result.proposal?.questions[0]?.catalogue).toMatchObject({
+      source: "project-catalogue",
+      region: "eu01",
+      options: [{ value: "git-100", label: "Git100" }],
+    });
+    expect(
+      (await assistant.get(alice, stored.id))?.proposal?.questions[0]
+        ?.catalogue,
+    ).toEqual(result.proposal?.questions[0]?.catalogue);
+    await expect(assistant.get(bob, stored.id)).rejects.toMatchObject({
+      status: 404,
+    });
+    expect((await configurations.get(alice, stored.id))?.revision).toBe(1);
+    const accepted = await assistant.accept(
+      alice,
+      stored.id,
+      result.revision,
+      1,
+      ["company_name"],
+    );
+    expect(compileCommonConfiguration(accepted.draft).company_name).toBe(
+      "Reviewed catalogue company",
+    );
+    expect(compileCommonConfiguration(accepted.draft).devops).toEqual(
+      compileCommonConfiguration(original).devops,
+    );
+    await configurations.remove(alice, stored.id, accepted.revision);
   });
 
   it("accepts nested firewall HA fields transactionally and rejects incomplete dependencies without saving", async () => {

@@ -2,6 +2,13 @@
 
 [English](README.md) | [Deutsch](README.de.md)
 
+The [shared service guidance contract](../assistant-service-guidance.md) applies
+to every topic. Editor and Assistant share one field-to-catalogue registry;
+selection questions use server-authored project/region options, descriptions and
+matched PIM facts. UI selectors, draft notices and reviewed English field
+overviews are shared behavior. New services extend the registry/adapter and
+reviewed facts, rather than introducing another service-specific question UI.
+
 English is the canonical machine-ingested topic language. German topic companions
 are human reading versions only; the manifest does not ingest them. Use the
 catalogue below to switch languages without changing curated prompt sources.
@@ -283,7 +290,6 @@ this mode for inspection, but its artifact cannot subsequently be promoted.
 A qualified release still requires a fresh **release_mode=qualified** run with
 the complete source-bound live qualification. The default **qualified** path
 and its promotion requirements are unchanged.
-
 
 ## Complete Topic Catalogue
 

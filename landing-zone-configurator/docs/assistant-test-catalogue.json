@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "f68132e00f349065708abbe824d5c775f3010ca229a700a8789bd8bbcf830a39",
+  "knowledgeSha256": "a81576414d18f197e63323f87396cab1a62246586ec5b925e1af313c898b032e",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "d0b2ba1bfbe04c0554a6e30f3000063d9900bfef2e920ed7e5ae79f55c8d7900",
+    "scripts/assistant-scenarios.ts": "6335e3246bdc8b99fb4a12502a38781eea660b6fd2ccd40bac167e20b9a889a3",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "9cba088ee288b02aa2560b614c35e99ef59d1c9778a1d47e9cfbfe68fda270e8",
+  "suiteSha256": "c057cd0ba8a21b271840d744c929528f1c9ddfe364a138c868c6dc7bc7a61f6d",
   "topics": [
     {
       "id": "credential-foundations",
@@ -19,7 +19,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "vpn_pre_shared_keys",
@@ -28,7 +29,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "vpn_pre_shared_keys[*]",
@@ -37,7 +39,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "vpn_pre_shared_keys[*].tunnel1",
@@ -46,7 +49,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "vpn_pre_shared_keys[*].tunnel2",
@@ -55,7 +59,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_admin_password",
@@ -64,7 +69,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_bootstrap_password",
@@ -73,7 +79,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_api_credentials",
@@ -82,7 +89,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_api_credentials.api_key",
@@ -91,7 +99,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_api_credentials.api_secret",
@@ -100,7 +109,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -127,7 +137,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.naming_pattern",
@@ -136,7 +147,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area",
@@ -145,7 +157,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area.default_nameservers",
@@ -154,7 +167,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area.default_nameservers[*]",
@@ -163,7 +177,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area.default_prefix_length",
@@ -172,7 +187,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area.max_prefix_length",
@@ -181,7 +197,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area.min_prefix_length",
@@ -190,7 +207,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area.ranges",
@@ -199,7 +217,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area.ranges[*]",
@@ -208,7 +227,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_area.transfer_network",
@@ -217,7 +237,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_area",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas",
@@ -226,7 +247,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*]",
@@ -235,7 +257,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].default_nameservers",
@@ -244,7 +267,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].default_nameservers[*]",
@@ -253,7 +277,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].default_prefix_length",
@@ -262,7 +287,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].max_prefix_length",
@@ -271,7 +297,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].min_prefix_length",
@@ -280,7 +307,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].name",
@@ -289,7 +317,8 @@
           "optional": true,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].ranges",
@@ -298,7 +327,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].ranges[*]",
@@ -307,7 +337,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.network_areas[*].transfer_network",
@@ -316,7 +347,8 @@
           "optional": false,
           "proposalPath": "connectivity.network_areas",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions",
@@ -325,7 +357,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*]",
@@ -334,7 +367,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].naming_pattern",
@@ -343,7 +377,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas",
@@ -352,7 +387,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*]",
@@ -361,7 +397,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].default_nameservers",
@@ -370,7 +407,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].default_nameservers[*]",
@@ -379,7 +417,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].default_prefix_length",
@@ -388,7 +427,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].max_prefix_length",
@@ -397,7 +437,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].min_prefix_length",
@@ -406,7 +447,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].name",
@@ -415,7 +457,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].ranges",
@@ -424,7 +467,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].ranges[*]",
@@ -433,7 +477,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].network_areas[*].transfer_network",
@@ -442,7 +487,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -499,7 +545,8 @@
           "optional": false,
           "proposalPath": "owner_email",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "company_name",
@@ -508,7 +555,8 @@
           "optional": false,
           "proposalPath": "company_name",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "company_code",
@@ -517,7 +565,8 @@
           "optional": false,
           "proposalPath": "company_code",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "organization_id",
@@ -526,7 +575,8 @@
           "optional": false,
           "proposalPath": "organization_id",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "region",
@@ -535,7 +585,8 @@
           "optional": true,
           "proposalPath": "region",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_contract_namespace",
@@ -544,7 +595,8 @@
           "optional": true,
           "proposalPath": "platform_contract_namespace",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "labels",
@@ -553,7 +605,8 @@
           "optional": true,
           "proposalPath": "labels",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "labels[*]",
@@ -562,7 +615,8 @@
           "optional": false,
           "proposalPath": "labels",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -650,7 +704,8 @@
           "optional": true,
           "proposalPath": "rm_folder_parent_id",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "organization_owners",
@@ -659,7 +714,8 @@
           "optional": true,
           "proposalPath": "organization_owners",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "organization_owners[*]",
@@ -668,7 +724,8 @@
           "optional": false,
           "proposalPath": "organization_owners",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "organization_auditors",
@@ -677,7 +734,8 @@
           "optional": true,
           "proposalPath": "organization_auditors",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "organization_auditors[*]",
@@ -686,7 +744,8 @@
           "optional": false,
           "proposalPath": "organization_auditors",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "rm_folders",
@@ -695,7 +754,8 @@
           "optional": true,
           "proposalPath": "rm_folders",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "rm_folders[*]",
@@ -704,7 +764,8 @@
           "optional": false,
           "proposalPath": "rm_folders",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "rm_folders[*].description",
@@ -713,7 +774,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "explain-rejection"
+          "mode": "explain-rejection",
+          "catalogue": null
         },
         {
           "path": "rm_folders[*].name",
@@ -722,7 +784,8 @@
           "optional": false,
           "proposalPath": "rm_folders",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "rm_folders[*].owner_emails",
@@ -731,7 +794,8 @@
           "optional": false,
           "proposalPath": "rm_folders",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "rm_folders[*].owner_emails[*]",
@@ -740,7 +804,8 @@
           "optional": false,
           "proposalPath": "rm_folders",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "rm_folders[*].reader_emails",
@@ -749,7 +814,8 @@
           "optional": false,
           "proposalPath": "rm_folders",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "rm_folders[*].reader_emails[*]",
@@ -758,7 +824,8 @@
           "optional": false,
           "proposalPath": "rm_folders",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -913,7 +980,8 @@
           "optional": true,
           "proposalPath": "bucket_naming",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -955,7 +1023,8 @@
           "optional": true,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "observability.acl",
@@ -964,7 +1033,8 @@
           "optional": true,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "observability.acl[*]",
@@ -973,7 +1043,8 @@
           "optional": false,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "observability.logs_retention_days",
@@ -982,7 +1053,8 @@
           "optional": true,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "observability.metrics_retention_days",
@@ -991,7 +1063,8 @@
           "optional": true,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "observability.metrics_retention_days_1h_downsampling",
@@ -1000,7 +1073,8 @@
           "optional": true,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "observability.metrics_retention_days_5m_downsampling",
@@ -1009,7 +1083,8 @@
           "optional": true,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "observability.plan_name",
@@ -1018,7 +1093,8 @@
           "optional": true,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "observabilityPlans"
         },
         {
           "path": "observability.traces_retention_days",
@@ -1027,7 +1103,8 @@
           "optional": true,
           "proposalPath": "observability",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -1062,6 +1139,52 @@
           ]
         },
         {
+          "id": "catalogue-observability-plan-choice",
+          "topic": "observability",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "message": "Please configure central Observability for our landing zone. Before proposing any changes, ask me to choose from the available Observability plans with useful choices. I have not selected a plan yet.",
+          "catalogueQuestion": {
+            "path": "observability.plan_name",
+            "field": "observabilityPlans"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "catalogue-observability-followup",
+          "topic": "observability",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please configure central Observability for our landing zone."
+            },
+            {
+              "role": "assistant",
+              "content": "Which offered Observability plan should we use?"
+            }
+          ],
+          "message": "Use Observability-Medium. Retain this choice and ask me for the other missing monitoring requirements. Do not propose configuration changes yet.",
+          "answeredCatalogueChoice": {
+            "path": "observability.plan_name",
+            "value": "Observability-Medium"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
           "id": "observability-advice",
           "topic": "observability",
           "message": "Welche Einstellungen und Voraussetzungen gelten fuer die zentrale Observability und ihre Nutzung durch Projekte? Nur beraten, keinen Vorschlag erstellen.",
@@ -1084,7 +1207,8 @@
           "optional": true,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.acl",
@@ -1093,7 +1217,8 @@
           "optional": true,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.acl[*]",
@@ -1102,7 +1227,8 @@
           "optional": false,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.link_scopes",
@@ -1111,7 +1237,8 @@
           "optional": true,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.link_scopes[*]",
@@ -1120,7 +1247,8 @@
           "optional": false,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.link_scopes[*].resource_id",
@@ -1129,7 +1257,8 @@
           "optional": false,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.link_scopes[*].resource_type",
@@ -1138,7 +1267,8 @@
           "optional": false,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.managed_resources",
@@ -1147,7 +1277,8 @@
           "optional": true,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.retention_days",
@@ -1156,7 +1287,8 @@
           "optional": true,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.router_egress_cidrs",
@@ -1165,7 +1297,8 @@
           "optional": true,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.router_egress_cidrs[*]",
@@ -1174,7 +1307,8 @@
           "optional": false,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "audit_logs.s3_object_lock",
@@ -1183,7 +1317,8 @@
           "optional": true,
           "proposalPath": "audit_logs",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -1519,7 +1654,8 @@
           "optional": true,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "federated_identity_providers[*]",
@@ -1528,7 +1664,8 @@
           "optional": false,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "federated_identity_providers[*].assertions",
@@ -1537,7 +1674,8 @@
           "optional": false,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "federated_identity_providers[*].assertions[*]",
@@ -1546,7 +1684,8 @@
           "optional": false,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "federated_identity_providers[*].assertions[*].item",
@@ -1555,7 +1694,8 @@
           "optional": false,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "federated_identity_providers[*].assertions[*].operator",
@@ -1564,7 +1704,8 @@
           "optional": false,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "federated_identity_providers[*].assertions[*].value",
@@ -1573,7 +1714,8 @@
           "optional": false,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "federated_identity_providers[*].issuer",
@@ -1582,7 +1724,8 @@
           "optional": false,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "federated_identity_providers[*].name",
@@ -1591,7 +1734,8 @@
           "optional": false,
           "proposalPath": "federated_identity_providers",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -1645,7 +1789,8 @@
           "optional": true,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*]",
@@ -1654,7 +1799,8 @@
           "optional": false,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].acl",
@@ -1663,7 +1809,8 @@
           "optional": true,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].contact_email",
@@ -1672,7 +1819,8 @@
           "optional": true,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].default_ttl",
@@ -1681,7 +1829,8 @@
           "optional": true,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].description",
@@ -1690,7 +1839,8 @@
           "optional": true,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].dns_name",
@@ -1699,7 +1849,8 @@
           "optional": false,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].name",
@@ -1708,7 +1859,8 @@
           "optional": true,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].network_area_key",
@@ -1717,7 +1869,8 @@
           "optional": true,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].region",
@@ -1726,7 +1879,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.dns_zones[*].type",
@@ -1735,7 +1889,8 @@
           "optional": true,
           "proposalPath": "connectivity.dns_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones",
@@ -1744,7 +1899,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*]",
@@ -1753,7 +1909,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].acl",
@@ -1762,7 +1919,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].contact_email",
@@ -1771,7 +1929,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].default_ttl",
@@ -1780,7 +1939,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].description",
@@ -1789,7 +1949,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].dns_name",
@@ -1798,7 +1959,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].name",
@@ -1807,7 +1969,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].network_area_key",
@@ -1816,7 +1979,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].region",
@@ -1825,7 +1989,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].dns_zones[*].type",
@@ -1834,7 +1999,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -1980,7 +2146,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.flavor",
@@ -1989,7 +2156,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionMachineTypes"
         },
         {
           "path": "connectivity.firewall.ha",
@@ -1998,7 +2166,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.ha.backup_lan_ip",
@@ -2007,7 +2176,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.ha.backup_name",
@@ -2016,7 +2186,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.ha.backup_wan_ip",
@@ -2025,7 +2196,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.ha.backup_zone",
@@ -2034,7 +2206,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionAvailabilityZones"
         },
         {
           "path": "connectivity.firewall.ha.lan_vip",
@@ -2043,7 +2216,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.ha.vhid",
@@ -2052,7 +2226,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.lan_ip",
@@ -2061,7 +2236,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.lan_network_range",
@@ -2070,7 +2246,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.name",
@@ -2079,7 +2256,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.volume_performance_class",
@@ -2088,7 +2266,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.volume_size",
@@ -2097,7 +2276,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.wan_ip",
@@ -2106,7 +2286,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.wan_network_range",
@@ -2115,7 +2296,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewall.zone",
@@ -2124,7 +2306,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewall",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionAvailabilityZones"
         },
         {
           "path": "connectivity.firewalls",
@@ -2133,7 +2316,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*]",
@@ -2142,7 +2326,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].flavor",
@@ -2151,7 +2336,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionMachineTypes"
         },
         {
           "path": "connectivity.firewalls[*].ha",
@@ -2160,7 +2346,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].ha.backup_lan_ip",
@@ -2169,7 +2356,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].ha.backup_name",
@@ -2178,7 +2366,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].ha.backup_wan_ip",
@@ -2187,7 +2376,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].ha.backup_zone",
@@ -2196,7 +2386,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionAvailabilityZones"
         },
         {
           "path": "connectivity.firewalls[*].ha.lan_vip",
@@ -2205,7 +2396,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].ha.vhid",
@@ -2214,7 +2406,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].lan_ip",
@@ -2223,7 +2416,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].lan_network_range",
@@ -2232,7 +2426,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].name",
@@ -2241,7 +2436,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].volume_performance_class",
@@ -2250,7 +2446,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].volume_size",
@@ -2259,7 +2456,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].wan_ip",
@@ -2268,7 +2466,8 @@
           "optional": true,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].wan_network_range",
@@ -2277,7 +2476,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.firewalls[*].zone",
@@ -2286,7 +2486,8 @@
           "optional": false,
           "proposalPath": "connectivity.firewalls",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionAvailabilityZones"
         },
         {
           "path": "connectivity_regions[*].firewalls",
@@ -2295,7 +2496,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*]",
@@ -2304,7 +2506,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].flavor",
@@ -2313,7 +2516,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionMachineTypes"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha",
@@ -2322,7 +2526,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.backup_lan_ip",
@@ -2331,7 +2536,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.backup_name",
@@ -2340,7 +2546,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.backup_wan_ip",
@@ -2349,7 +2556,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.backup_zone",
@@ -2358,7 +2566,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionAvailabilityZones"
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.lan_vip",
@@ -2367,7 +2576,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].ha.vhid",
@@ -2376,7 +2586,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].lan_ip",
@@ -2385,7 +2596,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].lan_network_range",
@@ -2394,7 +2606,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].name",
@@ -2403,7 +2616,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].volume_performance_class",
@@ -2412,7 +2626,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].volume_size",
@@ -2421,7 +2636,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].wan_ip",
@@ -2430,7 +2646,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].wan_network_range",
@@ -2439,7 +2656,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].firewalls[*].zone",
@@ -2448,7 +2666,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionAvailabilityZones"
         }
       ],
       "cases": [
@@ -2784,7 +3003,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.availability_zones",
@@ -2793,7 +3013,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.availability_zones.tunnel1",
@@ -2802,7 +3023,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.availability_zones.tunnel2",
@@ -2811,7 +3033,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections",
@@ -2820,7 +3043,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*]",
@@ -2829,7 +3053,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].display_name",
@@ -2838,7 +3063,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].enabled",
@@ -2847,7 +3073,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].local_subnets",
@@ -2856,7 +3083,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].local_subnets[*]",
@@ -2865,7 +3093,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].remote_subnets",
@@ -2874,7 +3103,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].remote_subnets[*]",
@@ -2883,7 +3113,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].static_routes",
@@ -2892,7 +3123,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].static_routes[*]",
@@ -2901,7 +3133,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1",
@@ -2910,7 +3143,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.peering",
@@ -2919,7 +3153,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.peering.local_address",
@@ -2928,7 +3163,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.peering.remote_address",
@@ -2937,7 +3173,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1",
@@ -2946,7 +3183,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.dh_groups",
@@ -2955,7 +3193,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.dh_groups[*]",
@@ -2964,7 +3203,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.encryption_algorithms",
@@ -2973,7 +3213,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.encryption_algorithms[*]",
@@ -2982,7 +3223,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.integrity_algorithms",
@@ -2991,7 +3233,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.integrity_algorithms[*]",
@@ -3000,7 +3243,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase1.rekey_time",
@@ -3009,7 +3253,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2",
@@ -3018,7 +3263,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.dh_groups",
@@ -3027,7 +3273,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.dh_groups[*]",
@@ -3036,7 +3283,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.dpd_action",
@@ -3045,7 +3293,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.encryption_algorithms",
@@ -3054,7 +3303,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.encryption_algorithms[*]",
@@ -3063,7 +3313,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.integrity_algorithms",
@@ -3072,7 +3323,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.integrity_algorithms[*]",
@@ -3081,7 +3333,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.rekey_time",
@@ -3090,7 +3343,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.phase2.start_action",
@@ -3099,7 +3353,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel1.remote_address",
@@ -3108,7 +3363,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2",
@@ -3117,7 +3373,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.peering",
@@ -3126,7 +3383,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.peering.local_address",
@@ -3135,7 +3393,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.peering.remote_address",
@@ -3144,7 +3403,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1",
@@ -3153,7 +3413,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.dh_groups",
@@ -3162,7 +3423,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.dh_groups[*]",
@@ -3171,7 +3433,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.encryption_algorithms",
@@ -3180,7 +3443,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.encryption_algorithms[*]",
@@ -3189,7 +3453,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.integrity_algorithms",
@@ -3198,7 +3463,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.integrity_algorithms[*]",
@@ -3207,7 +3473,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase1.rekey_time",
@@ -3216,7 +3483,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2",
@@ -3225,7 +3493,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.dh_groups",
@@ -3234,7 +3503,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.dh_groups[*]",
@@ -3243,7 +3513,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.dpd_action",
@@ -3252,7 +3523,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.encryption_algorithms",
@@ -3261,7 +3533,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.encryption_algorithms[*]",
@@ -3270,7 +3543,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.integrity_algorithms",
@@ -3279,7 +3553,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.integrity_algorithms[*]",
@@ -3288,7 +3563,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.rekey_time",
@@ -3297,7 +3573,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.phase2.start_action",
@@ -3306,7 +3583,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.connections[*].tunnel2.remote_address",
@@ -3315,7 +3593,8 @@
           "optional": false,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.display_name",
@@ -3324,7 +3603,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity.vpn.plan_id",
@@ -3333,7 +3613,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "vpnPlans"
         },
         {
           "path": "connectivity.vpn.routing_type",
@@ -3342,7 +3623,8 @@
           "optional": true,
           "proposalPath": "connectivity",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn",
@@ -3351,7 +3633,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.availability_zones",
@@ -3360,7 +3643,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.availability_zones.tunnel1",
@@ -3369,7 +3653,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.availability_zones.tunnel2",
@@ -3378,7 +3663,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections",
@@ -3387,7 +3673,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*]",
@@ -3396,7 +3683,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].display_name",
@@ -3405,7 +3693,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].enabled",
@@ -3414,7 +3703,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].local_subnets",
@@ -3423,7 +3713,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].local_subnets[*]",
@@ -3432,7 +3723,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].remote_subnets",
@@ -3441,7 +3733,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].remote_subnets[*]",
@@ -3450,7 +3743,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].static_routes",
@@ -3459,7 +3753,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].static_routes[*]",
@@ -3468,7 +3763,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1",
@@ -3477,7 +3773,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering",
@@ -3486,7 +3783,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering.local_address",
@@ -3495,7 +3793,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.peering.remote_address",
@@ -3504,7 +3803,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1",
@@ -3513,7 +3813,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.dh_groups",
@@ -3522,7 +3823,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.dh_groups[*]",
@@ -3531,7 +3833,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.encryption_algorithms",
@@ -3540,7 +3843,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.encryption_algorithms[*]",
@@ -3549,7 +3853,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.integrity_algorithms",
@@ -3558,7 +3863,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.integrity_algorithms[*]",
@@ -3567,7 +3873,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase1.rekey_time",
@@ -3576,7 +3883,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2",
@@ -3585,7 +3893,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dh_groups",
@@ -3594,7 +3903,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dh_groups[*]",
@@ -3603,7 +3913,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.dpd_action",
@@ -3612,7 +3923,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.encryption_algorithms",
@@ -3621,7 +3933,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.encryption_algorithms[*]",
@@ -3630,7 +3943,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.integrity_algorithms",
@@ -3639,7 +3953,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.integrity_algorithms[*]",
@@ -3648,7 +3963,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.rekey_time",
@@ -3657,7 +3973,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.phase2.start_action",
@@ -3666,7 +3983,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel1.remote_address",
@@ -3675,7 +3993,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2",
@@ -3684,7 +4003,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering",
@@ -3693,7 +4013,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering.local_address",
@@ -3702,7 +4023,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.peering.remote_address",
@@ -3711,7 +4033,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1",
@@ -3720,7 +4043,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.dh_groups",
@@ -3729,7 +4053,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.dh_groups[*]",
@@ -3738,7 +4063,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.encryption_algorithms",
@@ -3747,7 +4073,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.encryption_algorithms[*]",
@@ -3756,7 +4083,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.integrity_algorithms",
@@ -3765,7 +4093,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.integrity_algorithms[*]",
@@ -3774,7 +4103,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase1.rekey_time",
@@ -3783,7 +4113,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2",
@@ -3792,7 +4123,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dh_groups",
@@ -3801,7 +4133,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dh_groups[*]",
@@ -3810,7 +4143,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.dpd_action",
@@ -3819,7 +4153,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.encryption_algorithms",
@@ -3828,7 +4163,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.encryption_algorithms[*]",
@@ -3837,7 +4173,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.integrity_algorithms",
@@ -3846,7 +4183,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.integrity_algorithms[*]",
@@ -3855,7 +4193,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.rekey_time",
@@ -3864,7 +4203,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.phase2.start_action",
@@ -3873,7 +4213,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.connections[*].tunnel2.remote_address",
@@ -3882,7 +4223,8 @@
           "optional": false,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.display_name",
@@ -3891,7 +4233,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "connectivity_regions[*].vpn.plan_id",
@@ -3900,7 +4243,8 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "vpnPlans"
         },
         {
           "path": "connectivity_regions[*].vpn.routing_type",
@@ -3909,10 +4253,57 @@
           "optional": true,
           "proposalPath": "connectivity_regions",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
+        {
+          "id": "catalogue-vpn-plan-choice",
+          "topic": "vpn",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "message": "Please configure a central VPN connection for our company. Before proposing any changes, ask me to choose a VPN plan from the available project offerings. I have not selected a plan yet; do not ask me to look up an internal plan ID.",
+          "catalogueQuestion": {
+            "path": "connectivity.vpn.plan_id",
+            "field": "vpnPlans"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "catalogue-vpn-followup",
+          "topic": "vpn",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please configure central VPN for our company."
+            },
+            {
+              "role": "assistant",
+              "content": "Which offered VPN plan should we use?"
+            }
+          ],
+          "message": "Use the offered vpn-medium plan. Retain this choice and ask me for the other missing VPN requirements. Do not propose configuration changes yet.",
+          "answeredCatalogueChoice": {
+            "path": "connectivity.vpn.plan_id",
+            "value": "vpn-medium"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
         {
           "id": "vpn-advice",
           "topic": "vpn",
@@ -3953,7 +4344,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases",
@@ -3962,7 +4354,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases[*]",
@@ -3971,7 +4364,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases[*].content",
@@ -3980,7 +4374,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases[*].content[*]",
@@ -3989,7 +4384,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases[*].description",
@@ -3998,7 +4394,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases[*].enabled",
@@ -4007,7 +4404,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases[*].stats",
@@ -4016,7 +4414,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases[*].type",
@@ -4025,7 +4424,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.aliases[*].update_freq",
@@ -4034,7 +4434,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.endpoint",
@@ -4043,7 +4444,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.insecure",
@@ -4052,7 +4454,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat",
@@ -4061,7 +4464,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*]",
@@ -4070,7 +4474,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].description",
@@ -4079,7 +4484,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].destination_net",
@@ -4088,7 +4494,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].disable_nat",
@@ -4097,7 +4504,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].enabled",
@@ -4106,7 +4514,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].interface",
@@ -4115,7 +4524,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].ip_protocol",
@@ -4124,7 +4534,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].log",
@@ -4133,7 +4544,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].protocol",
@@ -4142,7 +4554,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].sequence",
@@ -4151,7 +4564,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].source_net",
@@ -4160,7 +4574,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.outbound_nat[*].target_ip",
@@ -4169,7 +4584,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards",
@@ -4178,7 +4594,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*]",
@@ -4187,7 +4604,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].description",
@@ -4196,7 +4614,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].destination_net",
@@ -4205,7 +4624,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].destination_port",
@@ -4214,7 +4634,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].enabled",
@@ -4223,7 +4644,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].interfaces",
@@ -4232,7 +4654,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].interfaces[*]",
@@ -4241,7 +4664,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].ip_protocol",
@@ -4250,7 +4674,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].log",
@@ -4259,7 +4684,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].nat_reflection",
@@ -4268,7 +4694,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].protocol",
@@ -4277,7 +4704,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].sequence",
@@ -4286,7 +4714,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].source_net",
@@ -4295,7 +4724,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].target_ip",
@@ -4304,7 +4734,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.port_forwards[*].target_port",
@@ -4313,7 +4744,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.routes",
@@ -4322,7 +4754,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.routes[*]",
@@ -4331,7 +4764,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.routes[*].description",
@@ -4340,7 +4774,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.routes[*].enabled",
@@ -4349,7 +4784,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.routes[*].gateway",
@@ -4358,7 +4794,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.routes[*].network",
@@ -4367,7 +4804,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules",
@@ -4376,7 +4814,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*]",
@@ -4385,7 +4824,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].action",
@@ -4394,7 +4834,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].description",
@@ -4403,7 +4844,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].destination_invert",
@@ -4412,7 +4854,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].destination_net",
@@ -4421,7 +4864,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].destination_port",
@@ -4430,7 +4874,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].direction",
@@ -4439,7 +4884,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].enabled",
@@ -4448,7 +4894,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].interfaces",
@@ -4457,7 +4904,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].interfaces[*]",
@@ -4466,7 +4914,8 @@
           "optional": false,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].ip_protocol",
@@ -4475,7 +4924,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].log",
@@ -4484,7 +4934,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].protocol",
@@ -4493,7 +4944,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].quick",
@@ -4502,7 +4954,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].sequence",
@@ -4511,7 +4964,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].source_invert",
@@ -4520,7 +4974,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].source_net",
@@ -4529,7 +4984,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_config.rules[*].source_port",
@@ -4538,7 +4994,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "user",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -4589,7 +5046,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_bootstrap_username",
@@ -4598,7 +5056,8 @@
           "optional": true,
           "proposalPath": "firewall_bootstrap_username",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "firewall_bootstrap",
@@ -4607,7 +5066,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         },
         {
           "path": "firewall_api_secret_version",
@@ -4616,7 +5076,8 @@
           "optional": true,
           "proposalPath": null,
           "responsibility": "operator",
-          "mode": "requirements-only"
+          "mode": "requirements-only",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -4643,7 +5104,8 @@
           "optional": true,
           "proposalPath": "devops",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "devops.allowed_network_ranges",
@@ -4652,7 +5114,8 @@
           "optional": true,
           "proposalPath": "devops",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "devops.allowed_network_ranges[*]",
@@ -4661,7 +5124,8 @@
           "optional": false,
           "proposalPath": "devops",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "devops.git_flavor",
@@ -4670,7 +5134,8 @@
           "optional": true,
           "proposalPath": "devops",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "gitFlavors"
         }
       ],
       "cases": [
@@ -4903,7 +5368,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*]",
@@ -4912,7 +5378,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster",
@@ -4921,7 +5388,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.kubernetes_version_min",
@@ -4930,7 +5398,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "kubernetesVersions"
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance",
@@ -4939,7 +5408,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance.enable_kubernetes_version_updates",
@@ -4948,7 +5418,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance.enable_machine_image_version_updates",
@@ -4957,7 +5428,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance.end",
@@ -4966,7 +5438,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.maintenance.start",
@@ -4975,7 +5448,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.name",
@@ -4984,7 +5458,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools",
@@ -4993,7 +5468,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*]",
@@ -5002,7 +5478,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].allow_system_components",
@@ -5011,7 +5488,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].availability_zones",
@@ -5020,7 +5498,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].availability_zones[*]",
@@ -5029,7 +5508,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "availabilityZones"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].labels",
@@ -5038,7 +5518,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].labels[*]",
@@ -5047,7 +5528,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].machine_type",
@@ -5056,7 +5538,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "machineTypes"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].maximum",
@@ -5065,7 +5548,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].minimum",
@@ -5074,7 +5558,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].name",
@@ -5083,7 +5568,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].os_name",
@@ -5092,7 +5578,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "machineImages"
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].volume_size",
@@ -5101,7 +5588,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].cluster.node_pools[*].volume_type",
@@ -5110,7 +5598,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "volumeTypes"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion",
@@ -5119,7 +5608,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.assign_public_ip",
@@ -5128,7 +5618,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.availability_zone",
@@ -5137,7 +5628,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionAvailabilityZones"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.boot_volume_size",
@@ -5146,7 +5638,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.enabled",
@@ -5155,7 +5648,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.image_id",
@@ -5164,7 +5658,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionImages"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.install_kubectl",
@@ -5173,7 +5668,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.machine_type",
@@ -5182,7 +5678,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "bastionMachineTypes"
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.name",
@@ -5191,7 +5688,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.ssh_allowed_cidrs",
@@ -5200,7 +5698,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.ssh_allowed_cidrs[*]",
@@ -5209,7 +5708,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.ssh_public_key",
@@ -5218,7 +5718,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].debug_bastion.ssh_public_key_path",
@@ -5227,7 +5728,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].dns",
@@ -5236,7 +5738,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].dns.create_zones",
@@ -5245,7 +5748,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].dns.enabled",
@@ -5254,7 +5758,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].dns.gateway_api",
@@ -5263,7 +5768,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].dns.zones",
@@ -5272,7 +5778,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].dns.zones[*]",
@@ -5281,7 +5788,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes",
@@ -5290,7 +5798,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.enabled",
@@ -5299,7 +5808,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.kms_key_name",
@@ -5308,7 +5818,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.kms_key_version",
@@ -5317,7 +5828,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.kms_keyring_name",
@@ -5326,7 +5838,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].encrypted_volumes.storage_class_name",
@@ -5335,7 +5848,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].network",
@@ -5344,7 +5858,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].network.firewall_next_hop_ip",
@@ -5353,7 +5868,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].network.network_area_key",
@@ -5362,7 +5878,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].network.sna_enabled",
@@ -5371,7 +5888,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].network.sna_network_area_id",
@@ -5380,7 +5898,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].network.sna_network_prefix_length",
@@ -5389,7 +5908,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].observability",
@@ -5398,7 +5918,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].observability.acl",
@@ -5407,7 +5928,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].observability.acl[*]",
@@ -5416,7 +5938,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].observability.enabled",
@@ -5425,7 +5948,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].observability.name",
@@ -5434,7 +5958,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].observability.plan_name",
@@ -5443,7 +5968,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "observabilityPlans"
         },
         {
           "path": "platform_kubernetes[*].region",
@@ -5452,7 +5978,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].role_assignments",
@@ -5461,7 +5988,8 @@
           "optional": true,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].role_assignments[*]",
@@ -5470,7 +5998,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "platform_kubernetes[*].role_assignments[*].role",
@@ -5479,7 +6008,8 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "projectRoles"
         },
         {
           "path": "platform_kubernetes[*].role_assignments[*].subject",
@@ -5488,10 +6018,57 @@
           "optional": false,
           "proposalPath": "platform_kubernetes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
+        {
+          "id": "catalogue-kubernetes-machine-choice",
+          "topic": "platform-kubernetes",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "message": "Please configure a central Kubernetes cluster in eu01 with a default node pool. Before proposing any changes, ask me to choose from the available node machine sizes, using understandable labels. I have not selected a machine type yet.",
+          "catalogueQuestion": {
+            "path": "platform_kubernetes[*].cluster.node_pools[*].machine_type",
+            "field": "machineTypes"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "catalogue-kubernetes-followup",
+          "topic": "platform-kubernetes",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please configure central Kubernetes in eu01 with a default node pool."
+            },
+            {
+              "role": "assistant",
+              "content": "Which node machine size should we use?"
+            }
+          ],
+          "message": "Use g1.4 for the node machines. Retain this choice and ask me for any other missing setup information. Do not propose configuration changes yet.",
+          "answeredCatalogueChoice": {
+            "path": "platform_kubernetes[*].cluster.node_pools[*].machine_type",
+            "value": "g1.4"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
         {
           "id": "editor-platform-kubernetes",
           "topic": "platform-kubernetes",
@@ -5547,7 +6124,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*]",
@@ -5556,7 +6134,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].automation_role",
@@ -5565,7 +6144,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].corporate",
@@ -5574,7 +6154,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].custom_roles",
@@ -5583,7 +6164,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].custom_roles[*]",
@@ -5592,7 +6174,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].custom_roles[*].description",
@@ -5601,7 +6184,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].custom_roles[*].name",
@@ -5610,7 +6194,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].custom_roles[*].permissions",
@@ -5619,7 +6204,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].custom_roles[*].permissions[*]",
@@ -5628,7 +6214,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "projectPermissions"
         },
         {
           "path": "landing_zones[*].env",
@@ -5637,7 +6224,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].network_area_key",
@@ -5646,7 +6234,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].network_enabled",
@@ -5655,7 +6244,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].network_prefix_length",
@@ -5664,7 +6254,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].observability",
@@ -5673,7 +6264,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].observability.acl",
@@ -5682,7 +6274,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].observability.acl[*]",
@@ -5691,7 +6284,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].observability.enabled",
@@ -5700,7 +6294,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].observability.name",
@@ -5709,7 +6304,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].observability.plan_name",
@@ -5718,7 +6314,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "observabilityPlans"
         },
         {
           "path": "landing_zones[*].owner_email",
@@ -5727,7 +6324,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].project_code",
@@ -5736,7 +6334,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].project_name",
@@ -5745,7 +6344,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].region",
@@ -5754,7 +6354,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].role_assignments",
@@ -5763,7 +6364,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].role_assignments[*]",
@@ -5772,7 +6374,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].role_assignments[*].role",
@@ -5781,7 +6384,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": "projectRoles"
         },
         {
           "path": "landing_zones[*].role_assignments[*].subject",
@@ -5790,7 +6394,8 @@
           "optional": false,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zones[*].secretsmanager_enabled",
@@ -5799,7 +6404,8 @@
           "optional": true,
           "proposalPath": "landing_zones",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -6227,7 +6833,8 @@
           "optional": true,
           "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "sandboxes[*]",
@@ -6236,7 +6843,8 @@
           "optional": false,
           "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "sandboxes[*].owner_emails",
@@ -6245,7 +6853,8 @@
           "optional": true,
           "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "sandboxes[*].owner_emails[*]",
@@ -6254,7 +6863,8 @@
           "optional": false,
           "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "sandboxes[*].project_name",
@@ -6263,7 +6873,8 @@
           "optional": false,
           "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "sandboxes[*].project_owner_email",
@@ -6272,7 +6883,8 @@
           "optional": false,
           "proposalPath": "sandboxes",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [
@@ -6305,7 +6917,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*]",
@@ -6314,7 +6927,8 @@
           "optional": false,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].annotations",
@@ -6323,7 +6937,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].annotations[*]",
@@ -6332,7 +6947,8 @@
           "optional": false,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_enabled",
@@ -6341,7 +6957,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion",
@@ -6350,7 +6967,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.enabled",
@@ -6359,7 +6977,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.metrics_path",
@@ -6368,7 +6987,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scheme",
@@ -6377,7 +6997,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scrape_interval",
@@ -6386,7 +7007,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.scrape_timeout",
@@ -6395,7 +7017,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.target_urls",
@@ -6404,7 +7027,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].demo_metrics_ingestion.target_urls[*]",
@@ -6413,7 +7037,8 @@
           "optional": false,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].dns_subdomain",
@@ -6422,7 +7047,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].kubernetes_access",
@@ -6431,7 +7057,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].kubernetes_access.enabled",
@@ -6440,7 +7067,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].kubernetes_access.service_account_name",
@@ -6449,7 +7077,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].labels",
@@ -6458,7 +7087,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].labels[*]",
@@ -6467,7 +7097,8 @@
           "optional": false,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].namespace",
@@ -6476,7 +7107,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].sample_load",
@@ -6485,7 +7117,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].sample_load.enabled",
@@ -6494,7 +7127,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].sample_load.image",
@@ -6503,7 +7137,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement",
@@ -6512,7 +7147,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.allow_opaque_secret_types",
@@ -6521,7 +7157,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.allow_opaque_secret_types[*]",
@@ -6530,7 +7167,8 @@
           "optional": false,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass",
@@ -6539,7 +7177,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.enabled",
@@ -6548,7 +7187,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.principals",
@@ -6557,7 +7197,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.principals[*]",
@@ -6566,7 +7207,8 @@
           "optional": false,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.break_glass.ttl_hours",
@@ -6575,7 +7217,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.enabled",
@@ -6584,7 +7227,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secrets_enforcement.mode",
@@ -6593,7 +7237,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         },
         {
           "path": "landing_zone_namespace_services[*].secretsmanager",
@@ -6602,7 +7247,8 @@
           "optional": true,
           "proposalPath": "landing_zone_namespace_services",
           "responsibility": "user",
-          "mode": "propose-validated-draft"
+          "mode": "propose-validated-draft",
+          "catalogue": null
         }
       ],
       "cases": [

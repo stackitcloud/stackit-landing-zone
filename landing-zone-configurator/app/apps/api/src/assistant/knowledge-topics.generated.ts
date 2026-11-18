@@ -43,12 +43,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
           sha256:
-            "b0458a83022eaa535d687c705519b313bcdeede0b3869c6f88ab43ec1d697268",
+            "a1c1c6af8393260e3652c444835a9e60226f73a5b7071cf499183e4dcebaf77d",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "a3abe45c5048927fff6b88ae1bf6b0273f363dd19b901ea13ce1f16cee81bacb",
+            "9fc3ab604956081a3c1fbe60d43d55ef7e93ee6118d75b3d436cb8bfa6370fd5",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -59,6 +59,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [
@@ -133,6 +148,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [
@@ -226,6 +256,21 @@ export const assistantKnowledgeTopics = {
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
+        },
       ],
       externalSources: [],
       scenarios: ["A01", "A21", "A23"],
@@ -295,6 +340,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [],
@@ -391,6 +451,21 @@ export const assistantKnowledgeTopics = {
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
+        },
       ],
       externalSources: [],
       scenarios: ["A03", "A16", "A23"],
@@ -450,12 +525,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "a3abe45c5048927fff6b88ae1bf6b0273f363dd19b901ea13ce1f16cee81bacb",
+            "9fc3ab604956081a3c1fbe60d43d55ef7e93ee6118d75b3d436cb8bfa6370fd5",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "46dc9f7e807f021e38a803703661b2099a3b984f4eb74bd330fa40651413083f",
+            "88c69f6dfae74fb9790bb08d7e2a3d3fcc80b7bed478e612b7a1866df7507e87",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -466,6 +541,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [
@@ -571,6 +661,21 @@ export const assistantKnowledgeTopics = {
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
+        },
       ],
       externalSources: [],
       scenarios: ["A03", "A16", "A23", "A24"],
@@ -634,6 +739,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [],
@@ -705,6 +825,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [
@@ -796,6 +931,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [],
@@ -906,6 +1056,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [],
@@ -1089,6 +1254,21 @@ export const assistantKnowledgeTopics = {
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
+        },
       ],
       externalSources: [],
       scenarios: ["A13", "A16", "A23", "A24"],
@@ -1220,6 +1400,21 @@ export const assistantKnowledgeTopics = {
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
+        },
       ],
       externalSources: [],
       scenarios: ["A13", "A16", "A23"],
@@ -1274,7 +1469,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "46dc9f7e807f021e38a803703661b2099a3b984f4eb74bd330fa40651413083f",
+            "88c69f6dfae74fb9790bb08d7e2a3d3fcc80b7bed478e612b7a1866df7507e87",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/git-dialogue.ts",
@@ -1284,7 +1479,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "b49d611f01671ea26bbc311849e523c7efbfa0032912d3086bf0702b103f2ced",
+            "6c4c569d881bc8dafedc8eb656754b3b23fd38247674b456fa80dd1bf700119b",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/routes.ts",
@@ -1294,7 +1489,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "a3abe45c5048927fff6b88ae1bf6b0273f363dd19b901ea13ce1f16cee81bacb",
+            "9fc3ab604956081a3c1fbe60d43d55ef7e93ee6118d75b3d436cb8bfa6370fd5",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -1310,6 +1505,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [
@@ -1382,6 +1592,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [],
@@ -1545,6 +1770,21 @@ export const assistantKnowledgeTopics = {
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
+        },
       ],
       externalSources: [
         "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/iaas/network/resource.go",
@@ -1631,6 +1871,21 @@ export const assistantKnowledgeTopics = {
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
         },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
+        },
       ],
       externalSources: [],
       scenarios: ["A11", "A14", "A23"],
@@ -1693,6 +1948,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [],
@@ -1758,22 +2028,22 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "a3abe45c5048927fff6b88ae1bf6b0273f363dd19b901ea13ce1f16cee81bacb",
+            "9fc3ab604956081a3c1fbe60d43d55ef7e93ee6118d75b3d436cb8bfa6370fd5",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
           sha256:
-            "b0458a83022eaa535d687c705519b313bcdeede0b3869c6f88ab43ec1d697268",
+            "a1c1c6af8393260e3652c444835a9e60226f73a5b7071cf499183e4dcebaf77d",
         },
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "b49d611f01671ea26bbc311849e523c7efbfa0032912d3086bf0702b103f2ced",
+            "6c4c569d881bc8dafedc8eb656754b3b23fd38247674b456fa80dd1bf700119b",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "46dc9f7e807f021e38a803703661b2099a3b984f4eb74bd330fa40651413083f",
+            "88c69f6dfae74fb9790bb08d7e2a3d3fcc80b7bed478e612b7a1866df7507e87",
         },
         {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",
@@ -1819,6 +2089,21 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
             "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+          sha256:
+            "430fcffbb8a71fcc12eb7ca6fac111a6421e9529991b2594aa71f4cac73e71e0",
+        },
+        {
+          path: "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+          sha256:
+            "bea4b1b5b75c5fd90bb1cbcb5fd1add8b779c8dc56254562024b631613b8b79e",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+          sha256:
+            "d58547018769f2b3ca3ede1918971f6e1fa06c39dc92443445a7d7f15613f27a",
         },
       ],
       externalSources: [],

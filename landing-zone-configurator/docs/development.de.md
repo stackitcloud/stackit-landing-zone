@@ -188,3 +188,5 @@ private Entwurf des ursprünglichen Owners erhalten bleiben. Der Fork-Speicher-/
 Reload-Browsertest pausiert die Verzögerung, weist den alten Checkpoint direkt
 vor dem Reload nach und prüft danach das neue Plattform-Template samt
 Parameterrichtlinie.
+
+[Gemeinsame Assistant-Service-Beratung und Katalogauswahl](assistant-service-guidance.de.md).

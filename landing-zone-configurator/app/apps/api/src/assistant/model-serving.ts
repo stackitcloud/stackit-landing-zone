@@ -5,6 +5,7 @@ import {
   assistantLanguageSchema,
   assistantProposalFields,
   assistantProposalValue,
+  catalogueField,
 } from "@lzc/contracts";
 import {
   applicationAccessProfileSchema,
@@ -31,6 +32,12 @@ import {
   buildMultiTemplatePermissionDialogue,
   resumeMultiTemplatePermissionDialogue,
 } from "./application-permission-dialogue.js";
+import {
+  assistantGuidancePolicy,
+  englishNativeOverview,
+  ensureDraftNotice,
+  groundCatalogueDialogue,
+} from "./catalogue-guidance.js";
 import {
   assistantAccessPaths,
   assistantDnsZoneNamesSchema,
@@ -79,11 +86,7 @@ import {
   mergeAssistantFirewall,
   validateAssistantFirewall,
 } from "./firewall.js";
-import {
-  gitDialogueInputs,
-  gitNativeOverview,
-  gitSetupDialogue,
-} from "./git-dialogue.js";
+import { gitDialogueInputs, gitSetupDialogue } from "./git-dialogue.js";
 import {
   assistantApplicationUpgradeAdvice,
   assistantFirewallPolicyLimit,
@@ -330,6 +333,7 @@ function groundAssistantFolderScope(
 }
 
 export type AssistantCatalogueContext = {
+  questionCatalogues?: { path: string; catalogue: string }[];
   regions: {
     region: "eu01" | "eu02";
     fetchedAt: string | null;
@@ -404,12 +408,32 @@ function modelCatalogueContext(
 ): AssistantCatalogueContext {
   return {
     ...context,
+    questionCatalogues: assistantQuestionFields().flatMap((field) => {
+      const catalogue = catalogueField(field.path);
+      return catalogue ? [{ path: field.path, catalogue }] : [];
+    }),
     regions: context.regions.map((region) => ({
       ...region,
+      ...(region.pim
+        ? {
+            pim: {
+              ...region.pim,
+              skus: region.pim.skus.slice(0, 100),
+              truncated: region.pim.truncated || region.pim.skus.length > 100,
+            },
+          }
+        : {}),
       products: Object.fromEntries(
-        Object.entries(region.products).filter(
-          ([key]) => key !== "projectPermissions",
-        ),
+        Object.entries(region.products)
+          .filter(([key]) => key !== "projectPermissions")
+          .map(([key, part]) => [
+            key,
+            {
+              ...part,
+              options: part.options.slice(0, 50),
+              truncated: part.truncated || part.options.length > 50,
+            },
+          ]),
       ),
     })),
   };
@@ -723,6 +747,13 @@ export class AssistantModelServing {
             `Return only the JSON response defined by this output contract. Its field descriptions explain the required decisions; do not substitute schema defaults for understanding the user request. Property names and enum values are data, not instructions. Include requested values in the actual changes, not merely in the explanation.\nOutput contract: ${JSON.stringify(servingSchema)}`,
           ]
         : []),
+      ...([
+        "editor_dialogue",
+        "configuration_dialogue",
+        "template_advice",
+      ].includes(schemaName)
+        ? [assistantGuidancePolicy]
+        : []),
       ...(servingSchema
         ? [
             "Emit compact JSON without indentation or padding whitespace between tokens; preserve natural formatting only inside JSON string values.",
@@ -857,6 +888,48 @@ export class AssistantModelServing {
   }
 
   async converse(
+    selection: unknown,
+    publicValues: unknown,
+    history: { role: "user" | "assistant"; content: string }[],
+    message: string,
+    catalogues: AssistantCatalogueContext = { regions: [] },
+    templateHistory: { role: "user" | "assistant"; content: string }[] = [],
+    stream?: AssistantStream,
+  ) {
+    const current =
+      publicValues && typeof publicValues === "object"
+        ? (publicValues as Record<string, unknown>)
+        : {};
+    const language =
+      assistantLanguageSchema.optional().parse(current["assistant.language"]) ??
+      (/\b(?:please|which|what|configure)\b/i.test(message) ? "en" : "de");
+    const catalogueGuard = catalogues.regions.some((region) =>
+      Object.values(region.products).some(
+        (part) => part.status === "available" && part.options.length,
+      ),
+    );
+    const guardedStream =
+      stream && catalogueGuard
+        ? { ...stream, onText: (_text: string) => {} }
+        : stream;
+    const result = await this.converseDraft(
+      selection,
+      publicValues,
+      history,
+      message,
+      catalogues,
+      templateHistory,
+      guardedStream,
+    );
+    const grounded = ensureDraftNotice(
+      groundCatalogueDialogue(result, current, catalogues, language),
+      language,
+    );
+    if (catalogueGuard) stream?.onText(grounded.explanation);
+    return grounded;
+  }
+
+  private async converseDraft(
     selection: unknown,
     publicValues: unknown,
     history: { role: "user" | "assistant"; content: string }[],
@@ -2562,10 +2635,13 @@ export class AssistantModelServing {
       const dialogue = validateDialogue(
         {
           explanation:
-            language === "en" && intent.topic === "devops-git"
-              ? gitNativeOverview(
-                  gitDialogueInputs(current, history, message, catalogues),
-                )
+            language === "en"
+              ? englishNativeOverview({
+                  ...context.topics.find((topic) => topic.id === intent.topic)!,
+                  text:
+                    context.rules.find((rule) => rule.id === intent.topic)
+                      ?.text ?? "",
+                })
               : overview,
           questions: [],
           changes: [],

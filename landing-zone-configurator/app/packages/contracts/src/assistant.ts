@@ -387,3 +387,34 @@ export function selectAssistantProposalFields(
   }
   return [...result.values()];
 }
+
+// Server-authored presentation, never a model-controlled configuration patch.
+export const assistantCataloguePickerSchema = z.strictObject({
+  source: z.literal("project-catalogue"),
+  status: z.enum(["available", "unavailable"]),
+  suggestedValues: z.array(z.string().max(256)).max(6),
+  region: z.enum(["eu01", "eu02"]),
+  fetchedAt: z.string().nullable(),
+  truncated: z.boolean(),
+  totalOptions: z.number().int().nonnegative(),
+  options: z
+    .array(
+      z.strictObject({
+        value: z.string().min(1).max(256),
+        label: z.string().min(1).max(256),
+        description: z.string().max(1000),
+        facts: z
+          .array(
+            z.strictObject({
+              key: z.enum(["vCPU", "bandwidthMbps", "maxConnections"]),
+              value: z.number().finite().nonnegative(),
+            }),
+          )
+          .max(3),
+      }),
+    )
+    .max(2000),
+});
+export type AssistantCataloguePicker = z.infer<
+  typeof assistantCataloguePickerSchema
+>;

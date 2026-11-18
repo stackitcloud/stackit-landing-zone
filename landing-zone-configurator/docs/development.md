@@ -176,3 +176,5 @@ resurrect a checkpoint; expiry may retain the original owner's private draft.
 The Fork save/reload browser test pauses the debounce and proves the old
 checkpoint still exists immediately before reload, then checks the new Platform
 template and parameter policy after recovery.
+
+[Shared Assistant service guidance and catalogue selection](assistant-service-guidance.md).
