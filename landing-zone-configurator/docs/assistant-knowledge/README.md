@@ -2,6 +2,13 @@
 
 [English](README.md) | [Deutsch](README.de.md)
 
+The [shared service guidance contract](../assistant-service-guidance.md) applies
+to every topic. Editor and Assistant share one field-to-catalogue registry;
+selection questions use server-authored project/region options, descriptions and
+matched PIM facts. UI selectors, draft notices and reviewed English field
+overviews are shared behavior. New services extend the registry/adapter and
+reviewed facts, rather than introducing another service-specific question UI.
+
 English is the canonical machine-ingested topic language. German topic companions
 are human reading versions only; the manifest does not ingest them. Use the
 catalogue below to switch languages without changing curated prompt sources.
@@ -118,18 +125,32 @@ source validation still prevents its acceptance. Other schema, scope, credential
 and authorization failures remain errors. Catalogue-grounded recommendations
 remain proposals, not proof of entitlement or execution approval.
 
-New Git proposals require size and access settings together. Git questions use
-actual customer networks as free text; an unanswered question never authorizes
-public access. The central synthetic corpus covers short English/German setup
+The browser sends its selected `language` (`de`/`en`) on chat and starting-template
+advice requests. The API validates it and passes it as trusted response metadata,
+separate from draft fields and quoted history. Model language labels do not
+override this explicit preference; legacy callers can omit it. Stored history is
+not rewritten or translated.
+
+New Git proposals require size and access settings together. A bounded Git decision
+classifier selects only actual user-source references and offered plan/access
+choices. Deterministic policy supplies documented company-wide Git100 guidance,
+Git10 alternatives, available project plans, optional reuse of saved narrow ACLs
+and the pinned provider's replacement limitation. It does not ask an end user to
+research native flavor IDs. A standard/company-wide recommendation request
+resolves sizing and retains that decision on access follow-ups. Only genuinely
+unknown company egress CIDRs need free text. Unanswered access never authorizes
+public reachability; public CIDRs require explicit positive user evidence. The central synthetic corpus covers short English/German setup
 requests, partially supplied choices and follow-ups, alongside fully specified
 changes and advice. The continuous journey includes Git setup before selection.
 Mocked request/guard tests complement these cases; field inventory and knowledge
 delivery coverage alone do not prove natural dialogue quality. Skipped release
 qualification is explicitly not a fresh live-test result.
 
-Policy-backed Editor services verify an informational label against the current request before returning advice. An explicit setup request remains a draft request when choices are missing; the existing typed flow asks for those choices. The verifier receives only component and current message, requires exact user evidence for a draft request, and cannot invent values or authorize persistence/execution.
+Policy-backed Editor services verify an informational label against the current request. Explicit setup requests keep their typed follow-up flow when choices are missing. The verifier receives only component/current message and requires an exact current-user quote before draft preparation. The same purpose check can select an exact-evidence-backed root Plan review. That verified workflow takes precedence over the mentioned service and cannot be overwritten by the later component-subject classifier. Other Audit advice separately checks the current subject. Known existing appliances missing requested HA require the typed patch when technical prerequisites are available; consultation-only turns remain questions without changes.
 
-Audit advice is also checked against the closed current-question subject before returning a field overview. A concrete root Plan impact/Apply question receives lifecycle guidance; ordinary audit fields and query-store migration retain their audit topic. Historical questions and private drafts are not input to this subject check.
+Generated model questions must explicitly select business requirements or a catalogue choice in the wire grammar; stored legacy questions remain readable. Source-network questions use the same reviewed bilingual renderer across services. Audit continuations recognize both current and previous server question wording.
+
+A complete new appliance patch whose changed values are all literal in the current explicit request does not reopen a general setup questionnaire. This refinement runs only after normal proposal/source validation; saved or inferred values cannot satisfy it. Existing broad setup and consultation-only turns keep their remaining business decisions.
 
 ### Reviewed architecture boundaries
 
@@ -279,7 +300,6 @@ this mode for inspection, but its artifact cannot subsequently be promoted.
 A qualified release still requires a fresh **release_mode=qualified** run with
 the complete source-bound live qualification. The default **qualified** path
 and its promotion requirements are unchanged.
-
 
 ## Complete Topic Catalogue
 

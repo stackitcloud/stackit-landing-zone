@@ -528,6 +528,7 @@ test("template-draft Assistant uses the saved configuration and accepts locally 
       expect(request.postDataJSON()).toEqual({
         revision: 1,
         message: "Bitte den Namen dieses Templates verbessern.",
+        language: "de",
         draft: original,
       });
       sent++;

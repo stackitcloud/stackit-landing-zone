@@ -123,6 +123,18 @@ export function validateKnowledgeManifest(input: unknown) {
   return manifest;
 }
 
+export const assistantKnowledgeSharedSources: readonly string[] = [
+  "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+  "landing-zone-configurator/app/apps/api/src/assistant/lifecycle-advice.ts",
+  "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
+  "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
+  "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
+  "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
+  "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
+  "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
+  "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+];
+
 export function buildAssistantKnowledgeTopics() {
   const manifest = validateKnowledgeManifest(
     JSON.parse(readFileSync(resolve(directory, "manifest.json"), "utf8")),
@@ -137,13 +149,7 @@ export function buildAssistantKnowledgeTopics() {
     ).replaceAll("\r\n", "\n");
     validateKnowledgeText(topic.id, text);
     const sources = [
-      ...new Set([
-        ...topic.sources,
-        "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
-        "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
-        "landing-zone-configurator/app/apps/api/src/assistant/language.ts",
-        "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
-      ]),
+      ...new Set([...topic.sources, ...assistantKnowledgeSharedSources]),
     ].map((path) => {
       const absolute = resolve(root, path);
       const local = relative(root, absolute);
@@ -156,6 +162,10 @@ export function buildAssistantKnowledgeTopics() {
         ) &&
           ![
             "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
+            "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
+            "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx",
+            "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
+            "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
             "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
             "landing-zone-configurator/app/packages/contracts/src/application-upgrades.ts",
             "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql",

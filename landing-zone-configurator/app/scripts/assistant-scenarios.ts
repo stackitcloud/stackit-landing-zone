@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
+import { catalogueField } from "@lzc/contracts";
 import {
   applicationProjectPermissionNames,
   applicationServiceAccountKeyPermissions,
@@ -23,6 +24,7 @@ import {
   type MultiTemplatePermissionContext,
   multiTemplatePermissionHistoryText,
 } from "../apps/api/src/assistant/application-permission-dialogue.js";
+import { enrichCatalogueQuestions } from "../apps/api/src/assistant/catalogue-guidance.js";
 import {
   applyAssistantChanges,
   proposeAssistantAccess,
@@ -152,6 +154,9 @@ export type AssistantScenario = {
   message: string;
   fixture:
     | "baseline"
+    | "git-saved-access"
+    | "service-catalogues"
+    | "service-firewall-business"
     | "foundations"
     | "folder-naming"
     | "dns-owner"
@@ -172,6 +177,9 @@ export type AssistantScenario = {
   editorExpected?: { path: string; value: JsonValue };
   auditQuestionPaths?: readonly string[];
   setupQuestionPaths?: readonly string[];
+  catalogueQuestion?: { path: string; field: string };
+  answeredCatalogueChoice?: { path: string; value: string };
+  requirementsQuestion?: string;
   expectedLanguage?: "de" | "en";
   sourceGuidance?: "git-user-limit" | "project-git" | "state-coordination";
   dnsRole?: "roles" | "secondary" | "draft";
@@ -718,12 +726,6 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       paths: ["devops.git_flavor", "devops.allowed_network_ranges"],
     },
     {
-      id: "editor-devops-unselected-requirements-en",
-      message:
-        "Please add a central git instance to the config. I have not selected its size or access networks yet.",
-      paths: ["devops.git_flavor", "devops.allowed_network_ranges"],
-    },
-    {
       id: "editor-devops-setup-de",
       message:
         "Bitte eine zentrale Git-Instanz in die Konfiguration aufnehmen.",
@@ -750,25 +752,268 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
   })),
   {
-    id: "editor-devops-setup-after-service-advice-en",
-    topic: "devops-git",
-    fixture: "baseline",
+    id: "catalogue-firewall-business-en",
+    topic: "firewall-infrastructure",
+    fixture: "service-firewall-business",
+    expectedLanguage: "en",
     message:
-      "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+      "Please help me set up a central HA firewall for internet and inter-project traffic. Start by clarifying the remaining business requirements; do not propose infrastructure changes yet.",
+    requirementsQuestion: "connectivity.firewall.flavor",
+  },
+  {
+    id: "catalogue-firewall-capacity-followup-en",
+    topic: "firewall-infrastructure",
+    fixture: "service-firewall-business",
+    expectedLanguage: "en",
     history: [
       {
         role: "user",
         content:
-          "Bitte die zentrale Observability als Entwurf vorbereiten, noch nichts deployen.",
+          "Please help me set up a central HA firewall for internet and inter-project traffic.",
       },
       {
         role: "assistant",
         content:
-          "Die Observability-Einstellungen sind zur Prüfung vorgeschlagen. Noch nichts gespeichert oder ausgeführt.",
+          "What peak throughput and concurrent connection count do you expect?",
       },
     ],
-    setupQuestionPaths: ["devops.git_flavor", "devops.allowed_network_ranges"],
+    message:
+      "Traffic is not yet quantifiable. Keep the current VM size as a provisional baseline and validate capacity separately. Please continue with the remaining requirements; do not change the infrastructure yet.",
+    requirementsQuestion: "connectivity.firewall.ha",
+  },
+  {
+    id: "catalogue-kubernetes-machine-choice",
+    topic: "platform-kubernetes",
+    fixture: "service-catalogues",
     expectedLanguage: "en",
+    message:
+      "Please configure a central Kubernetes cluster in eu01 with a default node pool. Before proposing any changes, ask me to choose from the available node machine sizes, using understandable labels. I have not selected a machine type yet.",
+    catalogueQuestion: {
+      path: "platform_kubernetes[*].cluster.node_pools[*].machine_type",
+      field: "machineTypes",
+    },
+  },
+  {
+    id: "catalogue-vpn-plan-choice",
+    topic: "vpn",
+    fixture: "service-catalogues",
+    expectedLanguage: "en",
+    message:
+      "Please configure a central VPN connection for our company. Before proposing any changes, ask me to choose a VPN plan from the available project offerings. I have not selected a plan yet; do not ask me to look up an internal plan ID.",
+    catalogueQuestion: { path: "connectivity.vpn.plan_id", field: "vpnPlans" },
+  },
+  {
+    id: "catalogue-observability-plan-choice",
+    topic: "observability",
+    fixture: "service-catalogues",
+    expectedLanguage: "en",
+    message:
+      "Please configure central Observability for our landing zone. Before proposing any changes, ask me to choose from the available Observability plans with useful choices. I have not selected a plan yet.",
+    catalogueQuestion: {
+      path: "observability.plan_name",
+      field: "observabilityPlans",
+    },
+  },
+  ...[
+    {
+      id: "catalogue-kubernetes-followup",
+      topic: "platform-kubernetes",
+      path: "platform_kubernetes[*].cluster.node_pools[*].machine_type",
+      value: "g1.4",
+      request:
+        "Please configure central Kubernetes in eu01 with a default node pool.",
+      question: "Which node machine size should we use?",
+      message:
+        "Use g1.4 for the node machines. Retain this choice and ask me for any other missing setup information. Do not propose configuration changes yet.",
+    },
+    {
+      id: "catalogue-vpn-followup",
+      topic: "vpn",
+      path: "connectivity.vpn.plan_id",
+      value: "vpn-medium",
+      request: "Please configure central VPN for our company.",
+      question: "Which offered VPN plan should we use?",
+      message:
+        "Use the offered vpn-medium plan. Retain this choice and ask me for the other missing VPN requirements. Do not propose configuration changes yet.",
+    },
+    {
+      id: "catalogue-observability-followup",
+      topic: "observability",
+      path: "observability.plan_name",
+      value: "Observability-Medium",
+      request: "Please configure central Observability for our landing zone.",
+      question: "Which offered Observability plan should we use?",
+      message:
+        "Use Observability-Medium. Retain this choice and ask me for the other missing monitoring requirements. Do not propose configuration changes yet.",
+    },
+  ].map((entry) => ({
+    id: entry.id,
+    topic: entry.topic,
+    fixture: "service-catalogues" as const,
+    expectedLanguage: "en" as const,
+    history: [
+      { role: "user" as const, content: entry.request },
+      { role: "assistant" as const, content: entry.question },
+    ],
+    message: entry.message,
+    answeredCatalogueChoice: { path: entry.path, value: entry.value },
+  })),
+  ...[
+    {
+      id: "editor-devops-over-capacity-en",
+      language: "en" as const,
+      message:
+        "Please add central Git for our 150 developers. Use a sensible company-wide starting point and allow only 203.0.113.0/24.",
+    },
+    {
+      id: "editor-devops-over-capacity-de",
+      language: "de" as const,
+      message:
+        "Bitte zentrales Git für unsere 150 Entwickler vorbereiten. Empfiehl einen sinnvollen Standard und erlaube nur 203.0.113.0/24.",
+    },
+    {
+      id: "editor-devops-over-capacity-followup",
+      language: "en" as const,
+      message:
+        "Use git-100 and allow only 203.0.113.0/24. Keep our stated user requirement.",
+    },
+  ].map((entry) => ({
+    id: entry.id,
+    topic: "devops-git",
+    fixture: "baseline" as const,
+    expectedLanguage: entry.language,
+    message: entry.message,
+    history: entry.id.endsWith("followup")
+      ? [
+          {
+            role: "user" as const,
+            content: "Please add central Git for all our 150 developers.",
+          },
+          {
+            role: "assistant" as const,
+            content:
+              "We need to discuss the scope because Git100 supports at most 100 users per instance.",
+          },
+        ]
+      : [],
+    setupQuestionPaths: ["devops.git_flavor"],
+  })),
+  ...[
+    { id: "editor-devops-unselected-requirements-en", history: [] },
+    {
+      id: "editor-devops-setup-after-service-advice-en",
+      history: [
+        {
+          role: "user" as const,
+          content:
+            "Bitte die zentrale Observability vorbereiten, noch nichts deployen.",
+        },
+        {
+          role: "assistant" as const,
+          content:
+            "Observability ist nur vorgeschlagen; noch nichts gespeichert.",
+        },
+      ],
+    },
+  ].map((entry) => ({
+    id: entry.id,
+    topic: "devops-git",
+    fixture: "baseline" as const,
+    expectedLanguage: "en" as const,
+    history: entry.history,
+    message:
+      "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+    setupQuestionPaths: ["devops.git_flavor", "devops.allowed_network_ranges"],
+  })),
+  {
+    id: "editor-devops-capacity-narrowed",
+    topic: "devops-git",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    message:
+      "Limit this shared Git instance to 80 users. Use git-100 and allow only 203.0.113.0/24.",
+    history: [
+      {
+        role: "user",
+        content: "Please add central Git for all our 150 developers.",
+      },
+      {
+        role: "assistant",
+        content:
+          "Git100 supports at most 100 users per instance. Discuss separate team instances or narrow this instance's scope?",
+      },
+    ],
+    editorExpected: {
+      path: "devops",
+      value: {
+        git_flavor: "git-100",
+        allowed_network_ranges: ["203.0.113.0/24"],
+      },
+    },
+  },
+  {
+    id: "editor-devops-company-standard",
+    topic: "devops-git",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    message:
+      "Welche Git-Größe soll der Entwurf verwenden? Wähle einen verfügbaren Git-Tarif oder beschreibe deinen Kapazitätsbedarf.\nMy answer: just use a standard git flavor, which is usefull for a company wide git.",
+    history: [
+      {
+        role: "user",
+        content: "Please add a central git instance to the config",
+      },
+      {
+        role: "assistant",
+        content: "Welche Git-Größe soll der Entwurf verwenden?",
+      },
+    ],
+    setupQuestionPaths: ["devops.allowed_network_ranges"],
+  },
+  {
+    id: "editor-devops-company-complete",
+    topic: "devops-git",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    message: "Allow access only from 203.0.113.0/24.",
+    history: [
+      {
+        role: "user",
+        content: "Please add a central git instance to the config",
+      },
+      { role: "assistant", content: "Which starting size would you like?" },
+      {
+        role: "user",
+        content: "just use a standard git flavor useful for company-wide Git",
+      },
+      {
+        role: "assistant",
+        content:
+          "Starting size selected: Git100. Who should be able to reach it?",
+      },
+    ],
+    editorExpected: {
+      path: "devops",
+      value: {
+        git_flavor: "git-100",
+        allowed_network_ranges: ["203.0.113.0/24"],
+      },
+    },
+  },
+  {
+    id: "editor-devops-reuse-allowlist",
+    topic: "devops-git",
+    fixture: "git-saved-access",
+    expectedLanguage: "en",
+    message:
+      "Use the recommended company-wide standard and reuse the Observability allowlist for Git.",
+    editorExpected: {
+      path: "devops",
+      value: {
+        git_flavor: "git-100",
+        allowed_network_ranges: ["203.0.113.0/24"],
+      },
+    },
   },
   {
     id: "editor-devops-followup",
@@ -1130,6 +1375,16 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Mein gespeicherter Plattformplan löscht und ersetzt gemeinsame Ressourcen, die mehrere Applications verwenden. Ich möchte die Auswirkungen beurteilen und den Apply danach freigeben. Woran ist die Bestätigung gebunden, wann muss ich neu planen und was passiert bei möglichen Datenverlusten? Nur beraten, nichts ändern oder ausführen.",
   },
   {
+    id: "platform-plan-review-en",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    platformImpactReview: true,
+    requiredOverviewFields: ["plan", "apply"],
+    message:
+      "My root platform Plan replaces shared resources. How should the Platform Owner review and approve it, what binds the confirmation, and can an old blocked Plan be reused? Explain only; no changes or execution.",
+  },
+  {
     id: "audit-query-migration-impact-advice",
     topic: "configuration-lifecycle",
     platformImpactReview: true,
@@ -1301,7 +1556,10 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     });
   }
   history.push(...(scenario.history ?? []));
-  if (scenario.fixture === "firewall-metro")
+  if (
+    scenario.fixture === "firewall-metro" ||
+    scenario.fixture === "service-firewall-business"
+  )
     draft = commonConfigurationFromValues(template, draft.id, draft.name, {
       ...compileCommonConfiguration(draft),
       connectivity: {
@@ -1551,7 +1809,19 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     delete corporate.accessProfile;
     corporate.settings.automation_role = "owner";
   }
+  if (scenario.fixture === "git-saved-access")
+    draft = setCommonInput(draft, "observability", {
+      plan_name: "Observability-Starter-EU01",
+      acl: ["203.0.113.0/24"],
+      metrics_retention_days: 30,
+      logs_retention_days: 30,
+      traces_retention_days: 30,
+      metrics_retention_days_1h_downsampling: 30,
+      metrics_retention_days_5m_downsampling: 30,
+    });
   const values = assistantPublicValues(draft);
+  if (scenario.expectedLanguage)
+    values["assistant.language"] = scenario.expectedLanguage;
   if (scenario.fixture === "governance-verified-email")
     values["assistant.user_email"] = "login@example.test";
   if (scenario.fixture === "dns-login") values.owner_email = null;
@@ -1566,7 +1836,8 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     values["assistant.user_email"] = "login@example.test";
   const catalogues: AssistantCatalogueContext = {
     regions:
-      scenario.fixture === "firewall-metro"
+      scenario.fixture === "firewall-metro" ||
+      scenario.fixture === "service-firewall-business"
         ? [
             {
               region: "eu01",
@@ -1594,6 +1865,45 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
           ]
         : [],
   };
+  if (scenario.fixture === "service-firewall-business") {
+    catalogues.regions[0]!.products.bastionMachineTypes = {
+      status: "available",
+      totalOptions: 2,
+      truncated: false,
+      options: [
+        { value: "c1.2", label: "c1.2" },
+        { value: "c1.4", label: "c1.4" },
+      ],
+    };
+  }
+  if (scenario.fixture === "service-catalogues") {
+    catalogues.regions = [
+      {
+        region: "eu01",
+        fetchedAt: "2026-11-18T00:00:00Z",
+        products: Object.fromEntries(
+          ["machineTypes", "vpnPlans", "observabilityPlans"].map((field) => [
+            field,
+            {
+              status: "available" as const,
+              totalOptions: 3,
+              truncated: false,
+              options: (field === "machineTypes"
+                ? ["g1.2", "g1.4", "g1.8"]
+                : field === "vpnPlans"
+                  ? ["vpn-small", "vpn-medium", "vpn-large"]
+                  : [
+                      "Observability-Small",
+                      "Observability-Medium",
+                      "Observability-Large",
+                    ]
+              ).map((value) => ({ value, label: value })),
+            },
+          ]),
+        ),
+      },
+    ];
+  }
   if (
     scenario.applicationAccess?.startsWith("both-kubernetes-mixed-") ||
     scenario.applicationAccess === "both-kubernetes-followup"
@@ -2164,6 +2474,74 @@ export function validateAssistantScenario(
     }
     return { dialogue, failures };
   }
+  if (scenario.requirementsQuestion) {
+    const presented = enrichCatalogueQuestions(
+      dialogue,
+      fixture.values,
+      fixture.catalogues,
+      scenario.expectedLanguage ?? "de",
+    );
+    const question = presented.questions.find(
+      (question) => question.path === scenario.requirementsQuestion,
+    );
+    if (
+      dialogue.changes.length ||
+      !question ||
+      question.answerType !== "requirements" ||
+      question.catalogue ||
+      !question.options?.length
+    )
+      failures.push("business_requirements_replaced_by_technical_picker");
+  }
+  if (scenario.answeredCatalogueChoice) {
+    if (
+      dialogue.changes.length ||
+      dialogue.questions.some(
+        (question) => question.path === scenario.answeredCatalogueChoice!.path,
+      ) ||
+      !dialogue.explanation.includes(scenario.answeredCatalogueChoice.value)
+    )
+      failures.push("answered_service_choice_lost_or_repeated");
+  }
+  if (scenario.catalogueQuestion) {
+    if (
+      /\b\d+(?:[.,]\d+)?\s*(?:v?CPU|GB|GiB|MB|MiB|Mbit|Gbit)\b/i.test(
+        dialogue.explanation +
+          dialogue.questions
+            .map(
+              (question) => question.text + (question.options ?? []).join(" "),
+            )
+            .join(" "),
+      )
+    )
+      failures.push("unprovided_catalogue_performance_claim");
+    const presented = enrichCatalogueQuestions(
+      dialogue,
+      fixture.values,
+      fixture.catalogues,
+      scenario.expectedLanguage ?? "de",
+    );
+    const question = presented.questions.find(
+      (question) => question.path === scenario.catalogueQuestion!.path,
+    );
+    if (
+      dialogue.changes.length ||
+      !question?.catalogue ||
+      question.catalogue.status !== "available" ||
+      question.catalogue.options.length !== 3
+    )
+      failures.push("catalogue_choice_not_presented_without_changes");
+    if (
+      question &&
+      question.catalogue?.options.some(
+        (option) =>
+          !fixture.catalogues.regions[0]?.products[
+            scenario.catalogueQuestion!.field
+          ]?.options.some((known) => known.value === option.value),
+      )
+    )
+      failures.push("catalogue_choice_not_grounded");
+  }
   if (scenario.sourceGuidance) {
     const text =
       dialogue.explanation +
@@ -2241,6 +2619,24 @@ export function validateAssistantScenario(
     )
       failures.push("dialogue_language_mismatch");
   }
+  if (scenario.id.startsWith("editor-devops-over-capacity")) {
+    if (
+      dialogue.changes.length ||
+      !/100/.test(dialogue.explanation) ||
+      !/(?:separate|separat|getrennt)/i.test(dialogue.explanation) ||
+      !/(?:per instance|pro Instanz)/i.test(dialogue.explanation)
+    )
+      failures.push("git_instance_user_limit_or_architecture_missing");
+    if (
+      dialogue.questions.some(
+        (question) => question.answerType !== "requirements",
+      ) ||
+      /(?:I recommend Git100 as|empfehle ich Git100)/i.test(
+        dialogue.explanation,
+      )
+    )
+      failures.push("git_over_capacity_must_clarify_topology_before_flavor");
+  }
   if (scenario.setupQuestionPaths) {
     if (
       dialogue.changes.length ||
@@ -2253,13 +2649,18 @@ export function validateAssistantScenario(
     if (
       dialogue.questions.some(
         (question) =>
-          (question.options?.length ?? 0) > 0 ||
-          /(?:leave|leaving).*empty.*allow|192\.168|10\.0\.0|0\.0\.0\.0|git-100|git-10/i.test(
+          (question.options?.length ?? 0) < 2 ||
+          /(?:leave|leaving).*empty.*allow|192\.168|10\.0\.0/i.test(
             question.text,
           ),
       )
     )
-      failures.push("setup_invented_defaults_or_network_options");
+      failures.push("setup_missing_useful_grounded_choices");
+    if (
+      scenario.id === "editor-devops-company-standard" &&
+      !/Git100/.test(dialogue.explanation)
+    )
+      failures.push("company_git_recommendation_missing");
     return { dialogue, failures };
   }
   if (scenario.auditQuestionPaths) {
@@ -2999,9 +3400,11 @@ export function buildAssistantScenarioInventory() {
       .digest("hex"),
     topics: knowledge.topics.map((topic) => ({
       id: topic.id,
-      fields: knowledge.fields.filter((field) =>
-        (topic.fieldPaths as readonly string[]).includes(field.path),
-      ),
+      fields: knowledge.fields
+        .filter((field) =>
+          (topic.fieldPaths as readonly string[]).includes(field.path),
+        )
+        .map((field) => ({ ...field, catalogue: catalogueField(field.path) })),
       cases: assistantScenarios
         .filter((scenario) => scenario.topic === topic.id)
         .map((scenario) => ({
@@ -3203,7 +3606,7 @@ export function assistantApplicationUpgradeFailures(
           ["retained-answers", /Antwort|Parameter/i],
           [
             "fresh-plan",
-            /(?:neu|frisch)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch)/i,
+            /(?:neu|frisch|new|fresh)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch|new|fresh)/i,
           ],
           ["separate-apply", /Apply/i],
           [
@@ -3336,7 +3739,7 @@ export function assistantPlatformImpactReviewFailures(text: string): string[] {
   const checks: [string, RegExp][] = [
     [
       "owner-decision",
-      /Platform.?Owner[\s\S]{0,180}(?:entscheid|bestätig|freig|prüf)/i,
+      /Platform.?Owner[\s\S]{0,180}(?:entscheid|bestätig|freig|prüf|decid|confirm|approv|review)/i,
     ],
     ["destructive-impact", /Lösch|Ersetz|delet|replac/i],
     ["data-loss", /Datenverlust|Daten.{0,30}verlor|data.{0,20}loss/i],
@@ -3346,7 +3749,7 @@ export function assistantPlatformImpactReviewFailures(text: string): string[] {
     ["separate-apply", /Apply/i],
     [
       "fresh-plan",
-      /(?:neu|frisch)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch)/i,
+      /(?:neu|frisch|new|fresh)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch|new|fresh)/i,
     ],
   ];
   return checks

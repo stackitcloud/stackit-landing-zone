@@ -1,6 +1,15 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.2.0": {
+  introduction:"Guided service configuration and dedicated Application Git for the Landing Zone Accelerator.",
+  changes:[
+   "Guide service setup with shared, described catalogue choices, documented Git user limits and consistent English/German replies.",
+   "Offer optional dedicated managed Git instances in Application Landing Zone templates.",
+   "Coordinate Configurator State writers through PostgreSQL; document single-writer operation for standalone STACKIT S3 backends.",
+   "Preserve requested native firewall HA proposals and clarify review of concrete Platform Plan impacts.",
+  ],
+ },
  "v2.1.2": {
   introduction:"More reliable Assistant setup conversations for the Landing Zone Configurator.",
   changes:[

@@ -2,41 +2,45 @@
 
 ## Purpose
 
-Git !=GitHub login/forks/Configurator CI.
+Managed Git.
 
 ## Accelerator Contract
 
-Root derives project/owner/name; inputs git_flavor,allowed_network_ranges.
-devops=null skips; git_flavor=null (default), even with ACLs, creates no Git.
-Catalogue !=entitlement/prices.
+Root sets project/owner/name. devops=null or git_flavor=null creates no Git,
+even with ACLs. Fields:git_flavor,allowed_network_ranges; allow-all is not consent.
+Application Git:git.enabled/flavor/acl, default disabled, separate instance.
+Root devops is one instance; clarify central versus project-template scope.
 
 ## Dependencies
 
-Management/governance/identity/rights/ACLs; fork!=Git/SA rights.
+Management/state, identity, rights, networks. Availability/prices live.
 
 ## Dialogue
 
-Retain answers; complete grounded proposals.
-git-10 (Git10) <=10 users; git-100 (Git100) <=100 per instance, shared repositories/CI/CD. Size for intended Git users and
-growth; company-wide does not imply <=100. Above100 discuss separate team/project instances or another
-architecture, not an invented larger flavor. Multiple instances are not federated Git. Root devops is one central instance; use project Git for separate team/project instances.
-Optional project Git: git.enabled/flavor/acl. Clarify central versus selected project-template scope; never change both silently.
-Ask missing access/public egress CIDRs. Company/private SNA/examples/blank answers do not grant public access. Distinguish operators/runners/integrations.
+Git100:shared repos/CI up to100 users; Git10:pilots up to10. PER INSTANCE ceilings; storage growth never raises user limits. Above100,
+separate team/project instances or narrower scope, never invented larger plans,
+federation/distribution. Project Git supplies separate instances; Corporate/SNA
+does NOT make managed endpoints private. Keep confirmed user scope.
+Offer project plans or labelled documented options without entitlement claims.
+A company standard delegates recommendation; retain it through access
+replies. Reuse saved narrow ACLs only when chosen or ask company/VPN public egress.
+Company/private SNA/examples prove no source addresses. Literal0.0.0.0/0 needs
+explicit consent. UI language wins.
 
 ## Examples
 
-git_flavor+explicit ACL proposes central Git; project Git is separate/default disabled.
+Review Editor drafts; never silently change both scopes.
 
 ## Limits
 
-Editor: local draft only; no arbitrary appliances/prices/performance/availability claims.
-Pinned Provider0.114 flavor AND ACL changes replace Git; review repository/data migration.
-ACL!=backup/restore/migration/SSO/CI.
+Provider0.114 flavor AND ACL changes REPLACE Git; review data migration.
+No guaranteed uninterrupted resize/data preservation, backup/restore, SSO or CI.
+Acceptance creates no resources/rights.
 
 ## Credentials
 
-Provisioning !=Git-user access. No PATs/SSH/passwords/CI secrets/hidden IDs.
+Provisioning!=user access. No secrets/hidden IDs in chat.
 
 ## Sources
 
-Native inputs/resources and official sizing docs.
+Native inputs, pinned provider, official sizing.

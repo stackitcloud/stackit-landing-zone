@@ -314,8 +314,27 @@ function collectionModel(
     vi.fn<typeof fetch>(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
       if (
-        body.response_format.json_schema.name === "component_request_purpose"
-      ) {
+        ["component_request_purpose", "platform_advice_subject"].includes(
+          body.response_format.json_schema.name,
+        )
+      )
+        return Response.json({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify(
+                  body.response_format.json_schema.name ===
+                    "component_request_purpose"
+                    ? { purpose: "information", quote: null }
+                    : { task: "other" },
+                ),
+              },
+            },
+          ],
+        });
+      if (body.response_format.json_schema.name === "firewall_setup_decisions")
         return Response.json({
           choices: [
             {
@@ -323,27 +342,20 @@ function collectionModel(
               message: {
                 role: "assistant",
                 content: JSON.stringify({
-                  purpose: "information",
-                  quote: null,
+                  scope: "advice",
+                  setupRequest: null,
+                  haRequest: null,
+                  traffic: null,
+                  capacity: null,
+                  capacityDeferred: null,
+                  operations: null,
+                  operator: null,
+                  policy: null,
                 }),
               },
             },
           ],
         });
-      }
-      if (body.response_format.json_schema.name === "platform_advice_subject") {
-        return Response.json({
-          choices: [
-            {
-              finish_reason: "stop",
-              message: {
-                role: "assistant",
-                content: JSON.stringify({ task: "other" }),
-              },
-            },
-          ],
-        });
-      }
       inspect?.(body);
       return new Response(
         JSON.stringify({
@@ -660,7 +672,9 @@ describe("topic knowledge delivery", () => {
         knowledgeSelection(),
         {},
         [],
-        "Bitte einen Vorschlag für dieses Thema vorbereiten.",
+        topic === "devops-git"
+          ? "Bitte native git_flavor-Felder für dieses Thema vorschlagen."
+          : "Bitte einen Vorschlag für dieses Thema vorbereiten.",
       );
       expect(received).toBe(true);
     },
@@ -671,7 +685,11 @@ describe("topic knowledge delivery", () => {
     async (topic) => {
       let received = false;
       const model = collectionModel(
-        { topic, mode: "advice", requirements: [] },
+        {
+          topic,
+          mode: "advice",
+          requirements: [],
+        },
         { ...response([]), references: [topic] },
         (request) => {
           if (
@@ -689,6 +707,15 @@ describe("topic knowledge delivery", () => {
             topic,
             ...extra,
           ]);
+          if (request.response_format.json_schema.name === "editor_dialogue") {
+            expect(request.messages[0]?.content).toContain(
+              "READ-ONLY SERVICE CONSULTATION:",
+            );
+            expect(JSON.parse(request.messages.at(-1)!.content).message).toBe(
+              "Bitte erläutere die Bedeutung und Grenzen dieser Komponente.",
+            );
+            return;
+          }
           if (topic !== "firewall-infrastructure") {
             expect(request.messages[0]).toMatchObject({
               role: "system",
@@ -766,7 +793,11 @@ describe("topic knowledge delivery", () => {
     async ({ topic, group }) => {
       let received = false;
       await collectionModel(
-        { topic, mode: "advice", requirements: [] },
+        {
+          topic,
+          mode: "advice",
+          requirements: [],
+        },
         { ...response([]), references: [topic] },
         (request) => {
           if (
@@ -4718,14 +4749,14 @@ it.each([
     topic: "devops-git",
     root: "devops",
     value: { git_flavor: "git-10", allowed_network_ranges: ["203.0.113.0/24"] },
-    message: "Please add a central git instance to the config",
+    message: "Please configure git_flavor for central Git.",
     path: "devops.allowed_network_ranges",
   },
   {
     topic: "devops-git",
     root: "devops",
     value: { git_flavor: "git-10", allowed_network_ranges: ["0.0.0.0/0"] },
-    message: "Please add central Git using git-10.",
+    message: "Please configure git_flavor=git-10 for central Git.",
     path: "devops.allowed_network_ranges",
   },
   {
@@ -4815,7 +4846,7 @@ it("retains catalogue-grounded recommendations as reviewable draft proposals", a
     knowledgeSelection(),
     assistantPublicValues(original),
     [],
-    "Suggest central Git. Access only from 203.0.113.0/24.",
+    "Suggest git_flavor for central Git. Access only from 203.0.113.0/24.",
     {
       regions: [
         {
@@ -4902,8 +4933,8 @@ it.each(["de", "en"] as const)(
       assistantPublicValues(draft()),
       [],
       language === "en"
-        ? "Add central Git, only from 203.0.113.0/24."
-        : "Zentrales Git hinzufügen, nur aus 203.0.113.0/24.",
+        ? "Configure git_flavor, only from 203.0.113.0/24."
+        : "git_flavor konfigurieren, nur aus 203.0.113.0/24.",
     );
     expect(result.changes).toEqual([]);
     expect(result.questions.map((question) => question.path)).toEqual([
@@ -4912,5 +4943,30 @@ it.each(["de", "en"] as const)(
     expect(result.explanation).toContain(
       language === "en" ? "Nothing has been changed" : "Noch nichts geändert",
     );
+  },
+);
+
+it.each(["de", "en"] as const)(
+  "continues a short Audit answer after the previous source-network wording (%s)",
+  (language) => {
+    const current = assistantAuditCreationQuestions({}, language);
+    const oldAcl =
+      language === "de"
+        ? "Aus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an."
+        : "Which IP networks should access the audit logs? Please provide your actual CIDRs.";
+    const content =
+      current.explanation +
+      "\n" +
+      current.questions
+        .map((question) =>
+          question.path === "audit_logs.acl" ? oldAcl : question.text,
+        )
+        .join("\n");
+    const result = assistantAuditPendingReply(
+      language === "de" ? "90 Tage" : "90 days",
+      [{ role: "assistant", content }],
+    );
+    expect(result?.choices.retention_days).toBe(90);
+    expect(result?.language).toBe(language);
   },
 );

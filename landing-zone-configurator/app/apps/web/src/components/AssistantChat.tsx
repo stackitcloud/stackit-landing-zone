@@ -312,6 +312,7 @@ export function AssistantChat({
                   body: JSON.stringify({
                     revision: binding.revision,
                     message: outgoingMessage,
+                    language: currentLanguage(),
                     draft,
                   }),
                 }

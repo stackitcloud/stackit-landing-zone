@@ -1515,6 +1515,7 @@ test("firewall HA merges local edits, reviews conflicts and saves separately", a
       expect(route.request().postDataJSON()).toEqual({
         revision: 2,
         message: "Bitte HA erneut vorschlagen.",
+        language: "de",
         draft: localDraft,
       });
       proposalBaseRevision = revision;

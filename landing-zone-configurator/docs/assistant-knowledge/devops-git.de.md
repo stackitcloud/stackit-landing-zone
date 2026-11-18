@@ -2,52 +2,44 @@
 
 [English](devops-git.md) | [Deutsch](devops-git.de.md)
 
-Deutsche Lesefassung. Der Assistant liest ausschliesslich die englische Quelle.
+Deutsche Lesefassung. Der Assistant liest die englische Quelle.
 
 <a id="purpose"></a>
-
 ## Zweck
 
-Explizites Managed Git, getrennt von GitHub-Login, Forks und Configurator-CI.
+Managed Git, getrennt von GitHub-Anmeldung und Configurator-CI.
 
 <a id="accelerator-contract"></a>
-
 ## Accelerator-Vertrag
 
-`devops=null` ueberspringt das Modul. Root leitet Projekt, Ownership und
-Benennung ab und uebergibt `git_flavor` sowie `allowed_network_ranges`.
-`git_flavor` hat den Default `null`, NICHT `git-10/git-100`:
-`null` erstellt keine Git-Instanz. Ein reines ACL-Objekt aktiviert Git nicht.
-Root-Verdrahtung, nicht allein Child-Modulparameter, bestimmt Unterstuetzung.
-Echte Groessen und regionale Verfuegbarkeit benoetigen autorisierte Kataloge.
+Root leitet Projekt, Verantwortlichen und Namen ab. `devops=null` überspringt
+die Bereitstellung; `git_flavor=null` erstellt auch mit ACLs keine Instanz.
+Eingaben sind `git_flavor` und `allowed_network_ranges`. Der native Allow-All-
+ACL-Default ist keine Zustimmung zu öffentlichem Zugriff.
 
 <a id="dependencies"></a>
+## Abhängigkeiten
 
-## Abhaengigkeiten
-
-Management/Governance, Identitaetsgrundlagen, Provider-Rechte und bewusste ACLs.
-Ein Repository-Fork beweist weder provisioniertes Git noch
-Service-Account-Rechte.
+Management/Governance, Identität, Provider-Rechte und bewusst gewählte Quellnetze.
+Verfügbarkeit und Preise sind aktuelle Katalogdaten.
 
 <a id="dialogue"></a>
-
 ## Dialog
 
-Git-Bedarf, Kapazitaet, Betreiber und Zugangsnetze klaeren.
-Der Allow-All-ACL-Default ist KEINE Zustimmung zu oeffentlichem Zugriff.
-Es gibt keinen aktivierten nativen Flavor-Default:
-Wenn Git gewuenscht ist, aber kein ausgewaehlter/gepruefter Flavor vorliegt,
-`null` erklaeren und nachfragen, statt `git-10` zu erfinden.
-Explizite Nutzer-Flavors sind pruefbar, aber kein Verfuegbarkeitsnachweis.
-Ein breiter Wunsch wie „Bitte eine zentrale Git-Instanz hinzufügen“ beginnt einen
-Einrichtungsdialog und ist keine fehlerhafte Anfrage. Fehlende Größen- und
-Zugangsentscheidungen erfragen; erst einen vollständigen neuen Dienst vorschlagen.
-Nutzerauswahlen über Folgeantworten erhalten und nur offene Punkte erfragen.
-Tatsächliche CIDRs als Freitext erfragen, ohne erfundene Beispiele oder Netzoptionen.
-Eine fehlende oder leere Antwort erlaubt niemals den nativen Allow-All-Default.
-Ein Katalog kann eine klar gekennzeichnete Empfehlung begründen, beweist aber
-keine Berechtigung im Zielprojekt und ersetzt keine Zugangsentscheidung.
-Keine Runner, Integrationen, Migrationen oder Secrets ableiten.
+Fachliche Wünsche führen zu Beratung statt einem leeren technischen Flavor-Feld.
+Git100 als Ausgangsempfehlung für unternehmensweites Git erklären: dokumentiert
+für bis zu 100 Nutzer, gemeinsame Repositories und CI/CD. Git10 passt zu kleinen
+Teams/Piloten bis zu zehn Nutzern. Tatsächliche Katalogoptionen anbieten, oder
+bei fehlendem Katalog ausdrücklich dokumentierte Optionen, ohne eine
+Berechtigung oder Bestellbarkeit zu behaupten.
+
+„Nimm einen sinnvollen Standard für unternehmensweites Git“ delegiert die
+Empfehlung. Diese Entscheidung erhalten und nur noch den Zugriff klären.
+Vorhandene eingeschränkte Allowlists oder Firmen-/VPN-Ausgangsnetze zur Auswahl
+anbieten. Tatsächliche öffentliche Quell-CIDRs nur erfragen, wenn sie unbekannt
+sind; niemals aus Firmennamen oder privaten SNA-Netzen ableiten. Öffentliches
+`0.0.0.0/0` verlangt eine ausdrückliche Auswahl. Beispiele sind keine Zustimmung.
+Die explizite UI-Sprache verwenden, auch nach zitierten anderssprachigen Fragen.
 
 Sizing berücksichtigt dokumentierte Grenzen: Git10 bis10, Git100 bis100 Nutzer
 pro Instanz sowie gemeinsame Repositories/CI/CD. Bei Unklarheit geplante Git-Nutzer
@@ -60,34 +52,36 @@ unterscheiden.
 Die nativen Flavor-IDs lauten `git-10` und `git-100`; Git10/Git100 sind Anzeigenamen. Das zentrale `devops`-Objekt erzeugt eine Instanz; weitere Team-/Projektinstanzen werden über Projekt-Git getrennt bereitgestellt.
 
 <a id="examples"></a>
+Die Nutzergrenzen gelten pro Instanz: Git10 höchstens 10, Git100 höchstens 100.
+Automatisches Speicherwachstum erhöht diese Grenzen nicht. Bei mehr als 100
+Nutzern zuerst getrennte Team-/Projektinstanzen oder einen kleineren anfänglichen
+Umfang besprechen. Keine erfundenen größeren Tarife, automatische Verteilung oder
+transparente Föderation. Die zentrale devops-Einstellung konfiguriert eine Instanz;
+weitere Instanzen benötigen separat geprüfte Konfiguration. Diese Anforderung
+bleibt bei folgenden Zugriffsantworten erhalten.
 
 ## Beispiele
 
-`devops=null` deaktiviert. Ein gewaehlter `git_flavor` plus bewusst gewaehlte
-`allowed_network_ranges` kann Git vorschlagen.
-`git-10` illustriert Syntax, keine Berechtigung oder Kapazitaet.
+Größe und Zugriff wählen; vollständige Editor-Vorschläge bleiben prüfbare
+Entwürfe. Der native Default ist kein Git, weder Git10 noch Git100.
 
 <a id="limits"></a>
-
 ## Grenzen
 
-Typisierte native Editor-Vorschlaege aendern bei Annahme nur den lokalen
-Entwurf. ACLs qualifizieren weder Backup/Restore noch Migration, SSO oder
-CI-Ausfuehrung. Keine beliebigen Git-Appliances, Verfuegbarkeits-, Preis-
-oder Leistungsversprechen.
+Provider 0.114.0 verlangt bei Flavor- oder ACL-Änderungen eine Ersetzung, kein
+Update der bestehenden Instanz. Keine Zusage für Unterbrechungsfreiheit,
+Datenverlustfreiheit, Backup, Restore, Migration, SSO, CI oder beliebige
+Appliances. Die native Root-Verdrahtung ist maßgeblich. Die Übernahme erstellt
+keine Ressourcen und gewährt keine Rechte.
 
 <a id="credentials"></a>
-
 ## Zugangsdaten
 
-Provisionierung und Git-Nutzerzugang sind getrennt.
-Keine PATs, privaten SSH-Schluessel, Git-Passwoerter oder CI-Secrets im Chat;
-keine versteckte Configurator-Profil-ID-Abhaengigkeit.
+Provider- und Git-Nutzerzugang unterscheiden sich. Keine PATs, SSH-Schlüssel,
+Passwörter oder CI-Secrets im Chat. Keine versteckte Configurator-Profil-ID.
 
 <a id="sources"></a>
-
 ## Quellen
 
-Root-Aufrufe, DevOps-Variablen und Provider-Konfiguration im Manifest.
-Engine-/Quellbindungen nach Pruefung erneuern; aktuelle Produktdaten bleiben
-getrennt.
+Das Manifest bindet native Eingaben, Entscheidungspolicy, Provider und offizielle
+Größenplanung.

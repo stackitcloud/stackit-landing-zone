@@ -239,24 +239,67 @@ it.each(assistantScenarios)(
     expect(JSON.stringify(fixture)).not.toMatch(
       /af026540|lukas|preshared_key/i,
     );
+    if (scenario.id.startsWith("editor-devops-over-capacity")) {
+      const answer = {
+        explanation:
+          scenario.expectedLanguage === "de"
+            ? "Git100: höchstens 100 Nutzer pro Instanz. Getrennte Team-/Projektinstanzen benötigen separate Konfiguration."
+            : "Git100: at most 100 users per instance. Separate team/project instances require separate configuration.",
+        changes: [],
+        references: [scenario.topic],
+        questions: [
+          {
+            path: "devops.git_flavor",
+            answerType: "requirements" as const,
+            text: "Scope?",
+            options: ["Separate teams", "Smaller initial scope"],
+          },
+        ],
+      };
+      expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+      expect(
+        validateAssistantScenario(scenario, {
+          ...answer,
+          explanation:
+            "I recommend Git100 as the company standard for 150 users.",
+          questions: [
+            {
+              ...answer.questions[0]!,
+              answerType: "catalogue",
+              options: ["Git100", "Git10"],
+            },
+          ],
+        }).failures,
+      ).toContain("git_over_capacity_must_clarify_topology_before_flavor");
+      return;
+    }
     if (scenario.setupQuestionPaths) {
       expect(
         validateAssistantScenario(scenario, {
-          explanation: "Nothing changed.",
+          explanation:
+            scenario.id === "editor-devops-company-standard"
+              ? "Starting size selected: Git100. Nothing changed."
+              : "Nothing changed.",
           changes: [],
           references: [scenario.topic],
           questions: [
             {
               path: scenario.setupQuestionPaths[0],
               text: "Please choose.",
-              options: [],
+              options:
+                scenario.setupQuestionPaths[0] === "devops.git_flavor"
+                  ? ["Git100 — recommended", "Git10 — pilot"]
+                  : ["Company networks", "Specific source IPs"],
             },
           ],
         }).failures,
       ).toEqual([]);
       expect(
         validateAssistantScenario(scenario, {
-          explanation: "Nothing changed.",
+          explanation:
+            scenario.id === "editor-devops-company-standard"
+              ? "Starting size selected: Git100. Nothing changed."
+              : "Nothing changed.",
           changes: [],
           references: [scenario.topic],
           questions: [],
@@ -304,7 +347,13 @@ it.each(assistantScenarios)(
         },
         bucket_naming: "project-id",
         devops: {
-          git_flavor: "git-10",
+          git_flavor: [
+            "editor-devops-company-complete",
+            "editor-devops-reuse-allowlist",
+            "editor-devops-capacity-narrowed",
+          ].includes(scenario.id)
+            ? "git-100"
+            : "git-10",
           allowed_network_ranges: ["203.0.113.0/24"],
         },
         federated_identity_providers: [

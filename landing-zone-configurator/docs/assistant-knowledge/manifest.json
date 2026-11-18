@@ -456,7 +456,7 @@
     {
       "id": "devops-git",
       "file": "devops-git.md",
-      "version": 3,
+      "version": 4,
       "checkedOn": "2026-11-18",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
@@ -474,13 +474,18 @@
         "src/modules/devops/variables.tf",
         "src/main.tf",
         "src/providers.tf",
-        "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/git-dialogue.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/routes.ts",
+        "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
+        "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
+        "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx",
         "src/modules/landing-zone/8-git.tf",
         "landing-zone-configurator/app/packages/domain/src/template-parameters.ts"
       ],
       "externalSources": [
-        "https://docs.stackit.cloud/products/developer-platform/git/basics/plan-size-of-git-service/"
+        "https://docs.stackit.cloud/products/developer-platform/git/basics/plan-size-of-git-service/",
+        "https://github.com/stackitcloud/terraform-provider-stackit/blob/v0.114.0/stackit/internal/services/git/instance/resource.go"
       ],
       "scenarios": [
         "A08",

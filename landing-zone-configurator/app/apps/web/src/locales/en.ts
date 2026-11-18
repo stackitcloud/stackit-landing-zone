@@ -21,6 +21,28 @@ export const englishMessages: Record<string, string> = {
   "Git: Mindestens ein gültiges Quellnetz ist erforderlich.":
     "Git: At least one valid source network is required.",
 
+  "Mbit/s": "Mbit/s",
+  vCPU: "vCPU",
+  "Der Projektkatalog ist derzeit nicht verfügbar. Dokumentierte Vorschläge sind keine Bestätigung der Bestellbarkeit.":
+    "The project catalogue is currently unavailable. Documented suggestions do not confirm orderability.",
+  "Alle Katalogoptionen anzeigen (sonst Vorauswahl aus dem Gespräch)":
+    "Show all catalogue options (otherwise show options discussed in the conversation)",
+
+  "Projektkatalog · Region {{region}}":
+    "Project catalogue \u00b7 Region {{region}}",
+  "Begrenzter Katalogausschnitt: {{shown}} von {{total}} Optionen. Eine fehlende Option ist kein Nachweis fehlender Verfügbarkeit.":
+    "Limited catalogue: {{shown}} of {{total}} options. A missing option does not establish unavailability.",
+  "Optionen eingrenzen": "Filter options",
+  "Name, Flavor oder technisches Merkmal":
+    "Name, flavor or technical characteristic",
+  "Passende Katalogoption auswählen": "Choose a matching catalogue option",
+  "Keine passende Option im angezeigten Katalogausschnitt.":
+    "No matching option in the displayed catalogue.",
+  "Keine zusätzliche Beschreibung im Katalog vorhanden.":
+    "No additional description is available in the catalogue.",
+  "Die Auswahl wird als Antwort gesendet. Sie ändert noch keine Konfiguration und bestätigt keine Bereitstellung.":
+    "Your selection is sent as an answer. It does not yet change configuration or authorize provisioning.",
+
   "Die Änderung konnte nicht gespeichert werden. Bitte versuche es später erneut.":
     "The change could not be saved. Please try again later.",
   "Erstelle einen Arbeitsbereich oder öffne eine Einladung, um gemeinsam zu arbeiten.":

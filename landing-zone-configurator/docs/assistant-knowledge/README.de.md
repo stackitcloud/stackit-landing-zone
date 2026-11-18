@@ -1,6 +1,13 @@
 <a id="assistant-service-knowledge"></a>
 
 # Assistant-Servicewissen
+Der [gemeinsame Vertrag zur Service-Beratung](../assistant-service-guidance.de.md)
+gilt für alle Themen. Editor und Assistant teilen dieselbe Feld-Katalog-Zuordnung;
+Auswahlfragen nutzen serverseitig erzeugte Projekt-/Regionsoptionen,
+Beschreibungen und zugeordnete PIM-Merkmale. Auswahloberfläche, Entwurfshinweise
+und geprüfte englische Feldübersichten sind gemeinsames Verhalten. Neue Services
+erweitern Zuordnung/Adapter und geprüfte Fakten statt einer weiteren eigenen
+Rückfragenoberfläche.
 
 [English](README.md) | [Deutsch](README.de.md)
 
@@ -143,9 +150,22 @@ Quellenprüfung verhindert weiterhin die Übernahme. Andere Schema-, Geltungsber
 Zugangsdaten- und Berechtigungsfehler bleiben Fehler. Kataloggestützte Empfehlungen
 sind Vorschläge, kein Berechtigungsnachweis und keine Ausführungsfreigabe.
 
-Neue Git-Vorschläge benötigen Größe und Zugangseinstellungen zusammen. Git-Fragen
-erwarten tatsächliche Kundennetze als Freitext; eine offene Frage erlaubt keinen
-öffentlichen Zugriff. Der zentrale synthetische Korpus enthält kurze deutsche und
+Der Browser sendet seine gewählte `language` (`de`/`en`) bei Chat- und
+Startvorlagenberatung mit. Die API validiert sie und übergibt sie als vertrauenswürdige
+Antwort-Metadaten, getrennt von Entwurfsfeldern und zitiertem Verlauf. Modell-
+Sprachkennzeichen überschreiben diese explizite Einstellung nicht. Ältere Clients
+können sie auslassen; gespeicherter Verlauf wird weder umgeschrieben noch übersetzt.
+
+Neue Git-Vorschläge benötigen Größe und Zugriff zusammen. Ein begrenzter
+Entscheidungsklassifikator wählt nur tatsächliche Nutzerquellen und angebotene
+Tarif-/Zugangsoptionen. Feste Programmregeln liefern die dokumentierte Git100-
+Empfehlung für unternehmensweites Git, Git10-Alternativen, aktuelle Projekttarife,
+die optionale Übernahme gespeicherter enger ACLs und die Ersetzungsgrenze des
+gepinnten Providers. Nutzer müssen keine nativen Flavor-IDs recherchieren.
+Ein Wunsch nach einem sinnvollen unternehmensweiten Standard beantwortet die
+Größenwahl; sie bleibt in Zugangs-Folgefragen erhalten. Nur wirklich unbekannte
+Firmen-Ausgangs-CIDRs benötigen Freitext. Offene Fragen erlauben keinen öffentlichen
+Zugriff; öffentliche CIDRs benötigen ausdrücklich positive Nutzerevidenz. Der zentrale synthetische Korpus enthält kurze deutsche und
 englische Einrichtungswünsche, teilweise beantwortete Fragen und Folgeantworten,
 zusätzlich zu vollständig spezifizierten Änderungen und Beratung. Die durchgängige
 Journey beginnt Git mit einer Einrichtungsfrage vor der Auswahl. Simulierte
@@ -153,9 +173,11 @@ Transport- und Schutztests ergänzen diese Fälle; Feldinventar und Wissenszuste
 allein belegen keine Qualität natürlicher Dialoge. Eine übersprungene Release-
 Qualifikation ist ausdrücklich kein neuer Live-Testnachweis.
 
-Editor-Services mit hinterlegter Eingabepolicy pruefen eine beratende Einordnung gegen den aktuellen Auftrag. Ein ausdruecklicher Einrichtungswunsch bleibt auch bei fehlenden Angaben ein Entwurfsauftrag; der vorhandene typisierte Ablauf fragt diese Angaben ab. Die Pruefung erhaelt nur Komponente und aktuelle Nachricht, benoetigt fuer einen Entwurfsauftrag einen exakten Nutzerbeleg und kann keine Werte erfinden oder Speicherung/Ausfuehrung erlauben.
+Editor-Services mit Policy prüfen eine Informationsklassifikation gegen die aktuelle Anfrage. Ausdrückliche Einrichtungswünsche behalten bei fehlenden Angaben ihren typisierten Rückfrageablauf. Die Prüfung erhält nur Komponente und aktuelle Nachricht und verlangt vor der Entwurfsvorbereitung ein exaktes aktuelles Nutzerzitat. Dieselbe Absichtsprüfung kann eine durch exakte Nutzerevidenz belegte Root-Planprüfung erkennen. Dieser bestätigte Workflow hat Vorrang vor dem erwähnten Service und wird nicht durch die spätere Komponententhemen-Klassifikation überschrieben. Andere Audit-Beratung prüft separat das aktuelle Thema. Bei bekannten Appliances ohne angeforderte HA ist der typisierte Vorschlag verpflichtend, sofern die technischen Voraussetzungen vorliegen; reine Beratungsrunden bleiben Rückfragen ohne Änderungen.
 
-Audit-Beratung wird vor einer Felduebersicht zusaetzlich auf den Gegenstand der aktuellen Frage geprueft. Fragen zu Auswirkungen und Apply-Freigabe eines konkreten Plattformplans erhalten Lifecycle-Hinweise; normale Audit-Felder und Abfrageziel-Migration bleiben beim Audit-Thema. Historische Fragen und private Entwuerfe fliessen nicht in diese Pruefung ein.
+Generierte Modellfragen müssen im Wire-Vertrag ausdrücklich zwischen fachlicher Anforderung und Katalogauswahl wählen; gespeicherte ältere Fragen bleiben lesbar. Quellnetzfragen nutzen serviceübergreifend dieselbe geprüfte zweisprachige Darstellung. Audit-Folgeantworten erkennen aktuelle und frühere Server-Frageformulierungen.
+
+Ein vollständiger neuer Appliance-Vorschlag, dessen geänderte Werte wörtlich im aktuellen ausdrücklichen Auftrag stehen, öffnet nicht erneut die allgemeine Einrichtung. Diese Verfeinerung greift erst nach der normalen Vorschlags-/Quellenprüfung; gespeicherte oder abgeleitete Werte genügen nicht. Bestehende breite Einrichtungs- und reine Beratungsdialoge behalten ihre offenen fachlichen Entscheidungen.
 
 ### Geprüfte Architekturgrenzen
 
@@ -345,7 +367,6 @@ anschließend nicht übernommen werden kann. Ein qualifizierter Release erforder
 weiterhin einen neuen Lauf mit **release_mode=qualified** und vollständiger
 quellstandsgebundener Live-Qualifikation. Der Standardpfad **qualified** und dessen
 Übernahmebedingungen bleiben unverändert.
-
 
 
 

@@ -2471,3 +2471,38 @@ button.template-node:hover {
     flex: 1 1 auto;
   }
 }
+
+.assistant-catalogue {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.6rem 0 1rem;
+  max-width: 100%;
+}
+.assistant-catalogue label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.assistant-catalogue input,
+.assistant-catalogue select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.assistant-catalogue-detail {
+  border-left: 3px solid var(--color-primary, #045d8c);
+  padding: 0.5rem 0.85rem;
+  overflow-wrap: anywhere;
+}
+.assistant-catalogue-detail p {
+  margin: 0.3rem 0;
+}
+
+.assistant-catalogue label.assistant-catalogue-expand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.assistant-catalogue-expand input[type="checkbox"] {
+  width: auto;
+}

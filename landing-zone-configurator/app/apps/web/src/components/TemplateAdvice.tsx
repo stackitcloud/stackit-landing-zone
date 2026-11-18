@@ -2,7 +2,7 @@ import { MessageSquare, Send, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AssistantFailureError } from "../assistant-errors";
 import { readAssistantResponse } from "../assistant-stream";
-import { t } from "../i18n";
+import { currentLanguage, t } from "../i18n";
 import { describe, templates } from "../templates";
 import type { Session } from "./Account";
 import {
@@ -119,7 +119,12 @@ export function TemplateAdvice({
             ...(!remove ? { Accept: "application/x-ndjson" } : {}),
           },
           ...(!remove
-            ? { body: JSON.stringify({ message: outgoingMessage }) }
+            ? {
+                body: JSON.stringify({
+                  message: outgoingMessage,
+                  language: currentLanguage(),
+                }),
+              }
             : {}),
         }),
       );

@@ -8,6 +8,17 @@ export function assistantServingResponseSchema<
     const node = value as Record<string, unknown>;
     delete node.propertyNames;
     const types = Array.isArray(node.type) ? node.type : [node.type];
+    // Generated questions must choose presentation semantics explicitly. Stored
+    // legacy questions retain the optional server/API contract.
+    const properties = node.properties as Record<string, unknown> | undefined;
+    if (types.includes("object") && properties?.answerType) {
+      node.required = [
+        ...new Set([
+          ...(Array.isArray(node.required) ? node.required : []),
+          "answerType",
+        ]),
+      ];
+    }
     // vLLM's automatic backend selection rejects pattern/format + length
     // intersections in xgrammar. Bounds stay on the wire; native validation
     // and permission catalogues still enforce formats before any acceptance.
