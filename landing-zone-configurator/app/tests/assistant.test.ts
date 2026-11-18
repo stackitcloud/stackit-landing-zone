@@ -2836,6 +2836,10 @@ function withIntent(
     const payload = JSON.parse(String(init?.body));
     if (payload.response_format?.json_schema?.name === "conversation_intent")
       return answer({ topic, mode, dnsTask, requirements: [] });
+    if (
+      payload.response_format?.json_schema?.name === "platform_advice_subject"
+    )
+      return answer({ task: "other" });
     return request(url, init);
   };
 }
@@ -3985,3 +3989,48 @@ it("renders reviewed architecture facts from current intent without a prose-gene
   expect(result.changes).toEqual([]);
   expect(result.references).toContain("project-templates");
 });
+
+it.each(["platform-impact-review", "audit-observability", "other"] as const)(
+  "verifies an audit field-overview label against the actual current %s subject",
+  async (task) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      if (body.response_format.json_schema.name === "conversation_intent")
+        return answer({
+          topic: "audit-logs",
+          mode: "advice",
+          adviceTask: "field-overview",
+          adviceTaskSource: "current",
+          requirements: [],
+        });
+      expect(body.response_format.json_schema.name).toBe(
+        "platform_advice_subject",
+      );
+      return answer({ task });
+    });
+    const result = await new AssistantModelServing(
+      configuration,
+      request,
+    ).converse(
+      selection(),
+      {},
+      [],
+      task === "platform-impact-review"
+        ? "Mein konkreter Plattform-Plan entfernt alte Logs-Ressourcen. Wie prüft der Platform Owner die Auswirkungen und woran ist die Apply-Freigabe gebunden?"
+        : task === "audit-observability"
+          ? "Wie stelle ich Audit Logs auf die vorhandene Observability um?"
+          : "Welche Felder und Aufbewahrungsoptionen gibt es für Audit Logs?",
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toEqual([]);
+    expect(result.references).toEqual([
+      task === "platform-impact-review"
+        ? "configuration-lifecycle"
+        : "audit-logs",
+    ]);
+    expect(result.explanation).toContain(
+      task === "platform-impact-review" ? "State-Version" : "retention_days",
+    );
+    expect(request).toHaveBeenCalledTimes(2);
+  },
+);

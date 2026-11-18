@@ -313,6 +313,19 @@ function collectionModel(
     },
     vi.fn<typeof fetch>(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
+      if (body.response_format.json_schema.name === "platform_advice_subject") {
+        return Response.json({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify({ task: "other" }),
+              },
+            },
+          ],
+        });
+      }
       inspect?.(body);
       return new Response(
         JSON.stringify({

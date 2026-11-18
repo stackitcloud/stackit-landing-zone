@@ -1697,14 +1697,15 @@ export class AssistantModelServing {
       );
     if (
       classifiedIntent.mode === "advice" &&
-      classifiedIntent.adviceTaskSource === "current" &&
-      Object.hasOwn(
-        assistantApplicationUpgradeAdvice,
-        classifiedIntent.adviceTask,
-      ) &&
-      lifecycleAdviceTopics[
-        classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
-      ].has(classifiedIntent.topic)
+      ((classifiedIntent.adviceTaskSource === "current" &&
+        Object.hasOwn(
+          assistantApplicationUpgradeAdvice,
+          classifiedIntent.adviceTask,
+        ) &&
+        lifecycleAdviceTopics[
+          classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
+        ].has(classifiedIntent.topic)) ||
+        classifiedIntent.topic === "audit-logs")
     ) {
       // A workflow label can confuse a root Plan, template or order contract.
       // Verify this narrow subject from the latest question alone, without the large
@@ -1741,11 +1742,18 @@ export class AssistantModelServing {
           throw new AssistantInferenceError("invalid_scope");
         classifiedIntent.topic = "audit-logs";
         classifiedIntent.adviceTask = "field-overview";
-      } else {
+      } else if (subject.data.task !== "other") {
         classifiedIntent.adviceTask = subject.data.task;
-        if (subject.data.task === "other")
-          classifiedIntent.adviceTaskSource = "none";
-        else classifiedIntent.topic = "configuration-lifecycle";
+        classifiedIntent.adviceTaskSource = "current";
+        classifiedIntent.topic = "configuration-lifecycle";
+      } else if (
+        Object.hasOwn(
+          assistantApplicationUpgradeAdvice,
+          classifiedIntent.adviceTask,
+        )
+      ) {
+        classifiedIntent.adviceTask = "other";
+        classifiedIntent.adviceTaskSource = "none";
       }
     }
     // A closed current-turn workflow task owns its lifecycle topic. Requiring
@@ -3819,7 +3827,9 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
               targetAreaKeys.map((key) => [
                 key,
                 firewallValues[key] != null
-                  ? responseFirewallSchema(firewallValues[key]).optional()
+                  ? requestedHa && objectValue(firewallValues[key]).ha == null
+                    ? responseFirewallSchema(firewallValues[key])
+                    : responseFirewallSchema(firewallValues[key]).optional()
                   : responseFirewallSchema(null),
               ]),
             ),
@@ -3960,6 +3970,28 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
           context.rules.map((rule) => rule.id),
         );
       }
+      const requiredHaProposal =
+        firewallDraft &&
+        canProposeFirewall &&
+        !hasNewFirewall &&
+        requestedHa &&
+        existingFirewalls.some((firewall) => firewall.ha == null);
+      const firewallChanges = z
+        .array(
+          z.strictObject({
+            path: z.literal(
+              singleFirewallForm
+                ? "connectivity.firewall"
+                : "connectivity.firewalls",
+            ),
+            value: firewallSchema,
+          }),
+        )
+        .min(requiredHaProposal ? 1 : 0)
+        .max(canProposeFirewall ? 1 : 0)
+        .describe(
+          "ONE coherent native firewall patch when requested HA is absent on an existing appliance and technical prerequisites are available. Business sizing/traffic follow-ups do not defer this reviewable HA patch. Preserve all other saved fields and native IP defaults. Otherwise at most one patch; missing technical prerequisites mean no changes and targeted questions.",
+        );
       if (dnsSettingsDraft || foundationDraft || networkDraft || firewallDraft)
         stream?.onText("Vorschlag wird geprüft. Noch nichts gespeichert.");
       const result = await this.complete(
@@ -4150,21 +4182,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
                         : 8,
               ),
             changes: firewallDraft
-              ? z
-                  .array(
-                    z.strictObject({
-                      path: z.literal(
-                        singleFirewallForm
-                          ? "connectivity.firewall"
-                          : "connectivity.firewalls",
-                      ),
-                      value: firewallSchema,
-                    }),
-                  )
-                  .max(canProposeFirewall ? 1 : 0)
-                  .describe(
-                    "At most ONE coherent native firewall patch; combine all requested fields in it. New appliances require every mandatory field and requested HA together. Missing prerequisites mean changes=[], ask targeted questions. NEVER split a path across entries.",
-                  )
+              ? firewallChanges
               : z
                   .array(
                     z.union([
@@ -4341,6 +4359,8 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
       if (!draftAllowed && dialogue.changes.length > 0)
         throw new Error("assistant_invalid_scope");
       if (firewallDraft) {
+        if (!firewallChanges.safeParse(dialogue.changes).success)
+          throw new Error("assistant_invalid_scope");
         if (!canProposeFirewall && dialogue.changes.length)
           throw new Error("assistant_invalid_scope");
         const catalogueFields = {

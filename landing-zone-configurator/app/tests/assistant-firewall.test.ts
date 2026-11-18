@@ -638,6 +638,7 @@ it("keeps native primary and HA IP defaults out of a metro-zone HA response sche
     .response_format.json_schema.schema;
   const properties =
     schema.properties.changes.items.properties.value.properties;
+  expect(schema.properties.changes.minItems).toBe(1);
   expect(properties).not.toHaveProperty("lan_ip");
   expect(properties).not.toHaveProperty("wan_ip");
   for (const field of ["backup_lan_ip", "backup_wan_ip", "lan_vip"])
@@ -1550,4 +1551,53 @@ it("requires explicitly requested existing native fields in the answer contract"
     "flavor",
     "name",
   ]);
+});
+
+it("rejects an empty HA proposal for an existing appliance with known technical prerequisites", async () => {
+  const f = fixture();
+  const { engine } = model(
+    {
+      explanation: "More sizing questions first.",
+      questions: [],
+      changes: [],
+      references: ["firewall-infrastructure"],
+    },
+    "other",
+    "draft",
+    "firewall-infrastructure",
+    "ha",
+  );
+  await expect(
+    engine.converse(
+      f.selection,
+      f.values,
+      [],
+      "Bitte native HA ergänzen. Backup-Zone eu01-2, vhid 23.",
+    ),
+  ).rejects.toMatchObject({ reason: "invalid_scope" });
+});
+
+it("rejects a map proposal that omits the selected appliance needing HA", async () => {
+  const f = fixture(true);
+  const { engine } = model(
+    {
+      explanation: "HA will be proposed.",
+      questions: [],
+      changes: [{ path: "connectivity.firewalls", value: {} }],
+      references: ["firewall-infrastructure"],
+    },
+    "other",
+    "draft",
+    "firewall-infrastructure",
+    "ha",
+    { keys: ["corporate"] },
+  );
+  await expect(
+    engine.converse(
+      f.selection,
+      f.values,
+      [],
+      "Nur Corporate: native HA mit Backup-Zone eu01-2 und vhid 23 vorschlagen.",
+    ),
+  ).rejects.toMatchObject({ reason: "proposal_schema" });
 });
