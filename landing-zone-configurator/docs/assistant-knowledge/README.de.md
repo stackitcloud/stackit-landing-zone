@@ -177,6 +177,8 @@ Editor-Services mit Policy prüfen eine Informationsklassifikation gegen die akt
 
 Generierte Modellfragen müssen im Wire-Vertrag ausdrücklich zwischen fachlicher Anforderung und Katalogauswahl wählen; gespeicherte ältere Fragen bleiben lesbar. Quellnetzfragen nutzen serviceübergreifend dieselbe geprüfte zweisprachige Darstellung. Audit-Folgeantworten erkennen aktuelle und frühere Server-Frageformulierungen.
 
+Ein vollständiger neuer Appliance-Vorschlag, dessen geänderte Werte wörtlich im aktuellen ausdrücklichen Auftrag stehen, öffnet nicht erneut die allgemeine Einrichtung. Diese Verfeinerung greift erst nach der normalen Vorschlags-/Quellenprüfung; gespeicherte oder abgeleitete Werte genügen nicht. Bestehende breite Einrichtungs- und reine Beratungsdialoge behalten ihre offenen fachlichen Entscheidungen.
+
 ### Geprüfte Architekturgrenzen
 
 Bei dokumentierten festen Grenzen und Ausführungsgarantien wählt das Modell eine geschlossene Faktenkennung und ein exaktes Zitat aus der aktuellen Nutzerfrage. Die Anwendung stellt die geprüfte deutsche/englische Antwort dar, ohne dass das Modell diese Grenze umformuliert. Die ersten Fakten behandeln Git-Instanzkapazität und -Topologie, Erreichbarkeit von Application-Git sowie S3-/Datenbankkoordination. Sie erlauben weder Entwurfsänderungen noch Ausführung und benötigen das passende ausgewählte Wissensthema. Andere Beratung und Konfigurationsvorschläge nutzen ihre bisherigen Abläufe. Erweiterungen benötigen Quellbindungen, beide Sprachen und positive/negative Faktentests.

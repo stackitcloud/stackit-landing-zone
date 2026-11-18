@@ -18,6 +18,7 @@ import {
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
 import {
+  assistantFirewallPatchExplicitInMessage,
   assistantNetworkCapacity,
   assistantPublicFirewall,
   mergeAssistantFirewall,
@@ -1666,4 +1667,60 @@ it("rejects a map proposal that omits the selected appliance needing HA", async 
       "Nur Corporate: native HA mit Backup-Zone eu01-2 und vhid 23 vorschlagen.",
     ),
   ).rejects.toMatchObject({ reason: "proposal_schema" });
+});
+
+it("does not reopen broad setup for a complete current native patch mislabelled as setup", async () => {
+  const f = fixture(false, false);
+  const message =
+    "Erstelle einen nativen Firewall-HA-Vorschlag: Name corporate-firewall, Zone eu01-1, Flavor g1.4, LAN 10.0.252.0/24, WAN 10.0.253.0/24. Diese Subnetze sind frei und bestätigt. Backup-Zone eu01-2, vhid 23. Durchsatz unbekannt.";
+  const proposed = { ...firewall, ha: { backup_zone: "eu01-2", vhid: 23 } };
+  const result = await model(
+    {
+      explanation: "Vorschlag.",
+      questions: [],
+      changes: [{ path: "connectivity.firewall", value: proposed }],
+      references: ["firewall-infrastructure"],
+    },
+    "sna-and-firewall",
+    "draft",
+    "firewall-infrastructure",
+    "ha",
+    {
+      setupScope: "setup",
+      setupRequest: message,
+      capacityDeferred: true,
+      setupQuotes: {
+        traffic: null,
+        capacity: "Durchsatz unbekannt.",
+        operations: null,
+      },
+    },
+  ).engine.converse(f.selection, f.values, [], message);
+  expect(result.changes).toEqual([
+    { path: "connectivity.firewall", value: proposed },
+  ]);
+  expect(result.questions).toEqual([]);
+});
+it("does not treat historical, inferred or numeric-IP fragments as explicit current patch choices", () => {
+  expect(
+    assistantFirewallPatchExplicitInMessage(
+      firewall,
+      { ha: { backup_zone: "eu01-2", vhid: 23 } },
+      "Continue HA setup.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantFirewallPatchExplicitInMessage(
+      firewall,
+      { ha: { backup_zone: "eu01-2", vhid: 23 } },
+      "Backup eu01-2, network 10.0.23.0/24.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantFirewallPatchExplicitInMessage(
+      firewall,
+      { ha: { backup_zone: "eu01-2", vhid: 23 } },
+      "Only native HA: eu01-2, vhid 23.",
+    ),
+  ).toBe(true);
 });

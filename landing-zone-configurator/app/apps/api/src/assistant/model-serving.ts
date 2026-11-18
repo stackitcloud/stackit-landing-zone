@@ -86,6 +86,7 @@ import {
 import {
   assistantFirewallHaSchema,
   assistantFirewallPatchChanged,
+  assistantFirewallPatchExplicitInMessage,
   assistantFirewallPatchSchema,
   assistantFirewallRequirementQuestions,
   assistantFirewallSchema,
@@ -4910,6 +4911,43 @@ CURRENT RESPONSE LANGUAGE: ${language === "en" ? "English" : "German"}. Your JSO
             )
               throw new Error("assistant_invalid_scope");
         }
+      // A fully sourced new appliance is a concrete native patch. Saved or
+      // inferred settings cannot close a broader requirements dialogue.
+      const explicitNativeUpdate = !!(
+        firewallDraft &&
+        firewallSetup?.setupRequest &&
+        message.includes(firewallSetup.setupRequest) &&
+        !firewallSetup.traffic &&
+        !firewallSetup.policy &&
+        !firewallSetup.operations &&
+        dialogue.changes.length &&
+        dialogue.changes.every((change) =>
+          change.path === "connectivity.firewall"
+            ? values[change.path] == null &&
+              assistantFirewallPatchExplicitInMessage(
+                values[change.path],
+                change.value,
+                message,
+              )
+            : change.path === "connectivity.firewalls" &&
+              Object.entries(
+                assistantFirewallsPatchSchema.parse(change.value),
+              ).every(
+                ([key, patch]) =>
+                  objectValue(
+                    values[change.path] as Parameters<typeof objectValue>[0],
+                  )[key] == null &&
+                  assistantFirewallPatchExplicitInMessage(
+                    objectValue(
+                      values[change.path] as Parameters<typeof objectValue>[0],
+                    )[key],
+                    patch,
+                    message,
+                  ),
+              ),
+        )
+      );
+      const firewallDiscussion = explicitNativeUpdate ? null : firewallSetup;
       const hadFirewallChanges = firewallDraft && dialogue.changes.length > 0;
       dialogue.changes = dialogue.changes.filter((change) =>
         change.path === "connectivity.firewall"
@@ -5148,30 +5186,30 @@ CURRENT RESPONSE LANGUAGE: ${language === "en" ? "English" : "German"}. Your JSO
             : "Noch nichts gespeichert. Übernahme ändert nur den lokalen Entwurf; Konfiguration speichern bleibt separat. Neue Appliances benötigen alle Pflichtfelder zusammen; eine neue HA-Konfiguration benötigt ihre Backup-Zone. Kein Deployment; Plan und Apply brauchen separate Prüfung und Freigabe. HA garantiert weder Firewall-Durchsatz noch automatisches Failover der öffentlichen Eingangs-IP. DNS, SNA, VPN und Berechtigungen bleiben unverändert.";
         const body = [
           network.slice(0, 900),
-          firewallSetup ? assistantFirewallPolicyLimit : "",
-          firewallSetup
+          firewallDiscussion ? assistantFirewallPolicyLimit : "",
+          firewallDiscussion
             ? [
                 "Bestätigte Anforderungen (noch keine konfigurierten Firewall-Regeln):",
-                firewallSetup.traffic
-                  ? `Verkehr: ${firewallSetup.traffic.slice(0, 200)}`
+                firewallDiscussion.traffic
+                  ? `Verkehr: ${firewallDiscussion.traffic.slice(0, 200)}`
                   : "",
-                firewallSetup.policy
-                  ? `Regelanforderungen: ${firewallSetup.policy}`
+                firewallDiscussion.policy
+                  ? `Regelanforderungen: ${firewallDiscussion.policy}`
                   : "",
-                firewallSetup.capacity
-                  ? `Kapazität${firewallSetup.capacityDeferred ? " vorerst offen; Sizing/Benchmark ausstehend" : " als Anforderung, nicht als Leistungsnachweis"}: ${firewallSetup.capacity.slice(0, 300)}`
+                firewallDiscussion.capacity
+                  ? `Kapazität${firewallDiscussion.capacityDeferred ? " vorerst offen; Sizing/Benchmark ausstehend" : " als Anforderung, nicht als Leistungsnachweis"}: ${firewallDiscussion.capacity.slice(0, 300)}`
                   : "",
-                firewallSetup.operator
-                  ? `Betrieb: ${firewallSetup.operator.slice(0, 150)}`
+                firewallDiscussion.operator
+                  ? `Betrieb: ${firewallDiscussion.operator.slice(0, 150)}`
                   : "",
-                firewallSetup.operations
-                  ? `Unterbrechung: ${firewallSetup.operations.slice(0, 150)}`
+                firewallDiscussion.operations
+                  ? `Unterbrechung: ${firewallDiscussion.operations.slice(0, 150)}`
                   : "",
               ]
                 .filter(Boolean)
                 .join("\n")
             : "",
-          firewallSetup
+          firewallDiscussion
             ? existingFirewalls
                 .filter((firewall) => firewall.name != null)
                 .map(
@@ -5185,7 +5223,7 @@ CURRENT RESPONSE LANGUAGE: ${language === "en" ? "English" : "German"}. Your JSO
             ? `Firewall-Vorschlag zur Prüfung:\n${details.join("\n")}`
             : hadFirewallChanges && !dialogue.questions.length
               ? "Kein neuer Firewall-Vorschlag; die angefragten Werte sind bereits im aktuellen Entwurf vorhanden."
-              : firewallSetup
+              : firewallDiscussion
                 ? "Keine weitere konkrete Infrastrukturänderung vorgeschlagen. Vorhandene Entwurfswerte bleiben erhalten; offene Anforderungen sind kein Nachweis für geeignetes Sizing oder umgesetzte Regeln."
                 : dialogue.questions.length
                   ? "Für den Firewall-/HA-Vorschlag fehlen noch die abgefragten Angaben. Bestehende Entwurfswerte bleiben erhalten; ich erfinde keine freien Subnetze, Produktverfügbarkeit oder Kapazitätszusagen."
@@ -5195,32 +5233,32 @@ CURRENT RESPONSE LANGUAGE: ${language === "en" ? "English" : "German"}. Your JSO
           .join("\n\n");
         const englishBody = [
           network.slice(0, 900),
-          firewallSetup
+          firewallDiscussion
             ? "Infrastructure provisioning and firewall policy are separate. The firewall administrator manages application-specific allow/deny and NAT rules; no rules are configured by this proposal."
             : "",
-          firewallSetup
+          firewallDiscussion
             ? [
                 "Confirmed requirements (not applied firewall rules):",
-                firewallSetup.traffic
-                  ? `Traffic: ${firewallSetup.traffic.slice(0, 200)}`
+                firewallDiscussion.traffic
+                  ? `Traffic: ${firewallDiscussion.traffic.slice(0, 200)}`
                   : "",
-                firewallSetup.policy
-                  ? `Policy requirements: ${firewallSetup.policy}`
+                firewallDiscussion.policy
+                  ? `Policy requirements: ${firewallDiscussion.policy}`
                   : "",
-                firewallSetup.capacity
-                  ? `Capacity ${firewallSetup.capacityDeferred ? "not yet quantified; sizing/benchmark pending" : "requirement, not measured capability"}: ${firewallSetup.capacity.slice(0, 300)}`
+                firewallDiscussion.capacity
+                  ? `Capacity ${firewallDiscussion.capacityDeferred ? "not yet quantified; sizing/benchmark pending" : "requirement, not measured capability"}: ${firewallDiscussion.capacity.slice(0, 300)}`
                   : "",
-                firewallSetup.operator
-                  ? `Operator: ${firewallSetup.operator.slice(0, 150)}`
+                firewallDiscussion.operator
+                  ? `Operator: ${firewallDiscussion.operator.slice(0, 150)}`
                   : "",
-                firewallSetup.operations
-                  ? `Interruption tolerance: ${firewallSetup.operations.slice(0, 150)}`
+                firewallDiscussion.operations
+                  ? `Interruption tolerance: ${firewallDiscussion.operations.slice(0, 150)}`
                   : "",
               ]
                 .filter(Boolean)
                 .join("\n")
             : "",
-          firewallSetup
+          firewallDiscussion
             ? existingFirewalls
                 .filter((firewall) => firewall.name != null)
                 .map(
@@ -5239,10 +5277,10 @@ CURRENT RESPONSE LANGUAGE: ${language === "en" ? "English" : "German"}. Your JSO
           .filter(Boolean)
           .join("\n\n");
         dialogue.explanation = `${(language === "en" ? englishBody : body).slice(0, 3000 - notice.length - 2)}\n\n${notice}`;
-        if (firewallSetup) {
+        if (firewallDiscussion) {
           dialogue.questions = assistantFirewallRequirementQuestions(
             nextDecision,
-            firewallSetup.operator,
+            firewallDiscussion.operator,
             language,
           );
         }

@@ -143,6 +143,39 @@ export function assistantFirewallPatchChanged(
   );
 }
 
+/** A validated native patch is explicit only when every changed scalar is in
+ * the CURRENT request. Saved unchanged values do not create new requirements.
+ */
+export function assistantFirewallPatchExplicitInMessage(
+  existing: unknown,
+  patch: unknown,
+  message: string,
+) {
+  const proposed = assistantFirewallPatchSchema.parse(patch);
+  const before = objectValue(existing as Parameters<typeof objectValue>[0]);
+  let mentioned = false;
+  const contains = (value: unknown) =>
+    typeof value === "string"
+      ? message.includes(value)
+      : typeof value === "number" &&
+        new RegExp(`(?:^|[^0-9.])${value}(?![0-9]|\\.[0-9])`).test(message);
+  for (const [key, value] of Object.entries(proposed)) {
+    const fields: [string, unknown][] =
+      key === "ha" ? Object.entries(value ?? {}) : [[key, value]];
+    const previous = key === "ha" ? objectValue(before.ha) : before;
+    for (const [field, input] of fields) {
+      const explicit = contains(input);
+      mentioned ||= explicit;
+      if (
+        !isDeepStrictEqual(previous[field] ?? null, input ?? null) &&
+        !explicit
+      )
+        return false;
+    }
+  }
+  return mentioned;
+}
+
 export function validateAssistantFirewall(
   firewall: z.infer<typeof assistantFirewallSchema>,
   area: unknown,

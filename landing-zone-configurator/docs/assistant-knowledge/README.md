@@ -150,6 +150,8 @@ Policy-backed Editor services verify an informational label against the current 
 
 Generated model questions must explicitly select business requirements or a catalogue choice in the wire grammar; stored legacy questions remain readable. Source-network questions use the same reviewed bilingual renderer across services. Audit continuations recognize both current and previous server question wording.
 
+A complete new appliance patch whose changed values are all literal in the current explicit request does not reopen a general setup questionnaire. This refinement runs only after normal proposal/source validation; saved or inferred values cannot satisfy it. Existing broad setup and consultation-only turns keep their remaining business decisions.
+
 ### Reviewed architecture boundaries
 
 For documented hard limits and execution guarantees, the model selects a closed fact identifier and an exact quote from the current user question. The application renders the reviewed English/German answer without letting the model rewrite that boundary. The initial facts cover Git instance capacity/topology, Application Git reachability and S3/database coordination. They authorize no draft change or execution and require the corresponding selected knowledge topic. Ordinary advice and configuration proposals keep their existing flows. Add source bindings, both locales and positive/negative factual tests when extending this registry.
