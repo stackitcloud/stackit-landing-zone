@@ -3432,7 +3432,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
           .optional()
           .default(null)
           .describe(
-            "Choose a latest-user-message evidence ID explicitly requesting clarification only, no infrastructure changes or no proposal yet. Otherwise null. This suppresses draft changes for this turn without forgetting the ongoing setup request.",
+            "Choose a latest-user-message evidence ID explicitly requesting clarification only, no draft/proposal yet, or no infrastructure changes proposed yet. Otherwise null. IMPORTANT: no execution, no Apply, preserve existing settings, no OTHER changes, unknown performance, and asking for a PROPOSAL without deployment do NOT defer the local draft; return null for those. This suppresses draft changes for this turn without forgetting the ongoing setup request.",
           ),
         setupRequest: selection("setupRequest"),
         haRequest: selection("haRequest"),
@@ -3484,7 +3484,13 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
       const deferredQuote = quote(classified.data.proposalDeferred);
       if (deferredQuote && !message.includes(deferredQuote))
         throw new AssistantInferenceError("intent_evidence");
-      firewallConsultationOnly = deferredQuote !== null;
+      // Withholding cloud execution does not withhold a local draft. Require
+      // explicit proposal/clarification wording in the selected user evidence.
+      firewallConsultationOnly =
+        deferredQuote !== null &&
+        /(?:\bclarif(?:y|ication)\b[^.!?]*(?:\bonly\b|\bfirst\b)|\bdo not\b[^.!?]*(?:propose|change the infrastructure)|\bno (?:infrastructure changes|draft|proposal)\b|(?:nur|zunächst)[^.!?]*(?:Anforderungen|klären)|keine (?:Änderungsvorschläge|Infrastrukturänderungen))/i.test(
+          deferredQuote,
+        );
       setupDecisions = {
         ...classified.data,
         setupRequest: quote(classified.data.setupRequest),
@@ -4366,6 +4372,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
                       value: firewallSchema,
                     }),
                   )
+                  .min(hasNewFirewall && canProposeFirewall ? 1 : 0)
                   .max(canProposeFirewall ? 1 : 0)
                   .describe(
                     "At most ONE coherent native firewall patch; combine all requested fields in it. New appliances require every mandatory field and requested HA together. Missing prerequisites mean changes=[], ask targeted questions. NEVER split a path across entries.",
