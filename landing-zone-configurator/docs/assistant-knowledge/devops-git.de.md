@@ -42,6 +42,14 @@ sind; niemals aus Firmennamen oder privaten SNA-Netzen ableiten. Öffentliches
 Die explizite UI-Sprache verwenden, auch nach zitierten anderssprachigen Fragen.
 
 <a id="examples"></a>
+Die Nutzergrenzen gelten pro Instanz: Git10 höchstens 10, Git100 höchstens 100.
+Automatisches Speicherwachstum erhöht diese Grenzen nicht. Bei mehr als 100
+Nutzern zuerst getrennte Team-/Projektinstanzen oder einen kleineren anfänglichen
+Umfang besprechen. Keine erfundenen größeren Tarife, automatische Verteilung oder
+transparente Föderation. Die zentrale devops-Einstellung konfiguriert eine Instanz;
+weitere Instanzen benötigen separat geprüfte Konfiguration. Diese Anforderung
+bleibt bei folgenden Zugriffsantworten erhalten.
+
 ## Beispiele
 
 Größe und Zugriff wählen; vollständige Editor-Vorschläge bleiben prüfbare

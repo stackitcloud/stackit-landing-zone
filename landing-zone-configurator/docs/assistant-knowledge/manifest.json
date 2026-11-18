@@ -454,8 +454,8 @@
     {
       "id": "devops-git",
       "file": "devops-git.md",
-      "version": 3,
-      "checkedOn": "2026-11-17",
+      "version": 4,
+      "checkedOn": "2026-11-18",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "platform"

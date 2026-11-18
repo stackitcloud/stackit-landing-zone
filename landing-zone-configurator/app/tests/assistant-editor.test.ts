@@ -313,6 +313,27 @@ function collectionModel(
     },
     vi.fn<typeof fetch>(async (_url, options) => {
       const body = JSON.parse(String(options?.body));
+      if (
+        ["component_request_purpose", "platform_advice_subject"].includes(
+          body.response_format.json_schema.name,
+        )
+      )
+        return Response.json({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify(
+                  body.response_format.json_schema.name ===
+                    "component_request_purpose"
+                    ? { purpose: "information", quote: null }
+                    : { task: "other" },
+                ),
+              },
+            },
+          ],
+        });
       if (body.response_format.json_schema.name === "firewall_setup_decisions")
         return Response.json({
           choices: [

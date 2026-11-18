@@ -14,6 +14,15 @@ credentials or permissions. Unsupported recommendations need a focused business
 question, not a request to research internal identifiers. Services without a
 flavor use appropriate decisions such as retention, availability or access.
 
+
+Documented limits take precedence over a starting recommendation. For Git, the
+reviewed plans allow at most 10/100 users per instance; automatic storage growth
+does not increase those limits. A requirement above 100 users opens an architecture
+question about separate team/project instances or a smaller initial scope before
+another flavor selection. Separate instances do not imply federation, automatic
+load distribution or aggregated guaranteed capacity. The central `devops` input
+configures one instance; additional instances require separate reviewed configuration.
+
 ## Shared catalogue selection
 
 `packages/contracts/src/cloud-catalogue-fields.ts` is the shared field-to-catalogue

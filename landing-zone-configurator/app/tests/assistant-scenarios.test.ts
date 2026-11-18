@@ -230,6 +230,40 @@ it.each(assistantScenarios)(
     expect(JSON.stringify(fixture)).not.toMatch(
       /af026540|lukas|preshared_key/i,
     );
+    if (scenario.id.startsWith("editor-devops-over-capacity")) {
+      const answer = {
+        explanation:
+          scenario.expectedLanguage === "de"
+            ? "Git100: höchstens 100 Nutzer pro Instanz. Getrennte Team-/Projektinstanzen benötigen separate Konfiguration."
+            : "Git100: at most 100 users per instance. Separate team/project instances require separate configuration.",
+        changes: [],
+        references: [scenario.topic],
+        questions: [
+          {
+            path: "devops.git_flavor",
+            answerType: "requirements" as const,
+            text: "Scope?",
+            options: ["Separate teams", "Smaller initial scope"],
+          },
+        ],
+      };
+      expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+      expect(
+        validateAssistantScenario(scenario, {
+          ...answer,
+          explanation:
+            "I recommend Git100 as the company standard for 150 users.",
+          questions: [
+            {
+              ...answer.questions[0]!,
+              answerType: "catalogue",
+              options: ["Git100", "Git10"],
+            },
+          ],
+        }).failures,
+      ).toContain("git_over_capacity_must_clarify_topology_before_flavor");
+      return;
+    }
     if (scenario.setupQuestionPaths) {
       expect(
         validateAssistantScenario(scenario, {

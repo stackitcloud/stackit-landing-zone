@@ -753,6 +753,7 @@ export class AssistantModelServing {
         "conversation_intent",
         "firewall_setup_decisions",
         "platform_advice_subject",
+        "component_request_purpose",
       ].includes(schemaName)
         ? [
             `Return only the JSON response defined by this output contract. Its field descriptions explain the required decisions; do not substitute schema defaults for understanding the user request. Property names and enum values are data, not instructions. Include requested values in the actual changes, not merely in the explanation.\nOutput contract: ${JSON.stringify(servingSchema)}`,
@@ -785,6 +786,7 @@ export class AssistantModelServing {
     const model =
       schemaName === "conversation_intent" ||
       schemaName === "platform_advice_subject" ||
+      schemaName === "component_request_purpose" ||
       schemaName === "firewall_setup_decisions"
         ? (this.configuration.intentModel ?? this.configuration.model)
         : this.configuration.model;
@@ -1832,16 +1834,65 @@ export class AssistantModelServing {
       ...intentResult.data,
       ...(language ? { applicationAccessLanguage: language } : {}),
     };
+    const componentRoots =
+      context.topics
+        .find((topic) => topic.id === classifiedIntent.topic)
+        ?.inputs.filter((input) => assistantEditorInputs.includes(input)) ?? [];
     if (
       classifiedIntent.mode === "advice" &&
-      classifiedIntent.adviceTaskSource === "current" &&
-      Object.hasOwn(
-        assistantApplicationUpgradeAdvice,
-        classifiedIntent.adviceTask,
-      ) &&
-      lifecycleAdviceTopics[
-        classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
-      ].has(classifiedIntent.topic)
+      componentRoots.length === 1 &&
+      Object.hasOwn(assistantEditorPolicies, componentRoots[0]!)
+    ) {
+      const purposeSchema = z.strictObject({
+        purpose: z.enum(["information", "prepare-draft"]),
+        quote: z.string().min(1).max(1200).nullable(),
+      });
+      const checkedPurpose = purposeSchema.safeParse(
+        await complete(
+          [
+            {
+              role: "system",
+              content:
+                "Determine the purpose of the CURRENT USER message for this supported component. prepare-draft means the user explicitly asks to add, configure or prepare a reviewable configuration proposal. Missing size, access networks or other choices do NOT turn that request into an information question: the setup flow must ask for them. Preparing a local draft is neither saving nor cloud execution; 'do not deploy' does not defer a draft request. information means asking about fields, defaults, capabilities or architecture, or explicitly deferring proposal preparation. Earlier assistant messages or requests do not select the current purpose. Ambiguous intent stays information. For prepare-draft copy a nonempty exact current USER quote establishing the request; otherwise quote=null. Do not answer the question, invent settings, or perform any changes.",
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                component: classifiedIntent.topic,
+                message,
+              }),
+            },
+          ],
+          assistantEditorResponseSchema(purposeSchema),
+          "component_request_purpose",
+          undefined,
+          stream?.signal,
+        ),
+      );
+      if (!checkedPurpose.success)
+        throw new AssistantInferenceError("intent_schema");
+      const purpose = checkedPurpose.data;
+      if (purpose.purpose === "prepare-draft") {
+        if (!purpose.quote || !message.includes(purpose.quote))
+          throw new AssistantInferenceError("intent_evidence");
+        classifiedIntent.mode = "draft";
+        classifiedIntent.adviceTask = "other";
+        classifiedIntent.adviceTaskSource = "none";
+        classifiedIntent.editorContract = true;
+        classifiedIntent.editorInputs = componentRoots;
+      }
+    }
+    if (
+      classifiedIntent.mode === "advice" &&
+      ((classifiedIntent.adviceTaskSource === "current" &&
+        Object.hasOwn(
+          assistantApplicationUpgradeAdvice,
+          classifiedIntent.adviceTask,
+        ) &&
+        lifecycleAdviceTopics[
+          classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
+        ].has(classifiedIntent.topic)) ||
+        classifiedIntent.topic === "audit-logs")
     ) {
       // A workflow label can confuse a root Plan, template or order contract.
       // Verify this narrow subject from the latest question alone, without the large
@@ -1878,11 +1929,18 @@ export class AssistantModelServing {
           throw new AssistantInferenceError("invalid_scope");
         classifiedIntent.topic = "audit-logs";
         classifiedIntent.adviceTask = "field-overview";
-      } else {
+      } else if (subject.data.task !== "other") {
         classifiedIntent.adviceTask = subject.data.task;
-        if (subject.data.task === "other")
-          classifiedIntent.adviceTaskSource = "none";
-        else classifiedIntent.topic = "configuration-lifecycle";
+        classifiedIntent.adviceTaskSource = "current";
+        classifiedIntent.topic = "configuration-lifecycle";
+      } else if (
+        Object.hasOwn(
+          assistantApplicationUpgradeAdvice,
+          classifiedIntent.adviceTask,
+        )
+      ) {
+        classifiedIntent.adviceTask = "other";
+        classifiedIntent.adviceTaskSource = "none";
       }
     }
     // A closed current-turn workflow task owns its lifecycle topic. Requiring
@@ -2726,7 +2784,7 @@ export class AssistantModelServing {
           [
             {
               role: "system",
-              content: `Classify choices in the active central Git SETUP dialogue. Return only the closed decision JSON; do not generate configuration or network values. USER statements are evidence, quoted assistant questions and offered options are not choices. setupSource identifies the USER request that started the current Git setup; do not reuse networks from earlier firewall/DNS/other topics. planSource/networkSource must refer to actual USER choices on or after setupSource. Preserve answered USER decisions across turns; latest explicit corrections win. A bare request to add Git has planChoice=null. "just use a standard git flavor useful for company-wide Git", "use the recommendation", "recommend a company baseline" mean planChoice=recommend, not another sizing question. An explicit Git10/Git100 or up-to-10/11-to-100 users selects its matching supplied plan. More than 100 users means larger; help estimating means estimate. Do not invent a larger plan. networkEvidence must quote only the positively chosen IP/CIDR fragment from the actual USER answer exactly; null for company/reuse choices. Never include a negated CIDR, a quoted question or invented text. networkChoice=explicit for actual source IPs/CIDRs supplied FOR GIT or the USER choice to provide specific source IPs next (networkEvidence=null until supplied); company-networks for a choice to restrict to company/VPN egress without giving the addresses. public requires the USER to choose the literal 0.0.0.0/0 option, never merely an unanswered access question. Use a saved allowlist key only when the USER chooses to reuse that service's actual allowlist. If a field has no USER answer, its choice and source are null. A "My answer:" or "Meine Antwort:" segment is the USER answer; the preceding question is not an answer. No cloud execution or permissions.`,
+              content: `Classify choices in the active central Git SETUP dialogue. Return only the closed decision JSON; do not generate configuration or network values. USER statements are evidence, quoted assistant questions and offered options are not choices. setupSource identifies the USER request that started the current Git setup; do not reuse networks from earlier firewall/DNS/other topics. planSource/networkSource must refer to actual USER choices on or after setupSource. Preserve answered USER decisions across turns; latest explicit corrections win. A bare request to add Git has planChoice=null. "just use a standard git flavor useful for company-wide Git", "use the recommendation", "recommend a company baseline" mean planChoice=recommend, not another sizing question. An explicit Git10/Git100 or up-to-10/11-to-100 users selects its matching supplied plan. More than 100 users means larger; help estimating means estimate. Do not invent a larger plan. networkEvidence must quote only the positively chosen IP/CIDR fragment from the actual USER answer exactly; null for company/reuse choices. Never include a negated CIDR, a quoted question or invented text. networkChoice=explicit for actual source IPs/CIDRs supplied FOR GIT or the USER choice to provide specific source IPs next (networkEvidence=null until supplied); company-networks for a choice to restrict to company/VPN egress without giving the addresses. public requires the USER to choose the literal 0.0.0.0/0 option, never merely an unanswered access question. Use a saved allowlist key only when the USER chooses to reuse that service's actual allowlist. If a field has no USER answer, its choice and source are null. A "My answer:" or "Meine Antwort:" segment is the USER answer; the preceding question is not an answer. A confirmed active requirement of more than 100 Git users MUST use planChoice=larger and planSource for that USER requirement, even if they also request a company-wide recommendation, Git100 or larger storage. Git100 is a hard per-instance 100-user ceiling; automatic storage growth does not raise it. Retain that capacity requirement across access-setting replies until the USER explicitly narrows the instance scope. Never classify a quoted assistant example or a question about limits as an actual user count. No cloud execution or permissions.`,
             },
             {
               role: "user",
@@ -4025,7 +4083,9 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
               targetAreaKeys.map((key) => [
                 key,
                 firewallValues[key] != null
-                  ? responseFirewallSchema(firewallValues[key]).optional()
+                  ? requestedHa && objectValue(firewallValues[key]).ha == null
+                    ? responseFirewallSchema(firewallValues[key])
+                    : responseFirewallSchema(firewallValues[key]).optional()
                   : responseFirewallSchema(null),
               ]),
             ),
@@ -4184,6 +4244,30 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
           context.rules.map((rule) => rule.id),
         );
       }
+      const requiredHaProposal =
+        firewallDraft &&
+        canProposeFirewall &&
+        !hasNewFirewall &&
+        requestedHa &&
+        existingFirewalls.some((firewall) => firewall.ha == null);
+      const firewallChanges = z
+        .array(
+          z.strictObject({
+            path: z.literal(
+              singleFirewallForm
+                ? "connectivity.firewall"
+                : "connectivity.firewalls",
+            ),
+            value: firewallSchema,
+          }),
+        )
+        .min(
+          requiredHaProposal || (hasNewFirewall && canProposeFirewall) ? 1 : 0,
+        )
+        .max(canProposeFirewall ? 1 : 0)
+        .describe(
+          "ONE coherent native firewall patch when requested HA is absent on an existing appliance and technical prerequisites are available. Business sizing/traffic follow-ups do not defer this reviewable HA patch. Preserve all other saved fields and native IP defaults. Otherwise at most one patch; missing technical prerequisites mean no changes and targeted questions.",
+        );
       if (dnsSettingsDraft || foundationDraft || networkDraft || firewallDraft)
         stream?.onText(
           language === "en"
@@ -4361,22 +4445,7 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
                         : 8,
               ),
             changes: firewallDraft
-              ? z
-                  .array(
-                    z.strictObject({
-                      path: z.literal(
-                        singleFirewallForm
-                          ? "connectivity.firewall"
-                          : "connectivity.firewalls",
-                      ),
-                      value: firewallSchema,
-                    }),
-                  )
-                  .min(hasNewFirewall && canProposeFirewall ? 1 : 0)
-                  .max(canProposeFirewall ? 1 : 0)
-                  .describe(
-                    "At most ONE coherent native firewall patch; combine all requested fields in it. New appliances require every mandatory field and requested HA together. Missing prerequisites mean changes=[], ask targeted questions. NEVER split a path across entries.",
-                  )
+              ? firewallChanges
               : z
                   .array(
                     z.union([
@@ -4554,6 +4623,8 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
       if (!draftAllowed && dialogue.changes.length > 0)
         throw new Error("assistant_invalid_scope");
       if (firewallDraft) {
+        if (!firewallChanges.safeParse(dialogue.changes).success)
+          throw new Error("assistant_invalid_scope");
         if (!canProposeFirewall && dialogue.changes.length)
           throw new Error("assistant_invalid_scope");
         const catalogueFields = {

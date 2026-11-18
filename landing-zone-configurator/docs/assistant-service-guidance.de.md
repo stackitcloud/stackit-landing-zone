@@ -15,6 +15,15 @@ Empfehlung, folgt eine verständliche fachliche Rückfrage statt der Aufforderun
 interne Kennungen selbst zu recherchieren. Services ohne Flavor verwenden
 passende Entscheidungen, etwa Aufbewahrung, Verfügbarkeit oder Zugriff.
 
+
+Dokumentierte Grenzen gehen einer Startempfehlung vor. Git erlaubt je nach
+geprüftem Tarif höchstens 10/100 Nutzer pro Instanz; automatisches Speicherwachstum
+erhöht diese Grenzen nicht. Bei mehr als 100 Nutzern folgt vor der Flavor-Auswahl
+eine Architekturfrage zu getrennten Team-/Projektinstanzen oder einem kleineren
+anfänglichen Umfang. Getrennte Instanzen bedeuten keine Föderation, automatische
+Lastverteilung oder garantierte Gesamtkapazität. Der zentrale `devops`-Input
+konfiguriert eine Instanz; weitere Instanzen benötigen separat geprüfte Konfiguration.
+
 ## Gemeinsame Katalogauswahl
 
 `packages/contracts/src/cloud-catalogue-fields.ts` ordnet die Felder ihren

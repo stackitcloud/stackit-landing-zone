@@ -830,6 +830,73 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     message: entry.message,
     answeredCatalogueChoice: { path: entry.path, value: entry.value },
   })),
+  ...[
+    {
+      id: "editor-devops-over-capacity-en",
+      language: "en" as const,
+      message:
+        "Please add central Git for our 150 developers. Use a sensible company-wide starting point and allow only 203.0.113.0/24.",
+    },
+    {
+      id: "editor-devops-over-capacity-de",
+      language: "de" as const,
+      message:
+        "Bitte zentrales Git für unsere 150 Entwickler vorbereiten. Empfiehl einen sinnvollen Standard und erlaube nur 203.0.113.0/24.",
+    },
+    {
+      id: "editor-devops-over-capacity-followup",
+      language: "en" as const,
+      message:
+        "Use git-100 and allow only 203.0.113.0/24. Keep our stated user requirement.",
+    },
+  ].map((entry) => ({
+    id: entry.id,
+    topic: "devops-git",
+    fixture: "baseline" as const,
+    expectedLanguage: entry.language,
+    message: entry.message,
+    history: entry.id.endsWith("followup")
+      ? [
+          {
+            role: "user" as const,
+            content: "Please add central Git for all our 150 developers.",
+          },
+          {
+            role: "assistant" as const,
+            content:
+              "We need to discuss the scope because Git100 supports at most 100 users per instance.",
+          },
+        ]
+      : [],
+    setupQuestionPaths: ["devops.git_flavor"],
+  })),
+  ...[
+    { id: "editor-devops-unselected-requirements-en", history: [] },
+    {
+      id: "editor-devops-setup-after-service-advice-en",
+      history: [
+        {
+          role: "user" as const,
+          content:
+            "Bitte die zentrale Observability vorbereiten, noch nichts deployen.",
+        },
+        {
+          role: "assistant" as const,
+          content:
+            "Observability ist nur vorgeschlagen; noch nichts gespeichert.",
+        },
+      ],
+    },
+  ].map((entry) => ({
+    id: entry.id,
+    topic: "devops-git",
+    fixture: "baseline" as const,
+    expectedLanguage: "en" as const,
+    history: entry.history,
+    message:
+      "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+    setupQuestionPaths: ["devops.git_flavor", "devops.allowed_network_ranges"],
+  })),
   {
     id: "editor-devops-company-standard",
     topic: "devops-git",
@@ -2428,6 +2495,24 @@ export function validateAssistantScenario(
       /\b(?:Which|Nothing has|Please complete)\b/.test(text)
     )
       failures.push("dialogue_language_mismatch");
+  }
+  if (scenario.id.startsWith("editor-devops-over-capacity")) {
+    if (
+      dialogue.changes.length ||
+      !/100/.test(dialogue.explanation) ||
+      !/(?:separate|separat|getrennt)/i.test(dialogue.explanation) ||
+      !/(?:per instance|pro Instanz)/i.test(dialogue.explanation)
+    )
+      failures.push("git_instance_user_limit_or_architecture_missing");
+    if (
+      dialogue.questions.some(
+        (question) => question.answerType !== "requirements",
+      ) ||
+      /(?:I recommend Git100 as|empfehle ich Git100)/i.test(
+        dialogue.explanation,
+      )
+    )
+      failures.push("git_over_capacity_must_clarify_topology_before_flavor");
   }
   if (scenario.setupQuestionPaths) {
     if (

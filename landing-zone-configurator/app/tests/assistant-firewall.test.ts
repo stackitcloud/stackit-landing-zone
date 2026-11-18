@@ -1617,3 +1617,52 @@ it("rejects consultation-only evidence that is not in the current user request",
     ),
   ).rejects.toMatchObject({ reason: "intent_evidence" });
 });
+
+it("rejects an empty HA proposal for an existing appliance with known technical prerequisites", async () => {
+  const f = fixture();
+  const { engine } = model(
+    {
+      explanation: "More sizing questions first.",
+      questions: [],
+      changes: [],
+      references: ["firewall-infrastructure"],
+    },
+    "other",
+    "draft",
+    "firewall-infrastructure",
+    "ha",
+  );
+  await expect(
+    engine.converse(
+      f.selection,
+      f.values,
+      [],
+      "Bitte native HA ergänzen. Backup-Zone eu01-2, vhid 23.",
+    ),
+  ).rejects.toMatchObject({ reason: "invalid_scope" });
+});
+
+it("rejects a map proposal that omits the selected appliance needing HA", async () => {
+  const f = fixture(true);
+  const { engine } = model(
+    {
+      explanation: "HA will be proposed.",
+      questions: [],
+      changes: [{ path: "connectivity.firewalls", value: {} }],
+      references: ["firewall-infrastructure"],
+    },
+    "other",
+    "draft",
+    "firewall-infrastructure",
+    "ha",
+    { keys: ["corporate"] },
+  );
+  await expect(
+    engine.converse(
+      f.selection,
+      f.values,
+      [],
+      "Nur Corporate: native HA mit Backup-Zone eu01-2 und vhid 23 vorschlagen.",
+    ),
+  ).rejects.toMatchObject({ reason: "proposal_schema" });
+});

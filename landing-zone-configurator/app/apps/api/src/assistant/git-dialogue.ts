@@ -94,6 +94,32 @@ export function gitSetupDialogue(
     const index = inputs.sources.findIndex((entry) => entry.id === id);
     return index >= start ? inputs.sources[index]?.text : undefined;
   };
+  if (decision.planChoice === "larger" && source(decision.planSource))
+    return {
+      explanation: en
+        ? "Git100 supports at most 100 users per instance; Git10 supports at most 10. Automatic storage growth does not increase the user limit. Your requirement exceeds one documented instance. Consider separate team/project instances, each within its own user limit, or reduce the initial scope. This does not provide one shared instance, automatic federation or a capacity guarantee. The central devops setting configures one Git instance; additional instances require separate reviewed configuration. Nothing has been saved or deployed."
+        : "Git100 unterstützt höchstens 100 Nutzer pro Instanz, Git10 höchstens 10. Automatisches Speicherwachstum erhöht die Nutzergrenze nicht. Dein Bedarf übersteigt eine dokumentierte Einzelinstanz. Möglich sind getrennte Team-/Projektinstanzen innerhalb ihrer jeweiligen Nutzergrenze oder ein kleinerer anfänglicher Umfang. Das ergibt keine gemeinsame Instanz, automatische Föderation oder Kapazitätsgarantie. Die zentrale devops-Einstellung konfiguriert eine Git-Instanz; weitere Instanzen benötigen eine separat geprüfte Konfiguration. Nichts gespeichert oder deployt.",
+      questions: [
+        {
+          path: "devops.git_flavor",
+          answerType: "requirements" as const,
+          text: en
+            ? "How should we scope Git for your users?"
+            : "Wie sollen wir Git für eure Nutzer aufteilen?",
+          options: en
+            ? [
+                "Discuss separate team/project instances",
+                "Limit the initial shared instance to at most 100 users",
+              ]
+            : [
+                "Getrennte Team-/Projektinstanzen besprechen",
+                "Anfängliche gemeinsame Instanz auf höchstens 100 Nutzer begrenzen",
+              ],
+        },
+      ],
+      changes: [],
+      references: ["devops-git"],
+    };
   const recommended = inputs.plans.includes("git-100")
     ? "git-100"
     : inputs.plans.includes("git-10")
@@ -266,17 +292,10 @@ export function gitSetupDialogue(
       ? `Starting size selected: ${name(plan)}. I will retain that choice while we finish access settings.`
       : `Gewählte Startgröße: ${name(plan)}. Diese Auswahl bleibt erhalten, während wir den Zugriff klären.`
     : "";
-  const larger =
-    decision.planChoice === "larger"
-      ? en
-        ? "Your needs exceed the documented 100-user plan. A larger supported offering must be verified; I will not invent a larger flavor."
-        : "Dein Bedarf übersteigt den dokumentierten 100-Nutzer-Tarif. Ein größeres unterstütztes Angebot muss geprüft werden; ich erfinde dafür keinen Flavor."
-      : "";
   return {
     explanation: [
       selectedText || recommendation,
 
-      larger,
       provenance,
       lifecycle,
       en

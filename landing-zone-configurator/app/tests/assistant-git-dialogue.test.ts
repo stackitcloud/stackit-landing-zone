@@ -376,3 +376,39 @@ it("resolves an explicit saved-allowlist choice even when the model asks for com
   );
   expect(gitSetupDialogue(denied, empty, "en").changes).toEqual([]);
 });
+
+it.each(["en", "de"] as const)(
+  "clarifies topology above the per-instance limit instead of recommending Git100 (%s)",
+  (language) => {
+    const { inputs } = fixture(
+      "Please add central Git for all 150 developers.",
+    );
+    const result = gitSetupDialogue(
+      inputs,
+      {
+        ...empty,
+        planChoice: "larger",
+        planSource: "current",
+        networkChoice: "explicit",
+        networkSource: "current",
+        networkEvidence: "150",
+      },
+      language,
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0]?.answerType).toBe("requirements");
+    expect(result.questions[0]?.options).toHaveLength(2);
+    expect(result.explanation).toMatch(
+      language === "en"
+        ? /at most 100 users per instance/
+        : /höchstens 100 Nutzer pro Instanz/,
+    );
+    expect(result.explanation).toMatch(
+      /(?:separate team\/project|getrennte Team-\/Projekt)/i,
+    );
+    expect(result.explanation).not.toMatch(
+      /(?:I recommend Git100 as|empfehle ich Git100)/,
+    );
+  },
+);
