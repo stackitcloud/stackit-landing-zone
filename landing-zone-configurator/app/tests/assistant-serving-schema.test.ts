@@ -78,3 +78,26 @@ it("preserves supported patterns and fields named after JSON-schema keywords", (
   expect(projected).toHaveProperty("required", ["pattern", "propertyNames"]);
   expect(assistantServingResponseSchema(projected)).toEqual(projected);
 });
+
+it("requires generated question semantics on the wire without changing legacy storage validation", () => {
+  const original = z.strictObject({
+    questions: z.array(
+      z.strictObject({
+        path: z.string(),
+        answerType: z.enum(["requirements", "catalogue"]).optional(),
+      }),
+    ),
+  });
+  const json = z.toJSONSchema(original);
+  const wire = assistantServingResponseSchema(json);
+  expect(wire).toHaveProperty("properties.questions.items.required", [
+    "path",
+    "answerType",
+  ]);
+  expect(json).toHaveProperty("properties.questions.items.required", ["path"]);
+  expect(
+    original.safeParse({ questions: [{ path: "observability.plan_name" }] })
+      .success,
+  ).toBe(true);
+  expect(assistantServingResponseSchema(wire)).toEqual(wire);
+});

@@ -63,17 +63,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -167,17 +167,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -289,17 +289,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -389,17 +389,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -524,17 +524,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -630,17 +630,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -764,17 +764,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -858,17 +858,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -959,17 +959,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1080,17 +1080,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1220,17 +1220,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1432,17 +1432,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1593,17 +1593,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1719,17 +1719,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1821,17 +1821,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2013,17 +2013,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2134,17 +2134,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2227,17 +2227,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2378,17 +2378,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
-            "3ce11af46cc6445b44b44533666154cd1699dedbc84c4901cc41a73ec11c875c",
+            "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
           sha256:
-            "19479e341dc1270eccc27c35dcbe18ee0b0548b7eb63039b18240533f91df2b0",
+            "a104c2ffb6cf3cb16c62dfe1cf8dda491948ddd4dc0d18c3068fdf67f16a3375",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "7fc17093adb5ecfbb4992ba7b2ad430f70d145b01841ba9c46a037dd13e13b8f",
+            "0c9afc4848144289bccb31a74a2451741c893d29e88ad3ad2141cb2ab3fc72bb",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",

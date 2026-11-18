@@ -4928,3 +4928,28 @@ it.each(["de", "en"] as const)(
     );
   },
 );
+
+it.each(["de", "en"] as const)(
+  "continues a short Audit answer after the previous source-network wording (%s)",
+  (language) => {
+    const current = assistantAuditCreationQuestions({}, language);
+    const oldAcl =
+      language === "de"
+        ? "Aus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an."
+        : "Which IP networks should access the audit logs? Please provide your actual CIDRs.";
+    const content =
+      current.explanation +
+      "\n" +
+      current.questions
+        .map((question) =>
+          question.path === "audit_logs.acl" ? oldAcl : question.text,
+        )
+        .join("\n");
+    const result = assistantAuditPendingReply(
+      language === "de" ? "90 Tage" : "90 days",
+      [{ role: "assistant", content }],
+    );
+    expect(result?.choices.retention_days).toBe(90);
+    expect(result?.language).toBe(language);
+  },
+);

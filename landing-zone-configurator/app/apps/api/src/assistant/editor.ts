@@ -53,6 +53,7 @@ export const assistantEditorPolicies: Record<
   {
     creationDecisions?: readonly string[];
     freeTextQuestions?: readonly string[];
+    sourceNetworkQuestions?: readonly string[];
   }
 > = {
   audit_logs: {
@@ -62,13 +63,39 @@ export const assistantEditorPolicies: Record<
       "audit_logs.s3_object_lock",
     ],
     freeTextQuestions: ["audit_logs.acl"],
+    sourceNetworkQuestions: ["audit_logs.acl"],
   },
-  observability: { freeTextQuestions: ["observability.acl"] },
+  observability: {
+    freeTextQuestions: ["observability.acl"],
+    sourceNetworkQuestions: ["observability.acl"],
+  },
   devops: {
     creationDecisions: ["devops.git_flavor", "devops.allowed_network_ranges"],
+    sourceNetworkQuestions: ["devops.allowed_network_ranges"],
     freeTextQuestions: ["devops.git_flavor", "devops.allowed_network_ranges"],
   },
 };
+
+export function assistantSourceNetworkQuestion(
+  path: string,
+  language: "de" | "en",
+) {
+  if (
+    !assistantEditorPolicies[
+      path.split(".")[0] ?? ""
+    ]?.sourceNetworkQuestions?.includes(path)
+  )
+    return null;
+  return {
+    path,
+    answerType: "requirements" as const,
+    options: [] as string[],
+    text:
+      language === "en"
+        ? "Which actual client source IP addresses or CIDRs should be allowed? For Internet access, provide the clients' public egress addresses. I cannot infer these networks; an unanswered question does not permit public access."
+        : "Welche tatsächlichen Quell-IP-Adressen oder CIDRs der Clients sollen zugelassen werden? Für Internetzugriff sind die öffentlichen Ausgangsadressen gemeint. Diese Netze lassen sich nicht ableiten; eine offene Frage erlaubt keinen öffentlichen Zugriff.",
+  };
+}
 
 export function assistantEditorProposalPath(path: string): string | null {
   const root = path.split(/[.[\]]/)[0];
@@ -999,7 +1026,7 @@ export type AssistantAuditChoices = {
   acl?: string[];
   s3_object_lock?: boolean;
 };
-const auditChoiceQuestions = {
+const legacyAuditChoiceQuestions = {
   de: {
     retention_days:
       "Wie viele Tage sollen die Audit-Protokolle aufbewahrt werden?",
@@ -1014,6 +1041,21 @@ const auditChoiceQuestions = {
       "Should Object Lock for the audit archive explicitly be enabled or disabled?",
   },
 } as const;
+
+const auditChoiceQuestions = {
+  de: {
+    ...legacyAuditChoiceQuestions.de,
+    acl: assistantSourceNetworkQuestion("audit_logs.acl", "de")!.text,
+  },
+  en: {
+    ...legacyAuditChoiceQuestions.en,
+    acl: assistantSourceNetworkQuestion("audit_logs.acl", "en")!.text,
+  },
+};
+const allAuditChoiceQuestions = [
+  ...Object.values(auditChoiceQuestions),
+  ...Object.values(legacyAuditChoiceQuestions),
+];
 
 const auditChoiceExplanations = {
   en: "The new audit draft needs your explicit retention, access-network and Object Lock decisions. Nothing has been saved or executed.",
@@ -1107,15 +1149,13 @@ export function assistantAuditCreationChoices(
     )
       continue;
     let text = turn.content.trim();
-    for (const questions of Object.values(auditChoiceQuestions))
+    for (const questions of allAuditChoiceQuestions)
       for (const question of Object.values(questions))
         for (const separator of ["\nMeine Antwort: ", "\nMy answer: "])
           if (text.startsWith(question + separator))
             text = text.slice((question + separator).length).trim();
     const pending = (key: keyof AssistantAuditChoices) =>
-      Object.values(auditChoiceQuestions).some((q) =>
-        previous.includes(q[key]),
-      ) ||
+      allAuditChoiceQuestions.some((q) => previous.includes(q[key])) ||
       (!Object.values(auditChoiceExplanations).some((explanation) =>
         previous.startsWith(explanation + "\n"),
       ) &&
@@ -1224,6 +1264,7 @@ export function assistantAuditCreationQuestions(
     questions: (Object.keys(labels) as (keyof AssistantAuditChoices)[])
       .filter((key) => choices[key] === undefined)
       .map((key) => ({
+        ...(key === "acl" ? { answerType: "requirements" as const } : {}),
         path: `audit_logs.${key}`,
         text: labels[key],
         options:
@@ -1245,15 +1286,27 @@ export function assistantAuditPendingReply(
   if (previous?.role !== "assistant") return null;
   const before = assistantAuditCreationChoices("", history);
   for (const language of ["de", "en"] as const) {
-    const pending = assistantAuditCreationQuestions(before, language);
-    if (
-      !pending.questions.length ||
-      previous.content !==
-        pending.explanation +
-          "\n" +
-          pending.questions.map((q) => q.text).join("\n")
-    )
-      continue;
+    const current = assistantAuditCreationQuestions(before, language);
+    const legacy = {
+      ...current,
+      questions: current.questions.map((question) => ({
+        ...question,
+        text: legacyAuditChoiceQuestions[language][
+          question.path.slice(
+            "audit_logs.".length,
+          ) as keyof AssistantAuditChoices
+        ],
+      })),
+    };
+    const pending = [current, legacy].find(
+      (candidate) =>
+        candidate.questions.length &&
+        previous.content ===
+          candidate.explanation +
+            "\n" +
+            candidate.questions.map((q) => q.text).join("\n"),
+    );
+    if (!pending) continue;
     let answer = message.trim();
     for (const question of pending.questions)
       for (const separator of ["\nMeine Antwort: ", "\nMy answer: "])

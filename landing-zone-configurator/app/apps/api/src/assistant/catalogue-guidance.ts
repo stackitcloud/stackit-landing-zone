@@ -7,9 +7,10 @@ import {
 } from "@lzc/contracts";
 import { type JsonValue, objectValue } from "@lzc/domain";
 import type { Dialogue } from "./dialogue.js";
+import { assistantSourceNetworkQuestion } from "./editor.js";
 import type { AssistantCatalogueContext } from "./model-serving.js";
 
-export const assistantGuidancePolicy = `SERVICE CONSULTATION, for every topic: Ask about the user's goal, initial scale, availability and access only when relevant and still unknown. Retain answered decisions across turns. Do not send users away to research technical flavor names. When the question schema supports answerType, mark actual catalogue-option choices as answerType=catalogue and business goals/load/traffic/recovery questions as answerType=requirements, even when their path is a flavor field. Only catalogue questions for fields listed in questionCatalogues receive a product picker. For a catalogue-backed decision ask at the exact editable field path, so the application can present its project/region catalogue with descriptions. Offer a small, relevant set of business choices and explain tradeoffs using reviewed facts. A request to recommend a sensible starting point delegates a reviewed recommendation, not permission to invent service facts, networks, credentials, entitlement, prices or in-place upgrades. Documented hard limits override starting recommendations. When no offered option meets confirmed requirements, explain that boundary and discuss supported architecture choices before selecting a flavor; never invent a larger plan, aggregate capacity, transparent federation or an in-place upgrade. If a recommendation lacks evidence, ask a focused business question with useful choices rather than repeating a blank technical field. A missing catalogue is not an empty offering or proof that a product is unavailable. Existing rights, save, Plan and Apply boundaries remain mandatory. Never ask again for an already answered decision unless requirements changed or a conflict needs resolving. A draft request with sufficient confirmed inputs must emit actual typed changes, never only promise that settings will be configured. When the desired values already match, emit the desired patch so the application can verify the no-op. Otherwise ask a focused question about genuinely missing information.`;
+export const assistantGuidancePolicy = `SERVICE CONSULTATION, for every topic: Ask about the user's goal, initial scale, availability and access only when relevant and still unknown. Retain answered decisions across turns. Do not send users away to research technical flavor names. Every generated question MUST include answerType: catalogue for actual offered product selections; requirements for business goals/load/traffic/recovery, even when their path is a flavor field. Only catalogue questions for fields listed in questionCatalogues receive a product picker. For a catalogue-backed decision ask at the exact editable field path, so the application can present its project/region catalogue with descriptions. Offer a small, relevant set of business choices and explain tradeoffs using reviewed facts. A request to recommend a sensible starting point delegates a reviewed recommendation, not permission to invent service facts, networks, credentials, entitlement, prices or in-place upgrades. Documented hard limits override starting recommendations. When no offered option meets confirmed requirements, explain that boundary and discuss supported architecture choices before selecting a flavor; never invent a larger plan, aggregate capacity, transparent federation or an in-place upgrade. If a recommendation lacks evidence, ask a focused business question with useful choices rather than repeating a blank technical field. A missing catalogue is not an empty offering or proof that a product is unavailable. Existing rights, save, Plan and Apply boundaries remain mandatory. Never ask again for an already answered decision unless requirements changed or a conflict needs resolving. A draft request with sufficient confirmed inputs must emit actual typed changes, never only promise that settings will be configured. When the desired values already match, emit the desired patch so the application can verify the no-op. Otherwise ask a focused question about genuinely missing information.`;
 
 export function configuredCatalogueRegions(
   current: Record<string, unknown>,
@@ -225,6 +226,18 @@ export function groundCatalogueDialogue(
   language: AssistantLanguage,
 ): Dialogue {
   if (dialogue.changes.length) return dialogue;
+  dialogue = {
+    ...dialogue,
+    questions: dialogue.questions.map((question) => {
+      const sourceNetworks = assistantSourceNetworkQuestion(
+        question.path,
+        language,
+      );
+      return !sourceNetworks || question.options?.length
+        ? question
+        : { ...question, ...sourceNetworks };
+    }),
+  };
   const presented = enrichCatalogueQuestions(
     dialogue,
     current,

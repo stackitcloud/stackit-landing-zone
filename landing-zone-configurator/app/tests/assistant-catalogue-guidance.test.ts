@@ -600,3 +600,58 @@ it("does not mistake typed folder naming payloads for empty draft promises", () 
     emptyDraftResponse({ questions: [{ path: "company_name" }], changes: [] }),
   ).toBe(false);
 });
+
+it.each([
+  "audit_logs.acl",
+  "observability.acl",
+  "devops.allowed_network_ranges",
+])(
+  "renders actual source-network questions without invented empty-ACL advice: %s",
+  (path) => {
+    const result = groundCatalogueDialogue(
+      {
+        explanation: "Need access choices.",
+        questions: [
+          {
+            path,
+            text: "Leave empty for public access; I can suggest CIDRs from company name.",
+          },
+        ],
+        changes: [],
+        references: [],
+      },
+      {},
+      { regions: [] },
+      "en",
+    );
+    expect(result.questions[0]?.text).toContain("actual client source IP");
+    expect(result.questions[0]?.text).toContain(
+      "does not permit public access",
+    );
+    expect(result.questions[0]?.answerType).toBe("requirements");
+    expect(result.questions[0]?.options).toEqual([]);
+  },
+);
+it("retains a grounded Git network-choice question with reuse and deliberate source-network options", () => {
+  const question = {
+    path: "devops.allowed_network_ranges",
+    text: "Who needs access?",
+    options: [
+      "Reuse the saved Observability allowlist",
+      "Company egress networks",
+    ],
+  };
+  expect(
+    groundCatalogueDialogue(
+      {
+        explanation: "Choose access.",
+        questions: [question],
+        changes: [],
+        references: [],
+      },
+      {},
+      { regions: [] },
+      "en",
+    ).questions,
+  ).toEqual([question]);
+});

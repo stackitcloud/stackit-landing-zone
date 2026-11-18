@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "a53c19f84f6fa9e145cb1667ce03f3723e4ad8563dfdfb16dc13855021706058",
+  "knowledgeSha256": "b1d0822ff4f15d26a2e6b1fb21808d501cad6d8a35502307ca73d39facb125d2",
   "sourceDigests": {
     "scripts/assistant-scenarios.ts": "1e6309bd9d5dbfb11720263474762b49344e67d0c95632d60f93d30f2ece9b4d",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
@@ -1416,7 +1416,7 @@
             },
             {
               "role": "assistant",
-              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nWelche tatsächlichen Quell-IP-Adressen oder CIDRs der Clients sollen zugelassen werden? Für Internetzugriff sind die öffentlichen Ausgangsadressen gemeint. Diese Netze lassen sich nicht ableiten; eine offene Frage erlaubt keinen öffentlichen Zugriff.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
             }
           ],
           "message": "90 Tage",
@@ -1441,7 +1441,7 @@
             },
             {
               "role": "assistant",
-              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nWelche tatsächlichen Quell-IP-Adressen oder CIDRs der Clients sollen zugelassen werden? Für Internetzugriff sind die öffentlichen Ausgangsadressen gemeint. Diese Netze lassen sich nicht ableiten; eine offene Frage erlaubt keinen öffentlichen Zugriff.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
             },
             {
               "role": "user",
@@ -1449,7 +1449,7 @@
             },
             {
               "role": "assistant",
-              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWelche tatsächlichen Quell-IP-Adressen oder CIDRs der Clients sollen zugelassen werden? Für Internetzugriff sind die öffentlichen Ausgangsadressen gemeint. Diese Netze lassen sich nicht ableiten; eine offene Frage erlaubt keinen öffentlichen Zugriff.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
             }
           ],
           "message": "203.0.113.0/24",
@@ -1473,7 +1473,7 @@
             },
             {
               "role": "assistant",
-              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nWelche tatsächlichen Quell-IP-Adressen oder CIDRs der Clients sollen zugelassen werden? Für Internetzugriff sind die öffentlichen Ausgangsadressen gemeint. Diese Netze lassen sich nicht ableiten; eine offene Frage erlaubt keinen öffentlichen Zugriff.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
             },
             {
               "role": "user",
@@ -1481,7 +1481,7 @@
             },
             {
               "role": "assistant",
-              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWelche tatsächlichen Quell-IP-Adressen oder CIDRs der Clients sollen zugelassen werden? Für Internetzugriff sind die öffentlichen Ausgangsadressen gemeint. Diese Netze lassen sich nicht ableiten; eine offene Frage erlaubt keinen öffentlichen Zugriff.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
             },
             {
               "role": "user",
@@ -1528,7 +1528,7 @@
             },
             {
               "role": "assistant",
-              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nAus welchen IP-Netzen soll auf die Audit-Protokolle zugegriffen werden? Bitte gib deine tatsächlichen CIDRs an.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
+              "content": "Für den neuen Audit-Entwurf brauche ich deine ausdrücklichen Entscheidungen zu Aufbewahrung, Zugriffsnetzen und Object Lock. Noch nichts gespeichert oder ausgeführt.\nWie viele Tage sollen die Audit-Protokolle aufbewahrt werden?\nWelche tatsächlichen Quell-IP-Adressen oder CIDRs der Clients sollen zugelassen werden? Für Internetzugriff sind die öffentlichen Ausgangsadressen gemeint. Diese Netze lassen sich nicht ableiten; eine offene Frage erlaubt keinen öffentlichen Zugriff.\nSoll Object Lock für das Audit-Archiv ausdrücklich aktiviert oder deaktiviert werden?"
             }
           ],
           "message": "90 Tage Aufbewahrung, Zugriff ausschließlich aus 203.0.113.0/24, Object Lock ausdrücklich nein. Organisationsweiter Telemetry Link. Bitte diese Entscheidungen als Entwurfsvorschlag übernehmen.",
