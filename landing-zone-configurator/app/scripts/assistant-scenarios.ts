@@ -1375,6 +1375,16 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Mein gespeicherter Plattformplan löscht und ersetzt gemeinsame Ressourcen, die mehrere Applications verwenden. Ich möchte die Auswirkungen beurteilen und den Apply danach freigeben. Woran ist die Bestätigung gebunden, wann muss ich neu planen und was passiert bei möglichen Datenverlusten? Nur beraten, nichts ändern oder ausführen.",
   },
   {
+    id: "platform-plan-review-en",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    platformImpactReview: true,
+    requiredOverviewFields: ["plan", "apply"],
+    message:
+      "My root platform Plan replaces shared resources. How should the Platform Owner review and approve it, what binds the confirmation, and can an old blocked Plan be reused? Explain only; no changes or execution.",
+  },
+  {
     id: "audit-query-migration-impact-advice",
     topic: "configuration-lifecycle",
     platformImpactReview: true,
@@ -3596,7 +3606,7 @@ export function assistantApplicationUpgradeFailures(
           ["retained-answers", /Antwort|Parameter/i],
           [
             "fresh-plan",
-            /(?:neu|frisch)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch)/i,
+            /(?:neu|frisch|new|fresh)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch|new|fresh)/i,
           ],
           ["separate-apply", /Apply/i],
           [
@@ -3729,7 +3739,7 @@ export function assistantPlatformImpactReviewFailures(text: string): string[] {
   const checks: [string, RegExp][] = [
     [
       "owner-decision",
-      /Platform.?Owner[\s\S]{0,180}(?:entscheid|bestätig|freig|prüf)/i,
+      /Platform.?Owner[\s\S]{0,180}(?:entscheid|bestätig|freig|prüf|decid|confirm|approv|review)/i,
     ],
     ["destructive-impact", /Lösch|Ersetz|delet|replac/i],
     ["data-loss", /Datenverlust|Daten.{0,30}verlor|data.{0,20}loss/i],
@@ -3739,7 +3749,7 @@ export function assistantPlatformImpactReviewFailures(text: string): string[] {
     ["separate-apply", /Apply/i],
     [
       "fresh-plan",
-      /(?:neu|frisch)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch)/i,
+      /(?:neu|frisch|new|fresh)[^.!?\n]{0,40}Plan|Plan[^.!?\n]{0,40}(?:neu|frisch|new|fresh)/i,
     ],
   ];
   return checks

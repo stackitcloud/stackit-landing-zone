@@ -103,6 +103,10 @@ import {
   assistantKnowledgeForTopics,
   buildAssistantKnowledge,
 } from "./knowledge.js";
+import {
+  assistantLifecycleAdvice,
+  explicitRootPlanReviewQuestion,
+} from "./lifecycle-advice.js";
 import { assistantServingResponseSchema } from "./serving-schema.js";
 
 const lifecycleAdviceTopics: Record<
@@ -971,6 +975,25 @@ export class AssistantModelServing {
       .optional()
       .parse(current["assistant.language"]);
     const language = explicitLanguage ?? responseLanguage;
+    if (
+      explicitRootPlanReviewQuestion(message) &&
+      context.topics.some((topic) => topic.id === "configuration-lifecycle")
+    ) {
+      const dialogue = validateDialogue(
+        {
+          explanation: assistantLifecycleAdvice(
+            "platform-impact-review",
+            language ?? "de",
+          ),
+          questions: [],
+          changes: [],
+          references: ["configuration-lifecycle"],
+        },
+        context.rules.map((rule) => rule.id),
+      );
+      stream?.onText(dialogue.explanation);
+      return dialogue;
+    }
     let draftRequested = false;
     const complete: typeof this.complete = async (
       messages,
@@ -1983,10 +2006,10 @@ export class AssistantModelServing {
     ) {
       const dialogue = validateDialogue(
         {
-          explanation:
-            assistantApplicationUpgradeAdvice[
-              classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice
-            ],
+          explanation: assistantLifecycleAdvice(
+            classifiedIntent.adviceTask as keyof typeof assistantApplicationUpgradeAdvice,
+            language ?? classifiedIntent.applicationAccessLanguage,
+          ),
           questions: [],
           changes: [],
           references: ["configuration-lifecycle"],
@@ -2716,6 +2739,12 @@ export class AssistantModelServing {
       intent.firewallAreaKeys = [];
       intent.allFirewalls = false;
     }
+    if (!networkIntent) {
+      intent.networkScope = "other";
+      intent.firewallAreaKeys = [];
+      intent.allFirewalls = false;
+      intent.firewallFields = [];
+    }
     const regionalAreas = Object.values(
       z.record(z.string(), z.json()).parse(current.connectivity_regions ?? {}),
     ).flatMap((connectivity) =>
@@ -2983,9 +3012,23 @@ export class AssistantModelServing {
           "rm_folders",
         ].includes(root),
       );
+    const specializedTopic = [
+      "identity-foundations",
+      "configuration-contract",
+      "governance-folders",
+      "stackit-network-components",
+      "dns-zones",
+      "firewall-infrastructure",
+      "firewall-policy",
+    ].includes(intent.topic);
+    const editorConsultation =
+      intent.mode === "advice" &&
+      intent.adviceTask === "other" &&
+      !specializedTopic &&
+      !["project-templates", "sandbox-projects"].includes(intent.topic);
     const editorDraft =
       !foundationNamingDraft &&
-      intent.mode === "draft" &&
+      (intent.mode === "draft" || editorConsultation) &&
       !accessAssignment &&
       intent.topic !== "firewall-policy" &&
       (editorRoots.size > 0 || templateTopic) &&
@@ -3071,7 +3114,7 @@ export class AssistantModelServing {
       if (!firstContract) throw new AssistantInferenceError("invalid_scope");
       const changeListSchema = z
         .array(contracts.length === 1 ? firstContract : z.union(contracts))
-        .max(Math.min(8, paths.length));
+        .max(editorConsultation ? 0 : Math.min(8, paths.length));
       const questions = [
         ...assistantQuestionFields()
           .filter((field) => fields.includes(field.path))
@@ -3135,7 +3178,7 @@ export class AssistantModelServing {
         [
           {
             role: "system",
-            content: `Translate the CURRENT user task into reviewable native Editor settings using ONLY the supplied closed schemas. Reply in the user's language. This Editor contract supersedes historical assistant claims that audit/VPN/platform/projects are unsupported. Firewall policy, secrets, identity binding, publication and execution are excluded. Never generate arbitrary JSON/HCL, cloud IDs, credentials or verified identities. Actual user messages/current saved values/available catalogue entries are the only sources for addresses, emails, IDs and product selections. Never fabricate availability, performance, quotas, compliance or event delivery. Respect supplied service-plan capability flags: false forbids an option, absent means unknown. Use the reviewed static capability/retention policy only as an explicitly identified fallback; never silently change a plan or discard incompatible saved values.
+            content: `${editorConsultation ? "READ-ONLY SERVICE CONSULTATION: Answer the actual question from reviewed facts and scoped catalogues. When the user asks to choose an offering, ask a catalogue question at its exact field path. Ask only genuinely missing business requirements. Return changes=[]; consultation cannot prepare or accept a draft. A factual question does not itself start setup. This read-only instruction takes precedence over proposal instructions below.\n" : ""}Translate the CURRENT user task into reviewable native Editor settings using ONLY the supplied closed schemas. Reply in the user's language. This Editor contract supersedes historical assistant claims that audit/VPN/platform/projects are unsupported. Firewall policy, secrets, identity binding, publication and execution are excluded. Never generate arbitrary JSON/HCL, cloud IDs, credentials or verified identities. Actual user messages/current saved values/available catalogue entries are the only sources for addresses, emails, IDs and product selections. Never fabricate availability, performance, quotas, compliance or event delivery. Respect supplied service-plan capability flags: false forbids an option, absent means unknown. Use the reviewed static capability/retention policy only as an explicitly identified fallback; never silently change a plan or discard incompatible saved values.
 Choose at most three clear business questions when essential information is missing, with up to six meaningful options. ACL questions use free text and no invented network examples or selectable CIDRs: ask the user for their actual access networks. A setup request without essential choices returns questions only and changes=[]; never propose an incomplete new component. Reuse actual user answers, not assistant suggestions; do not repeat old firewall questions after a topic switch. Explain concrete choices briefly, not a dump of every field. A reply containing only values continues the language of the latest natural-language USER turn; technical field names do not imply English.
 Operations: merge recursively changes only supplied object/map attributes; arrays and null are atomic replacements. replace replaces the COMPLETE value at that path. For projectTemplates and DNS zone collections each changed/removed entry is separately reviewable. A USER-defined desired complete set is replacement intent even without the word delete; explicitly additional entries are merge, corrections update existing stable keys. Follow the source-grounded templateSetup.collectionMode and dnsCollection, never a blanket keep/delete-examples rule. Ask when intent is ambiguous. default removes an explicit optional override/entry and restores the native default, value=null. Never use replace/default without user intent. Never reorder lists unless requested. Each path appears only once; never emit overlapping parent/child paths. Do not repeat unchanged settings. Use an existing nested path to reset/delete just that setting, preserving unrelated components. New collection entries use their parent path and a complete native value with existing stable keys retained.
 auditCreationChoices contains only source-checked Audit USER decisions. Preserve those exact values, including false; a pending yes/no question is not consent to its positive option. Audit creation needs explicit retention_days, ACL CIDRs and s3_object_lock together; ask for missing decisions, do not activate a public ACL or irreversible Object Lock silently. Offer explained Object Lock yes/no options; native default is true, including nested null, but a default is not consent. Retention with lock must be 1-365 days. An organization link does NOT inherit to folders/projects. Explicitly requested automatic managed coverage uses managed_resources=true, only in the platform region; do not combine with custom link_scopes. Existing orders need an approved platform upgrade. For organizational/default scope OMIT link_scopes or use null: NEVER [], and never copy the saved organization UUID into a new scope override. Non-null link_scopes are only for explicitly requested custom per-resource scope overrides, never invented tenant/project scope IDs.
@@ -3228,6 +3271,8 @@ CURRENT RESPONSE LANGUAGE: ${language === "en" ? "English" : "German"}. Your JSO
         const replyLanguage = language ?? inferredLanguage;
         responseLanguage = replyLanguage;
         const dialogue = validateDialogue(provided, referenceIds);
+        if (editorConsultation && dialogue.changes.length)
+          throw new AssistantInferenceError("invalid_scope");
         questionListSchema.parse(dialogue.questions);
         if (editorRoots.has("devops") && current.devops == null) {
           const proposed = dialogue.changes.find(

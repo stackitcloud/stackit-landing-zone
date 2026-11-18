@@ -685,7 +685,11 @@ describe("topic knowledge delivery", () => {
     async (topic) => {
       let received = false;
       const model = collectionModel(
-        { topic, mode: "advice", requirements: [] },
+        {
+          topic,
+          mode: "advice",
+          requirements: [],
+        },
         { ...response([]), references: [topic] },
         (request) => {
           if (
@@ -703,6 +707,15 @@ describe("topic knowledge delivery", () => {
             topic,
             ...extra,
           ]);
+          if (request.response_format.json_schema.name === "editor_dialogue") {
+            expect(request.messages[0]?.content).toContain(
+              "READ-ONLY SERVICE CONSULTATION:",
+            );
+            expect(JSON.parse(request.messages.at(-1)!.content).message).toBe(
+              "Bitte erläutere die Bedeutung und Grenzen dieser Komponente.",
+            );
+            return;
+          }
           if (topic !== "firewall-infrastructure") {
             expect(request.messages[0]).toMatchObject({
               role: "system",
@@ -780,7 +793,11 @@ describe("topic knowledge delivery", () => {
     async ({ topic, group }) => {
       let received = false;
       await collectionModel(
-        { topic, mode: "advice", requirements: [] },
+        {
+          topic,
+          mode: "advice",
+          requirements: [],
+        },
         { ...response([]), references: [topic] },
         (request) => {
           if (

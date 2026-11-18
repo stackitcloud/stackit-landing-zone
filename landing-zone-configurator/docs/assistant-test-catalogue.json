@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "0dadf996bc583f61a22d4b1e65d35595849d59b77a9d95dad08ea80f578f70c7",
+  "knowledgeSha256": "92bc9dac3cb4c1ccac2a835f0405d6be330363cec8164e3bb4fe569f706ce232",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "1e6309bd9d5dbfb11720263474762b49344e67d0c95632d60f93d30f2ece9b4d",
+    "scripts/assistant-scenarios.ts": "dbe1d363233c9cd78e0c78afbb3c0352a44b84f0d1c8880e5325880cfd4c8f72",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "030ec1dbc6a7fdefac03cf639b00ea3675bcbd87be38345da41235c416ba1dc1",
+  "suiteSha256": "ceea8b581f812d39324e5f8479f29e9504e0a05ddcd26e2bffddf902d86659eb",
   "topics": [
     {
       "id": "credential-foundations",
@@ -7637,6 +7637,25 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "platform-plan-review-en",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "platformImpactReview": true,
+          "requiredOverviewFields": [
+            "plan",
+            "apply"
+          ],
+          "message": "My root platform Plan replaces shared resources. How should the Platform Owner review and approve it, what binds the confirmation, and can an old blocked Plan be reused? Explain only; no changes or execution.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
+            "complete_native_field_overview",
             "no_changes"
           ]
         },

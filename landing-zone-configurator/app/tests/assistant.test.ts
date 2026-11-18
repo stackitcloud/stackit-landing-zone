@@ -2469,6 +2469,26 @@ it.each([
         ),
       ).toHaveLength(1);
       expect(body.messages[0].role).toBe("system");
+      if (body.response_format.json_schema.name === "editor_dialogue") {
+        expect(JSON.parse(body.messages.at(-1).content)).toMatchObject({
+          message,
+          history,
+        });
+        expect(body.messages[0].content).toContain(
+          "READ-ONLY SERVICE CONSULTATION:",
+        );
+        expect(
+          body.response_format.json_schema.schema.properties.changes.maxItems,
+        ).toBe(0);
+        expect(body.messages[0].content).toContain("## Accelerator Contract");
+        expect(body.messages[0].content).toContain(topic);
+        return answer({
+          explanation: "Nur Beratung.",
+          questions: [],
+          changes: [],
+          references: [topic],
+        });
+      }
       expect(body.messages.at(-1)).toEqual({ role: "user", content: message });
       if (body.response_format.json_schema.name === "conversation_intent") {
         expect(body.messages[0].content).toContain(
@@ -2477,7 +2497,11 @@ it.each([
         expect(JSON.parse(body.messages[1].content).history).toEqual(history);
         expect(body.messages[0].content).toContain("Available topics:");
         expect(body.messages[0].content).toContain("Classification examples:");
-        return answer({ topic, mode: "advice", requirements: [] });
+        return answer({
+          topic,
+          mode: "advice",
+          requirements: [],
+        });
       }
       expect(body.messages[0].content).not.toContain("Output contract:");
       expect(
@@ -2565,7 +2589,11 @@ it.each([
           }),
         ),
       ).converse(selection(), {}, history, message),
-    ).rejects.toMatchObject({ reason: "invalid_scope" });
+    ).rejects.toMatchObject({
+      reason: ["vpn", "firewall-access-bootstrap"].includes(topic)
+        ? "dialogue_schema"
+        : "invalid_scope",
+    });
   },
 );
 
@@ -2910,6 +2938,7 @@ function withIntent(
   mode: "advice" | "draft",
   request: typeof fetch,
   dnsTask: "remaining-settings" | "other" = "other",
+  adviceTask: "field-overview" | "other" = "other",
 ): typeof fetch {
   return async (url, init) => {
     const payload = JSON.parse(String(init?.body));
@@ -2922,7 +2951,7 @@ function withIntent(
     )
       return answer({ task: "other" });
     if (payload.response_format?.json_schema?.name === "conversation_intent")
-      return answer({ topic, mode, dnsTask, requirements: [] });
+      return answer({ topic, mode, dnsTask, adviceTask, requirements: [] });
     if (
       payload.response_format?.json_schema?.name ===
         "firewall_setup_decisions" &&
@@ -3236,42 +3265,49 @@ it("bundles fresh structured service knowledge and selects mandatory dependencie
 });
 
 it("supplies the complete selected component field contract while bounding response sources", async () => {
-  const request = withIntent("audit-logs", "advice", async (_url, init) => {
-    const body = JSON.parse(String(init?.body));
-    const message = body.messages.find(
-      (entry: { role: string; content: string }) =>
-        entry.role === "system" &&
-        entry.content.includes("Trusted knowledge: "),
-    );
-    expect(message).toBeDefined();
-    const context = JSON.parse(
-      message.content.split("Trusted knowledge: ")[1].split("\n\n")[0],
-    );
-    expect(context.componentFields).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          path: "audit_logs.retention_days",
-          mode: "propose-validated-draft",
-          proposalPath: "audit_logs",
-        }),
-        expect.objectContaining({
-          path: "vpn_pre_shared_keys",
-          responsibility: "operator",
-          proposalPath: null,
-        }),
-      ]),
-    );
-    const references =
-      body.response_format.json_schema.schema.properties.references.items.enum;
-    expect(references).toContain("audit-logs");
-    expect(references).not.toContain("platform-kubernetes");
-    return answer({
-      explanation: "Audit Logs: nur Beratung.",
-      questions: [],
-      changes: [],
-      references: ["audit-logs"],
-    });
-  });
+  const request = withIntent(
+    "audit-logs",
+    "advice",
+    async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const message = body.messages.find(
+        (entry: { role: string; content: string }) =>
+          entry.role === "system" &&
+          entry.content.includes("Trusted knowledge: "),
+      );
+      expect(message).toBeDefined();
+      const context = JSON.parse(
+        message.content.split("Trusted knowledge: ")[1].split("\n\n")[0],
+      );
+      expect(context.componentFields).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: "audit_logs.retention_days",
+            mode: "propose-validated-draft",
+            proposalPath: "audit_logs",
+          }),
+          expect.objectContaining({
+            path: "vpn_pre_shared_keys",
+            responsibility: "operator",
+            proposalPath: null,
+          }),
+        ]),
+      );
+      const references =
+        body.response_format.json_schema.schema.properties.references.items
+          .enum;
+      expect(references).toContain("audit-logs");
+      expect(references).not.toContain("platform-kubernetes");
+      return answer({
+        explanation: "Audit Logs: nur Beratung.",
+        questions: [],
+        changes: [],
+        references: ["audit-logs"],
+      });
+    },
+    "other",
+    "field-overview",
+  );
   await new AssistantModelServing(configuration, request).converse(
     selection(),
     {},
@@ -3865,7 +3901,7 @@ it.each(["platform-impact-review", "audit-observability"] as const)(
       { company_name: "Private draft" },
       [{ role: "user", content: "historical contract" }],
       task === "platform-impact-review"
-        ? "Mein Plattform-Plan löscht gemeinsame Ressourcen. Was bestätigt die Auswirkungsfreigabe?"
+        ? "Mein zentraler Infrastrukturplan löscht gemeinsame Ressourcen. Was bestätigt die Auswirkungsfreigabe?"
         : "Wie stelle ich die native Audit-Ablage von Logs auf Observability und Grafana um?",
       { regions: [] },
     );
@@ -4120,7 +4156,7 @@ it.each(["platform-impact-review", "audit-observability", "other"] as const)(
       {},
       [],
       task === "platform-impact-review"
-        ? "Mein konkreter Plattform-Plan entfernt alte Logs-Ressourcen. Wie prüft der Platform Owner die Auswirkungen und woran ist die Apply-Freigabe gebunden?"
+        ? "Mein konkreter zentraler Infrastrukturplan entfernt alte Logs-Ressourcen. Wie prüft der Platform Owner die Auswirkungen und woran ist die Apply-Freigabe gebunden?"
         : task === "audit-observability"
           ? "Wie stelle ich Audit Logs auf die vorhandene Observability um?"
           : "Welche Felder und Aufbewahrungsoptionen gibt es für Audit Logs?",
@@ -4265,7 +4301,7 @@ it.each(["devops-git", "observability", "audit-logs"])(
   "keeps a verified root Plan decision ahead of the mentioned %s service",
   async (topic) => {
     const message =
-      "My computed root platform Plan removes old resources and updates shared services. How does the Platform Owner approve these destructive impacts and what is that confirmation bound to? Guidance only.";
+      "My computed shared infrastructure plan removes old resources and updates shared services. How does the Platform Owner approve these destructive impacts and what is that confirmation bound to? Guidance only.";
     const request = vi.fn<typeof fetch>(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       if (body.response_format.json_schema.name === "conversation_intent")

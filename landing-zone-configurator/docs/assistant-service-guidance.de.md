@@ -133,3 +133,22 @@ zum Fehler. Wie bei anderen gemeinsamen Assistant-Vertragsänderungen die gesamt
 Suite unabhängig wiederholen und den zusammenhängenden Dialog prüfen, bevor ein
 Qualifikationsnachweis gemeldet wird. Fehlerhafte Nachweise bleiben erhalten;
 Feldinventar oder übersprungene Qualifikation belegen keine Dialogqualität.
+
+## Lesende Beratung und Fragen zum Freigabeablauf
+
+Die Serviceberatung verwendet dieselben typisierten Fragen und eingegrenzten
+Katalogfelder wie Konfigurationsvorschläge. Änderungen sind im Inferenzschema und
+in der Servervalidierung gesperrt. Eine Frage zu einem Angebot aktiviert keinen
+Service. Reine Übersichten nativer Felder behalten ihren geprüften Informationspfad.
+Unpassende Netzwerkmerkmale dürfen eine aktuelle Servicefrage nicht in die
+Firewall-Einrichtung umlenken.
+
+Eine ausdrückliche aktuelle Frage zur Auswirkungsprüfung des Plattform-Plans erhält
+direkt die geprüfte Lifecycle-Anleitung. Dadurch wird der gemeinsame Planablauf
+nicht mit einem darin erwähnten Service verwechselt. Zitierte Werte und Antworten
+auf frühere Fragen aktivieren diese Zuordnung nicht. Beide Sprachen erhalten die
+Entscheidung des Platform Owners, Hinweise auf destruktive Auswirkungen, einen
+frischen Plan sowie die Bindung der Freigabe an Artefakt, State und Abhängigkeiten.
+Die Anleitung erteilt keine Freigabe und prüft oder startet keinen gespeicherten
+Plan. Auch die übrigen Lifecycle-Aufgaben verwenden ihre geprüften Anleitungen in
+der gewählten Anwendungssprache.

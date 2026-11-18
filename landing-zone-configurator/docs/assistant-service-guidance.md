@@ -122,3 +122,20 @@ provide no performance figures, so the oracle rejects invented hardware claims.
 As with other shared Assistant contract changes, independently repeat the complete
 suite and continuous dialogue before reporting qualification. Keep failed receipts;
 a field-inventory update or a skipped qualification is not evidence of dialogue quality.
+
+## Read-only guidance and workflow questions
+
+Service consultation uses the same typed questions and scoped catalogue fields as
+configuration proposals, with changes disabled in both the inference schema and
+server validation. Asking about an offering does not activate that service. Pure
+native-field overviews retain their reviewed informational handler. Unrelated
+network flags cannot redirect a current service question into firewall setup.
+
+An explicit current question about root platform Plan impact review receives the
+reviewed lifecycle instructions directly. This avoids confusing the shared Plan
+workflow with an individual service mentioned in its changes. Quoted values and
+answers to earlier questions do not activate this shortcut. Both language variants
+retain owner decisions, destructive-impact warnings, fresh Plan requirements and
+artifact/State/dependency-bound approval. The instructions grant no approval and
+never inspect or execute a saved Plan. Other lifecycle tasks also select their
+reviewed instructions in the application's chosen language.

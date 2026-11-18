@@ -125,6 +125,7 @@ export function validateKnowledgeManifest(input: unknown) {
 
 export const assistantKnowledgeSharedSources: readonly string[] = [
   "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
+  "landing-zone-configurator/app/apps/api/src/assistant/lifecycle-advice.ts",
   "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
   "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
   "landing-zone-configurator/app/apps/api/src/assistant/serving-schema.ts",
