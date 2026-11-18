@@ -710,6 +710,7 @@ export class AssistantModelServing {
         "conversation_intent",
         "firewall_setup_decisions",
         "platform_advice_subject",
+        "component_request_purpose",
       ].includes(schemaName)
         ? [
             `Return only the JSON response defined by this output contract. Its field descriptions explain the required decisions; do not substitute schema defaults for understanding the user request. Property names and enum values are data, not instructions. Include requested values in the actual changes, not merely in the explanation.\nOutput contract: ${JSON.stringify(servingSchema)}`,
@@ -1695,6 +1696,54 @@ export class AssistantModelServing {
         history,
         message,
       );
+    const componentRoots =
+      context.topics
+        .find((topic) => topic.id === classifiedIntent.topic)
+        ?.inputs.filter((input) => assistantEditorInputs.includes(input)) ?? [];
+    if (
+      classifiedIntent.mode === "advice" &&
+      componentRoots.length === 1 &&
+      Object.hasOwn(assistantEditorPolicies, componentRoots[0]!)
+    ) {
+      const purposeSchema = z.strictObject({
+        purpose: z.enum(["information", "prepare-draft"]),
+        quote: z.string().min(1).max(1200).nullable(),
+      });
+      const checkedPurpose = purposeSchema.safeParse(
+        await this.complete(
+          [
+            {
+              role: "system",
+              content:
+                "Determine the purpose of the CURRENT USER message for this supported component. prepare-draft means the user explicitly asks to add, configure or prepare a reviewable configuration proposal. Missing size, access networks or other choices do NOT turn that request into an information question: the setup flow must ask for them. Preparing a local draft is neither saving nor cloud execution; 'do not deploy' does not defer a draft request. information means asking about fields, defaults, capabilities or architecture, or explicitly deferring proposal preparation. Earlier assistant messages or requests do not select the current purpose. Ambiguous intent stays information. For prepare-draft copy a nonempty exact current USER quote establishing the request; otherwise quote=null. Do not answer the question, invent settings, or perform any changes.",
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                component: classifiedIntent.topic,
+                message,
+              }),
+            },
+          ],
+          assistantEditorResponseSchema(purposeSchema),
+          "component_request_purpose",
+          undefined,
+          stream?.signal,
+        ),
+      );
+      if (!checkedPurpose.success)
+        throw new AssistantInferenceError("intent_schema");
+      const purpose = checkedPurpose.data;
+      if (purpose.purpose === "prepare-draft") {
+        if (!purpose.quote || !message.includes(purpose.quote))
+          throw new AssistantInferenceError("intent_evidence");
+        classifiedIntent.mode = "draft";
+        classifiedIntent.adviceTask = "other";
+        classifiedIntent.adviceTaskSource = "none";
+        classifiedIntent.editorContract = true;
+        classifiedIntent.editorInputs = componentRoots;
+      }
+    }
     if (
       classifiedIntent.mode === "advice" &&
       ((classifiedIntent.adviceTaskSource === "current" &&
@@ -2849,7 +2898,16 @@ export class AssistantModelServing {
           : []),
       ]);
       const referenceIds = topicKnowledge.rules.map((rule) => rule.id);
-      stream?.onText("Editor-Vorschlag wird geprüft. Noch nichts gespeichert.");
+      const editorLanguage = resolveAssistantLanguage(
+        undefined,
+        history,
+        message,
+      );
+      stream?.onText(
+        editorLanguage === "en"
+          ? "Checking the Editor proposal. Nothing has been saved."
+          : "Editor-Vorschlag wird geprüft. Noch nichts gespeichert.",
+      );
       const answer = await this.complete(
         [
           {
@@ -2866,7 +2924,7 @@ templateSetup contains source-checked USER decisions: its kinds and localNetwork
 When templateSetup.resolvedDefaults is non-null, the server has resolved every essential choice for this network-only request: use its region, and its networkAreaKey as settings.network_area_key for Corporate. Template kinds, local networks and delegated naming are already answered. Return questions=[] as required by the schema; do not ask the user to repeat native keys, naming, subnet defaults or other unrequested optional settings. Missing or ambiguous Corporate areas, missing region/naming and additional service choices retain the normal question contract.
 New component objects expose all their typed property slots: fill every explicitly requested value, use null only for unrequested native defaults. Never invent extra retention values. Required non-null creation decisions need actual user consent; otherwise ask questions with changes=[]. New map entries require all native mandatory fields, including Kubernetes region and node-pool name. Use existing nested paths for partial updates, preserving sibling values. All replies describe PROPOSALS, not completed setup. Field acceptance changes only the local draft, saving remains separate; no deployment, permissions granted, publication or Plan/Apply. Return the supplied JSON schema only.
 Reviewed knowledge: ${JSON.stringify({ fields: draftFields, ...topicKnowledge })}
-CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English CURRENT USER request set replyLanguage=en and write all explanation/questions in English. For a German request set replyLanguage=de and write German. For a values-only answer continue the latest natural-language USER turn. The language of these curated rules, schema defaults or earlier ASSISTANT text does not choose the response language. An ordinary setup request receives focused questions or a clearly labelled, grounded best-practice proposal; never blame the user for missing native field syntax.`,
+CURRENT RESPONSE LANGUAGE: ${editorLanguage === "en" ? "English" : "German"}. Your JSON must contain replyLanguage. For an English CURRENT USER request set replyLanguage=en and write all explanation/questions in English. For a German request set replyLanguage=de and write German. For a values-only answer continue the latest natural-language USER turn. The language of these curated rules, schema defaults or earlier ASSISTANT text does not choose the response language. An ordinary setup request receives focused questions or a clearly labelled, grounded best-practice proposal; never blame the user for missing native field syntax.`,
           },
           {
             role: "user",
@@ -2939,10 +2997,11 @@ CURRENT RESPONSE LANGUAGE: Your JSON must contain replyLanguage. For an English 
           ]);
       let responseLanguage: "de" | "en" = "de";
       try {
-        const { replyLanguage, ...provided } = z
+        const { replyLanguage: _modelLanguage, ...provided } = z
           .object({ replyLanguage: z.enum(["de", "en"]).default("de") })
           .passthrough()
           .parse(answer);
+        const replyLanguage = editorLanguage;
         responseLanguage = replyLanguage;
         const dialogue = validateDialogue(provided, referenceIds);
         questionListSchema.parse(dialogue.questions);

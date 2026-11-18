@@ -718,6 +718,12 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       paths: ["devops.git_flavor", "devops.allowed_network_ranges"],
     },
     {
+      id: "editor-devops-unselected-requirements-en",
+      message:
+        "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+      paths: ["devops.git_flavor", "devops.allowed_network_ranges"],
+    },
+    {
       id: "editor-devops-setup-de",
       message:
         "Bitte eine zentrale Git-Instanz in die Konfiguration aufnehmen.",
@@ -743,6 +749,27 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     setupQuestionPaths: paths,
     expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
   })),
+  {
+    id: "editor-devops-setup-after-service-advice-en",
+    topic: "devops-git",
+    fixture: "baseline",
+    message:
+      "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+    history: [
+      {
+        role: "user",
+        content:
+          "Bitte die zentrale Observability als Entwurf vorbereiten, noch nichts deployen.",
+      },
+      {
+        role: "assistant",
+        content:
+          "Die Observability-Einstellungen sind zur Prüfung vorgeschlagen. Noch nichts gespeichert oder ausgeführt.",
+      },
+    ],
+    setupQuestionPaths: ["devops.git_flavor", "devops.allowed_network_ranges"],
+    expectedLanguage: "en",
+  },
   {
     id: "editor-devops-followup",
     topic: "devops-git",

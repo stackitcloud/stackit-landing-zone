@@ -153,6 +153,8 @@ Transport- und Schutztests ergänzen diese Fälle; Feldinventar und Wissenszuste
 allein belegen keine Qualität natürlicher Dialoge. Eine übersprungene Release-
 Qualifikation ist ausdrücklich kein neuer Live-Testnachweis.
 
+Editor-Services mit hinterlegter Eingabepolicy pruefen eine beratende Einordnung gegen den aktuellen Auftrag. Ein ausdruecklicher Einrichtungswunsch bleibt auch bei fehlenden Angaben ein Entwurfsauftrag; der vorhandene typisierte Ablauf fragt diese Angaben ab. Die Pruefung erhaelt nur Komponente und aktuelle Nachricht, benoetigt fuer einen Entwurfsauftrag einen exakten Nutzerbeleg und kann keine Werte erfinden oder Speicherung/Ausfuehrung erlauben.
+
 Audit-Beratung wird vor einer Felduebersicht zusaetzlich auf den Gegenstand der aktuellen Frage geprueft. Fragen zu Auswirkungen und Apply-Freigabe eines konkreten Plattformplans erhalten Lifecycle-Hinweise; normale Audit-Felder und Abfrageziel-Migration bleiben beim Audit-Thema. Historische Fragen und private Entwuerfe fliessen nicht in diese Pruefung ein.
 
 ### Geprüfte Architekturgrenzen

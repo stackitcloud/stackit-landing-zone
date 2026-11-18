@@ -127,6 +127,8 @@ Mocked request/guard tests complement these cases; field inventory and knowledge
 delivery coverage alone do not prove natural dialogue quality. Skipped release
 qualification is explicitly not a fresh live-test result.
 
+Policy-backed Editor services verify an informational label against the current request before returning advice. An explicit setup request remains a draft request when choices are missing; the existing typed flow asks for those choices. The verifier receives only component and current message, requires exact user evidence for a draft request, and cannot invent values or authorize persistence/execution.
+
 Audit advice is also checked against the closed current-question subject before returning a field overview. A concrete root Plan impact/Apply question receives lifecycle guidance; ordinary audit fields and query-store migration retain their audit topic. Historical questions and private drafts are not input to this subject check.
 
 ### Reviewed architecture boundaries

@@ -515,7 +515,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "b660366e40daf13a276f7acb8247f52de734b17806fcadb6623e1e629ac367ac",
+            "329a05857571b3ffdace9fb10a1c1ecbf340a806cdfda85d91cee032ff1b7ba5",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1414,7 +1414,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "b660366e40daf13a276f7acb8247f52de734b17806fcadb6623e1e629ac367ac",
+            "329a05857571b3ffdace9fb10a1c1ecbf340a806cdfda85d91cee032ff1b7ba5",
         },
         {
           path: "src/modules/landing-zone/8-git.tf",
@@ -1947,7 +1947,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
           sha256:
-            "b660366e40daf13a276f7acb8247f52de734b17806fcadb6623e1e629ac367ac",
+            "329a05857571b3ffdace9fb10a1c1ecbf340a806cdfda85d91cee032ff1b7ba5",
         },
         {
           path: "landing-zone-configurator/docs/application-execution-lifecycle.md",

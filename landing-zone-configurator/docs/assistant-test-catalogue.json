@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "d26800b54e5750de280d31f7e1995b08de15f870ff7c7390cfb85631ad0853db",
+  "knowledgeSha256": "e7cfd5ee42057854baed448ac4a1da838bf802db989efb86444c2fa780251164",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "92b1433479f0c520f7fed256b5e720aa9fd76f085bf99d76b5d59562a3a199c1",
+    "scripts/assistant-scenarios.ts": "ac4396f13645228277fcb4d0c2dfa20ae474ae5d2f7074412cc5fc215c081c72",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "779dd3c7c23ef08d703167788701481ac62a44146572f86b7927a9765b5c5e4f",
+  "suiteSha256": "9694d710e54b08ac20a2d40f2fc0b403c7c0c60c0db89c9cad759bc6c7ea5791",
   "topics": [
     {
       "id": "credential-foundations",
@@ -4717,6 +4717,22 @@
           ]
         },
         {
+          "id": "editor-devops-unselected-requirements-en",
+          "message": "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "setupQuestionPaths": [
+            "devops.git_flavor",
+            "devops.allowed_network_ranges"
+          ],
+          "expectedLanguage": "en",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
           "id": "editor-devops-setup-de",
           "message": "Bitte eine zentrale Git-Instanz in die Konfiguration aufnehmen.",
           "topic": "devops-git",
@@ -4754,6 +4770,32 @@
           "fixture": "baseline",
           "setupQuestionPaths": [
             "devops.git_flavor"
+          ],
+          "expectedLanguage": "en",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-setup-after-service-advice-en",
+          "topic": "devops-git",
+          "fixture": "baseline",
+          "message": "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+          "history": [
+            {
+              "role": "user",
+              "content": "Bitte die zentrale Observability als Entwurf vorbereiten, noch nichts deployen."
+            },
+            {
+              "role": "assistant",
+              "content": "Die Observability-Einstellungen sind zur Prüfung vorgeschlagen. Noch nichts gespeichert oder ausgeführt."
+            }
+          ],
+          "setupQuestionPaths": [
+            "devops.git_flavor",
+            "devops.allowed_network_ranges"
           ],
           "expectedLanguage": "en",
           "assertions": [
