@@ -7,6 +7,11 @@ Accelerator-Themen. Das Modell interpretiert Ziel, Plattformkontext und Folgeant
 die Anwendung liefert verlässliche Fakten und validiert lokale Änderungsvorschläge.
 Ein Produkt benötigt keinen eigenen Gesprächszustandsautomaten mehr.
 
+Die anfängliche Template-Beratung bleibt lesend. Sie erhält die registrierten
+Topologiefakten und relevante Netzwerk-/Projektregeln mit verpflichtenden
+Abhängigkeiten. Unbeteiligte Feldschemata und Produktverträge werden ausgelassen.
+Quellenreferenzen dürfen nur tatsächlich mitgelieferte Regeln nennen.
+
 Standardmodell ist `Qwen/Qwen3.8-27B` am vorhandenen STACKIT-Endpunkt in EU01;
 Betreiber können es überschreiben. Laut [STACKIT-Modellkatalog](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/basics/available-shared-models/)
 unterstützt es Reasoning und native Werkzeuge. Modellvergleiche und

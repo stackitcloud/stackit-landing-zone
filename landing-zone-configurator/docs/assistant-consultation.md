@@ -7,6 +7,11 @@ The model interprets the goal, existing platform context and follow-up answers;
 application code supplies authoritative facts and validates proposed local changes.
 A product no longer needs a separate conversational state machine.
 
+The initial template adviser remains read-only. Its request includes the registered
+template topology facts and relevant network/project rules with mandatory
+dependencies; unrelated editable-field schemas and product contracts are omitted.
+It may reference only rules actually supplied in that request.
+
 The default model is `Qwen/Qwen3.8-27B` on the existing STACKIT EU01 endpoint;
 operators may override it. It supports reasoning and native tools according to
 the [STACKIT model catalogue](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/basics/available-shared-models/).

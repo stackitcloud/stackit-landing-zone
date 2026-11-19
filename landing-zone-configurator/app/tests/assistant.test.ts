@@ -1796,10 +1796,15 @@ it("advises before configuration creation with known templates and bounded quest
     ),
   ).toMatchObject(advice);
   const payload = JSON.parse(String(request.mock.calls[0]?.[1]?.body));
-  for (const rule of buildAssistantKnowledge().rules)
+  for (const rule of assistantKnowledgeForTopics(buildAssistantKnowledge(), [
+    "stackit-network-components",
+    "project-templates",
+  ]).rules)
     expect(payload.messages[0].content, rule.id).toContain(
       JSON.stringify(rule.text),
     );
+  expect(payload.messages[0].content).not.toContain('"fields":');
+  expect(payload.messages[0].content).not.toContain('"fieldContracts":');
   expect(payload.response_format).toMatchObject({
     type: "json_schema",
     json_schema: { name: "template_advice", strict: true },
@@ -3122,6 +3127,7 @@ it("redacts transport/provider/JSON failures and bounds response size without re
 
 import {
   assistantKnowledgeContext,
+  assistantKnowledgeForTopics,
   buildAssistantKnowledge,
   selectAssistantKnowledgeTopics,
 } from "../apps/api/src/assistant/knowledge.js";
