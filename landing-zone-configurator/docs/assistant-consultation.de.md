@@ -253,7 +253,7 @@ ursprünglichen Stand ab und prüft seine vollständige Wirkung erneut. Abgelehn
 Kandidaten werden weder Grundlage noch finale Antwort. Ein allgemeiner
 Validierungsaufruf kann eine Grundlage ausdrücklich auswählen oder neu beginnen.
 Benötigt ein gültiger Vorschlag noch eine Nutzerentscheidung, liefert das
-Antwortwerkzeug Vorschlag und strukturierte Frage gemeinsam. Eine Frage nur im
+Fragewerkzeug Vorschlag und strukturierte Frage gemeinsam. Eine Frage nur im
 Fließtext genügt nicht.
 
 Registrierte Profile umfassen Workload, VM und vollen Owner. Granulare Profile
@@ -293,3 +293,9 @@ Vorhandene Template-Settings werden auf das passende native Projekt-/Sandbox-Mod
 abgebildet. Ihre Auswahllisten verwenden dieselbe Feldregistrierung wie der Editor.
 Katalogabruf und -prüfung verwenden die Template-Region statt der Plattform-Region;
 unbekannte Template-Schlüssel werden nicht als Frageziele akzeptiert.
+Profil- und Initial-Owner-Fragepfade werden aus tatsächlichen Vorlagen oder
+compiler-validierten lokalen Vorschlägen registriert. Der synthetische Testlauf
+verwendet dasselbe Register. Owner-Auswahllabel kommen aus vorbereiteten Accounts
+und der verifizierten angemeldeten Identität. Modelltexte können keine andere
+Identität als verifiziert ausgeben. Das betrifft Fragezuordnungen, keine zusätzlichen
+Änderungspfade oder Tenant-Berechtigungen.

@@ -31,6 +31,7 @@ import {
   unavailableCatalogueChoices,
 } from "./decision-support.js";
 import {
+  assistantOwnerChoices,
   assistantQuestionFields,
   type Dialogue,
   dialogueSchema,
@@ -653,6 +654,12 @@ export async function runConsultation(input: {
                     ),
                     templates: consultationTemplateReadiness(input.current),
                     profileQuestionPath: "projectTemplates",
+                    ownerChoices: assistantOwnerChoices(
+                      ownerIdentities,
+                      input.language,
+                    ),
+                    ownerChoiceContract:
+                      "Use these source-authored labels verbatim in question options, not in question text. They identify prepared identities only; the user still chooses the central owner. A different existing owner's email may be supplied explicitly.",
                     contract:
                       "This is a PLATFORM configuration with reusable project templates. Edit the named existing projectTemplates entry, not a concrete landing_zones project or IAM role_assignment. Requester and Application service-account permissions are template principal lists; their users/accounts are bound during ordering, so adding permissions does not require an email for either principal. Preserve the separate existing initialOwnerEmail. Read projectTemplates and knowledge project-templates for native shapes and operations.",
                   }
@@ -809,7 +816,7 @@ export async function runConsultation(input: {
           ? {
               profile: "projectTemplates",
               initialOwner: "projectTemplates",
-              settings: assistantTemplateQuestionPaths(input.current),
+              registeredPaths: assistantTemplateQuestionPaths(input.current),
             }
           : undefined,
       };
@@ -1481,13 +1488,35 @@ export async function runConsultation(input: {
         )
       )
         throw new Error("assistant_knowledge_required");
+      const activeTemplateQuestionPaths = [
+        ...assistantTemplateQuestionPaths(input.current),
+        ...(step.proposal
+          ? (proposalReadiness.get(step.proposal) ?? [])
+          : []
+        ).flatMap((template) => [
+          `projectTemplates.${template.key}.accessProfile`,
+          `projectTemplates.${template.key}.accessProfile.initialOwnerEmail`,
+        ]),
+      ];
       const invalidQuestionPaths = step.questions.filter(
-        (question) => !questionPaths.includes(question.path),
+        (question) =>
+          !questionPaths.includes(question.path) &&
+          !activeTemplateQuestionPaths.includes(question.path),
       );
       if (
         invalidQuestionPaths.length ||
         (step.proposal && !proposals.has(step.proposal))
       ) {
+        input.options?.onEvent?.({
+          round,
+          action: "answer-validation",
+          status: "rejected",
+          code: "invalid_answer_references",
+          issues: invalidQuestionPaths.map((_question, index) => ({
+            path: `questions.${index}.path`,
+            code: "unregistered_question_path",
+          })),
+        });
         messages.push({
           role: "user",
           content: JSON.stringify({
@@ -1568,7 +1597,7 @@ export async function runConsultation(input: {
           },
           context.rules.map((rule) => rule.id),
           ownerIdentities,
-          assistantTemplateQuestionPaths(input.current),
+          activeTemplateQuestionPaths,
         ),
         input.language,
       );

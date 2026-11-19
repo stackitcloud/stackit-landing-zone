@@ -36,6 +36,7 @@ import { assistantAuditCreationQuestions } from "../apps/api/src/assistant/edito
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import type { AssistantCatalogueContext } from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
+import { assistantTemplateQuestionPaths } from "../apps/api/src/assistant/template-paths.js";
 
 export const syntheticOrganizationId = "00000000-0000-4000-8000-000000000001";
 const questions: Record<string, string> = {
@@ -2242,6 +2243,7 @@ export function validateAssistantScenario(
         ? { verifiedUserEmail: userEmail }
         : {}),
     },
+    assistantTemplateQuestionPaths(fixture.values),
   );
   const failures: string[] = [];
   if (scenario.id === "firewall-access-bootstrap-advice") {

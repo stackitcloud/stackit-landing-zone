@@ -326,15 +326,32 @@ export type AssistantOwnerIdentityContext = {
   verifiedUserEmail?: string | undefined;
 };
 
+/** Scoped display choices, not a grant or proof supplied by the model. */
+export function assistantOwnerChoices(
+  context: AssistantOwnerIdentityContext,
+  language: "de" | "en",
+) {
+  return [
+    ...context.serviceAccountEmails.map(
+      (email) =>
+        `${language === "de" ? "Plattform-Service-Account" : "Platform service account"} (${email})`,
+    ),
+    ...(context.verifiedUserEmail
+      ? [
+          `${language === "de" ? "Verifiziert angemeldeter Benutzer" : "Verified signed-in user"} (${context.verifiedUserEmail})`,
+        ]
+      : []),
+  ];
+}
+
+const ownerIdentityChoice =
+  /^(Plattform-Service-Account|Platform service account|Verifiziert angemeldeter Benutzer|Verified signed-in user) \(([^()\r\n]+)\)$/;
 function trustedOwnerChoice(
   option: string,
   context: AssistantOwnerIdentityContext | undefined,
 ) {
   if (!context) return false;
-  const match =
-    /^(Plattform-Service-Account|Platform service account|Verifiziert angemeldeter Benutzer|Verified signed-in user) \(([^()\r\n]+)\)$/.exec(
-      option,
-    );
+  const match = ownerIdentityChoice.exec(option);
   if (!match || !z.email().safeParse(match[2]).success) return false;
   return match[1] === "Plattform-Service-Account" ||
     match[1] === "Platform service account"
@@ -360,8 +377,13 @@ export function validateDialogue(
       question.text,
       ...(question.options ?? []).filter(
         (option) =>
-          question.path !== "projectTemplates" ||
-          !trustedOwnerChoice(option, ownerIdentities),
+          !(
+            question.path === "projectTemplates" ||
+            (additionalQuestionPaths.includes(question.path) &&
+              /^projectTemplates\.[^.]+\.accessProfile\.initialOwnerEmail$/.test(
+                question.path,
+              ))
+          ) || !trustedOwnerChoice(option, ownerIdentities),
       ),
     ].join("\n");
   for (const change of result.changes)
@@ -385,6 +407,11 @@ export function validateDialogue(
   if (
     result.questions.some(
       (question) =>
+        (question.options ?? []).some(
+          (option) =>
+            ownerIdentityChoice.test(option) &&
+            !trustedOwnerChoice(option, ownerIdentities),
+        ) ||
         (question.answerType === "catalogue" &&
           catalogueField(question.path) === null) ||
         (question.path !== "projectTemplates" &&

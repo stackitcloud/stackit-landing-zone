@@ -74,6 +74,9 @@ export function consultationPublicationDecisions(
         {
           id: "template-initial-owner",
           path: "projectTemplates",
+          alternativePaths: templateKeys.map(
+            (key) => `projectTemplates.${key}.accessProfile.initialOwnerEmail`,
+          ),
           templateKeys,
           requirement:
             "One shared central initial-owner decision for the affected granular profiles. Ask one structured question while preserving valid independent draft changes, or cite an explicit USER deferral. An inline question or a publication notice alone does not expose an interactive decision.",

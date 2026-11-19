@@ -106,6 +106,52 @@ it("requires actual structured questions or user-bound deferrals for source-requ
       })
     ).ready,
   ).toBe(false);
+  const alternativePath =
+    "projectTemplates.central.accessProfile.initialOwnerEmail";
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...reviewInput,
+        complete,
+        requiredDecisions: requiredDecisions.map((decision) => ({
+          ...decision,
+          alternativePaths: [alternativePath],
+        })),
+        answer: {
+          ...answer,
+          questions: [
+            {
+              path: alternativePath,
+              text: "Which initial owner?",
+              answerType: "requirements",
+            },
+          ],
+        },
+      })
+    ).ready,
+  ).toBe(true);
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...reviewInput,
+        complete,
+        requiredDecisions: requiredDecisions.map((decision) => ({
+          ...decision,
+          alternativePaths: [alternativePath],
+        })),
+        answer: {
+          ...answer,
+          questions: [
+            {
+              path: "projectTemplates.unknown.accessProfile.initialOwnerEmail",
+              text: "Which initial owner?",
+              answerType: "requirements",
+            },
+          ],
+        },
+      })
+    ).ready,
+  ).toBe(false);
   const deferral = { userTurn: 0, quote: "Set the owner later." };
   const deferred = vi.fn().mockResolvedValue({
     ...response,

@@ -120,7 +120,7 @@ checks remain authoritative on acceptance.
 
 The transport uses standard assistant `tool_calls` and corresponding `tool` results,
 with call IDs; results are never simulated as new user messages. Normal explanations
-may be natural-language replies. Structured questions use the answer tool. A textual
+may be natural-language replies. Structured questions use `ask_question`. A textual
 reply can carry only the latest successfully validated local proposal; a rejected
 replacement clears that handle. Neither text nor a function name can execute cloud
 changes. The final answer still passes the same semantic review before publication.
@@ -197,6 +197,11 @@ same schema, source and compiler checks and grants no permissions by itself.
 Platform context distinguishes reusable project-template principal lists from
 concrete project members, so template changes do not request individual user
 addresses. New presets still require a confirmed initial owner.
+Profile and initial-owner question paths are registered from actual templates or
+compiler-validated local proposals. The synthetic harness uses the same registry.
+Owner choices receive source-authored labels from prepared accounts and the verified
+signed-in identity; model-authored labels cannot claim another identity is verified.
+This changes question associations, not mutation paths or tenant authorization.
 
 Project-IAM permission edits apply to Public, Corporate and Sandbox templates;
 they do not provision a cluster or depend on an SNA, node pools or cluster names.

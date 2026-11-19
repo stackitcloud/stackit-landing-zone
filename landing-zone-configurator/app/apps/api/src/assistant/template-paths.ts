@@ -1,7 +1,7 @@
 import { type JsonValue, objectValue } from "@lzc/domain";
 import { assistantQuestionFields } from "./dialogue.js";
-/** Virtual template settings use the same editable/question field registry as
- * native projects; no separate per-service picker/path catalogue. */
+/** Existing template metadata and native settings share the question registry;
+ * this declares UI associations, never permission to mutate a field. */
 export function assistantTemplateQuestionPaths(
   current: Record<string, unknown>,
 ) {
@@ -12,11 +12,15 @@ export function assistantTemplateQuestionPaths(
     const kind = objectValue(value).kind;
     if (!["corporate", "public", "sandbox"].includes(String(kind))) return [];
     const prefix = `${kind === "sandbox" ? "sandboxes" : "landing_zones"}[*].`;
-    return fields
-      .filter((field) => field.path.startsWith(prefix))
-      .map(
-        (field) =>
-          `projectTemplates.${key}.settings.${field.path.slice(prefix.length)}`,
-      );
+    return [
+      `projectTemplates.${key}.accessProfile`,
+      `projectTemplates.${key}.accessProfile.initialOwnerEmail`,
+      ...fields
+        .filter((field) => field.path.startsWith(prefix))
+        .map(
+          (field) =>
+            `projectTemplates.${key}.settings.${field.path.slice(prefix.length)}`,
+        ),
+    ];
   });
 }
