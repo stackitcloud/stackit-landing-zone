@@ -584,7 +584,7 @@ Public-Standalone-Spike, keinen allgemeinen Chat. Operator-Konfiguration:
 | `LZC_MODEL_SERVING_TOKEN` | Bestehendes Terraform-/Deployment-Binding; Pflicht, nur Prozessumgebung. |
 | `LZC_MODEL_SERVING_MODEL` | Default `Qwen/Qwen3.8-27B`; betreiberseitig anpassbar. |
 | `LZC_MODEL_SERVING_BASE_URL` | Default und derzeit einzig zugelassen `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1`; andere Endpoints brauchen ausdrueckliche Allowlist-/Sicherheitsqualifikation. |
-| `LZC_MODEL_SERVING_TIMEOUT_MS` | Default 60000, begrenzt auf 1000..120000. |
+| `LZC_MODEL_SERVING_TIMEOUT_MS` | Standard 120000 für Qwen3.8, sonst 60000; begrenzt auf 1000..120000. |
 | `LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS` | Optional 1024..16384; Standard 16384 für Qwen3.8, sonst 4096. Einschließlich Reasoning. |
 
 Im App-Verzeichnis mit gepinntem Node 24 und sicher bereitgestelltem Binding:

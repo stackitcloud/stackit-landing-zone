@@ -23,6 +23,9 @@ andere Modelle behalten den bisherigen Standard von 4.096 Tokens. Betreiber kön
 `LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS` für eine separat qualifizierte Auswahl auf
 1.024 bis 16.384 setzen. Der sichtbare Antworttext bleibt auf 16.384 Zeichen begrenzt.
 Eine abgeschnittene Completion zählt als Fehler und wird nicht still wiederholt.
+Qwen3.8-Aufrufe haben standardmäßig 120 Sekunden Zeit innerhalb der vorhandenen
+konfigurierbaren Grenzen, andere Modelle weiterhin 60 Sekunden. Die gesamte
+Beratung bleibt einschließlich Leseaufrufen und Prüfungen auf drei Minuten begrenzt.
 
 Die [englische Architekturübersicht](assistant-consultation.md) zeigt den Ablauf:
 Nutzer und gespeicherter Gesprächsstand → Beratung und lesende Werkzeuge →
@@ -109,7 +112,7 @@ Leere Fragen-, Referenz- und Vorschlagsfelder dürfen entfallen; dies aktiviert 
 Komponente und gewährt keinen Zugriff. Generierte Antworten verwenden dasselbe begrenzte Budget von 16.384 Zeichen wie der native Transport.
 Der Entwurfshinweis schneidet keine Erklärung oder wichtige Grenze still ab.
 Ein Turn bleibt auf zwölf Beratungsschritte, drei Schlussprüfungen und drei Minuten
-begrenzt. Die bisherigen Einzelaufruf-Limits gelten weiter. HTTP-Fehler verursachen
+begrenzt. Konfigurierte Einzelaufruf-Limits gelten weiterhin. HTTP-Fehler verursachen
 weder einen versteckten Controller-Wechsel noch unbegrenzte Wiederholungen.
 
 Die vollständige wiederholte CI-Qualifikation läuft wegen der gemeinsamen

@@ -509,16 +509,20 @@ export function catalogueFacts(
 }
 
 export function modelServingConfiguration(environment: NodeJS.ProcessEnv) {
+  const model = environment.LZC_MODEL_SERVING_MODEL ?? "Qwen/Qwen3.8-27B";
   const result = configurationSchema.safeParse({
     baseUrl:
       environment.LZC_MODEL_SERVING_BASE_URL ??
       "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
-    model: environment.LZC_MODEL_SERVING_MODEL ?? "Qwen/Qwen3.8-27B",
+    model,
     ...(environment.LZC_MODEL_SERVING_INTENT_MODEL
       ? { intentModel: environment.LZC_MODEL_SERVING_INTENT_MODEL }
       : {}),
     token: environment.LZC_MODEL_SERVING_TOKEN,
-    timeoutMs: Number(environment.LZC_MODEL_SERVING_TIMEOUT_MS ?? "60000"),
+    timeoutMs: Number(
+      environment.LZC_MODEL_SERVING_TIMEOUT_MS ??
+        (model === "Qwen/Qwen3.8-27B" ? "120000" : "60000"),
+    ),
     ...(environment.LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS
       ? {
           maxCompletionTokens: Number(

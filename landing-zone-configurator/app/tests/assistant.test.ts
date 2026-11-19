@@ -3003,7 +3003,23 @@ it("uses the existing operator binding and rejects missing tokens and foreign en
   });
   expect(
     modelServingConfiguration({ LZC_MODEL_SERVING_TOKEN: configuration.token }),
-  ).toMatchObject({ token: configuration.token, model: "Qwen/Qwen3.8-27B" });
+  ).toMatchObject({
+    token: configuration.token,
+    model: "Qwen/Qwen3.8-27B",
+    timeoutMs: 120000,
+  });
+  expect(
+    modelServingConfiguration({
+      LZC_MODEL_SERVING_TOKEN: configuration.token,
+      LZC_MODEL_SERVING_MODEL: "other-model",
+    }),
+  ).toMatchObject({ timeoutMs: 60000 });
+  expect(
+    modelServingConfiguration({
+      LZC_MODEL_SERVING_TOKEN: configuration.token,
+      LZC_MODEL_SERVING_TIMEOUT_MS: "45000",
+    }),
+  ).toMatchObject({ timeoutMs: 45000 });
   for (const environment of [
     {},
     {

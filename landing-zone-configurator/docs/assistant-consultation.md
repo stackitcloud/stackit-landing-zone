@@ -23,6 +23,9 @@ other model selections retain the previous 4,096-token default. Operators may se
 `LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS` between 1,024 and 16,384 for a separately
 qualified selection. The final user-facing text remains bounded to 16,384
 characters. A truncated completion is a failure, never silently retried.
+Qwen3.8 requests default to a 120-second timeout, within the existing configurable
+request bounds; other models retain 60 seconds. The entire consultation still has
+a three-minute deadline, including its reads and reviews.
 
 ```mermaid
 flowchart LR
@@ -112,8 +115,8 @@ The tool schemas remain compact. An empty question list, reference list or propo
 is normalized as empty; omitted fields cannot activate a component or grant access.
 Generated replies use the same bounded 16,384-character budget as the native transport, and adding a draft notice never silently cuts
 off an explanation or an important boundary. A turn has at most twelve consultation
-steps, three bounded reviews and a three-minute deadline. Individual requests retain
-their existing limits. HTTP failures do not trigger a hidden controller fallback or
+steps, three bounded reviews and a three-minute deadline. Configured individual
+request limits remain enforced. HTTP failures do not trigger a hidden controller fallback or
 an unbounded inference retry.
 
 The complete repeated CI qualification is serialized against the project quota
