@@ -120,6 +120,17 @@ Projektquote seriell und hat ein Job-Limit von sechs Stunden. Einzelaufrufe und
 Turns erhalten dadurch keine längeren Fristen; fehlgeschlagene Wiederholungen
 werden nicht erneut versucht und die Release-Kriterien bleiben gleich.
 
+Große registrierte Preset- und benannte Katalog-Berechtigungsergänzungen werden
+nur verdichtet, wenn der tatsächliche Compiler-Kandidat exakt dem nativen bzw.
+serverseitig materialisierten Ergebnis entspricht. Das Modell erhält die belegte
+Auswahl, Templates und Prinzipale sowie ergänzte/entfernte Produktanzahlen und
+einen Effekt-Hash statt Hunderter wiederholter Kennungen. Kleine Listen bleiben
+explizit. Eigene wörtliche Listen, unbekannte Operationen, überlappende Batches
+und abweichende Compiler-Ergebnisse bleiben vollständig sichtbar. Andere geänderte
+Felder und entfernte Produktgruppen werden nicht verborgen. Nutzerabsicht und
+kritische Grenzen bleiben zu prüfen; der Beleg gewährt keine Rechte. Die prüfbare
+öffentliche Vorschlagsdarstellung und Entwurfsübernahme behalten alle nativen Änderungen.
+
 Eine gemeinsame inhaltliche Schlussprüfung vergleicht Auftrag, Folgeantworten,
 geprüfte Fakten und den tatsächlichen Compiler-Diff vor Anzeige und Speicherung.
 Der Diff trennt ergänzte/entzogene Rechte nach Prinzipal und Produktgruppe.

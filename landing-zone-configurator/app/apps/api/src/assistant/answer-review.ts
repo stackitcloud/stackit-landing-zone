@@ -2,7 +2,10 @@ import { z } from "zod";
 import type { ConsultationComplete } from "./consultation.js";
 import { memorySchema } from "./consultation-memory.js";
 import type { Dialogue } from "./dialogue.js";
-import type { ProposalDelta } from "./proposal-diff.js";
+import type {
+  ConsultationCompilerEvidence,
+  ProposalDelta,
+} from "./proposal-diff.js";
 
 const reviewSchema = z.strictObject({
   requestChecks: z
@@ -85,6 +88,7 @@ export async function reviewConsultationAnswer(input: {
   serviceFacts: Record<string, unknown>;
   answer: Dialogue;
   delta: ProposalDelta[] | undefined;
+  compilerEvidence?: ConsultationCompilerEvidence | undefined;
   signal?: AbortSignal;
 }) {
   const paragraphs = input.answer.explanation
@@ -114,6 +118,8 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
           task: "review_final_response",
           requestReviewContract:
             "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Reference the supplied zero-based USER turn index as userTurn and summarize its requirement. Record the expected result and the observed actual result, and set met=false for any mismatch. User-turn indices identify the evidence; do not regenerate verbatim quotes. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
+          compilerEvidenceContract:
+            "verifiedOperations are server-proven exact native preset or official catalogue-union permission effects, compared with the real compiler candidate. Large proven permission arrays are represented by their actual added/removed group counts and an effect hash. Review whether the user requested that preset/services, templates and principals, review removed groups and all other delta fields, and explain critical consequences. Do not reconstruct hundreds of already-proven permission names. Explicit custom lists and mismatching outputs remain complete. A proof grants no rights and does not authorize a user request.",
           boundaryReviewContract: {
             requiredIds: boundaries
               .filter((entry) => entry.mustExplain)
@@ -136,7 +142,10 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
               : {
                   ...input.answer,
                   changes: undefined,
-                  compilerDelta: input.delta,
+                  compilerDelta:
+                    input.compilerEvidence?.compilerDelta ?? input.delta,
+                  verifiedOperations:
+                    input.compilerEvidence?.verifiedOperations ?? [],
                 },
         }),
       },
@@ -192,7 +201,11 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
       (entry) => entry.id === boundary.id,
     );
     const explicitlyDescribed = boundary.triggerIdentifiers?.some(
-      (identifier) => input.answer.explanation.includes(identifier),
+      (identifier) =>
+        input.answer.explanation.includes(identifier) ||
+        JSON.stringify(
+          input.compilerEvidence?.verifiedOperations ?? [],
+        ).includes(identifier),
     );
     if (
       !check ||

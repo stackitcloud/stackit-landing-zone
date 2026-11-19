@@ -3471,6 +3471,12 @@ export function assistantPrematurePersistenceClaim(explanation: string) {
   );
   return [...claims].some(
     (claim) =>
+      !/\b(?:nichts|kein(?:e|en|er|es|em)?(?:\s+(?!(?:aber|doch|jedoch|sondern|und)\b)[\p{L}-]+){0,3})\s*$/iu.test(
+        explanation
+          .slice(0, claim.index)
+          .split(/[.!?;\n]/)
+          .at(-1) ?? "",
+      ) &&
       !/\b(?:kein\w*|nicht|nichts|weder)\b/i.test(
         claim[1]!.replace(/\bnicht\s+nur\b/gi, ""),
       ) &&

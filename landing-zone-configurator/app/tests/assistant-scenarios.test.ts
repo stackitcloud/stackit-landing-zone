@@ -1601,6 +1601,24 @@ it("recognizes DNS roles across Markdown paragraphs while rejecting reversed rol
 it("distinguishes explicit no-save statements from affirmative persistence claims", () => {
   expect(
     assistantPrematurePersistenceClaim(
+      "Der Vorschlag ist validiert – nichts wurde gespeichert, veröffentlicht oder ausgeführt.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim("Keine Änderungen wurden gespeichert."),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Nichts wurde gespeichert, aber die Konfiguration ist jetzt gespeichert.",
+    ),
+  ).toBe(true);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Keine Änderungen wurden gespeichert; danach wurde die Konfiguration gespeichert.",
+    ),
+  ).toBe(true);
+  expect(
+    assistantPrematurePersistenceClaim(
       "Es wurden keine Änderungen ausgeführt oder gespeichert.",
     ),
   ).toBe(false);

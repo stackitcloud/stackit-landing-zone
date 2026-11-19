@@ -130,6 +130,17 @@ identities and IAM metadata are omitted. Review findings return to the same
 consultation for correction. This is an internal quality check, not another user
 approval or a guarantee that every answer is correct. Critical capability boundaries
 require explicit coverage and references to server-numbered answer paragraphs.
+Large registered preset and named catalogue-union permission effects are compacted
+only after the actual compiler candidate matches the native factory/materialized
+result exactly. The model receives the proven selection, templates and principals,
+actual added/removed product counts and an effect hash instead of hundreds of
+repeated permission names. Small lists stay explicit. Custom literal lists,
+unrecognized operations, overlapping batches and mismatching compiler outputs
+retain the full delta. Other changed fields and removed product groups remain
+visible. The reviewer must still check the user's intent and explain critical
+boundaries; a compiler proof grants no rights. Draft acceptance and the public
+reviewable proposal retain the complete native changes.
+
 The reviewer first records user requirements with expected and actual results and
 references the numbered user turn, then decides readiness. An unmet check or an
 invalid user-turn reference cannot approve the answer. Registered preset identifiers in an explanation also

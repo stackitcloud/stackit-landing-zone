@@ -1,4 +1,10 @@
+import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
+import { defaultApplicationAccessProfile } from "@lzc/domain";
+import {
+  type ConsultationChange,
+  consultationAccessPresets,
+} from "./proposal-operations.js";
 
 export type ProposalDelta = {
   path: string;
@@ -9,6 +15,147 @@ export type ProposalDelta = {
   addedGroups?: Record<string, number>;
   removedGroups?: Record<string, number>;
 };
+
+/** Compact only exact, server-materialized catalogue transformations. Explicit
+ * custom lists and any mismatching compiler output retain the complete delta. */
+export function consultationCompilerEvidence(
+  candidate: Record<string, unknown>,
+  operations: ConsultationChange[],
+  materialized: ConsultationChange[],
+  delta: ProposalDelta[],
+) {
+  const object = (value: unknown): Record<string, unknown> =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  const normalized = (value: unknown) => {
+    const profile = { ...object(value) };
+    for (const key of ["permissions", "automationPermissions"])
+      if (Array.isArray(profile[key]))
+        profile[key] = [...(profile[key] as unknown[])].sort();
+    return profile;
+  };
+  const expectedTemplates = Object.assign(
+    {},
+    ...materialized
+      .filter(
+        (change) =>
+          change.path === "projectTemplates" && change.operation === "merge",
+      )
+      .map((change) => object(change.value)),
+  ) as Record<string, unknown>;
+  const actualTemplates = object(candidate.projectTemplates);
+  const verifiedOperations: {
+    kind: string;
+    source: unknown;
+    templates: string[];
+    principals: string[];
+  }[] = [];
+  const covered = new Map<string, number>();
+  const seen = new Set<string>();
+  for (const change of operations) {
+    const value = object(change.value);
+    let keys: string[], principals: string[], source: unknown, kind: string;
+    const preset = /^projectTemplates\.([^.]+)\.accessProfile$/.exec(
+      change.path,
+    );
+    if (
+      change.operation === "preset" &&
+      preset &&
+      consultationAccessPresets.includes(
+        value.id as (typeof consultationAccessPresets)[number],
+      )
+    ) {
+      keys = [preset[1]!];
+      principals = ["requester", "automation"];
+      kind = "registered-preset";
+      source = value.id;
+    } else if (
+      change.path === "projectTemplates" &&
+      change.operation === "add_permissions" &&
+      ["services", "permission_set"].includes(
+        String(object(value.source).kind),
+      ) &&
+      Array.isArray(value.templateKeys) &&
+      Array.isArray(value.principals)
+    ) {
+      keys = value.templateKeys as string[];
+      principals = value.principals as string[];
+      kind = "catalogue-union";
+      source = value.source;
+    } else return { compilerDelta: delta, verifiedOperations: [] };
+    // Overlapping batches require full review of their ordering and effects.
+    if (
+      !keys.length ||
+      !principals.length ||
+      new Set(keys).size !== keys.length ||
+      principals.some(
+        (principal) => !["requester", "automation"].includes(principal),
+      ) ||
+      keys.some(
+        (key) => typeof key !== "string" || key.includes(".") || seen.has(key),
+      )
+    )
+      return { compilerDelta: delta, verifiedOperations: [] };
+    for (const key of keys) seen.add(key);
+    const matches = keys.every((key) => {
+      const actual = object(object(actualTemplates[key]).accessProfile);
+      const expected =
+        kind === "registered-preset"
+          ? source === "owner"
+            ? { schemaVersion: 1, mode: "owner" }
+            : defaultApplicationAccessProfile(
+                String(
+                  value.initialOwnerEmail ??
+                    object(object(expectedTemplates[key]).accessProfile)
+                      .initialOwnerEmail ??
+                    "",
+                ),
+                source === "application-vm-v1" ? "vm" : "workload",
+              )
+          : object(object(expectedTemplates[key]).accessProfile);
+      return (
+        Object.keys(expected).length > 0 &&
+        isDeepStrictEqual(normalized(actual), normalized(expected))
+      );
+    });
+    if (!matches) continue;
+    const index = verifiedOperations.length;
+    verifiedOperations.push({ kind, source, templates: keys, principals });
+    for (const key of keys)
+      for (const principal of principals)
+        covered.set(
+          `projectTemplates.${key}.accessProfile.${principal === "requester" ? "permissions" : "automationPermissions"}`,
+          index,
+        );
+  }
+  return {
+    verifiedOperations,
+    compilerDelta: delta.map((entry) => {
+      const operation = covered.get(entry.path);
+      if (
+        operation === undefined ||
+        !entry.added ||
+        !entry.removed ||
+        entry.added.length + entry.removed.length <= 24
+      )
+        return entry;
+      const { added, removed, ...rest } = entry;
+      return {
+        ...rest,
+        addedCount: added.length,
+        removedCount: removed.length,
+        effectSha256: createHash("sha256")
+          .update(JSON.stringify({ added, removed }))
+          .digest("hex"),
+        verifiedOperation: operation,
+      };
+    }),
+  };
+}
+export type ConsultationCompilerEvidence = ReturnType<
+  typeof consultationCompilerEvidence
+>;
 
 /** Compare compiler-produced PUBLIC values. Unchanged identities and access
  * metadata never enter the review; permission order is not a change of rights. */

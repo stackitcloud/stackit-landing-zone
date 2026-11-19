@@ -56,6 +56,8 @@ import {
   type AssistantStream,
 } from "./model-serving.js";
 import {
+  type ConsultationCompilerEvidence,
+  consultationCompilerEvidence,
   consultationProposalDiff,
   type ProposalDelta,
 } from "./proposal-diff.js";
@@ -377,6 +379,7 @@ export async function runConsultation(input: {
   const defaultResults = new Map<string, { path: string; value: JsonValue }>();
   const proposals = new Map<string, Dialogue["changes"]>();
   const proposalDeltas = new Map<string, ProposalDelta[]>();
+  const proposalEvidence = new Map<string, ConsultationCompilerEvidence>();
   const resolvedDecisions = new Map<
     string,
     ReturnType<typeof evaluateCatalogueRequirements>
@@ -1055,11 +1058,12 @@ export async function runConsultation(input: {
     if (step.action === "validate_proposal") {
       let details: Record<string, unknown> | undefined;
       try {
+        const operations = step.changes.map((change) => ({
+          ...change,
+          value: z.json().parse(change.value),
+        }));
         const changes = materializeConsultationChanges(
-          step.changes.map((change) => ({
-            ...change,
-            value: z.json().parse(change.value),
-          })),
+          operations,
           input.current,
         );
         for (const change of changes) {
@@ -1291,15 +1295,38 @@ export async function runConsultation(input: {
               evidence: basis.evidence,
             })),
         );
-        if (candidatePublicValues)
+        if (candidatePublicValues) {
           proposalDeltas.set(
             id,
             consultationProposalDiff(input.current, candidatePublicValues),
           );
+          proposalEvidence.set(
+            id,
+            consultationCompilerEvidence(
+              candidatePublicValues,
+              operations,
+              changes,
+              proposalDeltas.get(id)!,
+            ),
+          );
+          input.options?.onEvent?.({
+            round,
+            action: "compiler-evidence",
+            status: proposalEvidence.get(id)!.verifiedOperations.length
+              ? "proven"
+              : "full-delta",
+          });
+        }
         messages.push({
           role: "user",
           content: JSON.stringify({
-            validation: { ok: true, proposal: id, changes: validated.changes },
+            validation: {
+              ok: true,
+              proposal: id,
+              ...(proposalEvidence.has(id)
+                ? { compilerEvidence: proposalEvidence.get(id) }
+                : { changes: validated.changes }),
+            },
           }),
         });
       } catch (error) {
@@ -1522,6 +1549,9 @@ export async function runConsultation(input: {
         ),
         answer: dialogue,
         delta: step.proposal ? proposalDeltas.get(step.proposal) : [],
+        compilerEvidence: step.proposal
+          ? proposalEvidence.get(step.proposal)
+          : undefined,
         signal: turnSignal,
       });
       input.options?.onEvent?.({

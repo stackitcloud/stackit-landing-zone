@@ -157,6 +157,46 @@ it("requires boundary coverage when a source-registered preset is described", as
     ).ready,
   ).toBe(false);
 });
+it("requires the critical boundary of a compiler-proven preset even without its ID in the prose", async () => {
+  const complete = vi.fn().mockResolvedValue({
+    ready: true,
+    findings: [],
+    requestChecks,
+    boundaryChecks: [
+      { id: "keys", applicable: false, covered: false, paragraphs: [] },
+    ],
+  });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...input,
+        complete,
+        compilerEvidence: {
+          compilerDelta: [],
+          verifiedOperations: [
+            {
+              kind: "registered-preset",
+              source: "application-vm-v1",
+              templates: ["central"],
+              principals: ["requester", "automation"],
+            },
+          ],
+        },
+        serviceFacts: {
+          "project-templates": {
+            criticalBoundaries: [
+              {
+                id: "keys",
+                mustExplain: true,
+                triggerIdentifiers: ["application-vm-v1"],
+              },
+            ],
+          },
+        },
+      })
+    ).ready,
+  ).toBe(false);
+});
 it("never silently truncates a contextual answer when adding the draft notice", () => {
   const text = "a".repeat(3500) + " Important final boundary.";
   expect(
