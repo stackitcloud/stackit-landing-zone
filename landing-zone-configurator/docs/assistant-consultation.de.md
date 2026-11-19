@@ -134,6 +134,10 @@ Defaults, gespeicherte Allowlisten und manuelle öffentliche Ausgangsnetze. Das 
 muss private Beschriftungen nicht zeichengetreu reproduzieren. Nicht unterstützte
 Modelloptionen werden nicht angezeigt. Es wird dadurch kein Wert übernommen;
 Nutzerauswahl und Vorschlags-/Default-Belege bleiben erforderlich.
+Validierte native Zugriffsdefaults stehen zusätzlich neben den Änderungen des
+aktiven Vorschlags. Unbeschränkte IPv4-/IPv6-Quellen werden anhand serverseitiger
+Metadaten ausdrücklich benannt. Ist das Feld nicht mehr Teil des offenen Vorschlags,
+entfällt die Anzeige. Sie wählt oder übernimmt selbst keinen Wert.
 Fehlende Referenzmetadaten werden ausschließlich aus bereits gelieferten Quellen
 ergänzt; explizite fremde Referenzen werden weiterhin geprüft.
 Damit entfallen verschachtelte Fragenlisten, die das Kandidatenmodell

@@ -105,6 +105,17 @@ test("English UI retains a capacity recommendation and offers the actual native 
         },
       ];
       const proposal: Dialogue = {
+        ...(posts >= 3
+          ? {
+              accessDefaults: [
+                {
+                  path: "devops.allowed_network_ranges",
+                  sources: ["0.0.0.0/0"],
+                  source: "accelerator" as const,
+                },
+              ],
+            }
+          : {}),
         explanation:
           posts < 3
             ? "Git100 fits your 80 developers. Choose access for the central company Git. Nothing saved."
@@ -239,6 +250,12 @@ test("English UI retains a capacity recommendation and offers the actual native 
   await expect(reloadedChat.locator(".assistant-proposal")).toContainText(
     "0.0.0.0/0",
   );
+  const accessDefaults = reloadedChat.getByRole("region", {
+    name: "Proposed access defaults",
+    exact: true,
+  });
+  await expect(accessDefaults).toContainText("Any IPv4 address");
+  await expect(accessDefaults).toContainText("0.0.0.0/0");
   await reloadedChat.screenshot({
     path: info.outputPath("git-default-proposal.png"),
   });

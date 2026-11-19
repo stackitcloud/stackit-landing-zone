@@ -1,4 +1,5 @@
 import {
+  assistantAccessDefaultNoticeSchema,
   assistantAnswerTextMaxLength,
   assistantQuestionAnswerTypeSchema,
   assistantRecommendationSchema,
@@ -161,6 +162,7 @@ export const assistantQuestionOptionsSchema = z
   .optional();
 
 export const dialogueSchema = z.strictObject({
+  accessDefaults: z.array(assistantAccessDefaultNoticeSchema).max(8).optional(),
   recommendations: z.array(assistantRecommendationSchema).max(8).optional(),
   explanation: z.string().min(1).max(assistantAnswerTextMaxLength),
   questions: z

@@ -143,6 +143,7 @@ export const assistantKnowledgeSharedSources: readonly string[] = [
   "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
   "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
   "landing-zone-configurator/app/apps/web/src/components/AssistantRecommendations.tsx",
+  "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
   "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
 ];
 
@@ -177,6 +178,7 @@ export function buildAssistantKnowledgeTopics() {
             "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx",
             "landing-zone-configurator/app/apps/web/src/components/AssistantQuestions.tsx",
             "landing-zone-configurator/app/apps/web/src/components/AssistantRecommendations.tsx",
+            "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
             "landing-zone-configurator/app/packages/contracts/src/cloud-catalogue-fields.ts",
             "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
             "landing-zone-configurator/app/packages/contracts/src/application-upgrades.ts",

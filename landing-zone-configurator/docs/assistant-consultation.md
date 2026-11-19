@@ -134,6 +134,10 @@ renderer: actual Accelerator defaults, saved allowlists and manual public-egress
 input. Model wording does not have to match private labels character for character.
 Unsupported model-written options cannot enter the displayed choice list. This
 changes no value: the user's selection and proposal/default evidence remain required.
+Validated native access defaults are also rendered beside the active proposal's
+field changes. Unrestricted IPv4/IPv6 sources are named explicitly, from server-owned
+metadata rather than a model claim. The notice is hidden when its field is no longer
+part of the pending proposal. Rendering a notice does not select or accept a value.
 Absent reference metadata uses only already observed source references; explicit
 foreign references remain subject to rejection. This avoids nested lists
 of question objects that the candidate model repeatedly returned as malformed JSON

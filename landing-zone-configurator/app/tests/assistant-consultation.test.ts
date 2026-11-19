@@ -587,6 +587,13 @@ it("finishes the complete Hub-and-Spoke/80-developer/default-access dialogue wit
   expect(result.changes).toEqual(changes);
   expect(result.explanation).toContain("80 developers");
   expect(result.explanation).toContain("Accelerator default 0.0.0.0/0");
+  expect(result.accessDefaults).toEqual([
+    {
+      path: "devops.allowed_network_ranges",
+      sources: ["0.0.0.0/0"],
+      source: "accelerator",
+    },
+  ]);
   expect(result.explanation).not.toContain("Choose a starting option");
   expect(texts).toEqual([result.explanation]);
   const candidate = compileCommonConfiguration(

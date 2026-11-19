@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from "node:util";
 import {
   type AssistantCataloguePicker,
   type AssistantLanguage,
+  assistantAccessDefaultNoticeSchema,
   assistantRecommendationSchema,
   catalogueField,
 } from "@lzc/contracts";
@@ -1607,11 +1608,32 @@ export async function runConsultation(input: {
           ];
         },
       );
+      const accessDefaults = [
+        ...new Map(
+          (step.proposal ? (proposalDefaults.get(step.proposal) ?? []) : [])
+            .flatMap((entry) => {
+              const record = objectValue(entry as JsonValue);
+              if (
+                typeof record.path !== "string" ||
+                !accessChoices.has(record.path)
+              )
+                return [];
+              const notice = assistantAccessDefaultNoticeSchema.safeParse({
+                path: record.path,
+                sources: record.value,
+                source: "accelerator",
+              });
+              return notice.success ? [notice.data] : [];
+            })
+            .map((notice) => [notice.path, notice]),
+        ).values(),
+      ];
       const dialogue = ensureDraftNotice(
         validateDialogue(
           {
             explanation: step.explanation,
             ...(recommendations.length ? { recommendations } : {}),
+            ...(accessDefaults.length ? { accessDefaults } : {}),
             questions: enrichTemplateOwnerQuestions(
               step.questions,
               activeTemplateQuestionPaths,
