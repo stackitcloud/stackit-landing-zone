@@ -3,8 +3,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   applicationProjectPermissionNames,
+  defaultApplicationAccessProfile,
   featureFieldCatalogue,
   type JsonValue,
+  objectValue,
 } from "@lzc/domain";
 import { expect, it } from "vitest";
 import { buildMultiTemplatePermissionDialogue } from "../apps/api/src/assistant/application-permission-dialogue.js";
@@ -273,6 +275,27 @@ it.each(assistantScenarios)(
       ).toContain("git_over_capacity_must_clarify_topology_before_flavor");
       return;
     }
+    if (scenario.nativeDefaultResetPath) {
+      const result = {
+        explanation:
+          "Reset the requested native override in the local draft. Nothing has been saved.",
+        questions: [],
+        changes: [
+          {
+            path: scenario.nativeDefaultResetPath,
+            operation: "default" as const,
+            value: null,
+          },
+        ],
+        references: [scenario.topic],
+      };
+      expect(validateAssistantScenario(scenario, result).failures).toEqual([]);
+      expect(
+        validateAssistantScenario(scenario, { ...result, changes: [] })
+          .failures,
+      ).toContain("native_default_not_completed");
+      return;
+    }
     if (scenario.setupQuestionPaths) {
       expect(
         validateAssistantScenario(scenario, {
@@ -354,10 +377,14 @@ it.each(assistantScenarios)(
             "editor-devops-reuse-allowlist",
             "editor-devops-capacity-narrowed",
             "editor-devops-sized-80-followup",
+            "consultation-company-git-default-en",
+            "consultation-company-git-default-de",
           ].includes(scenario.id)
             ? "git-100"
             : "git-10",
-          allowed_network_ranges: ["203.0.113.0/24"],
+          allowed_network_ranges: scenario.nativeDefaultExpected
+            ? ["0.0.0.0/0"]
+            : ["203.0.113.0/24"],
         },
         federated_identity_providers: [
           {
@@ -1451,4 +1478,101 @@ it("rejects an unhelpful or undersized final answer even when an access question
       "git-100",
     ),
   ).toContain("git_capacity_missing_count");
+});
+
+it("compares permission sets semantically while still rejecting extra rights for the wrong principal", async () => {
+  const { materializeConsultationChanges } = await import(
+    "../apps/api/src/assistant/proposal-operations.js"
+  );
+  const scenario = assistantScenarios.find(
+    (entry) =>
+      entry.id === "application-service-account-key-management-proposal",
+  )!;
+  const fixture = assistantScenarioFixture(scenario);
+  const changes = materializeConsultationChanges(
+    [
+      {
+        path: "projectTemplates",
+        operation: "add_permissions",
+        value: {
+          templateKeys: ["central"],
+          principals: ["requester"],
+          source: { kind: "permission_set", id: "service-account-keys" },
+        },
+      },
+    ],
+    fixture.values,
+  );
+  const profile = objectValue(
+    objectValue(objectValue(changes[0]!.value).central).accessProfile,
+  );
+  (profile.permissions as string[]).reverse();
+  const response = {
+    explanation:
+      "Vorschlag zur Prüfung; noch nichts gespeichert oder ausgeführt.",
+    questions: [],
+    changes,
+    references: ["project-templates"],
+  };
+  expect(validateAssistantScenario(scenario, response).failures).toEqual([]);
+  (profile.automationPermissions as string[]).push(
+    "iam.service-account-key.create",
+  );
+  expect(validateAssistantScenario(scenario, response).failures).toContain(
+    "application_access_proposal_incorrect_or_unrelated_change",
+  );
+});
+
+it("retains an already recommended Git100 on a native-default follow-up without demanding another recommendation sentence", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "consultation-company-git-default-en",
+  )!;
+  const response = {
+    explanation:
+      "Git100 is retained. The chosen Accelerator ACL default 0.0.0.0/0 permits public IPv4 access. Nothing has been saved.",
+    questions: [],
+    changes: [
+      {
+        path: "devops",
+        operation: "merge",
+        value: { git_flavor: "git-100", allowed_network_ranges: ["0.0.0.0/0"] },
+      },
+    ],
+    references: ["devops-git"],
+  };
+  expect(validateAssistantScenario(scenario, response).failures).toEqual([]);
+  response.changes[0]!.value.git_flavor = "git-10";
+  expect(validateAssistantScenario(scenario, response).failures).toContain(
+    "editor_expected_value_not_applied",
+  );
+});
+
+it("accepts actual VM-preset counts in VM advice and rejects invented count pairs", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "application-access-profile-advice",
+  )!;
+  const profile = defaultApplicationAccessProfile("", "vm");
+  const explanation = `Das granulare VM-Profil application-vm-v1 hat ${profile.permissions.length} Besteller-Rechte inklusive Schlüsselverwaltung und ${profile.automationPermissions.length} Automation-Rechte. Schlüsselverwaltung gilt projektweit für alle Service Accounts und deren volle Rechte auch außerhalb des Projekts. Privilegierte Platform Accounts gehören außerhalb. Ein separater initialer Owner bleibt erhalten; volle Owner-Rechte sind Kundenwahl. Granulare Rechte heben geerbte Owner-Rechte nicht auf.`;
+  const answer = {
+    explanation,
+    questions: [],
+    changes: [],
+    references: ["project-templates"],
+  };
+  expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      explanation: explanation.replace(
+        String(profile.automationPermissions.length),
+        "9999",
+      ),
+    }).failures,
+  ).toContain("application_access_missing_actual_preset_counts");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      explanation: explanation.replace("projektweit", "lokal"),
+    }).failures,
+  ).toContain("application_access_missing_project-key-scope");
 });

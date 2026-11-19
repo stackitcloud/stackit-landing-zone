@@ -1,4 +1,9 @@
 export const englishMessages: Record<string, string> = {
+  "Passende Empfehlungen": "Matching recommendations",
+  "Geplanter Bedarf": "Planned requirements",
+  Tarifmerkmale: "Plan characteristics",
+  Nutzer: "Users",
+  "Bandbreite (Mbit/s)": "Bandwidth (Mbps)",
   "Über den Configurator koordiniert": "Coordinated by the Configurator",
   "Der Configurator koordiniert seine Ausführungen auf diesem State. Starte dafür keine parallelen CLI- oder Pipeline-Läufe.":
     "The Configurator coordinates its executions against this state. Do not run CLI or pipeline operations against it in parallel.",

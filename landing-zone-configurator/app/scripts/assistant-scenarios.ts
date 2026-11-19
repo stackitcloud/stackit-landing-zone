@@ -5,6 +5,7 @@ import { catalogueField } from "@lzc/contracts";
 import {
   applicationProjectPermissionNames,
   applicationServiceAccountKeyPermissions,
+  type CommonConfiguration,
   catalogue,
   commonConfigurationFromValues,
   compileCommonConfiguration,
@@ -27,6 +28,7 @@ import {
 import { enrichCatalogueQuestions } from "../apps/api/src/assistant/catalogue-guidance.js";
 import {
   applyAssistantChanges,
+  type Dialogue,
   proposeAssistantAccess,
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
@@ -178,6 +180,8 @@ export type AssistantScenario = {
   auditQuestionPaths?: readonly string[];
   setupQuestionPaths?: readonly string[];
   gitCapacityRecommendation?: { users: number; flavor: "git-10" | "git-100" };
+  nativeDefaultExpected?: { path: string; value: JsonValue };
+  nativeDefaultResetPath?: string;
   catalogueQuestion?: { path: string; field: string };
   answeredCatalogueChoice?: { path: string; value: string };
   requirementsQuestion?: string;
@@ -794,6 +798,60 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     ],
     editorExpected: { path: "devops.git_flavor", value: "git-100" },
     gitCapacityRecommendation: { users: 80, flavor: "git-100" },
+  },
+  ...[
+    {
+      id: "consultation-company-git-default-en",
+      language: "en" as const,
+      message: "My answer: please use the default",
+    },
+    {
+      id: "consultation-company-git-default-de",
+      language: "de" as const,
+      message: "Meine Antwort: Bitte den Default des Accelerators verwenden.",
+    },
+  ].map(({ id, language, message }) => ({
+    id,
+    topic: "devops-git",
+    fixture: "service-catalogues" as const,
+    expectedLanguage: language,
+    message,
+    history: [
+      {
+        role: "user" as const,
+        content:
+          "We use a Hub-and-Spoke landing zone and need a central company Git for round about 80 developers.",
+      },
+      {
+        role: "assistant" as const,
+        content:
+          "Git100 fits 80 developers; Git10 supports only 10. Who should be able to reach Git?",
+      },
+      {
+        role: "user" as const,
+        content: "Company/VPN public egress networks only (recommended)",
+      },
+      {
+        role: "assistant" as const,
+        content:
+          "Which actual client source IP addresses or CIDRs should be allowed?",
+      },
+    ],
+    editorExpected: { path: "devops.git_flavor", value: "git-100" },
+    gitCapacityRecommendation: { users: 80, flavor: "git-100" as const },
+    nativeDefaultExpected: {
+      path: "devops.allowed_network_ranges",
+      value: ["0.0.0.0/0"],
+    },
+  })),
+  {
+    id: "consultation-observability-native-reset",
+    topic: "observability",
+    fixture: "git-saved-access",
+    expectedLanguage: "en",
+    message:
+      "Please reset only the central Observability metrics retention to the Accelerator default. Keep its plan, access list, logs/traces settings and every other service unchanged. Prepare the draft; do not deploy.",
+    nativeDefaultResetPath: "observability.metrics_retention_days",
   },
   {
     id: "catalogue-firewall-business-en",
@@ -2135,6 +2193,22 @@ export function assistantExecutionLifecycleFailures(text: string) {
   return failures;
 }
 
+function sameApplicationAccessConfiguration(
+  left: CommonConfiguration,
+  right: CommonConfiguration,
+) {
+  const canonical = (draft: CommonConfiguration) => {
+    const copy = structuredClone(draft);
+    for (const template of copy.projectTemplates ?? []) {
+      if (template.accessProfile?.mode !== "granular") continue;
+      template.accessProfile.permissions.sort();
+      template.accessProfile.automationPermissions.sort();
+    }
+    return copy;
+  };
+  return isDeepStrictEqual(canonical(left), canonical(right));
+}
+
 export function validateAssistantScenario(
   scenario: AssistantScenario,
   input: unknown,
@@ -2195,13 +2269,25 @@ export function validateAssistantScenario(
       ["inherited", /geerbt|inherited|vererb/],
       ["automation", /automation|service.account/],
       ["vm-boundary", /vm|virtuelle|virtual machine/],
-      ["requester-key-management", /191/],
-      ["automation-workload-default", /184/],
       ["project-key-scope", /projektweit|project.wide/],
       ["key-management", /schlüssel|key.management/],
     ] as const)
       if (!pattern.test(text))
         failures.push(`application_access_missing_${name}`);
+    // This case asks for the VM profile. A correct explanation may compare it
+    // with the workload profile, but must not pretend both presets have the
+    // same rights. Check a real preset pair rather than requiring workload
+    // counts in every VM answer.
+    const presetCounts = (["workload", "vm"] as const).map((preset) => {
+      const profile = defaultApplicationAccessProfile("", preset);
+      return [profile.permissions.length, profile.automationPermissions.length];
+    });
+    if (
+      !presetCounts.some((counts) =>
+        counts.every((count) => new RegExp(`\\b${count}\\b`).test(text)),
+      )
+    )
+      failures.push("application_access_missing_actual_preset_counts");
     if (/compute\.(?:instances|servers)|central\.initialowneremail/.test(text))
       failures.push("application_access_invented_contract");
     if (dialogue.changes.length)
@@ -2236,7 +2322,7 @@ export function validateAssistantScenario(
         if (
           !dialogue.changes.length ||
           dialogue.questions.length ||
-          !isDeepStrictEqual(
+          !sameApplicationAccessConfiguration(
             applyAssistantChanges(fixture.draft, dialogue.changes),
             expected,
           )
@@ -2306,7 +2392,7 @@ export function validateAssistantScenario(
       try {
         if (
           !dialogue.changes.length ||
-          !isDeepStrictEqual(
+          !sameApplicationAccessConfiguration(
             applyAssistantChanges(fixture.draft, dialogue.changes),
             expected,
           )
@@ -2444,7 +2530,7 @@ export function validateAssistantScenario(
       if (
         !dialogue.changes.length ||
         dialogue.questions.length ||
-        !isDeepStrictEqual(candidate, expected)
+        !sameApplicationAccessConfiguration(candidate, expected)
       )
         failures.push(
           "application_access_proposal_incorrect_or_unrelated_change",
@@ -2693,12 +2779,62 @@ export function validateAssistantScenario(
     )
       failures.push("git_over_capacity_must_clarify_topology_before_flavor");
   }
-  if (scenario.gitCapacityRecommendation) {
+  if (scenario.nativeDefaultExpected || scenario.nativeDefaultResetPath) {
+    const before = compileCommonConfiguration(fixture.draft);
+    const after = compileCommonConfiguration(
+      applyAssistantChanges(fixture.draft, dialogue.changes),
+    );
+    const at = (value: JsonValue | undefined, path: string) =>
+      path
+        .split(".")
+        .reduce<JsonValue | undefined>(
+          (value, key) => objectValue(value)[key],
+          value,
+        );
+    if (!dialogue.changes.length || dialogue.questions.length)
+      failures.push("native_default_not_completed");
+    if (
+      scenario.nativeDefaultExpected &&
+      !isDeepStrictEqual(
+        at(after, scenario.nativeDefaultExpected.path),
+        scenario.nativeDefaultExpected.value,
+      )
+    )
+      failures.push("actual_native_default_not_proposed");
+    if (scenario.nativeDefaultResetPath) {
+      if (at(after, scenario.nativeDefaultResetPath) != null)
+        failures.push("native_override_not_reset");
+      const omit = (value: Record<string, JsonValue>) => {
+        const copy = structuredClone(value);
+        const keys = scenario.nativeDefaultResetPath!.split(".");
+        const last = keys.pop()!;
+        const parent = keys.reduce<JsonValue | undefined>(
+          (value, key) => objectValue(value)[key],
+          copy,
+        );
+        delete objectValue(parent)[last];
+        return copy;
+      };
+      if (!isDeepStrictEqual(omit(before), omit(after)))
+        failures.push("native_reset_changed_unrelated_values");
+    }
+    if (scenario.nativeDefaultExpected) {
+      const omit = (value: Record<string, JsonValue>) => {
+        const copy = structuredClone(value);
+        delete copy.devops;
+        return copy;
+      };
+      if (!isDeepStrictEqual(omit(before), omit(after)))
+        failures.push("git_default_changed_platform_context");
+    }
+  }
+  if (scenario.gitCapacityRecommendation && !scenario.nativeDefaultExpected) {
     failures.push(
       ...assistantGitCapacityRecommendationFailures(
         dialogue.explanation,
         scenario.gitCapacityRecommendation.users,
         scenario.gitCapacityRecommendation.flavor,
+        dialogue.recommendations,
       ),
     );
     if (dialogue.questions.some((q) => q.path === "devops.git_flavor"))
@@ -3449,7 +3585,11 @@ export function buildAssistantScenarioInventory() {
   )
     throw new Error("assistant_scenario_topic_coverage_invalid");
   const sourceDigests = Object.fromEntries(
-    ["assistant-scenarios.ts", "assistant-tests.ts"].map((file) => [
+    [
+      "assistant-scenarios.ts",
+      "assistant-tests.ts",
+      "assistant-test-model.ts",
+    ].map((file) => [
       `scripts/${file}`,
       createHash("sha256")
         .update(readFileSync(new URL(file, import.meta.url)))
@@ -3500,6 +3640,12 @@ export function buildAssistantScenarioInventory() {
                     "shared_effect_dependency_gate_before_apply_actual_contract_after_apply",
                   ]
                 : []),
+            ...(scenario.nativeDefaultExpected ||
+            scenario.nativeDefaultResetPath
+              ? [
+                  "actual_native_default_completed_without_reasking_preserving_context",
+                ]
+              : []),
             ...(scenario.gitCapacityRecommendation
               ? [
                   "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
@@ -3834,16 +3980,34 @@ export function assistantGitCapacityRecommendationFailures(
   text: string,
   users: number,
   flavor: "git-10" | "git-100",
+  recommendations: Dialogue["recommendations"] = [],
 ): string[] {
-  const label = flavor === "git-100" ? "Git100" : "Git10";
+  if (
+    recommendations.some(
+      (item) =>
+        item.path === "devops.git_flavor" &&
+        item.value === flavor &&
+        item.requirements.some(
+          (requirement) =>
+            requirement.metric === "users" && requirement.minimum === users,
+        ) &&
+        item.facts.some(
+          (fact) => fact.metric === "users" && fact.value >= users,
+        ),
+    )
+  )
+    return [];
+  const limit = flavor === "git-100" ? "100" : "10";
+  const label = `Git[- ]?${limit}`;
   const checks: [string, RegExp][] = [
     ["count", new RegExp(`\\b${users}\\b`)],
     [
       "recommendation",
-      new RegExp(`(?:recommend|empfehl)[^.!?\\n]{0,60}${label}\\b`, "i"),
+      new RegExp(
+        `(?:recommend\\w*|empfehl\\w*|selected|gewählt)[^.!?\\n]{0,80}${label}\\b|${label}[^.!?\\n]{0,100}(?:recommend\\w*|empfohl\\w*|appropriate|suitable|passend|geeignet|eignet sich|fits)`,
+        "i",
+      ),
     ],
-    ["git10-limit", /Git10[^.!?\n]{0,60}\b10\b/i],
-    ["git100-limit", /Git100[^.!?\n]{0,60}\b100\b/i],
   ];
   return checks
     .filter(([, pattern]) => !pattern.test(text))

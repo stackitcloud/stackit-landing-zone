@@ -1,5 +1,6 @@
 import {
   assistantQuestionAnswerTypeSchema,
+  assistantRecommendationSchema,
   catalogueField,
 } from "@lzc/contracts";
 import {
@@ -159,7 +160,8 @@ export const assistantQuestionOptionsSchema = z
   .optional();
 
 export const dialogueSchema = z.strictObject({
-  explanation: z.string().min(1).max(3000),
+  recommendations: z.array(assistantRecommendationSchema).max(8).optional(),
+  explanation: z.string().min(1).max(6000),
   questions: z
     .array(
       z.strictObject({

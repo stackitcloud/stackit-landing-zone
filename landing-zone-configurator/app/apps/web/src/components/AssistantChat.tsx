@@ -1,5 +1,6 @@
 import {
   type AssistantMergeConflict,
+  type AssistantRecommendation,
   assistantAdditiveField,
   assistantMergeConfirmationSchema,
   assistantProposalFields,
@@ -24,6 +25,7 @@ import {
   type AssistantQuestion,
   AssistantQuestions,
 } from "./AssistantQuestions";
+import { AssistantRecommendations } from "./AssistantRecommendations";
 import type { ConfigurationBinding } from "./Configurations";
 import { labelFor } from "./feature-labels";
 
@@ -38,6 +40,7 @@ type Conversation = {
     role: "user" | "assistant";
     content: string;
     proposalDiscarded?: boolean;
+    recommendations?: AssistantRecommendation[];
   }[];
   proposal: {
     explanation: string;
@@ -463,6 +466,9 @@ export function AssistantChat({
               <div className={`assistant-message ${entry.role}`} key={entry.id}>
                 <strong>{t(entry.role === "user" ? "Du" : "Assistent")}</strong>
                 <p>{entry.content}</p>
+                {entry.role === "assistant" && entry.recommendations && (
+                  <AssistantRecommendations items={entry.recommendations} />
+                )}
                 {entry.proposalDiscarded && (
                   <small>{t("Vorschlag verworfen.")}</small>
                 )}

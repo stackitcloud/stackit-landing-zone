@@ -68,6 +68,10 @@ import {
   assistantScenarioFixture,
   assistantScenarios,
 } from "../scripts/assistant-scenarios.js";
+import {
+  logicalFixtureRequest,
+  nativeStepResponse,
+} from "../tests/helpers/native-assistant.js";
 import { inWorkspace } from "./fixture-workspace.js";
 
 const address = process.env.LZC_TEST_DATABASE_URL;
@@ -2410,42 +2414,76 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       const body = String(options?.body);
       requests.push(body);
       const payload = JSON.parse(body);
-      const response =
-        payload.response_format.json_schema.name === "conversation_intent"
-          ? {
-              topic: "configuration-contract",
-              mode: "draft",
-              requirements: [],
-              namingDelegation: {
-                paths: ["company_code", "rm_folders"],
-                source: "current",
+      if (
+        payload.messages.some(
+          (entry: { role: string; content: string }) =>
+            entry.role === "user" &&
+            entry.content.includes('"task":"review_final_response"'),
+        )
+      )
+        return Response.json({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: JSON.stringify({ ready: true, findings: [] }),
               },
-            }
-          : ({
-              explanation:
-                "Firmenkürzel und vorhandene Ordnernamen vorgeschlagen, noch nicht übernommen.",
-              questions: [],
-              changes: [
-                { path: "company_name", value: "Example GmbH" },
-                { path: "company_code", value: "exg" },
-              ],
-              folderNames: {
-                ...names,
-                platform: { name: "EXG Platform" },
-              },
-              references: ["identity-foundations", "governance-folders"],
-            } satisfies Dialogue & { folderNames: typeof names });
-      return Response.json({
-        choices: [
-          {
-            finish_reason: "stop",
-            message: {
-              role: "assistant",
-              content: JSON.stringify(response),
             },
-          },
-        ],
-      });
+          ],
+        });
+      let response: unknown;
+      if (requests.length === 1)
+        response = {
+          action: "inspect",
+          requests: [
+            {
+              tool: "knowledge",
+              topics: ["identity-foundations", "governance-folders"],
+            },
+            {
+              tool: "configuration",
+              paths: ["company_name", "company_code", "rm_folders[*].name"],
+            },
+          ],
+        };
+      else if (requests.length === 2)
+        response = {
+          action: "validate_proposal",
+          basis: [],
+          changes: [
+            {
+              path: "company_name",
+              operation: "replace",
+              value: "Example GmbH",
+            },
+            { path: "company_code", operation: "replace", value: "exg" },
+            {
+              path: "rm_folders",
+              operation: "merge",
+              value: { platform: { name: "EXG Platform" } },
+            },
+          ],
+        };
+      else {
+        const validated = JSON.parse(
+          logicalFixtureRequest(payload).messages.at(-1)!.content,
+        ).validation;
+        expect(validated.ok).toBe(true);
+        response = {
+          action: "answer",
+          kind: "proposal",
+          explanation:
+            "Firmenkürzel und vorhandene Ordnernamen vorgeschlagen, noch nicht übernommen.",
+          questions: [],
+          proposal: validated.proposal,
+          references: ["identity-foundations", "governance-folders"],
+          activeTopics: ["identity-foundations", "governance-folders"],
+        };
+      }
+      return Response.json(
+        nativeStepResponse(response, "Qwen/Qwen3-VL-235B-A22B-Instruct-FP8"),
+      );
     });
     const model = new AssistantModelServing(
       {
@@ -2464,30 +2502,23 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       1,
       'Richte die Grundlagen für "Example GmbH" ein und wähle passende Kürzel und Ordnernamen.',
     );
-    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenCalledTimes(4);
     for (const body of requests) {
       expect(body).not.toContain("owner@example.invalid");
       expect(body).not.toContain("reader@example.invalid");
       expect(body).not.toContain("Preserve folder metadata");
     }
-    const answerBody = requests[1];
-    if (!answerBody) throw new Error("Missing naming response request");
-    const answerRequest = JSON.parse(answerBody);
-    expect(answerRequest.response_format.json_schema.schema.required).toContain(
-      "folderNames",
+    const answerRequest = JSON.parse(requests[1]!);
+    expect(answerRequest.response_format).toBeUndefined();
+    expect(answerRequest.tools).toHaveLength(6);
+    const readResult = JSON.parse(
+      logicalFixtureRequest(answerRequest).messages.at(-1)!.content,
+    ).toolResults[1].result;
+    expect(readResult.values["rm_folders[*].name"]).toEqual(
+      Object.fromEntries(
+        Object.entries(names).map(([key, folder]) => [key, folder.name]),
+      ),
     );
-    expect(
-      Object.keys(
-        answerRequest.response_format.json_schema.schema.properties.folderNames
-          .properties,
-      ).sort(),
-    ).toEqual(Object.keys(names).sort());
-    const answerContext = JSON.parse(
-      JSON.parse(answerBody).messages.find(
-        (entry: { role: string }) => entry.role === "user",
-      ).content,
-    );
-    expect(answerContext.currentPublicScalarValues.rm_folders).toEqual(names);
     const unchanged = await configurations.get(alice, stored.id);
     expect(unchanged.draft).toEqual(draft);
     const accepted = await assistant.accept(
@@ -2507,6 +2538,88 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       "owner@example.invalid",
     );
     expect(accepted.revision).toBe(2);
+  });
+
+  it("persists the source-bound consultation brief privately and clears discarded context", async () => {
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(
+      alice,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    onTestFinished(async () => {
+      const current = await configurations.get(alice, stored.id);
+      await configurations.remove(alice, stored.id, current.revision);
+    });
+    const state = {
+      version: 1 as const,
+      knowledgeHash: buildAssistantKnowledge().sha256,
+      topics: ["identity-foundations"],
+      memory: {
+        goal: "Company setup",
+        decisions: [
+          {
+            key: "company",
+            summary: "Example GmbH",
+            status: "confirmed" as const,
+            evidence: { turn: 0, quote: "Example GmbH" },
+          },
+        ],
+        openQuestions: [],
+      },
+    };
+    const answer: Dialogue = {
+      explanation: "Company name proposed; nothing saved.",
+      questions: [],
+      changes: [{ path: "company_name", value: "Example GmbH" }],
+      references: ["identity-foundations"],
+    };
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async (...args) => {
+        args[7]?.onState?.(state);
+        return answer;
+      }),
+    };
+    const first = await new AssistantConversations(pool, model).send(
+      alice,
+      stored.id,
+      1,
+      "Example GmbH",
+    );
+    expect(JSON.stringify(first)).not.toContain("consultationState");
+    expect(
+      JSON.stringify(
+        await new AssistantConversations(pool, model).get(alice, stored.id),
+      ),
+    ).not.toContain("consultationState");
+    const second = await new AssistantConversations(pool, model).send(
+      alice,
+      stored.id,
+      1,
+      "Keep that company",
+    );
+    expect(model.converse.mock.calls[1]?.[7]?.state).toEqual(state);
+    expect(model.converse.mock.calls[1]?.[7]?.pendingProposal).toMatchObject({
+      status: "unaccepted",
+    });
+    expect(
+      JSON.stringify(model.converse.mock.calls[1]?.[7]?.pendingProposal),
+    ).toContain("Example GmbH");
+    await expect(
+      new AssistantConversations(pool, model).get(bob, stored.id),
+    ).rejects.toMatchObject({ status: 404 });
+    await new AssistantConversations(pool, model).discard(alice, stored.id, {
+      conversationId: second.id,
+      revision: second.revision,
+    });
+    await new AssistantConversations(pool, model).send(
+      alice,
+      stored.id,
+      1,
+      "A separate new task",
+    );
+    expect(model.converse.mock.calls[2]?.[7]?.state).toBeUndefined();
+    expect(model.converse.mock.calls[2]?.[7]?.pendingProposal).toBeUndefined();
+    expect((await configurations.get(alice, stored.id)).revision).toBe(1);
   });
 
   it("discards only the identified pending proposal without changing its configuration, and closes stale continuations", async () => {

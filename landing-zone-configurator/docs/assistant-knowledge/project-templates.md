@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Templates/IAM.
+Projects.
 
 ## Accelerator Contract
 
@@ -13,7 +13,7 @@ Provider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win;
 
 ## Dependencies
 
-Verified identity/governance; regional SNA; separate credentials. Public!=Corporate; namespaces:Platform K8s.
+Verified identity/governance; regional SNA. Public!=Corporate; Platform K8s namespaces.
 
 ## Dialogue
 
@@ -23,12 +23,12 @@ Central=Corporate; Internet-only=Public; local network=true. Preserve settings. 
 New:granular; Owner optional.
 IDP!=Configurator roles!=project IAM.
 Immutable accessProfile!=order input: schemaVersion=1,mode=granular;
-initialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs. Default191=184+7 keys; automation184.
-VM-only narrower +keys. Keys: iam.service-account.{get,list},
-iam.service-account-key.{create,delete,edit,get,list}. Keys use ALL SA rights, also elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.
+initialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs. Workload preset:191 requester,184 automation.
+VM preset: narrower; counts from runtime facts. Keys: iam.service-account.{get,list},
+iam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL SA rights, even elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.
 ADD keys=seven, requester default; preserve owner/SKE/automation.
 Defaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.
-All project rights incl.IAM selectable.
+SKE/Git/databases/IAM-admin: optional, NOT preset defaults.
 ADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.
 SKE IAM!=K8s RBAC; no default IAM role/member admin.
 Owner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.
@@ -36,7 +36,7 @@ Atomic; no legacy roles.
 Public+Corporate: ONE common missing owner; preserve explicit owners.
 "Platform service account"=prepared config/org email; ambiguity asks.
 Workload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.
-Publication needs owner; additive grants; nothing saved/executed.
+Publish needs owner; grants add; no execution.
 
 
 Project Git: settings.git={enabled,flavor,acl}; disabled; one instance/project.
@@ -47,7 +47,7 @@ no invented larger flavor/federation. Team/project instances partition users, NE
 
 ## Examples
 
-/28:Automatic+DNS.
+/28:Automatic.
 
 ## Limits
 

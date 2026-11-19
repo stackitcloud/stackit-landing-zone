@@ -1,6 +1,8 @@
+// Historical controller parity tests. Live runtime coverage: assistant-consultation.test.ts
+// and the source-bound real-model suite; production has no legacy fallback.
 import { expect, it, vi } from "vitest";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
-import { AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
+import { LegacyAssistantModelServing as AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
 import { publicAssistantFailureReason } from "../apps/api/src/assistant/routes.js";
 import {
   AssistantFailureError,

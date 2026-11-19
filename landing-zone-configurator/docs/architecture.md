@@ -3,6 +3,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+Editor chat uses the [shared consultation](assistant-consultation.md), read-only tools and proposal validation. Its former separate intent classifier is no longer used.
+
 The proposed [repository separation](../../docs/repository-separation-concept.md) prioritizes a slim native Accelerator. The Configurator would consume native releases as verified versioned dependencies; the move is not implemented.
 
 The proposed [customer-installed software profile](customer-installation-concept.md) describes bootstrap, local passkeys/optional corporate SSO and delegated cloud execution separately from the current hosted mode. It is not implemented.
@@ -35,10 +37,9 @@ Web UI, Configurator API and Runner.
 
 Editor and chat are parts of the same Web UI. The Configurator API hosts
 Assistant logic, knowledge, validation and orchestration. Model Serving provides
-the two model roles for responses and intent detection; it does not run
-the actual Configurator Assistant. Two model roles do not have to be
-two different models: without a separate intent override, both
-roles use the configured response model.
+the response model for consultation and tool decisions; it does not run
+the Configurator application or execute cloud changes. The retained legacy
+template-advice API has its separate bounded contract.
 
 GitHub and its Accelerator repository connect to the API:
 the API works with templates and input contracts derived from them.

@@ -456,8 +456,8 @@
     {
       "id": "devops-git",
       "file": "devops-git.md",
-      "version": 4,
-      "checkedOn": "2026-11-18",
+      "version": 5,
+      "checkedOn": "2026-11-19",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "platform"
@@ -530,8 +530,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 9,
-      "checkedOn": "2026-11-18",
+      "version": 11,
+      "checkedOn": "2026-11-19",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"

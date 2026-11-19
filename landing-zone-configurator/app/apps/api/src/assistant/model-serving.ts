@@ -45,6 +45,7 @@ import {
   groundCatalogueDialogue,
   resolveAssistantLanguage,
 } from "./catalogue-guidance.js";
+import { type ConsultationOptions, runConsultation } from "./consultation.js";
 import {
   assistantAccessPaths,
   assistantDnsZoneNamesSchema,
@@ -107,6 +108,12 @@ import {
   assistantLifecycleAdvice,
   explicitRootPlanReviewQuestion,
 } from "./lifecycle-advice.js";
+import {
+  NativeConsultation,
+  type NativeMessage,
+  type NativeTool,
+  nativeCompletionSchema,
+} from "./native-consultation.js";
 import { assistantServingResponseSchema } from "./serving-schema.js";
 
 const lifecycleAdviceTopics: Record<
@@ -720,7 +727,15 @@ async function boundedResponse(response: Response) {
   }
 }
 
-export class AssistantModelServing {
+/** Retained temporarily for parity tests of the former controller. The live
+ * conversational entry point below never falls back to this controller. */
+export type AssistantInferenceUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  tokenLimit?: number;
+};
+
+export class LegacyAssistantModelServing {
   private readonly configuration: z.infer<typeof configurationSchema>;
 
   constructor(
@@ -729,6 +744,7 @@ export class AssistantModelServing {
     private readonly onTransportFailure: (
       diagnostic: AssistantTransportFailure,
     ) => void = (diagnostic) => console.warn(JSON.stringify(diagnostic)),
+    private readonly onUsage?: (usage: AssistantInferenceUsage) => void,
   ) {
     const result = configurationSchema.safeParse(input);
     if (!result.success)
@@ -736,25 +752,35 @@ export class AssistantModelServing {
     this.configuration = result.data;
   }
 
-  private async complete(
-    messages: { role: "system" | "user" | "assistant"; content: string }[],
+  protected async complete(
+    messages: NativeMessage[],
     schema?: Record<string, unknown>,
     schemaName = "template_advice",
     stream?: AssistantStream,
     signal = stream?.signal,
     language?: AssistantLanguage,
+    nativeTools?: NativeTool[],
+    requiredFunction?: string,
   ) {
     const servingSchema = schema
       ? assistantServingResponseSchema(schema)
       : undefined;
     // Some serving chat templates retain only the last system message.
     const systemContent = [
+      ...([
+        "assistant_consultation_step",
+        "assistant_consultation_review",
+      ].includes(schemaName)
+        ? [
+            `CONSULTATION_TOOL_PROTOCOL: Return one compact JSON object matching this response schema, without Markdown fences. The application validates its shape and source references.\n${JSON.stringify(servingSchema)}`,
+          ]
+        : []),
       ...messages
         .filter((message) => message.role === "system")
         .map((message) => message.content),
       ...(language
         ? [
-            `RESPONSE LANGUAGE: The user selected ${language === "en" ? "English" : "German"} in the application. Use ${language} for replyLanguage/applicationAccessLanguage and all user-facing explanations and questions. This explicit preference overrides quoted questions, conversation history and the language of these rules.`,
+            `RESPONSE LANGUAGE: The user selected ${language === "en" ? "English" : "German"} in the application. Use ${language} for all user-facing explanations and questions.${schemaName.includes("consultation") ? "" : " Set replyLanguage/applicationAccessLanguage accordingly."} This explicit preference overrides quoted questions, conversation history and the language of these rules.`,
           ]
         : []),
       ...(schema &&
@@ -843,18 +869,31 @@ export class AssistantModelServing {
         max_completion_tokens: 4096,
         messages: servingMessages,
         ...(stream ? { stream: true } : {}),
-        ...(servingSchema
+        ...(nativeTools
           ? {
-              response_format: {
-                type: "json_schema",
-                json_schema: {
-                  name: schemaName,
-                  strict: true,
-                  schema: servingSchema,
-                },
-              },
+              tools: nativeTools,
+              tool_choice: requiredFunction
+                ? { type: "function", function: { name: requiredFunction } }
+                : "auto",
             }
           : {}),
+        ...([
+          "assistant_consultation_step",
+          "assistant_consultation_review",
+        ].includes(schemaName)
+          ? { response_format: { type: "json_object" } }
+          : servingSchema
+            ? {
+                response_format: {
+                  type: "json_schema",
+                  json_schema: {
+                    name: schemaName,
+                    strict: true,
+                    schema: servingSchema,
+                  },
+                },
+              }
+            : {}),
       }),
     };
     const response = await this.request(url, options).catch(async (error) => {
@@ -882,6 +921,34 @@ export class AssistantModelServing {
         .safeParse(responseBody).success
     )
       throw new AssistantInferenceError("completion_truncated");
+    const usage = z
+      .object({
+        usage: z.object({
+          prompt_tokens: z.number().int().nonnegative(),
+          completion_tokens: z.number().int().nonnegative(),
+        }),
+      })
+      .safeParse(responseBody);
+    if (usage.success && this.onUsage) {
+      const tokenLimit = Number(
+        response.headers.get("x-ratelimit-limit-tokens"),
+      );
+      this.onUsage({
+        promptTokens: usage.data.usage.prompt_tokens,
+        completionTokens: usage.data.usage.completion_tokens,
+        ...(Number.isFinite(tokenLimit) && tokenLimit > 0
+          ? { tokenLimit }
+          : {}),
+      });
+    }
+    if (nativeTools) {
+      const parsed = nativeCompletionSchema.safeParse(responseBody);
+      if (!parsed.success)
+        throw new AssistantInferenceError("native_completion_schema");
+      if (parsed.data.model && parsed.data.model !== model)
+        throw new AssistantInferenceError("model_mismatch");
+      return parsed.data.choices[0]!.message;
+    }
     const envelopeResult = z
       .object({
         model: z.string().optional(),
@@ -5520,5 +5587,63 @@ CURRENT RESPONSE LANGUAGE: ${language === "en" ? "English" : "German"}. Your JSO
     } catch {
       throw new Error("assistant_inference_failed");
     }
+  }
+}
+
+/** Shared model-led consultation. Product-specific helpers are validation and
+ * knowledge tools; they no longer choose the live conversation or its wording.
+ */
+export class AssistantModelServing extends LegacyAssistantModelServing {
+  override async converse(
+    selection: unknown,
+    publicValues: unknown,
+    history: { role: "user" | "assistant"; content: string }[],
+    message: string,
+    catalogues: AssistantCatalogueContext = { regions: [] },
+    templateHistory: { role: "user" | "assistant"; content: string }[] = [],
+    stream?: AssistantStream,
+    options?: ConsultationOptions,
+  ) {
+    const current =
+      publicValues && typeof publicValues === "object"
+        ? (publicValues as Record<string, unknown>)
+        : {};
+    const language = resolveAssistantLanguage(
+      assistantLanguageSchema.optional().parse(current["assistant.language"]),
+      history,
+      message,
+    );
+    const native = new NativeConsultation(
+      async (messages, tools, signal, language, requiredFunction) => {
+        const result = await this.complete(
+          messages,
+          undefined,
+          "assistant_native_consultation",
+          undefined,
+          signal,
+          language,
+          tools,
+          requiredFunction,
+        );
+        return nativeCompletionSchema.shape.choices.element.shape.message.parse(
+          result,
+        );
+      },
+    );
+    return runConsultation({
+      selection,
+      current,
+      history,
+      message,
+      catalogues,
+      templateHistory,
+      language,
+      stream,
+      options,
+      complete: (messages, schema, name, signal, language) =>
+        name === "assistant_consultation_step"
+          ? native.next(messages, schema, signal, language)
+          : this.complete(messages, schema, name, undefined, signal, language),
+    });
   }
 }

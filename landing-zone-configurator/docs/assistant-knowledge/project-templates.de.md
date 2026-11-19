@@ -204,7 +204,7 @@ Der Besteller erhält `iam.service-account.get`, `iam.service-account.list` und
 `iam.service-account-key.create`, `.delete`, `.edit`, `.get`, `.list`.
 `resource-manager.project.get` gehört bereits zu den Workload-Rechten. Auch das
 engere VM-Preset ergänzt die sieben Schlüsselrechte nur für den Besteller.
-Die Rechte gelten projektweit für alle Service Accounts: Wer einen Schlüssel
+Die Rechte gelten projektweit für alle Service Accounts und sind nicht auf den Application-Service-Account begrenzbar: Wer einen Schlüssel
 erstellt, kann sämtliche Rechte dieses Accounts nutzen, auch außerhalb des
 Projekts. Privilegierte Plattform-Service-Accounts bleiben deshalb zentral
 außerhalb der Application-Projekte. Es gibt keine Einschränkung auf einen Account.
@@ -218,3 +218,5 @@ Entwürfe können die Rechte gezielt ergänzen; veröffentlichte Versionen und
 Bestellungen benötigen weiterhin Veröffentlichung und geprüften Upgrade-Pfad.
 
 Der neue Standard umfasst Server-Sicherungen mit Zeitplänen, Wiederherstellung, Server-Updates mit Zeitplänen, Server Agent/Run Command sowie Volume-Backups und Snapshots. Der Agent muss auf dem Server installiert sein; IAM-Rechte allein installieren ihn nicht. Run Command erlaubt Befehlsausführung auf dem Server. Bereits veröffentlichte Versionen und explizite Rechteprofile werden nicht automatisch erweitert. Neue Rechte werden über eine neue Template-Version und einen freigegebenen Upgrade-Pfad übernommen.
+
+Kubernetes-, Git-, Datenbank- und administrative IAM-Rechte sind wählbare Erweiterungen und nicht Bestandteil der Standardprofile. Die tatsächlichen Rechtezahlen der unterschiedlichen VM-/Workload-Profile liefert die Anwendung direkt aus den registrierten Profilen.

@@ -212,3 +212,31 @@ it("rejects queued cancellation promptly and never spends its phantom slot", asy
     "https://example.test/cancelled",
   );
 });
+
+it("admits later requests using weighted observed token usage without retrying failures", async () => {
+  let now = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
+  vi.mocked(setTimeout).mockImplementation(async (delay) => {
+    now += Number(delay);
+  });
+  const starts: number[] = [];
+  const paced = pacedAssistantTestRequest(
+    vi.fn<typeof fetch>(async () => {
+      starts.push(now);
+      return new Response(null, { status: 429 });
+    }),
+  );
+  await paced("https://example.test/first");
+  paced.observeUsage({
+    promptTokens: 100000,
+    completionTokens: 20000,
+    tokenLimit: 350000,
+  });
+  await paced("https://example.test/second", {
+    body: JSON.stringify({
+      messages: [{ content: "a".repeat(140000) }],
+      max_completion_tokens: 4096,
+    }),
+  });
+  expect(starts).toEqual([0, 60000]);
+});

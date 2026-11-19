@@ -1,3 +1,5 @@
+// Historical controller parity tests. Live runtime coverage: assistant-consultation.test.ts
+// and the source-bound real-model suite; production has no legacy fallback.
 import {
   compileCommonConfiguration,
   createCommonConfiguration,
@@ -12,7 +14,7 @@ import {
   gitSetupDialogue,
 } from "../apps/api/src/assistant/git-dialogue.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
-import { AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
+import { LegacyAssistantModelServing as AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 
 function fixture(

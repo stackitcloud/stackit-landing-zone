@@ -23,8 +23,19 @@ another flavor selection. Separate instances do not imply federation, automatic
 load distribution or aggregated guaranteed capacity. The central `devops` input
 configures one instance; additional instances require separate reviewed configuration.
 
-Literal confirmed user counts are retained independently of flavor classification. An incompatible later plan selection cannot discard them; an explicit narrower scope can replace them. This initial reviewed numeric-limit policy covers Git, without inventing limits for other products. Approximate statements such as “round about 80 developers” are workload evidence too. For an active Git setup, a confirmed count selects the smallest listed plan whose reviewed user ceiling fits; 11–100 users yields Git100, rather than another flavor question. The visible answer explains both user limits and retains the recommendation while access is clarified. A complete typed proposal still requires actual access networks and explicit review/acceptance. Explicitly named incompatible plans require conflict resolution; missing/unknown catalogue plans never gain assumed capacity. This derives a user-limit fit, not a workload-performance guarantee.
+The [shared consultation](assistant-consultation.md) retains quoted workload
+requirements and compares them with actual offerings and reviewed constraints.
+For example, approximately 80 Git developers rules out Git10 and supports Git100
+when listed. The recommendation remains visible while access is clarified. A later
+explicit scope change can replace the requirement. This checks a user ceiling,
+not workload performance; unknown characteristics remain unknown.
 
+A request to use the Accelerator default resolves the pending field to its real
+native value, including null/omission. For Git network access that is `0.0.0.0/0`,
+with public reachability clearly explained. The Assistant does not ask for the
+literal CIDR again or demand a second confirmation. Unknown company/VPN egress
+networks are not inferred from private SNA ranges or another service's topology.
+Unanswered questions alone do not authorize a public service.
 
 ## Shared catalogue selection
 
@@ -52,21 +63,12 @@ Questions explicitly distinguish business requirements from catalogue selections
 A workload or recovery question stays a business question even when its answer
 will inform a flavor field; only an actual product selection receives a picker.
 
-The server authors picker metadata after validating the model's dialogue. It uses
-actual option values and labels for the selected project/region, with source age,
-status and truncation information. The UI provides the conversational subset,
-search over loaded options, expansion to the loaded catalogue, and selected-option
-details. No value is selected automatically. Business reply choices and personal
-free text remain available. Sending a selected label/value is a chat answer,
-not an accepted patch or execution approval.
-
-For pending catalogue decisions, a common renderer supplies the question and
-explanation from known choices rather than displaying unverified model prose.
-This prevents invented CPU/RAM/bandwidth specifications on those selection
-questions. Where project catalogue data is available, provisional chat text is
-held until this grounding step finishes. Existing proposals and other kinds of
-advice retain their own source and validation contracts; this is not a universal
-factual verifier for arbitrary prose.
+The server authors picker metadata using actual project/region values, source age,
+status and truncation. Descriptions use matched product facts. A shared evaluator
+produces factual recommendation cards from source-quoted numeric requirements;
+these cards are informational, not an extra acceptance step. The model keeps its
+contextual explanation, rather than having it replaced by generic form copy.
+Only the final validated answer is streamed to the browser.
 
 ## Evidence and boundaries
 
@@ -102,40 +104,16 @@ resource names are not translated. Legacy requests without a UI language use the
 latest natural-language user answer, including short follow-ups. Firewall and SNA
 questions use the same language contract.
 
-For a confirmed draft request, an empty model response with neither changes nor
-questions triggers one bounded semantic repair using the same context and schema.
-It must supply a concrete typed draft or a genuinely missing question. Firewall
-setup preserves an explicit request to clarify requirements without proposing
-changes; the same bilingual business choices serve consultation and draft turns. All source,
-scope and acceptance checks still run; the repair grants no execution permission.
+The shared tool protocol allows knowledge, native configuration/default and
+catalogue reads plus local proposal validation. Validation feedback returns to the
+model before its final answer. No read or proposal operation grants persistence,
+cloud execution or permission changes. The brief is stored privately with the
+existing owner-scoped conversation and omitted from browser responses.
 
-Run `npm run assistant:generate`, format generated output and run `npm run check`.
-Relevant tests cover every mapped service family, source/region matching,
-conflicts, unavailable/empty/truncated catalogues, byte limits, and prevention of
-model-authored picker data. Desktop/mobile tests exercise filtering, descriptions,
-combined choices and sending without saving. Real PostgreSQL tests cover reload,
-tenant isolation and acceptance of proposals carrying presentation metadata.
-
-Real-model cases for Kubernetes, VPN and Observability require actual pending
-catalogue fields and no changes before selection. Their synthetic catalogues
-provide no performance figures, so the oracle rejects invented hardware claims.
-As with other shared Assistant contract changes, independently repeat the complete
-suite and continuous dialogue before reporting qualification. Keep failed receipts;
-a field-inventory update or a skipped qualification is not evidence of dialogue quality.
-
-## Read-only guidance and workflow questions
-
-Service consultation uses the same typed questions and scoped catalogue fields as
-configuration proposals, with changes disabled in both the inference schema and
-server validation. Asking about an offering does not activate that service. Pure
-native-field overviews retain their reviewed informational handler. Unrelated
-network flags cannot redirect a current service question into firewall setup.
-
-An explicit current question about root platform Plan impact review receives the
-reviewed lifecycle instructions directly. This avoids confusing the shared Plan
-workflow with an individual service mentioned in its changes. Quoted values and
-answers to earlier questions do not activate this shortcut. Both language variants
-retain owner decisions, destructive-impact warnings, fresh Plan requirements and
-artifact/State/dependency-bound approval. The instructions grant no approval and
-never inspect or execute a saved Plan. Other lifecycle tasks also select their
-reviewed instructions in the application's chosen language.
+Run `npm run assistant:generate`, format the generated TypeScript and run
+`npm run check`. The scenario JSON must retain its generator's exact output.
+Relevant database tests cover private context, reload, tenant isolation, discard
+and preservation. Desktop/mobile checks cover recommendation cards, choices and
+completed proposals. A shared runtime change requires the complete repeated real-
+model suite and continuous cross-service journey. Keep failed receipts: historical
+controller comparisons and field inventory are not qualification of the new flow.

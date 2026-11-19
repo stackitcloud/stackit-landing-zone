@@ -1,0 +1,158 @@
+# Modellgeführte Assistant-Beratung
+
+[English](assistant-consultation.md) | [Deutsch](assistant-consultation.de.md)
+
+Der Editor-Chat verwendet einen gemeinsamen Beratungsablauf für alle ausgewählten
+Accelerator-Themen. Das Modell interpretiert Ziel, Plattformkontext und Folgeantworten;
+die Anwendung liefert verlässliche Fakten und validiert lokale Änderungsvorschläge.
+Ein Produkt benötigt keinen eigenen Gesprächszustandsautomaten mehr.
+
+Die [englische Architekturübersicht](assistant-consultation.md) zeigt den Ablauf:
+Nutzer und gespeicherter Gesprächsstand → Beratung und lesende Werkzeuge →
+Vorschlagsvalidierung mit Rückmeldung → Antwort und Empfehlungen → ausdrückliche
+Entwurfsübernahme → separates Speichern, Plan und Apply.
+
+Zu Beginn werden Pflichtregeln und der aktive Gesprächsstand übergeben. Das Modell
+liest Servicewissen und Abhängigkeiten über native OpenAI-Funktionsaufrufe. Der
+erste Aufruf wählt `read_knowledge` ausdrücklich per `tool_choice`; allgemeines
+Modellvorwissen ersetzt den ersten Quellenabruf nicht. Danach wählt das Modell automatisch.
+Unabhängige Abfragen können gebündelt werden. Bereits gelieferte Regeln werden
+referenziert. Themen und bearbeitbare Wurzeln sind ohne separaten Intent-Klassifizierer
+auffindbar. Native Schemas werden gezielt mit den Konfigurationswerten gelesen,
+statt tausende unbeteiligte Feldpfade in jede Werkzeugdefinition einzubetten.
+
+## Werkzeuge und Validierung
+
+Das Modell kann Wissen, Konfiguration, Defaults und Kataloge gemeinsam nachschlagen.
+Es liest ausschließlich bereits eingegrenzte öffentliche Konfiguration und
+Katalogstände. Andere Mandanten, beliebige URLs, Zugangsdaten, Live-State und Pläne
+sind nicht zugänglich. Servicewissen enthält Abhängigkeiten und verbindliche Grenzen.
+Native Schemas und Defaults stammen aus dem generierten Accelerator-Eingabevertrag.
+
+Katalogabfragen können Anforderungen mit Nutzerbeleg enthalten. Eine gemeinsame
+Auswertung vergleicht sie mit geprüften numerischen Grenzen und passenden
+Katalogmerkmalen. Passende, ausgeschlossene und unbekannte Angebote bleiben
+unterscheidbar. Git-Nutzergrenzen und gelieferte VM-/VPN-Merkmale verwenden dieselbe
+Auswertung; unbekannte Kapazitäten oder ungeprüfte RAM-Einheiten begründen keine
+Leistungszusage.
+
+Ein eindeutig passendes Angebot erscheint als belegte Empfehlung mit Bedarf und
+Tarifmerkmalen. Sie bleibt sichtbar, während eine andere Entscheidung offen ist. Neue Werte, die
+im vollständigen verfügbaren Projekt-/Regionskatalog fehlen, werden vor Erteilung
+eines Vorschlag-Handles abgelehnt. Vorhandene Werte bleiben erhaltbar; fehlende oder
+gekürzte Katalogdaten belegen keine Nichtverfügbarkeit.
+Die erläuternde Antwort stammt vom Modell und wird nicht durch einen allgemeinen
+Katalogtext ersetzt. Empfehlungskarten erteilen weder Übernahme- noch Ausführungsrechte.
+
+Änderungsvorschläge werden vor der endgültigen Antwort validiert; Fehler gehen zur
+Korrektur an das Modell zurück. Es gibt keine Werkzeuge zum Speichern, Berechtigen,
+Provisionieren, Veröffentlichen, Freigeben oder Ausführen. Werkzeugargumente, native
+Pfade, geschützte Felder, Wertequellen und Vorschlagsformen werden im Backend geprüft.
+Der bestehende Compiler prüft den Kandidaten während der Beratung und erneut vor dem
+Speichern des Vorschlags. Rechte, Eigentümer, Revision und Ablauf bleiben bei der
+Übernahme maßgeblich.
+
+Der Transport verwendet native `tool_calls` der Assistant-Rolle und zugehörige
+`tool`-Ergebnisse mit Aufruf-ID. Ergebnisse werden nicht als neue Nutzernachrichten
+nachgebildet. Erklärungen dürfen normaler Text sein; strukturierte Rückfragen nutzen
+das Antwortwerkzeug. Eine Textantwort kann ausschließlich den zuletzt erfolgreich
+validierten lokalen Vorschlag enthalten; ein abgelehnter Ersatz löscht dessen Handle.
+Weder Text noch Funktionsnamen führen Cloud-Änderungen aus. Die Schlussprüfung bleibt
+für beide Antwortformen verpflichtend.
+
+Leere Fragen-, Referenz- und Vorschlagsfelder dürfen entfallen; dies aktiviert keine
+Komponente und gewährt keinen Zugriff. Antworten erlauben bis zu 6.000 Zeichen.
+Der Entwurfshinweis schneidet keine Erklärung oder wichtige Grenze still ab.
+Ein Turn bleibt auf acht Beratungsschritte, zwei Schlussprüfungen und drei Minuten
+begrenzt. Die bisherigen Einzelaufruf-Limits gelten weiter. HTTP-Fehler verursachen
+weder einen versteckten Controller-Wechsel noch unbegrenzte Wiederholungen.
+
+Eine gemeinsame inhaltliche Schlussprüfung vergleicht Auftrag, Folgeantworten,
+geprüfte Fakten und den tatsächlichen Compiler-Diff vor Anzeige und Speicherung.
+Der Diff trennt ergänzte/entzogene Rechte nach Prinzipal und Produktgruppe.
+Unveränderte Identitäten und IAM-Metadaten fehlen dort. Befunde gehen zur Korrektur
+in denselben Dialog zurück. Das ist eine interne Qualitätsprüfung, keine weitere
+Benutzerfreigabe und keine Garantie fehlerfreier Antworten. HTTP-Fehler werden auch
+in dieser Schleife nicht wiederholt. Übernahme und Ausführung bleiben separat.
+
+Typisierte `union`-, `add_permissions`- und registrierte `preset`-Operationen erzeugen vollständige
+native Werte lokal. Das Modell wählt geprüfte Operationen statt Hunderte
+Berechtigungskennungen auszuschreiben. Zugriffsprofile bleiben atomar:
+Ergänzungen benennen Templates und Prinzipale ausdrücklich und erhalten initialen
+Owner, den anderen Prinzipal und bestehende Rechte. Jede Operation wählt genau eine
+Quelle: Servicegruppen, einen registrierten Rechtesatz oder genaue Kennungen.
+Unbenutzte optionale Parameter aktivieren keinen zusätzlichen Rechtesatz.
+Offizielle Servicegruppen kommen aus dem vorhandenen Katalog; IAM benötigt genaue
+Berechtigungskennungen. Der erzeugte Vorschlag durchläuft dieselben Schema-, Quell-
+und Compilerprüfungen und gewährt selbst keine Rechte. Plattformkontext unterscheidet
+wiederverwendbare Template-Prinzipale von konkreten Projektmitgliedern. Deshalb
+brauchen Template-Rechteänderungen keine einzelnen Benutzeradressen. Neue Presets
+benötigen weiterhin einen bestätigten initialen Owner.
+
+## Kontext und Defaults
+
+Der Gesprächsstand enthält Ziel, bestätigte Entscheidungen, Empfehlungen und offene
+Fragen. Bestätigungen verweisen auf wörtliche Nutzerbelege. Unbelegte Gedächtniseinträge
+werden verworfen; eine gültige Antwort scheitert nicht allein an einem ungenau zitierten
+Beratungsüberblick. Die tatsächliche Konfiguration bleibt maßgeblich. Empfehlungen
+werden nicht zu vermeintlichen Nutzerentscheidungen.
+
+Der vorherige, noch nicht übernommene Vorschlag wird als Compiler-Diff weitergegeben,
+solange Wissenshash, Revision, Gültigkeit und öffentliche Ausgangswerte übereinstimmen.
+Das ist Beratungskontext, keine übernommene Konfiguration oder Berechtigung. Verwerfen
+löscht ihn; geänderte lokale Werte unterdrücken einen veralteten Vorschlag. Unveränderte
+Ordner-IAM-Metadaten werden nicht in den Diff kopiert.
+
+Der Stand liegt intern bei der Assistant-Nachricht im vorhandenen Gesprächs-JSON und
+unterliegt denselben RLS-, Revisions-, Lösch- und Ablaufregeln. Der Browser kann ihn
+nicht vorgeben und erhält ihn nicht in der öffentlichen Antwort. Ein anderer Wissenshash
+verwirft den Cache, erhält aber den ursprünglichen Dialog. Verworfene Vorschläge
+schließen ihren offenen Kontext. Dafür sind weder eine Datenbankmigration noch neue
+Kundenressourcen erforderlich.
+
+„Nimm den Default“ wählt den tatsächlichen Accelerator-Default des ausstehenden Feldes.
+Das Modell verwendet die nativen Default-Fakten und übernimmt den Wert in den prüfbaren
+Vorschlag. Es verlangt weder denselben Entscheid erneut noch den wörtlichen JSON-/CIDR-Wert.
+Eine unbeantwortete Frage ist keine solche Auswahl. Die Auswahl „Unternehmens-/VPN-Netze“
+liefert noch keine tatsächlichen öffentlichen Ausgangsadressen. Vorhandene Allowlists und
+der native Default können als konkrete Optionen dienen. Eine spätere ausdrückliche
+Default-Auswahl ersetzt die frühere Einschränkung.
+
+Der vollständige Company-Git-Dialog erhält somit den Hub-and-Spoke-Kontext, empfiehlt
+Git100 für ungefähr 80 Entwickler und setzt nach der Default-Antwort
+`devops.git_flavor = "git-100"` sowie
+`devops.allowed_network_ranges = ["0.0.0.0/0"]` als Vorschlag. Die Antwort erklärt die
+öffentliche Erreichbarkeit. Sie wiederholt keine Größen-/Zugriffsfrage, verändert nicht
+die vorhandene Netzstruktur und behauptet keine private Git-Anbindung über SNA.
+Die Übernahme ändert ausschließlich den lokalen Entwurf.
+
+## Prüfung und Übergang
+
+Die Laufzeittests prüfen Werkzeugprotokoll, sämtliche Themenabfragen, native Defaults,
+Compiler-Rückmeldungen, geschützte Eingaben, belegten Gesprächsstand, Empfehlungen,
+Streaming und Gesprächsfolgen. Die realen Modelltests verwenden immer die öffentliche
+Laufzeitklasse und müssen den neuen Pfad einschließlich vollständiger Nutzeraufgaben
+und Servicewechsel qualifizieren. Fehlversuche bleiben erhalten. Kriterien betreffen
+Ergebnisse, native Werte, Fakten und Nutzeranforderungen; gleichwertige Formulierungen
+brauchen keinen festen Mustersatz.
+
+Der frühere Controller bleibt vorübergehend als `LegacyAssistantModelServing` für
+gekennzeichnete Vergleichstests bestehen. Der Editor-Chat kann nicht dorthin routen oder
+zurückfallen. Diese Tests qualifizieren den neuen Pfad nicht. Die anfängliche
+Template-Beratung behält ihren separaten typisierten API-Vertrag. Bei der späteren
+Entfernung des alten Controllers müssen dieser Vertrag und Transport-/Fehlertests
+erhalten bleiben.
+
+## Qualifikationsverkehr
+
+Die synthetischen Tests berücksichtigen den beobachteten Prompt-/Antwortverbrauch
+und das gemeldete Projektlimit mit Reserve. STACKIT gewichtet Antworttokens mit
+Faktor fünf. Damit werden folgende Aufrufe dosiert; empfangene HTTP-Fehler werden
+nicht wiederholt, um eine fehlgeschlagene Wiederholung grün zu bekommen.
+[STACKIT-Limits](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/how-tos/rate-limits-on-shared-models-_stackit-ai-model-serving/)
+und [nativer Werkzeugvertrag](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/how-tos/integration-of-tool-calling/)
+beschreiben die zugrunde liegenden Schnittstellen. Kritische Fähigkeitsgrenzen
+benötigen einen expliziten Abdeckungsnachweis mit Referenzen auf serverseitig nummerierte
+Antwortabsätze. Die Prüfung muss den Antworttext nicht nochmals wortgleich erzeugen.
+Validierte Default-Wahlen werden mit nativem Wert und Nutzerbeleg an die Prüfung
+übergeben, damit eine spätere Wahl nicht als frühere Zugriffsvorgabe interpretiert wird.

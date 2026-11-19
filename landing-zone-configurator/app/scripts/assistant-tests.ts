@@ -12,6 +12,7 @@ import {
   AssistantInferenceError,
   modelServingConfiguration,
 } from "../apps/api/src/assistant/model-serving.js";
+import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 import {
   assistantScenarioFixture,
   assistantScenarios,
@@ -142,6 +143,7 @@ async function run() {
   for (let iteration = 1; iteration <= repetitions; iteration++) {
     for (const scenario of scenarios) {
       const started = Date.now();
+      const consultationTrace: unknown[] = [];
       let phase = "fixture";
       try {
         const fixture = assistantScenarioFixture(scenario);
@@ -156,6 +158,16 @@ async function run() {
           fixture.history,
           scenario.message,
           fixture.catalogues,
+          [],
+          undefined,
+          {
+            onEvent: (event) => consultationTrace.push(event),
+            validateChanges: (changes) => {
+              return assistantPublicValues(
+                applyAssistantChanges(fixture.draft, changes),
+              );
+            },
+          },
         );
         phase = "validation";
         const checked = validateAssistantScenario(scenario, result);
@@ -183,6 +195,7 @@ async function run() {
             iteration,
             status: checked.failures.length ? "failed" : "passed",
             elapsedMs: Date.now() - started,
+            consultationTrace,
             failures: checked.failures,
             result: checked.dialogue,
             exportBytes: Buffer.byteLength(exported),
@@ -199,6 +212,7 @@ async function run() {
             status: "failed",
             phase,
             elapsedMs: Date.now() - started,
+            consultationTrace,
             reason:
               error instanceof AssistantInferenceError
                 ? error.reason

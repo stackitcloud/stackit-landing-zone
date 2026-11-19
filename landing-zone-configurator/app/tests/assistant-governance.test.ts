@@ -1,3 +1,5 @@
+// Historical controller parity tests. Live runtime coverage: assistant-consultation.test.ts
+// and the source-bound real-model suite; production has no legacy fallback.
 import { randomUUID } from "node:crypto";
 import {
   assistantProposalFields,
@@ -18,7 +20,7 @@ import {
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
-import { AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
+import { LegacyAssistantModelServing as AssistantModelServing } from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 
 const configuration = {

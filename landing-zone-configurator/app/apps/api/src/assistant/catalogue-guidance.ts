@@ -6,7 +6,7 @@ import {
   catalogueField,
 } from "@lzc/contracts";
 import { type JsonValue, objectValue } from "@lzc/domain";
-import type { Dialogue } from "./dialogue.js";
+import { type Dialogue, dialogueSchema } from "./dialogue.js";
 import { assistantSourceNetworkQuestion } from "./editor.js";
 import type { AssistantCatalogueContext } from "./model-serving.js";
 
@@ -377,10 +377,10 @@ export function ensureDraftNotice(
     return dialogue;
   const notice =
     language === "en" ? "Nothing has been saved." : "Noch nichts gespeichert.";
-  return {
+  return dialogueSchema.parse({
     ...dialogue,
-    explanation: `${dialogue.explanation.slice(0, 2998 - notice.length).trim()}\n\n${notice}`,
-  };
+    explanation: `${dialogue.explanation.trim()}\n\n${notice}`,
+  });
 }
 
 export function resolveAssistantLanguage(

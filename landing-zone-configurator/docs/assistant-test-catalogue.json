@@ -2,12 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "b9fbdc9e9be04ec70b862f9cefee93ecf51defa7160747ec2d744a747acb147d",
+  "knowledgeSha256": "790244c8d45f0409c7c3f0f60b8f781f733a3bfde87a98b4a567b0cf5fbf0f93",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "6d9935ceaf87475acf92a9a3e225f37cfad218a6b66662c01a361d580b889f00",
-    "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
+    "scripts/assistant-scenarios.ts": "e8adf2ca73de135370aefe03163faa7e39db91e460aaebec3198da9a3a10a7b2",
+    "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
+    "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "c96b8f21c3e5d21a9431b6216529cb13d15580e87f8633788f9503831ca7b71a",
+  "suiteSha256": "6e2c95fb7563683825d7383826b5da02ca763cdc6a70ae2090a639af23a03017",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1149,6 +1150,22 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "no_changes"
+          ]
+        },
+        {
+          "id": "consultation-observability-native-reset",
+          "topic": "observability",
+          "fixture": "git-saved-access",
+          "expectedLanguage": "en",
+          "message": "Please reset only the central Observability metrics retention to the Accelerator default. Keep its plan, access list, logs/traces settings and every other service unchanged. Prepare the draft; do not deploy.",
+          "nativeDefaultResetPath": "observability.metrics_retention_days",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "actual_native_default_completed_without_reasking_preserving_context",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
           ]
         },
         {
@@ -5338,6 +5355,102 @@
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "consultation-company-git-default-en",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "message": "My answer: please use the default",
+          "history": [
+            {
+              "role": "user",
+              "content": "We use a Hub-and-Spoke landing zone and need a central company Git for round about 80 developers."
+            },
+            {
+              "role": "assistant",
+              "content": "Git100 fits 80 developers; Git10 supports only 10. Who should be able to reach Git?"
+            },
+            {
+              "role": "user",
+              "content": "Company/VPN public egress networks only (recommended)"
+            },
+            {
+              "role": "assistant",
+              "content": "Which actual client source IP addresses or CIDRs should be allowed?"
+            }
+          ],
+          "editorExpected": {
+            "path": "devops.git_flavor",
+            "value": "git-100"
+          },
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "nativeDefaultExpected": {
+            "path": "devops.allowed_network_ranges",
+            "value": [
+              "0.0.0.0/0"
+            ]
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "actual_native_default_completed_without_reasking_preserving_context",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "consultation-company-git-default-de",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "de",
+          "message": "Meine Antwort: Bitte den Default des Accelerators verwenden.",
+          "history": [
+            {
+              "role": "user",
+              "content": "We use a Hub-and-Spoke landing zone and need a central company Git for round about 80 developers."
+            },
+            {
+              "role": "assistant",
+              "content": "Git100 fits 80 developers; Git10 supports only 10. Who should be able to reach Git?"
+            },
+            {
+              "role": "user",
+              "content": "Company/VPN public egress networks only (recommended)"
+            },
+            {
+              "role": "assistant",
+              "content": "Which actual client source IP addresses or CIDRs should be allowed?"
+            }
+          ],
+          "editorExpected": {
+            "path": "devops.git_flavor",
+            "value": "git-100"
+          },
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "nativeDefaultExpected": {
+            "path": "devops.allowed_network_ranges",
+            "value": [
+              "0.0.0.0/0"
+            ]
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "actual_native_default_completed_without_reasking_preserving_context",
             "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
             "compiler_accepts_proposal",
             "explicit_unsaved_notice",

@@ -6,26 +6,23 @@ Managed Git.
 
 ## Accelerator Contract
 
-Root sets project/owner/name. devops=null or git_flavor=null creates no Git,
-even with ACLs. Fields:git_flavor,allowed_network_ranges; allow-all is not consent.
-Application Git:git.enabled/flavor/acl, default disabled, separate instance.
-Root devops is one instance; clarify central versus project-template scope.
+Root sets project/owner/name; devops=null or git_flavor=null skips Git even with ACLs. Fields:git_flavor,allowed_network_ranges. Native ACL default:["0.0.0.0/0"].
+Application Git(enabled/flavor/acl):default off, separate instance.
+Root devops: one instance; clarify central/project-template scope.
 
 ## Dependencies
 
-Management/state, identity, rights, networks. Availability/prices live.
+Management/state, identity/rights, networks; live availability/prices.
 
 ## Dialogue
 
-Git100:shared repos/CI up to100 users; Git10:pilots up to10. PER INSTANCE ceilings; storage growth never raises user limits. Above100,
+Git100:shared repos/CI, max100 users; Git10:pilots, max10. Per-instance ceilings; storage growth never raises user limits. Above100,
 separate team/project instances or narrower scope, never invented larger plans,
 federation/distribution. Project Git supplies separate instances; Corporate/SNA
 does NOT make managed endpoints private. Keep confirmed user scope.
-Offer project plans or labelled documented options without entitlement claims.
-A company standard delegates recommendation; retain it through access
-replies. Reuse saved narrow ACLs only when chosen or ask company/VPN public egress.
-Company/private SNA/examples prove no source addresses. Literal0.0.0.0/0 needs
-explicit consent. UI language wins.
+Project or labelled documented plans are not entitlements.
+Company-standard requests delegate recommendations. Retain choices; reuse selected narrow ACLs or ask company/VPN egress.
+Company/SNA/examples do not prove public source IPs. "Use default" adopts the native ACL: disclose public reachability, never reask. Silence is not consent. Retain company/Hub-and-Spoke decisions. UI language wins.
 
 ## Examples
 

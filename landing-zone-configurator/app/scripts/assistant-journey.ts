@@ -8,6 +8,7 @@ import {
   objectValue,
   readCommonConfiguration,
 } from "@lzc/domain";
+import type { ConsultationState } from "../apps/api/src/assistant/consultation.js";
 import {
   applyAssistantChanges,
   validateDialogue,
@@ -146,15 +147,32 @@ const steps: Step[] = [
   {
     id: "devops-setup",
     message:
-      "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+      "Please add a central company Git instance for around 80 developers in our Hub-and-Spoke landing zone. Recommend the suitable plan; access is not decided yet.",
     reference: "devops-git",
     roots: ["devops"],
     questionsOnly: true,
   },
   {
+    id: "devops-company-access",
+    message: "My answer: Company/VPN public egress networks only (recommended)",
+    reference: "devops-git",
+    roots: ["devops"],
+    questionsOnly: true,
+  },
+  {
+    id: "devops-native-default",
+    message: "My answer: please use the Accelerator default",
+    reference: "devops-git",
+    roots: ["devops"],
+    expected: {
+      "devops.allowed_network_ranges": ["0.0.0.0/0"],
+      "devops.git_flavor": "git-100",
+    },
+  },
+  {
     id: "devops",
     message:
-      "Bitte nun den zentralen DevOps-Git-Dienst als Entwurf konfigurieren: git_flavor ausdrücklich git-10, allowed_network_ranges ausschließlich [203.0.113.0/24]. Der Flavor ist meine Auswahl, keine Verfügbarkeitszusage. Alle bisherigen Komponenten erhalten, nichts deployen.",
+      "Änderung des Umfangs: Wir starten stattdessen mit einem Pilot für höchstens 10 Benutzer. Bitte nun den zentralen DevOps-Git-Dienst als Entwurf konfigurieren: git_flavor ausdrücklich git-10, allowed_network_ranges ausschließlich [203.0.113.0/24]. Der Flavor ist meine Auswahl, keine Verfügbarkeitszusage. Alle bisherigen Komponenten erhalten, nichts deployen.",
     reference: "devops-git",
     roots: ["devops"],
     expected: {
@@ -224,6 +242,7 @@ async function run() {
   if (!scenario) throw new Error("assistant_fixture_missing");
   let draft = assistantScenarioFixture(scenario).draft;
   const history: { role: "user" | "assistant"; content: string }[] = [];
+  let consultationState: ConsultationState | undefined;
   let failed = 0;
   console.log(
     JSON.stringify({
@@ -254,6 +273,19 @@ async function run() {
           history,
           step.message,
           { regions: [] },
+          [],
+          undefined,
+          {
+            state: consultationState,
+            onState: (state) => {
+              consultationState = state;
+            },
+            validateChanges: (changes) => {
+              return assistantPublicValues(
+                applyAssistantChanges(draft, changes),
+              );
+            },
+          },
         ),
         knowledge.rules.map((rule) => rule.id),
       );
