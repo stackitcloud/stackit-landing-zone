@@ -78,6 +78,11 @@ Der bestehende Compiler prüft den Kandidaten während der Beratung und erneut v
 Speichern des Vorschlags. Rechte, Eigentümer, Revision und Ablauf bleiben bei der
 Übernahme maßgeblich.
 
+Geprüfte Workflow-Pakete enthalten betriebliche Abhängigkeiten und die typisierte
+Quellenauswahl. Eine fachliche Anfrage verwendet dieses Paket, statt aus einzelnen
+Verben eine unvollständige Liste zu rekonstruieren. Ausdrücklich exakte Listen von
+Berechtigungskennungen bleiben exakt. Regressionen prüfen beide Fälle.
+
 Acht native Funktionen bilden die gemeinsamen Beratungsoperationen ab. Zwei
 Template-Werkzeuge unterscheiden zusätzliche Berechtigungen von einem vollständigen
 Zugriffsprofil und verwenden dieselbe Vorschlagsvalidierung. Explizite eigene

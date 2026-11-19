@@ -193,7 +193,7 @@ exactly. Record comparison runs with other overrides separately; their results d
 not qualify another selection. These environment variables affect the local test
 process only; they do not change the running application.
 
-The journey test goes through twelve steps from foundations and roles through
+The journey test goes through sixteen steps from foundations and roles through
 SNA/firewall, the policy MVP notice and audit follow-up questions to observability,
 DevOps, Kubernetes and labels. Every step uses the same evolving
 draft and actual conversation history. Domain-appropriate proposals

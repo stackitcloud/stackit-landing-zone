@@ -18,15 +18,15 @@ Verified identity/governance; regional SNA. Public!=Corporate; Platform K8s name
 ## Dialogue
 
 New:name/kind/region/settings; reuse keys.
-Central=Corporate; Internet-only=Public; local network=true. Preserve settings. "100 projects"=capacity!=examples/quota; reserve Platform space.
+Central=Corporate; Internet-only=Public; local network=true. Keep settings. Project count!=examples/quota; reserve Platform space.
 /26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.
 New:granular; Owner optional.
 IDP!=Configurator roles!=project IAM.
 Immutable accessProfile!=order input: schemaVersion=1,mode=granular;
-initialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs. Workload preset:191 requester,184 automation.
-VM preset: narrower; counts from runtime facts. Keys: iam.service-account.{get,list},
+initialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs.
+Preset counts/services: runtime facts; VM narrower. Keys: iam.service-account.{get,list},
 iam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL SA rights, even elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.
-ADD keys=seven, requester default; preserve owner/SKE/automation.
+ADD keys=seven incl.account lookup(get/list), requester default; preserve owner/SKE/automation. Exact permission IDs override bundles.
 Defaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.
 SKE/Git/databases/IAM-admin: optional, NOT preset defaults.
 ADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.
@@ -42,12 +42,12 @@ Publish needs owner; grants add; no execution.
 Project Git: settings.git={enabled,flavor,acl}; disabled; one instance/project.
 Policy: fixed/bounded input git.enabled/git.flavor/git.acl. Explicit nonempty source CIDRs.
 Public endpoint, never SNA/firewall-private. Public source ACLs; Git-capable Runner; old orders unchanged.
-IDs: git-10 <=10, git-100 <=100 users/instance; Git10/Git100=labels. Above100: separate instances/architecture;
-no invented larger flavor/federation. Team/project instances partition users, NEVER make endpoints private. Provider0.114 flavor/ACL changes replace.
+git-10<=10, git-100<=100 users/instance; >100: separate instances.
+No larger flavor/federation. Partition users by project/team; endpoints stay public. Provider0.114 flavor/ACL changes replace.
 
 ## Examples
 
-/28:Automatic.
+/28:null.
 
 ## Limits
 

@@ -209,7 +209,13 @@ erstellt, kann sämtliche Rechte dieses Accounts nutzen, auch außerhalb des
 Projekts. Privilegierte Plattform-Service-Accounts bleiben deshalb zentral
 außerhalb der Application-Projekte. Es gibt keine Einschränkung auf einen Account.
 
-Bei einer ausdrücklichen Bitte um Schlüsselverwaltung ergänzt der Assistant
+Service-Account-Lesen und -Auflisten decken die Kontoanzeige und Kontosuche ab,
+nicht das Anlegen von Accounts. Eine fachliche Anfrage verwendet das geprüfte
+Paket einschließlich dieser Abhängigkeiten. Eine ausdrücklich exakte Liste von
+Berechtigungskennungen bleibt dagegen exakt; ein Client mit bereits bekannter
+Account-Kennung kann die Kontosuche bewusst auslassen.
+
+Bei einer fachlichen Bitte um Schlüsselverwaltung ohne exakte Kennungsliste ergänzt der Assistant
 genau diese sieben Rechte, standardmäßig nur für den Besteller; nie pauschal
 alle IAM-Rechte. Bestehender Owner, Kubernetes-Rechte, andere Einstellungen und
 die Automation bleiben erhalten. Allgemeine Informationsfragen ändern nichts.

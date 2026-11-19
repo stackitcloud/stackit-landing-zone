@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   applicationProjectPermissionNames,
+  applicationServiceAccountKeyPermissions,
   defaultApplicationAccessProfile,
   featureFieldCatalogue,
   type JsonValue,
@@ -1522,6 +1523,53 @@ it("compares permission sets semantically while still rejecting extra rights for
   expect(validateAssistantScenario(scenario, response).failures).toContain(
     "application_access_proposal_incorrect_or_unrelated_change",
   );
+});
+
+it("keeps an exact permission list exact even when a broader reviewed workflow bundle exists", async () => {
+  const { materializeConsultationChanges } = await import(
+    "../apps/api/src/assistant/proposal-operations.js"
+  );
+  const scenario = assistantScenarios.find(
+    (entry) =>
+      entry.id ===
+      "application-service-account-key-management-exact-identifiers",
+  )!;
+  const fixture = assistantScenarioFixture(scenario);
+  const build = (ids: string[]) => ({
+    explanation: "Review proposal only. Nothing has been saved or executed.",
+    questions: [],
+    references: ["project-templates"],
+    changes: materializeConsultationChanges(
+      [
+        {
+          path: "projectTemplates",
+          operation: "add_permissions",
+          value: {
+            templateKeys: ["central"],
+            principals: ["requester"],
+            source: { kind: "permissions", ids },
+          },
+        },
+      ],
+      fixture.values,
+    ),
+  });
+  expect(
+    validateAssistantScenario(
+      scenario,
+      build(
+        applicationServiceAccountKeyPermissions.filter(
+          (name) => name !== "iam.service-account.list",
+        ),
+      ),
+    ).failures,
+  ).toEqual([]);
+  expect(
+    validateAssistantScenario(
+      scenario,
+      build([...applicationServiceAccountKeyPermissions]),
+    ).failures,
+  ).toContain("application_access_proposal_incorrect_or_unrelated_change");
 });
 
 it("retains an already recommended Git100 on a native-default follow-up without demanding another recommendation sentence", () => {

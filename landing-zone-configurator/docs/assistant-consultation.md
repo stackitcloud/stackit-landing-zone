@@ -83,6 +83,11 @@ missing or truncated catalogue data is not proof of unavailability. The model su
 replace that explanation with a generic catalogue preamble. Recommendation cards
 are informational and grant neither configuration acceptance nor execution rights.
 
+Reviewed workflow bundles include their operational dependencies and typed source
+selection. A natural-language capability request uses that bundle instead of
+reconstructing an incomplete list from individual verbs. Explicit exact lists of
+technical permission identifiers remain exact. Regressions cover both paths.
+
 Eight native functions expose the shared consultation operations. Two template
 helpers distinguish adding permissions from selecting a complete access profile;
 they use the same proposal validator. Explicit custom permission lists replace

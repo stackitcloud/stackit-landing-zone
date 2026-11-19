@@ -194,6 +194,7 @@ export type AssistantScenario = {
     | "owner"
     | "granular"
     | "literal-append"
+    | "literal-key-management"
     | "vm-default"
     | "workload-default"
     | "server-operations"
@@ -373,6 +374,15 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     applicationAccess: "key-management",
     message:
       "Im Template central soll der Besteller die Schlüssel des vorhandenen Application-Service-Accounts für Pipelines verwalten können. Ergänze die nötigen Rechte zum Erstellen, Lesen, Auflisten, Ändern und Löschen der Schlüssel und zum Sehen des Accounts. Vorhandene Kubernetes-Rechte und den zentralen Owner erhalten. Nur als Entwurf vorschlagen, nichts ausführen.",
+  },
+  {
+    id: "application-service-account-key-management-exact-identifiers",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "literal-key-management",
+    expectedLanguage: "en",
+    message:
+      "For template central, append exactly these permission identifiers to requester permissions: iam.service-account.get, iam.service-account-key.create, iam.service-account-key.list, iam.service-account-key.get, iam.service-account-key.edit, iam.service-account-key.delete. This exact list intentionally excludes iam.service-account.list because our client already knows the account identifier. Do not substitute the workflow bundle or add other rights. Retain existing requester rights, the owner and automation unchanged. Prepare a reviewable draft only; do not save or execute.",
   },
   {
     id: "application-access-workload-default-proposal",
@@ -1804,6 +1814,7 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
   }
   if (
     scenario.applicationAccess === "key-management" ||
+    scenario.applicationAccess === "literal-key-management" ||
     scenario.applicationAccess === "server-operations"
   ) {
     draft.projectTemplates![0]!.accessProfile = {
@@ -2458,7 +2469,10 @@ export function validateAssistantScenario(
         ],
       };
     }
-    if (scenario.applicationAccess === "key-management") {
+    if (
+      scenario.applicationAccess === "key-management" ||
+      scenario.applicationAccess === "literal-key-management"
+    ) {
       const before = fixture.draft.projectTemplates?.find(
         (t) => t.key === "central",
       )?.accessProfile;
@@ -2469,8 +2483,11 @@ export function validateAssistantScenario(
         permissions: [
           ...new Set([
             ...before.permissions,
-            ...applicationProjectPermissionNames.filter((name) =>
-              applicationServiceAccountKeyPermissions.includes(name),
+            ...applicationProjectPermissionNames.filter(
+              (name) =>
+                applicationServiceAccountKeyPermissions.includes(name) &&
+                (scenario.applicationAccess !== "literal-key-management" ||
+                  name !== "iam.service-account.list"),
             ),
           ]),
         ],

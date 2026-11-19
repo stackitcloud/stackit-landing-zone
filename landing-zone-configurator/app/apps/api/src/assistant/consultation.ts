@@ -603,7 +603,10 @@ export async function runConsultation(input: {
       input.current.projectTemplates !== undefined);
   const messages: { role: "system" | "user" | "assistant"; content: string }[] =
     [
-      { role: "system", content: consultationInstructions },
+      {
+        role: "system",
+        content: `${consultationInstructions}\nWhen reviewed facts provide an operational workflow bundle, use its registered local operation for a natural-language capability request, including documented discovery dependencies. Do not reconstruct an incomplete list from individual verbs. Explain the dependency and preserve the requested principals. An explicitly exact list of technical permission identifiers remains exact; it is not permission to add a bundle. This applies to all services with reviewed bundles, not a product-specific conversation route.`,
+      },
       {
         role: "user",
         content: JSON.stringify({

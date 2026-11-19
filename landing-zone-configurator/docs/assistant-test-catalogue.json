@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "eba1cd37340eec710ee77198ecf698ddd02c44fdf648d43f460142181098f158",
+  "knowledgeSha256": "4f58a37bef8217aad999e42dc97a9f6bef09ce9467ad85e8fc09cc0509b18129",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "866f1a486d64ab150798f8658c8cf7bb46ef12e8bc49999b5b9b544874193177",
+    "scripts/assistant-scenarios.ts": "76daa0201568f9aeca4239fed075b3080ae5635ce27eceecba530081ebee40dd",
     "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "c943b5a0e6d0c139e4efbd5cac825eb62cb7867301283477619772640b7db224",
+  "suiteSha256": "507a5b9bb734c48970f38ce2948ad97e194cd24810b8455c2afb152717eaba7f",
   "topics": [
     {
       "id": "credential-foundations",
@@ -6905,6 +6905,21 @@
           "fixture": "corporate-ipv4",
           "applicationAccess": "key-management",
           "message": "Im Template central soll der Besteller die Schlüssel des vorhandenen Application-Service-Accounts für Pipelines verwalten können. Ergänze die nötigen Rechte zum Erstellen, Lesen, Auflisten, Ändern und Löschen der Schlüssel und zum Sehen des Accounts. Vorhandene Kubernetes-Rechte und den zentralen Owner erhalten. Nur als Entwurf vorschlagen, nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "application-service-account-key-management-exact-identifiers",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "literal-key-management",
+          "expectedLanguage": "en",
+          "message": "For template central, append exactly these permission identifiers to requester permissions: iam.service-account.get, iam.service-account-key.create, iam.service-account-key.list, iam.service-account-key.get, iam.service-account-key.edit, iam.service-account-key.delete. This exact list intentionally excludes iam.service-account.list because our client already knows the account identifier. Do not substitute the workflow bundle or add other rights. Retain existing requester rights, the owner and automation unchanged. Prepare a reviewable draft only; do not save or execute.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

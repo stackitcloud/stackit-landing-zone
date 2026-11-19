@@ -3,7 +3,10 @@ import {
   type CloudCatalogueField,
   catalogueField,
 } from "@lzc/contracts";
-import { defaultApplicationAccessProfile } from "@lzc/domain";
+import {
+  applicationServiceAccountKeyPermissions,
+  defaultApplicationAccessProfile,
+} from "@lzc/domain";
 import { z } from "zod";
 import { catalogueQuestionRegion } from "./catalogue-guidance.js";
 import type { AssistantCatalogueContext } from "./model-serving.js";
@@ -71,6 +74,30 @@ export function evaluateCatalogueRequirements(
  */
 export const reviewedServiceFacts: Record<string, unknown> = {
   "project-templates": {
+    workflowBundles: {
+      "service-account-keys": {
+        purpose:
+          "Operational key management for existing service accounts: find/open the account and create/list/read/edit/delete its keys.",
+        permissions: [...applicationServiceAccountKeyPermissions],
+        discoveryDependencies: [
+          "iam.service-account.get",
+          "iam.service-account.list",
+        ],
+        reason:
+          "The reviewed seven-right workflow includes account discovery as well as key actions. A natural-language key-management request uses this bundle; it is not a literal six-permission list. An explicit exact list of permission identifiers takes precedence.",
+        defaultPrincipal: "requester",
+        localOperation: {
+          tool: "propose_template_permissions",
+          arguments: {
+            source: { kind: "permission_set", id: "service-account-keys" },
+          },
+          scope:
+            "Supply existing templateKeys and the requested principals; these are source arguments, not a complete call.",
+        },
+        preserves:
+          "Existing owner, unrelated rights and unselected principals; no service-account creation/deletion, role/member administration or cloud execution.",
+      },
+    },
     presets: Object.fromEntries(
       (["workload", "vm"] as const).map((preset) => {
         const profile = defaultApplicationAccessProfile("", preset);

@@ -53,7 +53,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -88,7 +88,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -217,7 +217,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -252,7 +252,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -399,7 +399,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -434,7 +434,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -559,7 +559,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -594,7 +594,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -754,7 +754,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -789,7 +789,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -920,7 +920,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -955,7 +955,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -1114,7 +1114,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1149,7 +1149,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -1268,7 +1268,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1303,7 +1303,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -1429,7 +1429,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1464,7 +1464,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -1610,7 +1610,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1645,7 +1645,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -1810,7 +1810,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1845,7 +1845,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -2082,7 +2082,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2117,7 +2117,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -2303,7 +2303,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2338,7 +2338,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -2489,7 +2489,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2524,7 +2524,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -2646,7 +2646,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2681,7 +2681,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -2898,7 +2898,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2933,7 +2933,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -3041,9 +3041,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/project-templates.md",
-      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nProjects.\n\n## Accelerator Contract\n\nlanding_zones:corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies.\nAutomatic=null:Corporate resolves regional SNA default_prefix_length before Plan; numeric to Provider0.114; preserve DNS.\nProvider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance; regional SNA. Public!=Corporate; Platform K8s namespaces.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Preserve settings. "100 projects"=capacity!=examples/quota; reserve Platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile!=order input: schemaVersion=1,mode=granular;\ninitialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs. Workload preset:191 requester,184 automation.\nVM preset: narrower; counts from runtime facts. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL SA rights, even elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.\nADD keys=seven, requester default; preserve owner/SKE/automation.\nDefaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.\nSKE/Git/databases/IAM-admin: optional, NOT preset defaults.\nADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.\nSKE IAM!=K8s RBAC; no default IAM role/member admin.\nOwner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.\nAtomic; no legacy roles.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email; ambiguity asks.\nWorkload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.\nPublish needs owner; grants add; no execution.\n\n\nProject Git: settings.git={enabled,flavor,acl}; disabled; one instance/project.\nPolicy: fixed/bounded input git.enabled/git.flavor/git.acl. Explicit nonempty source CIDRs.\nPublic endpoint, never SNA/firewall-private. Public source ACLs; Git-capable Runner; old orders unchanged.\nIDs: git-10 <=10, git-100 <=100 users/instance; Git10/Git100=labels. Above100: separate instances/architecture;\nno invented larger flavor/federation. Team/project instances partition users, NEVER make endpoints private. Provider0.114 flavor/ACL changes replace.\n\n## Examples\n\n/28:Automatic.\n\n## Limits\n\nVersion/State bound; review migrations; never delete State. Match region/area/DNS. Empty roles/ACLs!=security; live acceptance.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs.\n\n## Sources\n\nIaC.\n',
+      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nProjects.\n\n## Accelerator Contract\n\nlanding_zones:corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies.\nAutomatic=null:Corporate resolves regional SNA default_prefix_length before Plan; numeric to Provider0.114; preserve DNS.\nProvider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance; regional SNA. Public!=Corporate; Platform K8s namespaces.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Keep settings. Project count!=examples/quota; reserve Platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile!=order input: schemaVersion=1,mode=granular;\ninitialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs.\nPreset counts/services: runtime facts; VM narrower. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL SA rights, even elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.\nADD keys=seven incl.account lookup(get/list), requester default; preserve owner/SKE/automation. Exact permission IDs override bundles.\nDefaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.\nSKE/Git/databases/IAM-admin: optional, NOT preset defaults.\nADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.\nSKE IAM!=K8s RBAC; no default IAM role/member admin.\nOwner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.\nAtomic; no legacy roles.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email; ambiguity asks.\nWorkload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.\nPublish needs owner; grants add; no execution.\n\n\nProject Git: settings.git={enabled,flavor,acl}; disabled; one instance/project.\nPolicy: fixed/bounded input git.enabled/git.flavor/git.acl. Explicit nonempty source CIDRs.\nPublic endpoint, never SNA/firewall-private. Public source ACLs; Git-capable Runner; old orders unchanged.\ngit-10<=10, git-100<=100 users/instance; >100: separate instances.\nNo larger flavor/federation. Partition users by project/team; endpoints stay public. Provider0.114 flavor/ACL changes replace.\n\n## Examples\n\n/28:null.\n\n## Limits\n\nVersion/State bound; review migrations; never delete State. Match region/area/DNS. Empty roles/ACLs!=security; live acceptance.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs.\n\n## Sources\n\nIaC.\n',
       sha256:
-        "6ff9b153bd1bb5aec4d478942f00c2b8bf1a5e4c26dbe0cefe7ef2ed2671f4dd",
+        "3790aa31bdcd9a9163924d26e55f77f1f5f25a675e7507c1edb8d1e47fcaf18b",
     },
     {
       id: "sandbox-projects",
@@ -3079,7 +3079,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -3114,7 +3114,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -3232,7 +3232,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -3267,7 +3267,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
@@ -3448,7 +3448,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "ff66ab41820d4ccafe761eba712f4aaddf2a11aaa9b438b6c632717d2ba3bac2",
+            "8d9913175771d8c5517ec6bac8202b6a4e83da72c59e830432c6d7a149412218",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -3483,7 +3483,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "d3ff35dd5c405060167e65240e909346ab33ae5d83052262e1f391e828f4fd8e",
+            "cb34a68150e1d74591c9199cf894d962c9386b3e4a4a3a4b23c963c562a26746",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
