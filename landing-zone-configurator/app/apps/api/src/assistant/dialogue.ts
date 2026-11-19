@@ -201,6 +201,24 @@ export const dialogueSchema = z.strictObject({
 });
 
 export type Dialogue = z.infer<typeof dialogueSchema>;
+/** The model writes the contextual question; registered source-owned choices
+ * come from the application, just like catalogue selectors. No choice is adopted. */
+export function enrichSourceChoiceQuestions(
+  questions: Dialogue["questions"],
+  choices: ReadonlyMap<string, readonly string[]>,
+): Dialogue["questions"] {
+  return questions.map((question) => {
+    const options = choices.get(question.path);
+    return options
+      ? {
+          ...question,
+          options: [...options],
+          answerType: "requirements",
+          multiple: false,
+        }
+      : question;
+  });
+}
 export function assistantPublicDnsZone(input: unknown) {
   const zone = objectValue(input as Parameters<typeof objectValue>[0]);
   return {

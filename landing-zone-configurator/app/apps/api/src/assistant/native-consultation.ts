@@ -93,7 +93,7 @@ const reads = {
   ],
   catalogue: [
     "read_catalogue",
-    "Read project/region offerings, descriptions and factual capacity. Include confirmed quoted requirements so undersized options are excluded. This is not entitlement or performance assurance.",
+    "Look up actual project/region offerings and generate source-backed recommendation cards. REQUIRED before a concrete plan recommendation for service setup, even if documented plan limits are familiar. Include confirmed quoted numeric requirements so undersized options are excluded and a uniquely fitting option becomes a visible recommendation. General advice about product limits alone does not require a lookup. This is not entitlement or performance assurance.",
   ],
 } as const;
 const object = (value: unknown): Record<string, unknown> =>

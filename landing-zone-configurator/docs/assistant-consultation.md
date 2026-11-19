@@ -19,7 +19,8 @@ Model comparisons and qualification receipts must record the exact selection.
 A comparison success never qualifies another model or an older source snapshot.
 
 Qwen3.8 uses its published reasoning sampling profile (`temperature=1.0`,
-`top_p=0.95`), using standard API parameters; other model selections retain their
+`top_p=0.95`) with `reasoning_effort=medium` for the bounded interactive workflow,
+using standard API parameters; other model selections retain their
 existing sampling. This is an inference configuration, not evidence of quality:
 the complete source-bound qualification still applies. See the
 [official model card](https://huggingface.co/Qwen/Qwen3.8-27B#api-usage).
@@ -85,6 +86,10 @@ Native schemas and defaults come from the generated Accelerator input contract;
 the model does not maintain a second list of default values.
 
 Catalogue requests can carry user requirements with a source turn and quotation.
+Concrete setup recommendations use this project/region lookup even when the model
+already knows the documented plan ceilings. The lookup drives recommendation cards
+and source-backed selectors; a prose plan name alone does not replace that UI.
+General advice about product limits remains independent of project availability.
 The shared evaluator compares them with reviewed numeric ceilings and matched
 catalogue facts. It distinguishes eligible, excluded and unknown offerings. Known
 Git user limits and supplied VM/VPN characteristics use the same evaluator; unknown
@@ -124,6 +129,11 @@ proposal. `send_answer` can also finish already-staged questions without adding 
 dummy question. Registered initial-owner fields receive choices from scoped
 application identities, plus a manual email option, like source-owned catalogue
 pickers; model-supplied option labels never establish an identity or select it.
+Registered source-network questions use the same application-owned choice
+renderer: actual Accelerator defaults, saved allowlists and manual public-egress
+input. Model wording does not have to match private labels character for character.
+Unsupported model-written options cannot enter the displayed choice list. This
+changes no value: the user's selection and proposal/default evidence remain required.
 Absent reference metadata uses only already observed source references; explicit
 foreign references remain subject to rejection. This avoids nested lists
 of question objects that the candidate model repeatedly returned as malformed JSON

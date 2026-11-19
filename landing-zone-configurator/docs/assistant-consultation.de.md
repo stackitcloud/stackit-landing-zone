@@ -19,7 +19,8 @@ Qualifikationsnachweise müssen die genaue Auswahl festhalten. Ein erfolgreicher
 Vergleich qualifiziert weder ein anderes Modell noch einen älteren Quellstand.
 
 Qwen3.8 verwendet die veröffentlichten Reasoning-Samplingwerte (`temperature=1.0`,
-`top_p=0.95`) über Standard-API-Parameter. Andere Modelle behalten ihre bisherigen
+`top_p=0.95`) mit `reasoning_effort=medium` für den begrenzten interaktiven Ablauf
+über Standard-API-Parameter. Andere Modelle behalten ihre bisherigen
 Einstellungen. Dies belegt noch keine Antwortqualität; die vollständige
 quellgebundene Qualifikation bleibt erforderlich. Siehe die
 [offizielle Modellkarte](https://huggingface.co/Qwen/Qwen3.8-27B#api-usage).
@@ -67,6 +68,12 @@ Die Bereitschaftsübersicht trennt tatsächliche Template-Lesepfade von berechne
 Metadaten, die keine zusätzlichen Konfigurationsfelder darstellen.
 
 ## Werkzeuge und Validierung
+
+Konkrete Tarifempfehlungen für eine Einrichtung verwenden den Projekt-/Regionskatalog,
+auch wenn das Modell dokumentierte Grenzen bereits kennt. Daraus entstehen die
+Empfehlungskarten und belegten Auswahloptionen; ein Tarifname im Fließtext ersetzt
+diese Oberfläche nicht. Allgemeine Beratung zu Produktgrenzen benötigt keine
+Bestellbarkeitsprüfung im Projekt.
 
 Das Modell kann Wissen, Konfiguration, Defaults und Kataloge gemeinsam nachschlagen.
 Es liest ausschließlich bereits eingegrenzte öffentliche Konfiguration und
@@ -120,8 +127,15 @@ Fragenliste und behält den validierten Vorschlag. `send_answer` kann bereits
 gesammelte Fragen ohne zusätzliche Platzhalterfrage abschließen. Registrierte
 Initial-Owner-Felder erhalten Auswahloptionen aus den verifizierten Anwendungsdaten
 sowie eine manuelle E-Mail-Option. Modellbeschriftungen belegen oder wählen keine
-Identität. Fehlende Referenzmetadaten werden ausschließlich aus bereits gelieferten
-Quellen ergänzt; explizite fremde Referenzen werden weiterhin geprüft.
+Identität.
+
+Registrierte Quellnetzfragen verwenden denselben Renderer: tatsächliche Accelerator-
+Defaults, gespeicherte Allowlisten und manuelle öffentliche Ausgangsnetze. Das Modell
+muss private Beschriftungen nicht zeichengetreu reproduzieren. Nicht unterstützte
+Modelloptionen werden nicht angezeigt. Es wird dadurch kein Wert übernommen;
+Nutzerauswahl und Vorschlags-/Default-Belege bleiben erforderlich.
+Fehlende Referenzmetadaten werden ausschließlich aus bereits gelieferten Quellen
+ergänzt; explizite fremde Referenzen werden weiterhin geprüft.
 Damit entfallen verschachtelte Fragenlisten, die das Kandidatenmodell
 wiederholt als fehlerhafte JSON-Strings lieferte. Nur gültige JSON-Container an
 ausdrücklich entsprechend typisierten Feldern werden zur Transportkompatibilität

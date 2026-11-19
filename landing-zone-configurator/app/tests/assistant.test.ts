@@ -3051,6 +3051,9 @@ it.each([
       expect(body.top_p).toBe(
         limits.model === "Qwen/Qwen3.8-27B" ? 0.95 : undefined,
       );
+      expect(body.reasoning_effort).toBe(
+        limits.model === "Qwen/Qwen3.8-27B" ? "medium" : undefined,
+      );
       expect(body.max_completion_tokens).toBe(expected);
       return answer(
         {

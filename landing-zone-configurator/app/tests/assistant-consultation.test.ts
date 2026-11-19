@@ -157,6 +157,54 @@ function model(
   return { client: new AssistantModelServing(configuration, request), request };
 }
 const lastResult = (body: Request) => JSON.parse(body.messages.at(-1)!.content);
+it.each([
+  ["audit-logs", "audit_logs.acl"],
+  ["observability", "observability.acl"],
+  ["devops-git", "devops.allowed_network_ranges"],
+])(
+  "renders canonical source choices for %s without making the model reproduce labels or adopting a value",
+  async (topic, path) => {
+    const { client } = model([
+      () => ({
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: [topic] }],
+      }),
+      () =>
+        final({
+          references: [topic],
+          questions: [
+            {
+              path,
+              text: "Who should be able to reach the service?",
+              options: ["Private SNA only", "A guessed source network"],
+            },
+          ],
+        }),
+    ]);
+    const answer = await client.converse(
+      selection,
+      {
+        region: "eu01",
+        observability: { acl: ["203.0.113.0/24"] },
+        "assistant.language": "en",
+      },
+      [],
+      "Help me choose source access for this service.",
+    );
+    const question = answer.questions[0]!;
+    expect(question.text).toBe("Who should be able to reach the service?");
+    expect(
+      question.options?.some((option) =>
+        option.startsWith("Use Accelerator default"),
+      ),
+    ).toBe(true);
+    expect(question.options).toContain(
+      "Use saved observability.acl (203.0.113.0/24)",
+    );
+    expect(question.options?.join(" ")).not.toMatch(/Private SNA|guessed/);
+    expect(answer.changes).toEqual([]);
+  },
+);
 it("sources owner picker options from the scoped application instead of model-written addresses", async () => {
   const { client } = model([
     () => ({

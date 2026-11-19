@@ -4,6 +4,7 @@ import {
   assistantOwnerChoices,
   assistantQuestionFields,
   type Dialogue,
+  enrichSourceChoiceQuestions,
 } from "./dialogue.js";
 
 /** Like catalogue selectors, identity choices belong to the scoped application
@@ -20,13 +21,17 @@ export function enrichTemplateOwnerQuestions(
       ? "Andere E-Mail-Adresse angeben"
       : "Provide another email address",
   ];
-  return questions.map((question) =>
-    registeredPaths.includes(question.path) &&
-    /^projectTemplates\.[^.]+\.accessProfile\.initialOwnerEmail$/.test(
-      question.path,
-    )
-      ? { ...question, answerType: "requirements", multiple: false, options }
-      : question,
+  return enrichSourceChoiceQuestions(
+    questions,
+    new Map(
+      registeredPaths
+        .filter((path) =>
+          /^projectTemplates\.[^.]+\.accessProfile\.initialOwnerEmail$/.test(
+            path,
+          ),
+        )
+        .map((path) => [path, options]),
+    ),
   );
 }
 /** Existing template metadata and native settings share the question registry;
