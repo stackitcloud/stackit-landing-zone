@@ -1,3 +1,4 @@
+import { assistantAnswerTextMaxLength } from "@lzc/contracts";
 import { z } from "zod";
 import { AssistantInferenceError } from "./model-serving.js";
 
@@ -30,7 +31,11 @@ export const nativeCompletionSchema = z.object({
         finish_reason: z.enum(["tool_calls", "stop"]),
         message: z.object({
           role: z.literal("assistant"),
-          content: z.string().max(16384).nullable().optional(),
+          content: z
+            .string()
+            .max(assistantAnswerTextMaxLength)
+            .nullable()
+            .optional(),
           tool_calls: z.array(nativeToolCallSchema).min(1).max(6).optional(),
         }),
       }),

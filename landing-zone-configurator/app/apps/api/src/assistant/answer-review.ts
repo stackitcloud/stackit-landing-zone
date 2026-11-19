@@ -77,7 +77,13 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
     input.signal,
     input.language,
   );
-  const checked = reviewSchema.parse(result);
+  const response =
+    result && typeof result === "object" && !Array.isArray(result)
+      ? (result as Record<string, unknown>)
+      : {};
+  const memory = memorySchema.safeParse(response.memory);
+  const checked = reviewSchema.parse({ ...response, memory: undefined });
+  if (memory.success) checked.memory = memory.data;
   const boundaries = Object.values(input.serviceFacts).flatMap((fact) => {
     const value = fact as {
       criticalBoundaries?: { id: string; mustExplain?: boolean }[];

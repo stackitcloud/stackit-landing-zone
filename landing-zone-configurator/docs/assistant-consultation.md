@@ -71,7 +71,7 @@ changes. The final answer still passes the same semantic review before publicati
 
 The tool schemas remain compact. An empty question list, reference list or proposal
 is normalized as empty; omitted fields cannot activate a component or grant access.
-Answers allow up to 6,000 characters, and adding a draft notice never silently cuts
+Generated replies use the same bounded 16,384-character budget as the native transport, and adding a draft notice never silently cuts
 off an explanation or an important boundary. A turn has at most eight consultation
 steps, two bounded reviews and a three-minute deadline. Individual requests retain
 their existing limits. HTTP failures do not trigger a hidden controller fallback or

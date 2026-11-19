@@ -61,7 +61,7 @@ Weder Text noch Funktionsnamen führen Cloud-Änderungen aus. Die Schlussprüfun
 für beide Antwortformen verpflichtend.
 
 Leere Fragen-, Referenz- und Vorschlagsfelder dürfen entfallen; dies aktiviert keine
-Komponente und gewährt keinen Zugriff. Antworten erlauben bis zu 6.000 Zeichen.
+Komponente und gewährt keinen Zugriff. Generierte Antworten verwenden dasselbe begrenzte Budget von 16.384 Zeichen wie der native Transport.
 Der Entwurfshinweis schneidet keine Erklärung oder wichtige Grenze still ab.
 Ein Turn bleibt auf acht Beratungsschritte, zwei Schlussprüfungen und drei Minuten
 begrenzt. Die bisherigen Einzelaufruf-Limits gelten weiter. HTTP-Fehler verursachen

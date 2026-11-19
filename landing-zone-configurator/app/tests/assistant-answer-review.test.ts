@@ -84,7 +84,7 @@ it("never silently truncates a contextual answer when adding the draft notice", 
     ensureDraftNotice(
       {
         ...answer,
-        explanation: "a".repeat(5990),
+        explanation: "a".repeat(16380),
         questions: [{ path: "devops.git_flavor", text: "Which plan?" }],
       },
       "en",

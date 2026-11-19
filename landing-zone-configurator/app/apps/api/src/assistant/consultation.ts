@@ -308,7 +308,7 @@ Retain the business brief, topology, already answered questions and current task
 Choose and explain suitable offerings from confirmed requirements and reviewed facts. Do not ask users to research internal flavor IDs. Eliminate options that violate hard limits; if exactly one reviewed option fits, recommend it and move to the genuinely missing decision. A request to set up a service authorizes a reviewable recommendation; do not request another confirmation of a fitting recommendation before preparing the draft. Explain decisive constraints and why alternatives fail them. Explain boundaries and alternative architectures when none fits. A numeric user ceiling is not a performance guarantee. Ask concise useful business questions with choices, retaining answered requirements. Catalogue selections use answerType=catalogue at the exact supplied field path; goals, access policy and workload questions use requirements. Offer concrete usable choices using existing configuration and actual native defaults, rather than repeating an empty technical field.
 'Use the default', including short replies and German equivalents, is a deliberate choice of the ACTUAL Accelerator default for the pending field. Use that field's actual native-default fact from decisionOptions or the default tool and include it in the proposal with the user's quoted instruction as basis. Do not demand that users spell its literal JSON/CIDR or reconfirm the same default. State the resolved value and its practical effect. An unanswered question alone is not a choice of a public ACL. A company/VPN-only choice requires actual source networks or an explicitly chosen existing allowlist; never infer company egress from private SNA ranges. If the user later chooses the default, adopt that correction and finish the proposal. Never repeat 'who can access' after it was answered.
 For proposals, inspect the relevant service knowledge and schema, then validate_proposal. Use merge for partial object/map changes, preserving sibling values and stable keys. Use union for adding to an existing array without replacing it; preset applies only a supplied registered preset and materializes the complete native value in application code. Both are local draft transformations, never execution. Arrays are atomic. replace/default need an actual requested replacement/reset; default restores a native override, value=null. New native component objects need all mandatory fields from their schema. Native defaults may fill unrequested optional settings; do not ask for every technical field. PendingProposal contains the previous UNACCEPTED compiler delta, not current configuration or confirmed user choices. Use it to continue the same draft without losing earlier suggestions; discard it when the user changes scope. Revalidate the complete resulting proposal. Preserve pending draft values across turns; do not apply unrelated examples or recreate an existing order. Naming can be delegated using the user's company/prefix, preserving identities and permissions. Protected/operator inputs are not editable here.
-The validator returns a proposal handle or actionable feedback. Correct a rejected proposal using that feedback and the user's intent; do not expose internal errors or send the user back to research field syntax. Ask only when a genuinely missing decision cannot be resolved from the supplied context/default instruction. Validation does not accept, save or execute anything. Finish with a natural-language explanation after a successful validation, or use send_answer for structured clarification questions and explicit proposal handles. Advice needs neither a proposal nor configuration reads. A setup request needs a concrete proposal or focused missing questions, not a spoken promise. The final explanation is YOUR useful contextual answer, never a generic catalogue preamble. Questions must not repeat decisions already answered. Keep memory compact, retaining relevant confirmed decisions and open questions. activeTopics lists only the inspected topics relevant to the next turn, not every topic ever read. Use the application's selected language for all user-facing text, including headings/options. References must name inspected knowledge topics. Do not claim to have inspected a live Plan or deployed resources.`;
+The validator returns a proposal handle or actionable feedback. Correct a rejected proposal using that feedback and the user's intent; do not expose internal errors or send the user back to research field syntax. Ask only when a genuinely missing decision cannot be resolved from the supplied context/default instruction. Validation does not accept, save or execute anything. Finish with a natural-language explanation after a successful validation, or use send_answer for structured clarification questions and explicit proposal handles. Advice needs neither a proposal nor configuration reads. A setup request needs a concrete proposal or focused missing questions, not a spoken promise. The final explanation is YOUR useful contextual answer, never a generic catalogue preamble. Be concise: normally 1-3 short paragraphs or a small useful list. Avoid repeating the same boundaries in multiple summary sections. Questions must not repeat decisions already answered. Keep memory compact, retaining relevant confirmed decisions and open questions. activeTopics lists only the inspected topics relevant to the next turn, not every topic ever read. Use the application's selected language for all user-facing text, including headings/options. References must name inspected knowledge topics. Do not claim to have inspected a live Plan or deployed resources.`;
 
 export async function runConsultation(input: {
   selection: unknown;
@@ -849,13 +849,35 @@ export async function runConsultation(input: {
       turnSignal,
       input.language,
     );
-    const parsed = consultationStepSchema.safeParse(raw);
+    const rawStep = objectValue(raw as JsonValue);
+    const advisoryMemory = memorySchema.safeParse(rawStep.memory);
+    // Memory and active-topic hints are advisory, not local operations or
+    // authority. Their formatting must not reject an otherwise valid answer.
+    const parsed = consultationStepSchema.safeParse(
+      rawStep.action === "answer"
+        ? {
+            ...rawStep,
+            memory: undefined,
+            activeTopics: Array.isArray(rawStep.activeTopics)
+              ? rawStep.activeTopics
+                  .filter(
+                    (topic): topic is string =>
+                      typeof topic === "string" && topics.has(topic),
+                  )
+                  .slice(0, 6)
+              : [],
+          }
+        : raw,
+    );
     if (!parsed.success) {
       input.options?.onEvent?.({
         round,
         action: "protocol-validation",
         status: "rejected",
         code: "invalid_shape",
+        paths: parsed.error.issues
+          .slice(0, 8)
+          .map((issue) => `${issue.path.join(".")}:${issue.code}`),
       });
       messages.push({ role: "assistant", content: JSON.stringify(raw) });
       messages.push({
@@ -1262,7 +1284,9 @@ export async function runConsultation(input: {
       }
       // Advisory memory must not block a valid answer. Only source-verified
       // confirmations survive; unsupported summaries cannot become authority.
-      const proposedMemory = step.memory ??
+      const proposedMemory = (advisoryMemory.success
+        ? advisoryMemory.data
+        : undefined) ??
         previous?.memory ?? { goal: "", decisions: [], openQuestions: [] };
       const verifiedDecisions = new Map(
         proposedMemory.decisions

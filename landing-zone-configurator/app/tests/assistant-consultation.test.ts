@@ -1000,3 +1000,30 @@ it("does not retry a rejected review HTTP response or publish the unreviewed ans
   expect(text).not.toHaveBeenCalled();
   expect(onState).not.toHaveBeenCalled();
 });
+
+it("does not turn malformed advisory memory or topic hints into a user-facing failure", async () => {
+  const onState = vi.fn();
+  const { client } = model(
+    [
+      () =>
+        final({
+          memory: "not a valid brief",
+          activeTopics: ["invented-topic", 42],
+        }),
+    ],
+    [() => ({ ready: true, findings: [], memory: { goal: 42 } })],
+  );
+  const answer = await client.converse(
+    selection,
+    {},
+    [],
+    "Explain the workflow without changes.",
+    undefined,
+    [],
+    undefined,
+    { onState },
+  );
+  expect(answer.changes).toEqual([]);
+  expect(onState.mock.calls[0]?.[0].topics).toEqual([]);
+  expect(onState.mock.calls[0]?.[0].memory.decisions).toEqual([]);
+});

@@ -453,3 +453,5 @@ export const assistantCataloguePickerSchema = z.strictObject({
 export type AssistantCataloguePicker = z.infer<
   typeof assistantCataloguePickerSchema
 >;
+/** Shared bounded text budget for generated Assistant replies. */
+export const assistantAnswerTextMaxLength = 16384;

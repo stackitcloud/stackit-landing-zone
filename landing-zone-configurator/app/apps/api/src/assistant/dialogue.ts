@@ -1,4 +1,5 @@
 import {
+  assistantAnswerTextMaxLength,
   assistantQuestionAnswerTypeSchema,
   assistantRecommendationSchema,
   catalogueField,
@@ -161,7 +162,7 @@ export const assistantQuestionOptionsSchema = z
 
 export const dialogueSchema = z.strictObject({
   recommendations: z.array(assistantRecommendationSchema).max(8).optional(),
-  explanation: z.string().min(1).max(6000),
+  explanation: z.string().min(1).max(assistantAnswerTextMaxLength),
   questions: z
     .array(
       z.strictObject({
