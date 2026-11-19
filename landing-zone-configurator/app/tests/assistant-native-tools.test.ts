@@ -26,6 +26,58 @@ const call = (name: string, args: unknown): NativeToolCall => ({
   type: "function",
   function: { name, arguments: JSON.stringify(args) },
 });
+it.each(["reasoning", "reasoning_content"] as const)(
+  "retains private %s only in native tool continuation, never in the logical answer",
+  async (field) => {
+    const secretThought = "private-reasoning-sentinel";
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        role: "assistant",
+        content: null,
+        [field]: secretThought,
+        tool_calls: [call("read_knowledge", { topics: ["project-templates"] })],
+      })
+      .mockResolvedValueOnce({
+        role: "assistant",
+        content: "Reviewed advice only.",
+        [field]: "another-private-reasoning-sentinel",
+      });
+    const native = new NativeConsultation(request);
+    await native.next(context, schema);
+    const answer = await native.next(
+      [
+        ...context,
+        {
+          role: "user",
+          content: JSON.stringify({
+            toolResults: [
+              {
+                request: { tool: "knowledge" },
+                result: {
+                  topics: [{ id: "project-templates" }],
+                  selectedTopics: ["project-templates"],
+                },
+              },
+            ],
+          }),
+        },
+      ],
+      schema,
+    );
+    expect(
+      request.mock.calls[1]![0].some(
+        (message: NativeMessage) =>
+          message.role === "assistant" && message[field] === secretThought,
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(answer)).not.toContain("private-reasoning-sentinel");
+    expect(answer).toMatchObject({
+      explanation: "Reviewed advice only.",
+      questions: [],
+    });
+  },
+);
 it("uses observed source references when a native final answer omits them, without overwriting explicit references", async () => {
   for (const [references, expected] of [
     [[], ["project-templates"]],

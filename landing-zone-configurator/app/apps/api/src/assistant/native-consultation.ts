@@ -33,7 +33,13 @@ export const nativeToolCallSchema = z.object({
 export type NativeToolCall = z.infer<typeof nativeToolCallSchema>;
 export type NativeMessage =
   | { role: "system" | "user"; content: string }
-  | { role: "assistant"; content: string | null; tool_calls?: NativeToolCall[] }
+  | {
+      role: "assistant";
+      content: string | null;
+      tool_calls?: NativeToolCall[];
+      reasoning?: string;
+      reasoning_content?: string;
+    }
   | { role: "tool"; content: string; tool_call_id: string };
 export type NativeTool = {
   type: "function";
@@ -57,6 +63,8 @@ export const nativeCompletionSchema = z.object({
             .nullable()
             .optional(),
           tool_calls: z.array(nativeToolCallSchema).max(6).optional(),
+          reasoning: z.string().max(131072).nullable().optional(),
+          reasoning_content: z.string().max(131072).nullable().optional(),
         }),
       }),
     )
@@ -509,12 +517,21 @@ export class NativeConsultation {
             function: { name: data.name, arguments: arguments_ },
           });
         });
-        result = { role: "assistant", content: null, tool_calls: calls };
+        result = {
+          ...result,
+          role: "assistant",
+          content: null,
+          tool_calls: calls,
+        };
         this.onNormalization?.(round);
       } catch {
         this.messages.push({
           role: "assistant",
           content: result.content ?? null,
+          ...(result.reasoning ? { reasoning: result.reasoning } : {}),
+          ...(result.reasoning_content
+            ? { reasoning_content: result.reasoning_content }
+            : {}),
         });
         return { action: "invalid_native_tool_encoding" };
       }
@@ -523,6 +540,12 @@ export class NativeConsultation {
     this.messages.push({
       role: "assistant",
       content: result.content ?? null,
+      // Provider reasoning is a private, bounded transport continuation within
+      // this turn. It never enters the public answer, brief or persisted history.
+      ...(result.reasoning ? { reasoning: result.reasoning } : {}),
+      ...(result.reasoning_content
+        ? { reasoning_content: result.reasoning_content }
+        : {}),
       ...(result.tool_calls ? { tool_calls: result.tool_calls } : {}),
     });
     if (!result.tool_calls?.length) {

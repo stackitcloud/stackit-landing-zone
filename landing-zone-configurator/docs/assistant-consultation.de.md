@@ -18,6 +18,20 @@ unterstützt es Reasoning und native Werkzeuge. Modellvergleiche und
 Qualifikationsnachweise müssen die genaue Auswahl festhalten. Ein erfolgreicher
 Vergleich qualifiziert weder ein anderes Modell noch einen älteren Quellstand.
 
+Qwen3.8 verwendet die veröffentlichten Reasoning-Samplingwerte (`temperature=1.0`,
+`top_p=0.95`) über Standard-API-Parameter. Andere Modelle behalten ihre bisherigen
+Einstellungen. Dies belegt noch keine Antwortqualität; die vollständige
+quellgebundene Qualifikation bleibt erforderlich. Siehe die
+[offizielle Modellkarte](https://huggingface.co/Qwen/Qwen3.8-27B#api-usage).
+
+Begrenzte Providerfelder `reasoning`/`reasoning_content` bleiben für diese Antwort
+im privaten nativen Werkzeugdialog erhalten. Sie sind weder sichtbare Erklärungen
+noch Befugnisse oder bestätigte Entscheidungen und gelangen nicht in gespeicherte
+Chats, Gesprächsstand, öffentliche Antworten oder Qualifikationsprotokolle.
+Ein isolierter EU01-Kompatibilitätstest bestätigt, dass der Endpunkt sein eigenes
+Reasoning-Feld beim folgenden Werkzeugergebnis akzeptiert. Das qualifiziert noch
+keine Antwortqualität.
+
 Qwen3.8-Aufrufe erlauben 16.384 Completion-Tokens für Reasoning und finale Ausgabe;
 andere Modelle behalten den bisherigen Standard von 4.096 Tokens. Betreiber können
 `LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS` für eine separat qualifizierte Auswahl auf

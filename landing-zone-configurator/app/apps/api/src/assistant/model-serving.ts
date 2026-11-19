@@ -875,7 +875,10 @@ export class LegacyAssistantModelServing {
       },
       body: JSON.stringify({
         model,
-        temperature: 0.1,
+        // Qwen's reasoning model uses its published sampling profile rather
+        // than the low-temperature setting of the previous instruct model.
+        temperature: model === "Qwen/Qwen3.8-27B" ? 1.0 : 0.1,
+        ...(model === "Qwen/Qwen3.8-27B" ? { top_p: 0.95 } : {}),
         max_completion_tokens:
           this.configuration.maxCompletionTokens ??
           (model === "Qwen/Qwen3.8-27B" ? 16384 : 4096),

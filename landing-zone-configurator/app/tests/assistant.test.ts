@@ -3044,9 +3044,14 @@ it.each([
   "budgets reasoning and final text without silently retrying a truncated response: %j",
   async ({ expected, ...limits }) => {
     const request = vi.fn<typeof fetch>(async (_url, init) => {
-      expect(JSON.parse(String(init?.body)).max_completion_tokens).toBe(
-        expected,
+      const body = JSON.parse(String(init?.body));
+      expect(body.temperature).toBe(
+        limits.model === "Qwen/Qwen3.8-27B" ? 1.0 : 0.1,
       );
+      expect(body.top_p).toBe(
+        limits.model === "Qwen/Qwen3.8-27B" ? 0.95 : undefined,
+      );
+      expect(body.max_completion_tokens).toBe(expected);
       return answer(
         {
           templateId: "standalone",

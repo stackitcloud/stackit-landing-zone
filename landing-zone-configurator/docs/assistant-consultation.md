@@ -18,6 +18,20 @@ the [STACKIT model catalogue](https://docs.stackit.cloud/products/data-and-ai/ai
 Model comparisons and qualification receipts must record the exact selection.
 A comparison success never qualifies another model or an older source snapshot.
 
+Qwen3.8 uses its published reasoning sampling profile (`temperature=1.0`,
+`top_p=0.95`), using standard API parameters; other model selections retain their
+existing sampling. This is an inference configuration, not evidence of quality:
+the complete source-bound qualification still applies. See the
+[official model card](https://huggingface.co/Qwen/Qwen3.8-27B#api-usage).
+
+Bounded provider `reasoning`/`reasoning_content` fields remain in the private native
+tool conversation for this turn, as required for reasoning-model continuation.
+They are not user-facing explanations, tool authority or confirmed decisions and
+never enter stored chat history, the brief, public responses or qualification logs.
+An isolated EU01 compatibility probe verified that the endpoint accepts its own
+returned reasoning field on the subsequent tool-result request; this does not
+qualify answer quality.
+
 Qwen3.8 requests allow 16,384 completion tokens for reasoning plus final output;
 other model selections retain the previous 4,096-token default. Operators may set
 `LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS` between 1,024 and 16,384 for a separately
