@@ -110,6 +110,10 @@ steps, three bounded reviews and a three-minute deadline. Individual requests re
 their existing limits. HTTP failures do not trigger a hidden controller fallback or
 an unbounded inference retry.
 
+The complete repeated CI qualification is serialized against the project quota
+and has a six-hour job limit. This does not extend any individual request/turn
+deadline, retry a failed repetition, or change the release acceptance criteria.
+
 A shared semantic review compares the request, follow-up decisions, reviewed facts
 and actual compiler-produced delta before the final answer is streamed or stored.
 The delta separates added/removed rights by principal and product group; unchanged

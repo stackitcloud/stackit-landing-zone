@@ -106,6 +106,11 @@ Ein Turn bleibt auf zwölf Beratungsschritte, drei Schlussprüfungen und drei Mi
 begrenzt. Die bisherigen Einzelaufruf-Limits gelten weiter. HTTP-Fehler verursachen
 weder einen versteckten Controller-Wechsel noch unbegrenzte Wiederholungen.
 
+Die vollständige wiederholte CI-Qualifikation läuft wegen der gemeinsamen
+Projektquote seriell und hat ein Job-Limit von sechs Stunden. Einzelaufrufe und
+Turns erhalten dadurch keine längeren Fristen; fehlgeschlagene Wiederholungen
+werden nicht erneut versucht und die Release-Kriterien bleiben gleich.
+
 Eine gemeinsame inhaltliche Schlussprüfung vergleicht Auftrag, Folgeantworten,
 geprüfte Fakten und den tatsächlichen Compiler-Diff vor Anzeige und Speicherung.
 Der Diff trennt ergänzte/entzogene Rechte nach Prinzipal und Produktgruppe.
