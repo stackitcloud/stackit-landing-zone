@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "60d7ab697ffe1aa1d937181f67db8a82953077512e0727c21d9c72fbdb99955b",
+  "knowledgeSha256": "7cc47071668a16cb2e8136e2c5943f0949575fec3dcd36c61b3e5a29d75bbfc9",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "6d4c9de99a739b62c2b54b17a200a8aafbdcddaca96fcbaeb0ae12170a5110fd",
+    "scripts/assistant-scenarios.ts": "45389353c7b6781475276131cb9c05a6e9000084fb675b1d4caba4be8d047b0a",
     "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "f2d11b6b049843178447e40986012dbc0d17b89c114e83459d838cfa654f9159",
+  "suiteSha256": "4498b0b34d5f128d28d0564304507ed06cffbde7b46fd68015ea71551d49197d",
   "topics": [
     {
       "id": "credential-foundations",
@@ -7159,11 +7159,25 @@
           ]
         },
         {
+          "id": "application-access-owner-already-covered",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "owner-covered",
+          "message": "Besteller und Application-Service-Account sollen im bestehenden Template central Kubernetes nutzen können. Prüfe die vorhandenen Rechte und ergänze nur fehlende Rechte; bestehende Rechte erhalten.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
           "id": "application-access-both-kubernetes-mixed-legacy",
           "topic": "project-templates",
           "fixture": "corporate-ipv4",
           "applicationAccess": "both-kubernetes-mixed-legacy",
-          "message": "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+          "message": "Ich möchte den Legacy-Owner-Zugriff von central durch ein granulares Workload-Profil ersetzen und Kubernetes-Rechte für Besteller sowie Application-Service-Account in Public und Corporate verwenden. Bereite die Umstellung vor; bevor ich die Umstellung ausdrücklich bestätige, noch keine Profil- oder Rechteänderungen vorschlagen. Bestehende granulare Rechte erhalten.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

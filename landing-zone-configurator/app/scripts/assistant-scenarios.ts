@@ -212,7 +212,8 @@ export type AssistantScenario = {
     | "both-kubernetes-followup"
     | "both-kubernetes-mixed-legacy"
     | "both-kubernetes-mixed-owner"
-    | "both-kubernetes-mixed-confirm";
+    | "both-kubernetes-mixed-confirm"
+    | "owner-covered";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   executionLifecycle?: boolean;
   platformImpactReview?: boolean;
@@ -272,6 +273,9 @@ const firewallDialogueHistory = [
 ] satisfies NonNullable<AssistantScenario["history"]>;
 const firewallDeferredCapacity =
   "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen.";
+
+const mixedMigrationRequest =
+  "Ich möchte den Legacy-Owner-Zugriff von central durch ein granulares Workload-Profil ersetzen und Kubernetes-Rechte für Besteller sowie Application-Service-Account in Public und Corporate verwenden. Bereite die Umstellung vor; bevor ich die Umstellung ausdrücklich bestätige, noch keine Profil- oder Rechteänderungen vorschlagen. Bestehende granulare Rechte erhalten.";
 
 export const assistantScenarios: readonly AssistantScenario[] = [
   {
@@ -507,6 +511,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       },
     ],
   },
+  {
+    id: "application-access-owner-already-covered",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "owner-covered",
+    message:
+      "Besteller und Application-Service-Account sollen im bestehenden Template central Kubernetes nutzen können. Prüfe die vorhandenen Rechte und ergänze nur fehlende Rechte; bestehende Rechte erhalten.",
+  },
   ...(["mixed-legacy", "mixed-owner", "mixed-confirm"] as const).map(
     (stage) => ({
       id: `application-access-both-kubernetes-${stage}`,
@@ -515,7 +527,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       applicationAccess: `both-kubernetes-${stage}` as const,
       message:
         stage === "mixed-legacy"
-          ? "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate"
+          ? mixedMigrationRequest
           : stage === "mixed-owner"
             ? "Der Platform Service Account"
             : "Workload-Umstellung für central bestätigen",
@@ -2025,8 +2037,11 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     values["assistant.platform_service_account_emails"] = [
       "bootstrap-platform@sa.stackit.cloud",
     ];
-    const request =
-      "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate";
+    const request = scenario.applicationAccess?.startsWith(
+      "both-kubernetes-mixed-",
+    )
+      ? mixedMigrationRequest
+      : "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate";
     const context: MultiTemplatePermissionContext = {
       templates: objectValue(values.projectTemplates as JsonValue),
       originalRequest: request,
@@ -2305,6 +2320,20 @@ export function validateAssistantScenario(
       failures.push("application_access_invented_contract");
     if (dialogue.changes.length)
       failures.push("application_access_advice_mutated");
+  } else if (scenario.applicationAccess === "owner-covered") {
+    if (dialogue.changes.length || dialogue.questions.length)
+      failures.push(
+        "application_access_existing_owner_unnecessary_changes_or_questions",
+      );
+    const text = dialogue.explanation;
+    for (const [name, pattern] of [
+      ["owner", /owner/i],
+      ["service", /kubernetes|ske/i],
+      ["requester", /besteller|requester/i],
+      ["automation", /automation|service.account/i],
+    ] as const)
+      if (!pattern.test(text))
+        failures.push(`application_access_existing_owner_missing_${name}`);
   } else if (scenario.applicationAccess?.startsWith("both-kubernetes-mixed-")) {
     if (scenario.applicationAccess === "both-kubernetes-mixed-confirm") {
       const expected = structuredClone(fixture.draft);
@@ -3442,11 +3471,7 @@ export function validateAssistantScenario(
       failures.push("sna_scope_or_repeated_question");
   }
   if (scenario.fixture !== "baseline") {
-    if (
-      !/noch (?:nichts|nicht) gespeichert|no(?:thing| changes?) (?:has|have) been saved|then save the configuration/i.test(
-        dialogue.explanation,
-      )
-    )
+    if (!assistantUnsavedNotice(dialogue.explanation))
       failures.push("missing_unsaved_notice");
     if (
       scenario.id !== "firewall-ha-already-saved" &&
@@ -3489,6 +3514,13 @@ export function validateAssistantScenario(
     }
   }
   return { dialogue, failures };
+}
+
+export function assistantUnsavedNotice(explanation: string) {
+  const text = explanation.replace(/\*\*/g, "");
+  return /noch (?:nichts|nicht) gespeichert|no(?:thing| changes?) (?:has|have) been saved|then save the configuration|\b(?:nichts|keine Änderung(?:en)?)\s+(?:(?:geändert|vorbereitet)\s*,\s*)?gespeichert\b/i.test(
+    text,
+  );
 }
 
 export function assistantPrematurePersistenceClaim(explanation: string) {

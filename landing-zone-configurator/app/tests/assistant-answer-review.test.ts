@@ -29,9 +29,102 @@ const requestChecks = [
     requirement: "Explain the VM preset.",
     expected: "Explain the requested profile and its boundaries",
     actual: explanation,
+    resolution: "advice",
     met: true,
   },
 ];
+it("accepts a necessary clarification without inventing changes and rejects missing question or proposal evidence", async () => {
+  const check = {
+    ...requestChecks[0]!,
+    resolution: "clarification",
+    questionIndices: [0],
+  };
+  const answerWithQuestion = {
+    ...answer,
+    questions: [
+      {
+        path: "devops.allowed_network_ranges",
+        text: "Which clients need access?",
+        answerType: "requirements" as const,
+      },
+    ],
+  };
+  const complete = vi.fn().mockResolvedValue({
+    ready: true,
+    findings: [],
+    requestChecks: [check],
+    boundaryChecks: [],
+  });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...input,
+        serviceFacts: {},
+        complete,
+        answer: answerWithQuestion,
+      })
+    ).ready,
+  ).toBe(true);
+  expect(
+    (await reviewConsultationAnswer({ ...input, serviceFacts: {}, complete }))
+      .ready,
+  ).toBe(false);
+  complete.mockResolvedValue({
+    ready: true,
+    findings: [],
+    requestChecks: [{ ...check, questionIndices: [4] }],
+    boundaryChecks: [],
+  });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...input,
+        serviceFacts: {},
+        complete,
+        answer: answerWithQuestion,
+      })
+    ).ready,
+  ).toBe(false);
+  complete.mockResolvedValue({
+    ready: true,
+    findings: [],
+    requestChecks: [{ ...check, resolution: "proposed", questionIndices: [] }],
+    boundaryChecks: [],
+  });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...input,
+        serviceFacts: {},
+        complete,
+        answer: answerWithQuestion,
+      })
+    ).ready,
+  ).toBe(false);
+});
+it("allows validated default-reset operations with an unchanged effective compiler value", async () => {
+  const complete = vi.fn().mockResolvedValue({
+    ready: true,
+    findings: [],
+    requestChecks: [{ ...requestChecks[0], resolution: "proposed" }],
+    boundaryChecks: [],
+  });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...input,
+        serviceFacts: {},
+        complete,
+        answer: {
+          ...answer,
+          changes: [
+            { path: "devops.git_flavor", operation: "default", value: null },
+          ],
+        },
+      })
+    ).ready,
+  ).toBe(true);
+});
 it("requires actual structured questions or user-bound deferrals for source-required decisions", async () => {
   const requiredDecisions = [
     {

@@ -2442,6 +2442,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
                       requirement: "Requested draft",
                       expected: "Requested draft",
                       actual: "Validated draft",
+                      resolution: "proposed",
                       met: true,
                     },
                   ],
@@ -2528,7 +2529,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     }
     const answerRequest = JSON.parse(requests[1]!);
     expect(answerRequest.response_format).toBeUndefined();
-    expect(answerRequest.tools).toHaveLength(8);
+    expect(answerRequest.tools).toHaveLength(9);
     const readResult = JSON.parse(
       logicalFixtureRequest(answerRequest).messages.at(-1)!.content,
     ).toolResults[1].result;

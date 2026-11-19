@@ -80,6 +80,10 @@ export const reviewedServiceFacts: Record<string, unknown> = {
         "Templates without accessProfile may use legacy automation_role/custom_roles/role_assignments and a role parameter policy. Read their actual settings. Adding granular service rights requires an explicitly confirmed transition to a complete profile, not an implicit destructive migration. The registered native transition removes only incompatible legacy access fields and preserves other settings; the initial central owner is a separate confirmed choice.",
     },
     projectIamScope: {
+      alreadyDeclared:
+        "The explicit full Owner accessProfile already includes all official project permissions for requester and automation. Adding a service permission is not a reason to migrate/narrow that profile. Explain when the observed template policy already meets the request; live IAM, service entitlement and control-plane access remain separate.",
+      legacyDefaults:
+        "Native src/application/main.tf uses coalesce(application.initial_owner_email, application.owner_email) for the initial project owner; absent a separate initial owner, the verified requester is that Owner. automation_role defaults to owner in the native application contract. Inspect actual legacy overrides and parameter policies before inferring coverage. A missing granular accessProfile alone does not prove missing service rights or require migration; migration is a separate deliberate policy change.",
       supportedTemplateKinds: ["public", "corporate", "sandbox"],
       effect:
         "accessProfile sets project IAM rights, not the service instance or its networking. Public templates support SKE and other service IAM just like Corporate/Sandbox templates; corporate SNA is not a prerequisite for these permission edits.",

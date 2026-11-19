@@ -15,6 +15,16 @@ const reviewSchema = z.strictObject({
         requirement: z.string().min(1).max(1000),
         expected: z.string().min(1).max(1200),
         actual: z.string().min(1).max(1200),
+        resolution: z.enum([
+          "proposed",
+          "already_configured",
+          "clarification",
+          "advice",
+        ]),
+        questionIndices: z
+          .array(z.number().int().min(0).max(20))
+          .max(8)
+          .default([]),
         met: z.boolean(),
       }),
     )
@@ -144,8 +154,10 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
         role: "user",
         content: JSON.stringify({
           task: "review_final_response",
+          currentTurnReadinessContract:
+            "Judge correct progress in THIS turn, not whether the entire project is finished. For every user requirement choose resolution=proposed, already_configured, clarification or advice. A necessary clarification counts as correctly addressed when a real structured question identifies the unresolved choice and the answer retains the target/principal in the task. Cite its zero-based answer.questions indices. Do not demand a compiler delta before a genuinely required target, owner or legacy-transition decision is answered. Independent valid changes may accompany questions, but do not manufacture changes to satisfy this review. Already configured requires observed configuration, not a guess. Reject unnecessary questions, previously answered choices, incorrect factual dependencies and promises without a proposal or genuine decision. met means the current-turn handling is correct, not that an unanswered user decision has magically been completed.",
           requestReviewContract:
-            "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Reference the supplied zero-based USER turn index as userTurn and summarize its requirement. Record the expected result and the observed actual result, and set met=false for any mismatch. User-turn indices identify the evidence; do not regenerate verbatim quotes. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. A singular template kind is not permission to select every matching template: when several candidates share that kind and the user did not explicitly request all, require a structured choice with the actual keys and no proposed changes to those ambiguous targets. Use templateReadiness to distinguish independent local edits from missing publication prerequisites. Missing initial owners of relevant granular templates need one shared structured owner question in answer.questions at the registered template-root or initial-owner path, not repeated per template or merely an inline question in prose; a valid independent rights proposal may accompany it. Existing legacy access settings require an explicit confirmed transition before replacing them; do not silently migrate them or invent a granular owner. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
+            "Before judging the answer, derive the USER goals and the correct next step in THIS turn. A requirement may be correctly handled by a validated proposal, observed already-configured state, genuine necessary clarification linked to actual questionIndices, or requested advice. Do not equate unresolved user choices with incorrect current-turn progress, and do not require a delta before an explicitly required confirmation or missing identity/scope choice. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Reference the supplied zero-based USER turn index as userTurn and summarize its requirement. Record the expected result and the observed actual result, and set met=false for any mismatch. User-turn indices identify the evidence; do not regenerate verbatim quotes. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. A singular template kind is not permission to select every matching template: when several candidates share that kind and the user did not explicitly request all, require a structured choice with the actual keys and no proposed changes to those ambiguous targets. Use templateReadiness to distinguish independent local edits from missing publication prerequisites. Missing initial owners of relevant granular templates need one shared structured owner question in answer.questions at the registered template-root or initial-owner path, not repeated per template or merely an inline question in prose; a valid independent rights proposal may accompany it. Existing legacy access settings require an explicit confirmed transition before replacing them; do not silently migrate them or invent a granular owner. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
           compilerEvidenceContract:
             "verifiedOperations are server-proven exact native preset or official catalogue-union permission effects, compared with the real compiler candidate. Large proven permission arrays are represented by their actual added/removed group counts and an effect hash. Review whether the user requested that preset/services, templates and principals, review removed groups and all other delta fields, and explain critical consequences. Use the supplied projectIamScope and principalRoles facts: project-IAM permission edits support Public/Corporate/Sandbox and are not cluster/service provisioning or SNA setup. Do not demand deployment settings for a permission-only proposal or ask again for a recipient already identified by the user's described actor. Do not reconstruct hundreds of already-proven permission names. Explicit custom lists and mismatching outputs remain complete. A proof grants no rights and does not authorize a user request.",
           boundaryReviewContract: {
@@ -166,6 +178,12 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
           decisionReviewContract:
             "For each requiredDecision return one decisionChecks entry. disposition=question must cite real zero-based answer.questions indices that ask this decision at the supplied path or its listed alternativePaths. Prose alone, including an inline question, is insufficient. disposition=deferred requires the literal USER turn and quote explicitly deferring that decision; a general change request or the Assistant's own suggestion is not a deferral. Do not invent missing questions. If no matching question or explicit deferral exists, ready=false and explain the repair.",
           answerParagraphs: paragraphs,
+          validatedChangeOperations: input.answer.changes.map((change) => ({
+            path: change.path,
+            operation: change.operation ?? "legacy-patch",
+          })),
+          defaultResetContract:
+            "A validated default-reset operation may remove an explicit override while leaving today's effective compiler values unchanged. An empty effective delta alone does not invalidate that requested operation; preserve null/default/omission semantics.",
           inspectedEvidence: reviewEvidence(input.inspections),
           validatedNativeDefaultChoices: input.nativeDefaultChoices ?? [],
           answer:
@@ -216,6 +234,22 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
   });
   if (memory.success) checked.memory = memory.data;
   for (const check of checked.requestChecks) {
+    if (
+      check.resolution === "clarification" &&
+      (!check.questionIndices.length ||
+        check.questionIndices.some((index) => !input.answer.questions[index]))
+    ) {
+      checked.ready = false;
+      checked.findings.push(
+        "A pending requirement needs a real structured question and its questionIndices; prose alone or an invented index does not establish current-turn readiness.",
+      );
+    }
+    if (check.resolution === "proposed" && !input.answer.changes.length) {
+      checked.ready = false;
+      checked.findings.push(
+        "A proposed requirement needs actual compiler-validated changes. Use clarification for a genuinely missing decision, or already_configured only with observed supporting configuration.",
+      );
+    }
     if (input.turns[check.userTurn]?.role !== "user") {
       checked.ready = false;
       checked.findings.push(

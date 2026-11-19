@@ -108,6 +108,18 @@ export function materializeConsultationChanges(
         throw new Error("assistant_unknown_permission_selection");
       if (!services.length && !sets.length && !explicit.length)
         throw new Error("assistant_permission_selection_required");
+      if (services.includes("iam"))
+        throw new Error("assistant_explicit_iam_permissions_required");
+      if (
+        services.some(
+          (service) =>
+            typeof service !== "string" ||
+            !applicationProjectPermissionNames.some((name) =>
+              name.startsWith(`${service}.`),
+            ),
+        )
+      )
+        throw new Error("assistant_unknown_permission_service");
       const expanded: ConsultationChange[] = [];
       for (const key of keys) {
         if (
@@ -116,6 +128,15 @@ export function materializeConsultationChanges(
         )
           throw new Error("assistant_existing_template_required");
         for (const principal of principals) {
+          if (
+            objectValue(read([key, "accessProfile"]) as JsonValue).mode ===
+            "owner"
+          )
+            throw new ConsultationOperationError(
+              "assistant_existing_owner_covers_permissions",
+              `projectTemplates.${key}.accessProfile`,
+              "The observed template already has the explicit full Owner profile for requester AND automation. It includes the requested catalogued project permissions. Do not replace/narrow it merely to add rights it already declares. Explain that no permission-profile change is needed, preserving this template; other selected granular templates may still need additions. This describes the template policy, not verified live IAM, service entitlement, networking or deployment.",
+            );
           if (
             objectValue(read([key, "accessProfile"]) as JsonValue).mode !==
             "granular"

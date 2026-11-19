@@ -18,6 +18,40 @@ function fixture() {
   )!;
   return assistantScenarioFixture(scenario);
 }
+it("reports existing Owner coverage without narrowing rights or accepting unknown services", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "application-access-owner-already-covered",
+  )!;
+  const { values } = assistantScenarioFixture(scenario);
+  const before = structuredClone(values);
+  const change = {
+    path: "projectTemplates",
+    operation: "add_permissions" as const,
+    value: {
+      templateKeys: ["central"],
+      principals: ["requester", "automation"],
+      source: { kind: "services", ids: ["ske"] },
+    },
+  };
+  expect(() => materializeConsultationChanges([change], values)).toThrow(
+    "assistant_existing_owner_covers_permissions",
+  );
+  expect(values).toEqual(before);
+  expect(() =>
+    materializeConsultationChanges(
+      [
+        {
+          ...change,
+          value: {
+            ...change.value,
+            source: { kind: "services", ids: ["invented-service"] },
+          },
+        },
+      ],
+      values,
+    ),
+  ).toThrow("assistant_unknown_permission_service");
+});
 it("uses the editor transition for confirmed legacy conversion and retains subsequent additions", () => {
   const scenario = assistantScenarios.find(
     (entry) => entry.id === "application-access-both-kubernetes-mixed-legacy",

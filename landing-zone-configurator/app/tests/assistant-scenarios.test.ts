@@ -25,6 +25,7 @@ import {
   assistantPrematurePersistenceClaim,
   assistantScenarioFixture,
   assistantScenarios,
+  assistantUnsavedNotice,
   buildAssistantScenarioInventory,
   syntheticOrganizationId,
   validateAssistantScenario,
@@ -1736,6 +1737,21 @@ it("accepts authority expressed by denying non-authoritative forwarding but reje
       "secondary",
     ),
   ).toContain("dns_secondary_authority_denied");
+});
+it("accepts coordinated unsaved statements without accepting affirmative or contrastive storage claims", () => {
+  for (const text of [
+    "Es wurde nichts geändert, gespeichert oder ausgeführt.",
+    "Es wurde daher **keine Änderung** vorbereitet, gespeichert oder ausgeführt.",
+    "Noch nichts gespeichert.",
+    "Nothing has been saved.",
+  ])
+    expect(assistantUnsavedNotice(text)).toBe(true);
+  for (const text of [
+    "Es wurde nichts geändert, aber gespeichert.",
+    "Es wurde keine Änderung vorbereitet. Die Konfiguration ist gespeichert.",
+    "Alles gespeichert.",
+  ])
+    expect(assistantUnsavedNotice(text)).toBe(false);
 });
 it("distinguishes explicit no-save statements from affirmative persistence claims", () => {
   expect(

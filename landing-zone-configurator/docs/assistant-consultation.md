@@ -167,6 +167,16 @@ and compare the final materialized profile with the compiler candidate. Removed
 legacy settings and changed owner values remain explicit; a later operation is
 never verified against an intermediate preset alone.
 
+Readiness describes correct progress in the current turn. Each requirement must
+be addressed by a validated proposal, observed existing configuration, advice,
+or a necessary structured question. Pending decisions reference actual question
+indices; prose alone does not substitute for a question. A required clarification
+does not require premature configuration changes. A validated default reset may
+remove an override even when the effective compiler value remains unchanged.
+Existing explicit Owner profiles already cover catalogue service permissions for
+both principals. Adding a service must not silently narrow that profile. A
+requested migration to granular permissions is a separate, confirmed transition.
+
 The reviewer first records user requirements with expected and actual results and
 references the numbered user turn, then decides readiness. An unmet check or an
 invalid user-turn reference cannot approve the answer. Registered preset identifiers in an explanation also

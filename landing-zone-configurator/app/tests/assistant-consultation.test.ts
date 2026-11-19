@@ -125,6 +125,13 @@ function model(
             requirement: "Requested scoped task",
             expected: "Requested scoped task",
             actual: "Mocked scoped result",
+            resolution: reviewPayload.answer.questions.length
+              ? "clarification"
+              : reviewPayload.answer.compilerDelta?.length ||
+                  reviewPayload.answer.changes?.length
+                ? "proposed"
+                : "advice",
+            questionIndices: reviewPayload.answer.questions.length ? [0] : [],
             met: true,
           },
         ],

@@ -226,6 +226,16 @@ Template-Beratung behält ihren separaten typisierten API-Vertrag. Bei der spät
 Entfernung des alten Controllers müssen dieser Vertrag und Transport-/Fehlertests
 erhalten bleiben.
 
+Antwortbereitschaft bedeutet korrekten Fortschritt in der aktuellen Antwort:
+validierter Vorschlag, beobachtete vorhandene Konfiguration, Beratung oder eine
+notwendige strukturierte Rückfrage. Offene Entscheidungen verweisen auf tatsächlich
+vorhandene Fragen; Fließtext ersetzt diese nicht. Eine notwendige Rückfrage
+erfordert keine vorweggenommenen Änderungen. Ein validierter Default-Reset darf
+eine explizite Vorgabe entfernen, auch wenn der effektive Compilerwert gleich bleibt.
+Explizite Owner-Profile decken katalogisierte Dienstrechte bereits für beide
+Empfänger ab. Ein Dienstwunsch darf diese Rechte nicht stillschweigend einschränken.
+Eine gewünschte Umstellung auf granulare Rechte bleibt eine separat bestätigte Änderung.
+
 ## Qualifikationsverkehr
 
 Die synthetischen Tests berücksichtigen den beobachteten Prompt-/Antwortverbrauch
