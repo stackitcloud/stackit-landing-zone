@@ -18,6 +18,12 @@ unterstützt es Reasoning und native Werkzeuge. Modellvergleiche und
 Qualifikationsnachweise müssen die genaue Auswahl festhalten. Ein erfolgreicher
 Vergleich qualifiziert weder ein anderes Modell noch einen älteren Quellstand.
 
+Qwen3.8-Aufrufe erlauben 16.384 Completion-Tokens für Reasoning und finale Ausgabe;
+andere Modelle behalten den bisherigen Standard von 4.096 Tokens. Betreiber können
+`LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS` für eine separat qualifizierte Auswahl auf
+1.024 bis 16.384 setzen. Der sichtbare Antworttext bleibt auf 16.384 Zeichen begrenzt.
+Eine abgeschnittene Completion zählt als Fehler und wird nicht still wiederholt.
+
 Die [englische Architekturübersicht](assistant-consultation.md) zeigt den Ablauf:
 Nutzer und gespeicherter Gesprächsstand → Beratung und lesende Werkzeuge →
 Vorschlagsvalidierung mit Rückmeldung → Antwort und Empfehlungen → ausdrückliche

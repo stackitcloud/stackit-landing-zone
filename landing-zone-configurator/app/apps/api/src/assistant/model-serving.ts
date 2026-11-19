@@ -160,6 +160,7 @@ const configurationSchema = z.strictObject({
     .max(8192)
     .regex(/^[A-Za-z0-9._~+/-]+=*$/),
   timeoutMs: z.number().int().min(1000).max(120000),
+  maxCompletionTokens: z.number().int().min(1024).max(16384).optional(),
 });
 
 function assistantFolderNames(values: unknown) {
@@ -518,6 +519,13 @@ export function modelServingConfiguration(environment: NodeJS.ProcessEnv) {
       : {}),
     token: environment.LZC_MODEL_SERVING_TOKEN,
     timeoutMs: Number(environment.LZC_MODEL_SERVING_TIMEOUT_MS ?? "60000"),
+    ...(environment.LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS
+      ? {
+          maxCompletionTokens: Number(
+            environment.LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS,
+          ),
+        }
+      : {}),
   });
   if (!result.success) throw new Error("assistant_model_configuration_invalid");
   return result.data;
@@ -864,7 +872,9 @@ export class LegacyAssistantModelServing {
       body: JSON.stringify({
         model,
         temperature: 0.1,
-        max_completion_tokens: 4096,
+        max_completion_tokens:
+          this.configuration.maxCompletionTokens ??
+          (model === "Qwen/Qwen3.8-27B" ? 16384 : 4096),
         messages: servingMessages,
         ...(stream ? { stream: true } : {}),
         ...(nativeTools

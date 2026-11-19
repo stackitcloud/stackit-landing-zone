@@ -18,6 +18,12 @@ the [STACKIT model catalogue](https://docs.stackit.cloud/products/data-and-ai/ai
 Model comparisons and qualification receipts must record the exact selection.
 A comparison success never qualifies another model or an older source snapshot.
 
+Qwen3.8 requests allow 16,384 completion tokens for reasoning plus final output;
+other model selections retain the previous 4,096-token default. Operators may set
+`LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS` between 1,024 and 16,384 for a separately
+qualified selection. The final user-facing text remains bounded to 16,384
+characters. A truncated completion is a failure, never silently retried.
+
 ```mermaid
 flowchart LR
     U[User goal and follow-up] --> C[Shared consultation]

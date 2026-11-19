@@ -241,6 +241,7 @@ This draft is `local-draft-not-reviewed-release`: the hash binds exactly this me
 | `LZC_MODEL_SERVING_MODEL` | Default `Qwen/Qwen3.8-27B`; operator-configurable. |
 | `LZC_MODEL_SERVING_BASE_URL` | Default and currently only permitted `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1`; other endpoints need explicit allowlist/security qualification. |
 | `LZC_MODEL_SERVING_TIMEOUT_MS` | Default 60000, bounded to 1000..120000. |
+| `LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS` | Optional 1024..16384; default 16384 for Qwen3.8, otherwise 4096. Includes reasoning. |
 
 In the app directory with pinned Node 24 and securely provided binding:
 

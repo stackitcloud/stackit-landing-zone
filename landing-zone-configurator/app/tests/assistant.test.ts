@@ -3020,6 +3020,52 @@ it("uses the existing operator binding and rejects missing tokens and foreign en
     );
 });
 
+it.each([
+  { model: "Qwen/Qwen3.8-27B", expected: 16384 },
+  { model: "test-model", expected: 4096 },
+  { model: "Qwen/Qwen3.8-27B", maxCompletionTokens: 2048, expected: 2048 },
+])(
+  "budgets reasoning and final text without silently retrying a truncated response: %j",
+  async ({ expected, ...limits }) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      expect(JSON.parse(String(init?.body)).max_completion_tokens).toBe(
+        expected,
+      );
+      return answer(
+        {
+          templateId: "standalone",
+          explanation: "A Public starting point.",
+          questions: [],
+          references: ["public-corporate"],
+        },
+        "length",
+      );
+    });
+    await expect(
+      new AssistantModelServing(
+        { ...configuration, ...limits },
+        request,
+      ).adviseTemplates([], "A Public standalone template"),
+    ).rejects.toMatchObject({ reason: "completion_truncated" });
+    expect(request).toHaveBeenCalledTimes(1);
+  },
+);
+it("validates the operator completion budget", () => {
+  expect(
+    modelServingConfiguration({
+      LZC_MODEL_SERVING_TOKEN: configuration.token,
+      LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS: "8192",
+    }),
+  ).toMatchObject({ maxCompletionTokens: 8192 });
+  for (const invalid of ["0", "16385", "NaN"])
+    expect(() =>
+      modelServingConfiguration({
+        LZC_MODEL_SERVING_TOKEN: configuration.token,
+        LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS: invalid,
+      }),
+    ).toThrow("assistant_model_configuration_invalid");
+});
+
 it("performs one bounded synthetic call without transferring the token into context or results", async () => {
   const request = vi.fn<typeof fetch>(async (_url, init) => {
     expect(init?.redirect).toBe("error");
