@@ -276,8 +276,9 @@ it.each(assistantScenarios)(
     if (scenario.setupQuestionPaths) {
       expect(
         validateAssistantScenario(scenario, {
-          explanation:
-            scenario.id === "editor-devops-company-standard"
+          explanation: scenario.gitCapacityRecommendation
+            ? "I recommend Git100 for 80 users. Git10 supports at most 10 users; Git100 supports at most 100 users. Nothing changed."
+            : scenario.id === "editor-devops-company-standard"
               ? "Starting size selected: Git100. Nothing changed."
               : "Nothing changed.",
           changes: [],
@@ -296,8 +297,9 @@ it.each(assistantScenarios)(
       ).toEqual([]);
       expect(
         validateAssistantScenario(scenario, {
-          explanation:
-            scenario.id === "editor-devops-company-standard"
+          explanation: scenario.gitCapacityRecommendation
+            ? "I recommend Git100 for 80 users. Git10 supports at most 10 users; Git100 supports at most 100 users. Nothing changed."
+            : scenario.id === "editor-devops-company-standard"
               ? "Starting size selected: Git100. Nothing changed."
               : "Nothing changed.",
           changes: [],
@@ -351,6 +353,7 @@ it.each(assistantScenarios)(
             "editor-devops-company-complete",
             "editor-devops-reuse-allowlist",
             "editor-devops-capacity-narrowed",
+            "editor-devops-sized-80-followup",
           ].includes(scenario.id)
             ? "git-100"
             : "git-10",
@@ -372,7 +375,9 @@ it.each(assistantScenarios)(
       };
       expect(
         validateAssistantScenario(scenario, {
-          explanation: "Reviewable local draft only.",
+          explanation: scenario.gitCapacityRecommendation
+            ? "I recommend Git100 for 80 users. Git10 supports at most 10 users; Git100 supports at most 100 users. Reviewable draft only."
+            : "Reviewable local draft only.",
           questions: [],
           changes: [{ path: root, value: values[root], operation: "merge" }],
           references: [scenario.topic],
@@ -1405,4 +1410,45 @@ it("rejects managed Git private attachment and display-label flavor inventions",
         explanation: `${sourceGuidanceExamples["project-git"]} ${suffix}`,
       }).failures,
     ).toContain(error);
+});
+
+it("rejects an unhelpful or undersized final answer even when an access question exists", async () => {
+  const { assistantGitCapacityRecommendationFailures: check } = await import(
+    "../scripts/assistant-scenarios.js"
+  );
+  expect(
+    check(
+      "I recommend Git100 for 80 users: Git10 supports at most 10 users and Git100 supports at most 100 users.",
+      80,
+      "git-100",
+    ),
+  ).toEqual([]);
+  expect(
+    check(
+      "Für 80 Nutzer empfehle ich Git100: Git10 unterstützt höchstens 10 Nutzer, Git100 höchstens 100 Nutzer.",
+      80,
+      "git-100",
+    ),
+  ).toEqual([]);
+  expect(
+    check(
+      "Choose a starting option below. Nothing has been saved.",
+      80,
+      "git-100",
+    ),
+  ).toContain("git_capacity_missing_recommendation");
+  expect(
+    check(
+      "I recommend Git10 for 80 users. Git10 supports at most 10 users; Git100 supports at most 100 users.",
+      80,
+      "git-100",
+    ),
+  ).toContain("git_capacity_missing_recommendation");
+  expect(
+    check(
+      "I recommend Git100. Git10 supports 10 users and Git100 supports 100 users.",
+      80,
+      "git-100",
+    ),
+  ).toContain("git_capacity_missing_count");
 });

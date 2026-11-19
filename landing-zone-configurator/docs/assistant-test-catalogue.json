@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "92bc9dac3cb4c1ccac2a835f0405d6be330363cec8164e3bb4fe569f706ce232",
+  "knowledgeSha256": "b9fbdc9e9be04ec70b862f9cefee93ecf51defa7160747ec2d744a747acb147d",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "dbe1d363233c9cd78e0c78afbb3c0352a44b84f0d1c8880e5325880cfd4c8f72",
+    "scripts/assistant-scenarios.ts": "6d9935ceaf87475acf92a9a3e225f37cfad218a6b66662c01a361d580b889f00",
     "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
   },
-  "suiteSha256": "ceea8b581f812d39324e5f8479f29e9504e0a05ddcd26e2bffddf902d86659eb",
+  "suiteSha256": "c96b8f21c3e5d21a9431b6216529cb13d15580e87f8633788f9503831ca7b71a",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5265,6 +5265,83 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-sized-80-en",
+          "message": "Please add a central git instance for round about 80 developers to the config",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "setupQuestionPaths": [
+            "devops.allowed_network_ranges"
+          ],
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "editor-devops-sized-80-de",
+          "message": "Bitte eine zentrale Git-Instanz für ca. 80 Entwickler in die Konfiguration aufnehmen.",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "de",
+          "setupQuestionPaths": [
+            "devops.allowed_network_ranges"
+          ],
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "editor-devops-sized-80-followup",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "message": "Allow only 203.0.113.0/24.",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please add a central git instance for round about 80 developers to the config"
+            },
+            {
+              "role": "assistant",
+              "content": "Git100 fits your expected user count. Which source networks should have access?"
+            }
+          ],
+          "editorExpected": {
+            "path": "devops.git_flavor",
+            "value": "git-100"
+          },
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
           ]
         },
         {

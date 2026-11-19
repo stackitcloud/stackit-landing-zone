@@ -23,7 +23,7 @@ another flavor selection. Separate instances do not imply federation, automatic
 load distribution or aggregated guaranteed capacity. The central `devops` input
 configures one instance; additional instances require separate reviewed configuration.
 
-Literal confirmed user counts are retained independently of flavor classification. An incompatible later plan selection cannot discard them; an explicit narrower scope can replace them. This initial reviewed numeric-limit policy covers Git, without inventing limits for other products.
+Literal confirmed user counts are retained independently of flavor classification. An incompatible later plan selection cannot discard them; an explicit narrower scope can replace them. This initial reviewed numeric-limit policy covers Git, without inventing limits for other products. Approximate statements such as “round about 80 developers” are workload evidence too. For an active Git setup, a confirmed count selects the smallest listed plan whose reviewed user ceiling fits; 11–100 users yields Git100, rather than another flavor question. The visible answer explains both user limits and retains the recommendation while access is clarified. A complete typed proposal still requires actual access networks and explicit review/acceptance. Explicitly named incompatible plans require conflict resolution; missing/unknown catalogue plans never gain assumed capacity. This derives a user-limit fit, not a workload-performance guarantee.
 
 
 ## Shared catalogue selection

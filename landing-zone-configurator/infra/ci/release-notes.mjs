@@ -1,6 +1,14 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.2.1": {
+  introduction:"Capacity-aware Git recommendations in the Landing Zone Configurator.",
+  changes:[
+   "Recommend Git100 for approximately 80 developers using the documented user limits, instead of asking users to choose an undersized plan.",
+   "Retain the recommendation through access-setting replies and explain unavailable or incompatible plans without assuming capacity.",
+   "Add end-to-end regressions for the final visible recommendation, live project catalogues and English/German follow-ups.",
+  ],
+ },
  "v2.2.0": {
   introduction:"Guided service configuration and dedicated Application Git for the Landing Zone Accelerator.",
   changes:[

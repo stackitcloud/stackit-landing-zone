@@ -492,3 +492,162 @@ it("requires resolving an explicitly undersized Git10 selection for 20 developer
   expect(result.changes).toEqual([]);
   expect(result.explanation).toContain("at most 10 users per instance");
 });
+
+const capacityCatalogue = (plans = ["git-10", "git-100"]) => ({
+  regions: [
+    {
+      region: "eu01" as const,
+      fetchedAt: null,
+      products: {
+        gitFlavors: {
+          status: "available" as const,
+          options: plans.map((value) => ({ value, label: value })),
+          totalOptions: plans.length,
+          truncated: false,
+        },
+      },
+    },
+  ],
+});
+it.each(["en", "de"] as const)(
+  "derives Git100 from 80 developers and asks only about access (%s)",
+  (language) => {
+    const { values } = fixture("");
+    const inputs = gitDialogueInputs(
+      values,
+      [],
+      "Please add a central git instance for round about 80 developers to the config",
+      capacityCatalogue(),
+    );
+    for (const decision of [
+      empty,
+      { ...empty, planChoice: "estimate" as const, planSource: "current" },
+      { ...empty, planChoice: "git-10", planSource: "current" },
+    ]) {
+      const result = gitSetupDialogue(inputs, decision, language);
+      expect(result.questions.map((q) => q.path)).toEqual([
+        "devops.allowed_network_ranges",
+      ]);
+      expect(result.explanation).toContain("80");
+      expect(result.explanation).toContain("Git100");
+      expect(result.explanation).toContain("Git10");
+      expect(result.explanation).toMatch(
+        language === "en" ? /I recommend Git100/ : /empfehle ich Git100/,
+      );
+      expect(result.changes).toEqual([]);
+    }
+  },
+);
+it("retains capacity-derived Git100 through an access reply without another flavor choice", () => {
+  const inputs = gitDialogueInputs(
+    {},
+    [
+      {
+        role: "user",
+        content: "Please add central Git for about 80 developers.",
+      },
+    ],
+    "Allow 203.0.113.0/24.",
+    capacityCatalogue(),
+  );
+  const result = gitSetupDialogue(
+    inputs,
+    {
+      ...empty,
+      networkChoice: "explicit",
+      networkSource: "current",
+      networkEvidence: "203.0.113.0/24",
+    },
+    "en",
+  );
+  expect(result.questions).toEqual([]);
+  expect(result.changes[0]?.value).toEqual({
+    git_flavor: "git-100",
+    allowed_network_ranges: ["203.0.113.0/24"],
+  });
+});
+it.each([["git-10"], [], ["git-future"]])(
+  "never substitutes an undersized or unknown plan for 80 developers: %s",
+  (...plans) => {
+    const inputs = gitDialogueInputs(
+      { region: "eu01" },
+      [],
+      "Please add Git for about 80 developers.",
+      capacityCatalogue(plans),
+    );
+    const result = gitSetupDialogue(
+      inputs,
+      { ...empty, planChoice: "recommend", planSource: "current" },
+      "en",
+    );
+    expect(result.changes).toEqual([]);
+    expect(result.explanation).toContain("None of the returned plans");
+    expect(result.questions[0]?.answerType).toBe("requirements");
+    expect(result.explanation).not.toContain("Starting size selected: Git10");
+  },
+);
+it.each(["draft", "field-overview"])(
+  "preserves the reported 80-developer recommendation through inference, live catalogue grounding and streaming (%s)",
+  async (mode) => {
+    const message =
+      "Please add a central git instance for round about 80 developers to the config";
+    const { values } = fixture(message);
+    const knowledge = buildAssistantKnowledge();
+    const texts: string[] = [];
+    const model = new AssistantModelServing(
+      {
+        baseUrl:
+          "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
+        model: "test-model",
+        token: "test-only",
+        timeoutMs: 1000,
+      },
+      async (_url, init) => {
+        const body = JSON.parse(String(init?.body));
+        const name = body.response_format.json_schema.name;
+        const content =
+          name === "conversation_intent"
+            ? {
+                topic: "devops-git",
+                mode: mode === "draft" ? "draft" : "advice",
+                adviceTask: mode === "draft" ? "other" : "field-overview",
+                requirements: [],
+              }
+            : name === "component_request_purpose"
+              ? { purpose: "prepare-draft", quote: message }
+              : (() => {
+                  expect(name).toBe("git_setup_decisions");
+                  return empty;
+                })();
+        return Response.json({
+          choices: [
+            {
+              finish_reason: "stop",
+              message: { role: "assistant", content: JSON.stringify(content) },
+            },
+          ],
+        });
+      },
+    );
+    const result = await model.converse(
+      {
+        engineRevision: knowledge.engineRevision,
+        knowledgeSha256: knowledge.sha256,
+        groups: knowledge.groups,
+      },
+      { ...values, "assistant.language": "en" },
+      [],
+      message,
+      capacityCatalogue(),
+      [],
+      { onText: (text) => texts.push(text) },
+    );
+    expect(result.explanation).toContain("I recommend Git100");
+    expect(result.questions.map((q) => q.path)).toEqual([
+      "devops.allowed_network_ranges",
+    ]);
+    expect(result.changes).toEqual([]);
+    expect(texts.join("")).toContain("I recommend Git100");
+    expect(texts.join("")).not.toContain("Choose a starting option below");
+  },
+);

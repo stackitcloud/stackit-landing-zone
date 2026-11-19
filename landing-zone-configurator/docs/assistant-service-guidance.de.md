@@ -24,7 +24,7 @@ anfänglichen Umfang. Getrennte Instanzen bedeuten keine Föderation, automatisc
 Lastverteilung oder garantierte Gesamtkapazität. Der zentrale `devops`-Input
 konfiguriert eine Instanz; weitere Instanzen benötigen separat geprüfte Konfiguration.
 
-Wörtlich bestätigte Nutzerzahlen bleiben unabhängig von der Flavor-Klassifikation erhalten. Eine spätere unpassende Tarifauswahl kann sie nicht verwerfen; ein ausdrücklich kleinerer Umfang kann sie ersetzen. Diese erste geprüfte Regel für numerische Grenzen deckt Git ab und erfindet keine Grenzen anderer Produkte.
+Wörtlich bestätigte Nutzerzahlen bleiben unabhängig von der Flavor-Klassifikation erhalten. Eine spätere unpassende Tarifauswahl kann sie nicht verwerfen; ein ausdrücklich kleinerer Umfang kann sie ersetzen. Diese erste geprüfte Regel für numerische Grenzen deckt Git ab und erfindet keine Grenzen anderer Produkte. Auch ungefähre Angaben wie „ca. 80 Entwickler“ gelten als Bedarfsangabe. Bei einer laufenden Git-Einrichtung wählt die bestätigte Nutzerzahl den kleinsten aufgeführten Tarif mit passender geprüfter Nutzergrenze; 11–100 Nutzer führen zu Git100 statt einer erneuten Flavor-Frage. Die sichtbare Antwort erklärt beide Nutzergrenzen und behält die Empfehlung bei, während der Zugriff geklärt wird. Ein vollständiger typisierter Vorschlag erfordert weiterhin tatsächliche Quellnetze und ausdrückliche Prüfung/Übernahme. Ausdrücklich genannte unpassende Tarife erfordern eine Konfliktklärung; fehlenden oder unbekannten Katalogtarifen wird keine Kapazität unterstellt. Dies prüft die Nutzergrenze und ist keine Leistungszusage für den Workload.
 
 
 ## Gemeinsame Katalogauswahl

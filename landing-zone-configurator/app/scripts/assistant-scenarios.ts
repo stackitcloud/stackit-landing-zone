@@ -177,6 +177,7 @@ export type AssistantScenario = {
   editorExpected?: { path: string; value: JsonValue };
   auditQuestionPaths?: readonly string[];
   setupQuestionPaths?: readonly string[];
+  gitCapacityRecommendation?: { users: number; flavor: "git-10" | "git-100" };
   catalogueQuestion?: { path: string; field: string };
   answeredCatalogueChoice?: { path: string; value: string };
   requirementsQuestion?: string;
@@ -751,6 +752,49 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     setupQuestionPaths: paths,
     expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
   })),
+  ...[
+    {
+      id: "editor-devops-sized-80-en",
+      language: "en" as const,
+      message:
+        "Please add a central git instance for round about 80 developers to the config",
+    },
+    {
+      id: "editor-devops-sized-80-de",
+      language: "de" as const,
+      message:
+        "Bitte eine zentrale Git-Instanz für ca. 80 Entwickler in die Konfiguration aufnehmen.",
+    },
+  ].map(({ id, language, message }) => ({
+    id,
+    message,
+    topic: "devops-git",
+    fixture: "service-catalogues" as const,
+    expectedLanguage: language,
+    setupQuestionPaths: ["devops.allowed_network_ranges"],
+    gitCapacityRecommendation: { users: 80, flavor: "git-100" as const },
+  })),
+  {
+    id: "editor-devops-sized-80-followup",
+    topic: "devops-git",
+    fixture: "service-catalogues",
+    expectedLanguage: "en",
+    message: "Allow only 203.0.113.0/24.",
+    history: [
+      {
+        role: "user",
+        content:
+          "Please add a central git instance for round about 80 developers to the config",
+      },
+      {
+        role: "assistant",
+        content:
+          "Git100 fits your expected user count. Which source networks should have access?",
+      },
+    ],
+    editorExpected: { path: "devops.git_flavor", value: "git-100" },
+    gitCapacityRecommendation: { users: 80, flavor: "git-100" },
+  },
   {
     id: "catalogue-firewall-business-en",
     topic: "firewall-infrastructure",
@@ -1972,6 +2016,18 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
   }
   if (scenario.fixture === "folder-naming")
     values["assistant.user_email"] = "login@example.test";
+  if (scenario.gitCapacityRecommendation) {
+    catalogues.regions[0]!.products.gitFlavors = {
+      status: "available",
+      totalOptions: 2,
+      truncated: false,
+      options: [
+        { value: "git-10", label: "Git10" },
+        { value: "git-100", label: "Git100" },
+      ],
+    };
+  }
+
   return { draft, values, history, catalogues };
 }
 
@@ -2636,6 +2692,17 @@ export function validateAssistantScenario(
       )
     )
       failures.push("git_over_capacity_must_clarify_topology_before_flavor");
+  }
+  if (scenario.gitCapacityRecommendation) {
+    failures.push(
+      ...assistantGitCapacityRecommendationFailures(
+        dialogue.explanation,
+        scenario.gitCapacityRecommendation.users,
+        scenario.gitCapacityRecommendation.flavor,
+      ),
+    );
+    if (dialogue.questions.some((q) => q.path === "devops.git_flavor"))
+      failures.push("git_confirmed_size_reasked");
   }
   if (scenario.setupQuestionPaths) {
     if (
@@ -3433,6 +3500,11 @@ export function buildAssistantScenarioInventory() {
                     "shared_effect_dependency_gate_before_apply_actual_contract_after_apply",
                   ]
                 : []),
+            ...(scenario.gitCapacityRecommendation
+              ? [
+                  "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+                ]
+              : []),
             ...(scenario.platformImpactReview
               ? [
                   "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
@@ -3755,4 +3827,25 @@ export function assistantPlatformImpactReviewFailures(text: string): string[] {
   return checks
     .filter(([, pattern]) => !pattern.test(text))
     .map(([name]) => `platform_impact_missing_${name}`);
+}
+
+/** Check the final visible recommendation independently of classifier/picker success. */
+export function assistantGitCapacityRecommendationFailures(
+  text: string,
+  users: number,
+  flavor: "git-10" | "git-100",
+): string[] {
+  const label = flavor === "git-100" ? "Git100" : "Git10";
+  const checks: [string, RegExp][] = [
+    ["count", new RegExp(`\\b${users}\\b`)],
+    [
+      "recommendation",
+      new RegExp(`(?:recommend|empfehl)[^.!?\\n]{0,60}${label}\\b`, "i"),
+    ],
+    ["git10-limit", /Git10[^.!?\n]{0,60}\b10\b/i],
+    ["git100-limit", /Git100[^.!?\n]{0,60}\b100\b/i],
+  ];
+  return checks
+    .filter(([, pattern]) => !pattern.test(text))
+    .map(([name]) => `git_capacity_missing_${name}`);
 }

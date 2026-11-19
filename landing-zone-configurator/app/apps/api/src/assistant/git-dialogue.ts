@@ -5,6 +5,7 @@ import type { AssistantCatalogueContext } from "./model-serving.js";
 import {
   confirmedServiceUserCount,
   reviewedUserLimits,
+  smallestReviewedUserPlan,
 } from "./service-requirements.js";
 
 const cidr = z.union([z.cidrv4(), z.cidrv6()]);
@@ -150,7 +151,53 @@ export function gitSetupDialogue(
         ? recommended
         : decision.planChoice
       : null;
-  const plan = selected && inputs.plans.includes(selected) ? selected : null;
+  const sizedPlan =
+    requiredUsers === undefined
+      ? undefined
+      : smallestReviewedUserPlan("gitFlavors", inputs.plans, requiredUsers);
+  const planStatement = answerOnly(source(decision.planSource) ?? "");
+  const explicitlyNamedPlan =
+    selected &&
+    Object.hasOwn(limits, selected) &&
+    new RegExp(
+      `\\bgit[- ]?${limits[selected as keyof typeof limits]}\\b`,
+      "i",
+    ).test(planStatement);
+  // A confirmed workload is enough to derive a reviewable plan. A classifier's
+  // missing/estimate/undersized choice must not reopen a resolved size decision.
+  // Preserve a genuinely named plan so incompatible user choices remain explicit.
+  const capacityDerived = requiredUsers !== undefined && !explicitlyNamedPlan;
+  const plan = capacityDerived
+    ? (sizedPlan ?? null)
+    : selected && inputs.plans.includes(selected)
+      ? selected
+      : null;
+  if (capacityDerived && !sizedPlan)
+    return {
+      explanation: en
+        ? `Your stated scope is ${requiredUsers} users. Git10 supports at most 10 users and Git100 at most 100. None of the returned plans with reviewed user limits meets this requirement. I cannot use Git10 for this scope or assume capacity for an unknown offering. Check Git100 availability for this project and region, or discuss separate team/project instances. Nothing has been saved or deployed.`
+        : `Euer genannter Umfang sind ${requiredUsers} Nutzer. Git10 unterstützt höchstens 10 Nutzer und Git100 höchstens 100. Keiner der zurückgegebenen Tarife mit geprüfter Nutzergrenze erfüllt diesen Bedarf. Git10 ist dafür ungeeignet; für unbekannte Angebote kann ich keine Kapazität annehmen. Prüfe die Verfügbarkeit von Git100 für Projekt und Region oder bespreche getrennte Team-/Projektinstanzen. Nichts gespeichert oder deployt.`,
+      questions: [
+        {
+          path: "devops.git_flavor",
+          answerType: "requirements" as const,
+          text: en
+            ? "How should we proceed with the unavailable matching plan?"
+            : "Wie sollen wir beim fehlenden passenden Tarif weiter vorgehen?",
+          options: en
+            ? [
+                "Check Git100 availability for this project and region",
+                "Discuss separate team/project instances",
+              ]
+            : [
+                "Verfügbarkeit von Git100 für Projekt und Region prüfen",
+                "Getrennte Team-/Projektinstanzen besprechen",
+              ],
+        },
+      ],
+      changes: [],
+      references: ["devops-git"],
+    };
   const selectedUserLimit =
     plan && Object.hasOwn(limits, plan)
       ? limits[plan as keyof typeof limits]
@@ -345,7 +392,11 @@ export function gitSetupDialogue(
     : "";
   return {
     explanation: [
-      selectedText || recommendation,
+      capacityDerived && plan
+        ? en
+          ? `For your stated ${requiredUsers} developers/users, I recommend ${name(plan)}: Git10 supports at most 10 users and Git100 at most 100. This is the smallest listed plan with a reviewed user limit that fits your expected scope. This does not guarantee workload performance. I will retain this recommendation while we finish access settings.`
+          : `Für eure genannten ${requiredUsers} Entwickler/Nutzer empfehle ich ${name(plan)}: Git10 unterstützt höchstens 10 Nutzer, Git100 höchstens 100. Dies ist der kleinste aufgeführte Tarif mit geprüfter Nutzergrenze, der zum erwarteten Umfang passt. Das ist keine Leistungszusage für den Workload. Die Empfehlung bleibt erhalten, während wir den Zugriff klären.`
+        : selectedText || recommendation,
 
       provenance,
       lifecycle,
