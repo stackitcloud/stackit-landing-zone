@@ -3551,13 +3551,20 @@ export function assistantDnsRoleFailures(
   const authority = /autoritat|authoritat/;
   const failures: string[] = [];
   if (
-    sentences.some(
-      (sentence) =>
+    sentences.some((sentence) => {
+      const assertion = sentence
+        .replace(/[*`_]/g, "")
+        .replace(
+          /\b(?:kein\w*|nicht|no|not)\s+(?:(?:rein\w*|purely|merely|just|only)\s+)?(?:nicht[\s\p{Dash_Punctuation}]*autoritat\w*|non[\s\p{Dash_Punctuation}]*authoritat\w*)/gu,
+          "",
+        );
+      return (
         /secondary/.test(sentence) &&
-        /(?:nicht|kein|not|non)[^.!?]{0,30}(?:autoritat|authoritat)/.test(
-          sentence,
-        ),
-    )
+        /\b(?:nicht|kein\w*|not|non)[\s\p{Dash_Punctuation}]*(?:(?:vollstandig|fully|completely|really|selbst|selber|wirklich|at\s+all)\s+){0,2}(?:autoritat|authoritat)/u.test(
+          assertion,
+        )
+      );
+    })
   )
     failures.push("dns_secondary_authority_denied");
   if (

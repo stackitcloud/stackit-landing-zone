@@ -1667,6 +1667,38 @@ it("associates a recommendation heading with its immediate Primary answer, not a
     ),
   ).toContain("dns_primary_recommendation_missing");
 });
+it("accepts authority expressed by denying non-authoritative forwarding but rejects actual denial", () => {
+  const text =
+    "Secondary repliziert eine externe Primary-Zone. Der native Accelerator bildet die Secondary-Konfiguration nicht vollständig ab. Secondary ist kein rein nicht-autoritatives Forwarding, sondern eine autoritative Kopie.";
+  expect(assistantDnsRoleFailures(text, "secondary")).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text + " Secondary ist nicht Primary, aber autoritativ.",
+      "secondary",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text.replace("nicht-autoritatives", "nicht‑autoritatives"),
+      "secondary",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text.replace(
+        "kein rein nicht-autoritatives Forwarding, sondern eine autoritative Kopie",
+        "nicht autoritativ",
+      ),
+      "secondary",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+  expect(
+    assistantDnsRoleFailures(
+      text + " Secondary ist dennoch nicht autoritativ.",
+      "secondary",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+});
 it("distinguishes explicit no-save statements from affirmative persistence claims", () => {
   expect(
     assistantPrematurePersistenceClaim(
