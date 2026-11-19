@@ -1250,6 +1250,25 @@ it("uses only the fixture's trusted owner identities when qualifying mixed-templ
     english: false,
   });
   expect(validateAssistantScenario(scenario, dialogue).failures).toEqual([]);
+  const equivalent = structuredClone(dialogue);
+  equivalent.questions[0]!.text =
+    "Welche E-Mail soll der gemeinsame initiale Projekt-Owner beider Vorlagen sein?";
+  equivalent.questions[1]!.text =
+    "Soll central auf das Workload-Profil umgestellt und die bisherige Rollensteuerung ersetzt werden?";
+  expect(validateAssistantScenario(scenario, equivalent).failures).toEqual([]);
+  for (const index of [0, 1]) {
+    const missing = structuredClone(equivalent);
+    missing.questions.splice(index, 1);
+    expect(validateAssistantScenario(scenario, missing).failures).toContain(
+      "application_access_mixed_shared_owner_or_confirmation_missing",
+    );
+  }
+  const unrelated = structuredClone(equivalent);
+  unrelated.questions[1]!.text = "Welche Kubernetes-Version möchten Sie?";
+  unrelated.questions[1]!.options = [];
+  expect(validateAssistantScenario(scenario, unrelated).failures).toContain(
+    "application_access_mixed_shared_owner_or_confirmation_missing",
+  );
   const foreign = structuredClone(dialogue);
   foreign.questions[0]!.options = [
     "Plattform-Service-Account (bootstrap-foreign@sa.stackit.cloud)",

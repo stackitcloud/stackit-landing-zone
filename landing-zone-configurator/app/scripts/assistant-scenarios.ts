@@ -2345,11 +2345,18 @@ export function validateAssistantScenario(
     } else {
       if (dialogue.changes.length)
         failures.push("application_access_legacy_unconfirmed_change");
-      const owners = dialogue.questions.filter((q) =>
-        /gemeinsamen zentralen initialen Owner/.test(q.text),
-      );
-      const legacy = dialogue.questions.filter((q) =>
-        /Workload-Profil ersetzen/.test(q.text),
+      const legacy = dialogue.questions.filter((q) => {
+        const text = [q.text, ...(q.options ?? [])].join(" ");
+        return (
+          /workload/i.test(text) &&
+          /umstell|erset|wechsel|migrier|bestätig|bestaetig|confirm|replace|transition|migrat|verwenden|nutzen|\buse\b/i.test(
+            text,
+          )
+        );
+      });
+      const owners = dialogue.questions.filter(
+        (q) =>
+          !legacy.includes(q) && /owner|eigentümer|eigentuemer/i.test(q.text),
       );
       if (
         owners.length !==
@@ -2363,8 +2370,8 @@ export function validateAssistantScenario(
           "application_access_mixed_shared_owner_or_confirmation_missing",
         );
       if (
-        !/Owner/.test(dialogue.explanation) ||
-        !/Workload/.test(dialogue.explanation) ||
+        !/owner|eigentümer|eigentuemer/i.test(dialogue.explanation) ||
+        !/workload/i.test(dialogue.explanation) ||
         /Welches Projekt-Rechteprofil/.test(
           dialogue.questions.map((q) => q.text).join(" "),
         )
