@@ -512,9 +512,7 @@ export function modelServingConfiguration(environment: NodeJS.ProcessEnv) {
     baseUrl:
       environment.LZC_MODEL_SERVING_BASE_URL ??
       "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1",
-    model:
-      environment.LZC_MODEL_SERVING_MODEL ??
-      "Qwen/Qwen3-VL-235B-A22B-Instruct-FP8",
+    model: environment.LZC_MODEL_SERVING_MODEL ?? "Qwen/Qwen3.8-27B",
     ...(environment.LZC_MODEL_SERVING_INTENT_MODEL
       ? { intentModel: environment.LZC_MODEL_SERVING_INTENT_MODEL }
       : {}),

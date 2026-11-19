@@ -2994,11 +2994,11 @@ it("uses the existing operator binding and rejects missing tokens and foreign en
     }),
   ).toMatchObject({
     intentModel: "openai/gpt-oss-120b",
-    model: configuration.model,
+    model: "Qwen/Qwen3.8-27B",
   });
   expect(
     modelServingConfiguration({ LZC_MODEL_SERVING_TOKEN: configuration.token }),
-  ).toMatchObject({ token: configuration.token, model: configuration.model });
+  ).toMatchObject({ token: configuration.token, model: "Qwen/Qwen3.8-27B" });
   for (const environment of [
     {},
     {

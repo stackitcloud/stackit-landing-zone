@@ -187,7 +187,7 @@ LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b \
   npm run test:assistant:live -- --local-credentials --repeat 2
 ```
 
-Without model overrides, the application and CI use `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`
+Without model overrides, the application and CI use `Qwen/Qwen3.8-27B`
 for both roles. Acceptance must match the deployed model and intent-model selection
 exactly. Record comparison runs with other overrides separately; their results do
 not qualify another selection. These environment variables affect the local test

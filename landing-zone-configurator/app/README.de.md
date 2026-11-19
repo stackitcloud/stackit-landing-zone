@@ -187,7 +187,7 @@ LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b \
   npm run test:assistant:live -- --local-credentials --repeat 2
 ```
 
-Ohne Modell-Overrides verwenden Anwendung und CI `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`
+Ohne Modell-Overrides verwenden Anwendung und CI `Qwen/Qwen3.8-27B`
 fuer beide Rollen. Fuer die Abnahme muessen Modell und Intent-Modell exakt zur
 laufenden Anwendung passen. Vergleichslaeufe mit anderen Overrides sind getrennt
 zu dokumentieren; ihre Ergebnisse qualifizieren keine andere Modellauswahl.

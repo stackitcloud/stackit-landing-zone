@@ -238,7 +238,7 @@ This draft is `local-draft-not-reviewed-release`: the hash binds exactly this me
 | Variable | Behavior |
 | --- | --- |
 | `LZC_MODEL_SERVING_TOKEN` | Existing Terraform/deployment binding; required, process environment only. |
-| `LZC_MODEL_SERVING_MODEL` | Default `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`; operator-configurable. |
+| `LZC_MODEL_SERVING_MODEL` | Default `Qwen/Qwen3.8-27B`; operator-configurable. |
 | `LZC_MODEL_SERVING_BASE_URL` | Default and currently only permitted `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1`; other endpoints need explicit allowlist/security qualification. |
 | `LZC_MODEL_SERVING_TIMEOUT_MS` | Default 60000, bounded to 1000..120000. |
 

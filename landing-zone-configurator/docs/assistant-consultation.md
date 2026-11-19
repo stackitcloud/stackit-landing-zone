@@ -7,6 +7,12 @@ The model interprets the goal, existing platform context and follow-up answers;
 application code supplies authoritative facts and validates proposed local changes.
 A product no longer needs a separate conversational state machine.
 
+The default model is `Qwen/Qwen3.8-27B` on the existing STACKIT EU01 endpoint;
+operators may override it. It supports reasoning and native tools according to
+the [STACKIT model catalogue](https://docs.stackit.cloud/products/data-and-ai/ai-model-serving/basics/available-shared-models/).
+Model comparisons and qualification receipts must record the exact selection.
+A comparison success never qualifies another model or an older source snapshot.
+
 ```mermaid
 flowchart LR
     U[User goal and follow-up] --> C[Shared consultation]
