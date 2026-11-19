@@ -41,6 +41,15 @@ it("reports granular publication prerequisites without exposing unchanged owner 
   expect(
     consultationPublicationDecisions(readiness, [
       {
+        path: "projectTemplates.missing.accessProfile.initialOwnerEmail",
+        before: "previous@example.test",
+        after: "",
+      },
+    ]),
+  ).toEqual([]);
+  expect(
+    consultationPublicationDecisions(readiness, [
+      {
         path: "projectTemplates.missing.settings.network_prefix_length",
         after: 26,
       },
@@ -195,7 +204,7 @@ it("keeps exact custom lists and mismatching compiler outputs fully visible", ()
     ),
   ).toEqual({ compilerDelta: tamperedDelta, verifiedOperations: [] });
 });
-it("proves selected catalogue unions but exposes overlapping batches in full", () => {
+it("proves selected catalogue unions and retains repeated native operations in order", () => {
   const before = {
     projectTemplates: {
       central: {
@@ -233,14 +242,120 @@ it("proves selected catalogue unions but exposes overlapping batches in full", (
       (entry) => !entry.path.endsWith("automationPermissions"),
     ),
   ).toBe(true);
+  const repeated = consultationCompilerEvidence(
+    after,
+    [...operations, ...operations],
+    materialized,
+    delta,
+  );
+  expect(repeated.verifiedOperations).toHaveLength(2);
+  expect(repeated.compilerDelta).toEqual(delta);
+});
+
+it("proves an ordered legacy transition, owner edit and catalogue union without hiding removals or compiler divergence", () => {
+  const before = {
+    projectTemplates: {
+      central: {
+        kind: "public",
+        settings: { automation_role: "owner", network_enabled: true },
+      },
+      app: {
+        kind: "public",
+        settings: { network_enabled: true },
+        accessProfile: {
+          ...defaultApplicationAccessProfile(""),
+          permissions: ["iaas.server.get"],
+          automationPermissions: ["iaas.server.get"],
+        },
+      },
+    },
+  };
+  const operations: ConsultationChange[] = [
+    {
+      path: "projectTemplates.central.accessProfile",
+      operation: "preset",
+      value: {
+        id: "application-workloads-v1",
+        initialOwnerEmail: "selected@example.test",
+        replaceLegacyAccess: true,
+      },
+    },
+    {
+      path: "projectTemplates.app.accessProfile.initialOwnerEmail",
+      operation: "replace",
+      value: "selected@example.test",
+    },
+    {
+      path: "projectTemplates",
+      operation: "add_permissions",
+      value: {
+        templateKeys: ["central", "app"],
+        principals: ["requester", "automation"],
+        source: { kind: "services", ids: ["ske"] },
+      },
+    },
+  ];
+  const materialized = materializeConsultationChanges(operations, before);
+  const after = { projectTemplates: materialized[0]!.value };
+  const delta = consultationProposalDiff(before, after);
+  const evidence = consultationCompilerEvidence(
+    after,
+    operations,
+    materialized,
+    delta,
+  );
+  expect(evidence.verifiedOperations.map((op) => op.kind)).toEqual([
+    "registered-preset",
+    "initial-owner",
+    "catalogue-union",
+  ]);
+  expect(evidence.compilerDelta).toContainEqual(
+    expect.objectContaining({
+      path: "projectTemplates.central.settings.automation_role",
+      before: "owner",
+      after: undefined,
+    }),
+  );
+  expect(evidence.compilerDelta).toContainEqual(
+    expect.objectContaining({
+      path: "projectTemplates.central.accessProfile.permissions",
+      addedCount: expect.any(Number),
+      verifiedOperation: 2,
+    }),
+  );
+  expect(evidence.compilerDelta).toContainEqual(
+    expect.objectContaining({
+      path: "projectTemplates.app.accessProfile.initialOwnerEmail",
+      after: "selected@example.test",
+    }),
+  );
+  const tampered = structuredClone(after) as unknown as {
+    projectTemplates: { central: { accessProfile: { permissions: string[] } } };
+  };
+  tampered.projectTemplates.central.accessProfile.permissions.push(
+    "iam.role.create",
+  );
+  const changed = consultationProposalDiff(before, tampered);
+  const unproven = consultationCompilerEvidence(
+    tampered,
+    operations,
+    materialized,
+    changed,
+  );
   expect(
-    consultationCompilerEvidence(
-      after,
-      [...operations, ...operations],
-      materialized,
-      delta,
+    unproven.verifiedOperations.every(
+      (op) => !op.templates.includes("central"),
     ),
-  ).toEqual({ compilerDelta: delta, verifiedOperations: [] });
+  ).toBe(true);
+  expect(
+    unproven.compilerDelta.filter((entry) =>
+      entry.path.startsWith("projectTemplates.central"),
+    ),
+  ).toEqual(
+    changed.filter((entry) =>
+      entry.path.startsWith("projectTemplates.central"),
+    ),
+  );
 });
 
 it("exposes removed rights and newly added product groups separately for each principal", () => {

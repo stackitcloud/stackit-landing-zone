@@ -959,7 +959,7 @@ export async function runConsultation(input: {
         invalid_native_tool_encoding:
           "Use native function calls for operations. Return ordinary prose only for the final explanation; do not mix tool-call markup with prose.",
         dependent_native_calls_must_be_sequential:
-          "Read results before validating or answering. Batch independent reads together, but submit all desired changes in ONE local validation call and wait for its result before the final answer.",
+          "Read results before validating or answering. Batch independent reads, but call dependent mutation tools sequentially and wait for each result. Typed profile/permission tools extend the latest validated proposal automatically. A generic validate_proposal can extend a returned baseProposal or start a fresh candidate. Its changes array contains at most eight typed operations; do not expand native presets or service groups into individual permission writes.",
       };
       const repair =
         typeof rawStep.action === "string"
@@ -981,6 +981,12 @@ export async function runConsultation(input: {
           protocolValidation: {
             ok: false,
             ...feedback(parsed.error),
+            instruction:
+              repair ??
+              "Match the selected native function schema. changes is a JSON array of at most eight typed operations, not a JSON string or individual permission records. Use registered preset/service operations rather than reconstructing complete permission lists; dependent typed mutation tools can run sequentially.",
+            ...(Array.isArray(rawStep.argumentIssues)
+              ? { argumentIssues: rawStep.argumentIssues.slice(0, 8) }
+              : {}),
             ...(repair ? { code: rawStep.action, instruction: repair } : {}),
           },
         }),

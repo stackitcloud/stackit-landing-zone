@@ -458,7 +458,15 @@ export class NativeConsultation {
     if (call.name === "propose_template_access_profile") {
       this.proposal = null;
       const input = templateAccessInput.safeParse(call.arguments);
-      if (!input.success) return { action: "invalid_native_arguments" };
+      if (!input.success)
+        return {
+          action: "invalid_native_arguments",
+          function: call.name,
+          argumentIssues: input.error.issues.slice(0, 8).map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
+        };
       const { selection, templateKeys } = input.data;
       return {
         action: "validate_proposal",

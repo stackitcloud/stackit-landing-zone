@@ -130,11 +130,15 @@ nur verdichtet, wenn der tatsächliche Compiler-Kandidat exakt dem nativen bzw.
 serverseitig materialisierten Ergebnis entspricht. Das Modell erhält die belegte
 Auswahl, Templates und Prinzipale sowie ergänzte/entfernte Produktanzahlen und
 einen Effekt-Hash statt Hunderter wiederholter Kennungen. Kleine Listen bleiben
-explizit. Eigene wörtliche Listen, unbekannte Operationen, überlappende Batches
+explizit. Eigene wörtliche Listen, unbekannte Operationen
 und abweichende Compiler-Ergebnisse bleiben vollständig sichtbar. Andere geänderte
 Felder und entfernte Produktgruppen werden nicht verborgen. Nutzerabsicht und
 kritische Grenzen bleiben zu prüfen; der Beleg gewährt keine Rechte. Die prüfbare
 öffentliche Vorschlagsdarstellung und Entwurfsübernahme behalten alle nativen Änderungen.
+Geordnete registrierte Preset-, Owner- und Katalogoperationen behalten ihre
+Reihenfolge. Ihr vollständig materialisiertes Profil wird mit dem Compiler-
+Kandidaten verglichen. Entfernte alte Rollenfelder und geänderte Owner bleiben
+explizit sichtbar; spätere Operationen werden nicht nur gegen ein Zwischenprofil geprüft.
 
 Eine gemeinsame inhaltliche Schlussprüfung vergleicht Auftrag, Folgeantworten,
 geprüfte Fakten und den tatsächlichen Compiler-Diff vor Anzeige und Speicherung.

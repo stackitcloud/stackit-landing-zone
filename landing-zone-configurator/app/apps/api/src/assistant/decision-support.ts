@@ -97,6 +97,28 @@ export const reviewedServiceFacts: Record<string, unknown> = {
         "The separate central initial project Owner for granular profiles; it is not the requester or the automation recipient list. A contact/root email alone is not a confirmed selection for this role. Preserve existing selected owners; when relevant granular templates lack an owner, ask one common owner question while still preparing the independent rights proposal. This is required before publication, not a reason to block valid local permission additions.",
     },
     workflowBundles: {
+      "legacy-access-transition": {
+        purpose:
+          "Replace incompatible legacy template roles with a complete registered profile after the user has confirmed that replacement.",
+        localOperation: {
+          tool: "propose_template_access_profile",
+          arguments: {
+            selection: {
+              kind: "preset",
+              id: "application-workloads-v1",
+              replaceLegacyAccess: true,
+            },
+          },
+          requiredArguments: [
+            "templateKeys (only confirmed legacy targets)",
+            "selection.initialOwnerEmail (the selected central owner email)",
+          ],
+        },
+        combination:
+          "Then call propose_template_permissions for the requested services/principals/targets; it extends the validated transition. Existing granular templates must retain their own rights: update only their accessProfile.initialOwnerEmail with a scalar replace operation if the confirmed common owner is missing, rather than applying a complete preset to them. Native operations are small declarative operations, never one operation per permission string.",
+        scope:
+          "Only the confirmed legacy template changes its whole profile. Keep unrelated existing profiles and all other settings; no cloud rights or publication.",
+      },
       "service-account-keys": {
         purpose:
           "Operational key management for existing service accounts: find/open the account and create/list/read/edit/delete its keys.",

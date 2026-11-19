@@ -61,8 +61,10 @@ export function consultationPublicationDecisions(
       (template) =>
         template.requiresInitialOwnerBeforePublication &&
         delta.some((change) =>
-          change.path.startsWith(
-            `projectTemplates.${template.key}.accessProfile`,
+          ["permissions", "automationPermissions"].some(
+            (field) =>
+              change.path ===
+              `projectTemplates.${template.key}.accessProfile.${field}`,
           ),
         ),
     )
@@ -104,7 +106,8 @@ export function consultationCompilerEvidence(
     ...materialized
       .filter(
         (change) =>
-          change.path === "projectTemplates" && change.operation === "merge",
+          change.path === "projectTemplates" &&
+          ["merge", "replace"].includes(change.operation),
       )
       .map((change) => object(change.value)),
   ) as Record<string, unknown>;
@@ -116,13 +119,33 @@ export function consultationCompilerEvidence(
     principals: string[];
   }[] = [];
   const covered = new Map<string, number>();
-  const seen = new Set<string>();
+  const occurrences = new Map<string, number>();
+  for (const operation of operations) {
+    const match =
+      /^projectTemplates\.([^.]+)\.accessProfile(?:\.initialOwnerEmail)?$/.exec(
+        operation.path,
+      );
+    const keys =
+      operation.operation === "add_permissions"
+        ? object(operation.value).templateKeys
+        : match
+          ? [match[1]]
+          : [];
+    if (Array.isArray(keys))
+      for (const key of keys)
+        if (typeof key === "string")
+          occurrences.set(key, (occurrences.get(key) ?? 0) + 1);
+  }
   for (const change of operations) {
     const value = object(change.value);
     let keys: string[], principals: string[], source: unknown, kind: string;
     const preset = /^projectTemplates\.([^.]+)\.accessProfile$/.exec(
       change.path,
     );
+    const owner =
+      /^projectTemplates\.([^.]+)\.accessProfile\.initialOwnerEmail$/.exec(
+        change.path,
+      );
     if (
       change.operation === "preset" &&
       preset &&
@@ -147,25 +170,32 @@ export function consultationCompilerEvidence(
       principals = value.principals as string[];
       kind = "catalogue-union";
       source = value.source;
+    } else if (
+      owner &&
+      ["merge", "replace"].includes(change.operation) &&
+      typeof change.value === "string"
+    ) {
+      keys = [owner[1]!];
+      principals = [];
+      kind = "initial-owner";
+      source = { initialOwnerEmail: change.value };
     } else return { compilerDelta: delta, verifiedOperations: [] };
-    // Overlapping batches require full review of their ordering and effects.
+    // Ordered native operations retain their sequence and are compared with
+    // the fully materialized candidate, rather than an intermediate preset.
     if (
       !keys.length ||
-      !principals.length ||
+      (!principals.length && kind !== "initial-owner") ||
       new Set(keys).size !== keys.length ||
       principals.some(
         (principal) => !["requester", "automation"].includes(principal),
       ) ||
-      keys.some(
-        (key) => typeof key !== "string" || key.includes(".") || seen.has(key),
-      )
+      keys.some((key) => typeof key !== "string" || key.includes("."))
     )
       return { compilerDelta: delta, verifiedOperations: [] };
-    for (const key of keys) seen.add(key);
     const matches = keys.every((key) => {
       const actual = object(object(actualTemplates[key]).accessProfile);
       const expected =
-        kind === "registered-preset"
+        kind === "registered-preset" && occurrences.get(key) === 1
           ? source === "owner"
             ? { schemaVersion: 1, mode: "owner" }
             : defaultApplicationAccessProfile(

@@ -148,11 +148,15 @@ only after the actual compiler candidate matches the native factory/materialized
 result exactly. The model receives the proven selection, templates and principals,
 actual added/removed product counts and an effect hash instead of hundreds of
 repeated permission names. Small lists stay explicit. Custom literal lists,
-unrecognized operations, overlapping batches and mismatching compiler outputs
+unrecognized operations and mismatching compiler outputs
 retain the full delta. Other changed fields and removed product groups remain
 visible. The reviewer must still check the user's intent and explain critical
 boundaries; a compiler proof grants no rights. Draft acceptance and the public
 reviewable proposal retain the complete native changes.
+Ordered registered preset, owner and catalogue operations retain their sequence
+and compare the final materialized profile with the compiler candidate. Removed
+legacy settings and changed owner values remain explicit; a later operation is
+never verified against an intermediate preset alone.
 
 The reviewer first records user requirements with expected and actual results and
 references the numbered user turn, then decides readiness. An unmet check or an
