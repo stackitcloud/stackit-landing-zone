@@ -3611,7 +3611,15 @@ export function assistantDnsRoleFailures(
       (sentence) =>
         /primary/.test(sentence) &&
         /empfehl|geeignet|wahl|recommend|neue|new /.test(sentence),
-    )
+    ) &&
+    !normalized.split(/\n\s*\n/).some((block) => {
+      const [heading, ...body] = block.split("\n");
+      const answer = body.join("\n").replace(/[*`_]/g, "").trim();
+      return (
+        /empfehl|recommend|wahl/.test(heading ?? "") &&
+        /^(?:[→•-]\s*)?primary\b/.test(answer)
+      );
+    })
   )
     failures.push("dns_primary_recommendation_missing");
   return failures;

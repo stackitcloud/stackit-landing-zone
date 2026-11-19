@@ -1646,6 +1646,27 @@ it("recognizes DNS roles across Markdown paragraphs while rejecting reversed rol
     ),
   ).toContain("dns_secondary_authority_denied");
 });
+it("associates a recommendation heading with its immediate Primary answer, not another role elsewhere", () => {
+  const roles =
+    "Primary verwaltet die originalen Records bei STACKIT. Secondary repliziert eine externe Primary. Beide sind autoritativ; public/private ist keine Typauswahl. Der native Accelerator bildet die Secondary-Konfiguration nicht vollständig ab.";
+  expect(assistantDnsRoleFailures(roles, "roles")).toContain(
+    "dns_primary_recommendation_missing",
+  );
+  expect(
+    assistantDnsRoleFailures(
+      roles +
+        "\n\n**Empfehlung für die Firmenzone**\n→ **primary**. STACKIT verwaltet die Records.",
+      "roles",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      roles +
+        "\n\n**Empfehlung für die Firmenzone**\n→ **secondary**. Primary bleibt eine andere Möglichkeit.",
+      "roles",
+    ),
+  ).toContain("dns_primary_recommendation_missing");
+});
 it("distinguishes explicit no-save statements from affirmative persistence claims", () => {
   expect(
     assistantPrematurePersistenceClaim(
