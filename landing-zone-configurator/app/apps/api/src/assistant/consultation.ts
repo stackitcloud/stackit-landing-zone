@@ -59,6 +59,7 @@ import {
   type ConsultationCompilerEvidence,
   consultationCompilerEvidence,
   consultationProposalDiff,
+  consultationPublicationDecisions,
   consultationTemplateReadiness,
   type ProposalDelta,
 } from "./proposal-diff.js";
@@ -1348,6 +1349,10 @@ export async function runConsultation(input: {
               ok: true,
               proposal: id,
               templateReadiness: proposalReadiness.get(id) ?? [],
+              requiredDecisions: consultationPublicationDecisions(
+                proposalReadiness.get(id) ?? [],
+                proposalDeltas.get(id) ?? [],
+              ),
               ...(proposalEvidence.has(id)
                 ? { compilerEvidence: proposalEvidence.get(id) }
                 : { changes: validated.changes }),
@@ -1580,6 +1585,12 @@ export async function runConsultation(input: {
         templateReadiness: step.proposal
           ? proposalReadiness.get(step.proposal)
           : consultationTemplateReadiness(input.current),
+        requiredDecisions: step.proposal
+          ? consultationPublicationDecisions(
+              proposalReadiness.get(step.proposal) ?? [],
+              proposalDeltas.get(step.proposal) ?? [],
+            )
+          : [],
         signal: turnSignal,
       });
       input.options?.onEvent?.({

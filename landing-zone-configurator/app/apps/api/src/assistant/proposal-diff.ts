@@ -50,6 +50,36 @@ export function consultationTemplateReadiness(values: Record<string, unknown>) {
   });
 }
 
+/** Publication prerequisites are sourced from actual affected profile values,
+ * not from a language classifier or an unrelated incomplete template. */
+export function consultationPublicationDecisions(
+  readiness: ReturnType<typeof consultationTemplateReadiness>,
+  delta: ProposalDelta[],
+) {
+  const templateKeys = readiness
+    .filter(
+      (template) =>
+        template.requiresInitialOwnerBeforePublication &&
+        delta.some((change) =>
+          change.path.startsWith(
+            `projectTemplates.${template.key}.accessProfile`,
+          ),
+        ),
+    )
+    .map((template) => template.key);
+  return templateKeys.length
+    ? [
+        {
+          id: "template-initial-owner",
+          path: "projectTemplates",
+          templateKeys,
+          requirement:
+            "One shared central initial-owner decision for the affected granular profiles. Ask one structured question while preserving valid independent draft changes, or cite an explicit USER deferral. An inline question or a publication notice alone does not expose an interactive decision.",
+        },
+      ]
+    : [];
+}
+
 /** Compact only exact, server-materialized catalogue transformations. Explicit
  * custom lists and any mismatching compiler output retain the complete delta. */
 export function consultationCompilerEvidence(

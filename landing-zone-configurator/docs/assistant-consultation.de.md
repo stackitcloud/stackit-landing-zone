@@ -232,6 +232,16 @@ Die Chat-Werkzeuge sind lesend/lokal; das Configurator-Produkt führt separat
 freigegebene Jobs aus. Eine Produktbeschreibung darf diese beiden Ebenen nicht
 verwechseln. Vorschläge beschreiben geplante Wirkungen, keine schon erteilten Rechte.
 
+Typisierte Änderungswerkzeuge bauen innerhalb einer Anfrage auf dem letzten
+validierten Vorschlag auf. Die Validierung akzeptiert nur selbst ausgegebene
+Vorschlagsschlüssel dieses Turns, spielt das begrenzte Operationspaket auf dem
+ursprünglichen Stand ab und prüft seine vollständige Wirkung erneut. Abgelehnte
+Kandidaten werden weder Grundlage noch finale Antwort. Ein allgemeiner
+Validierungsaufruf kann eine Grundlage ausdrücklich auswählen oder neu beginnen.
+Benötigt ein gültiger Vorschlag noch eine Nutzerentscheidung, liefert das
+Antwortwerkzeug Vorschlag und strukturierte Frage gemeinsam. Eine Frage nur im
+Fließtext genügt nicht.
+
 Registrierte Profile umfassen Workload, VM und vollen Owner. Granulare Profile
 brauchen einen initialen Owner; die native Owner-Variante hat diese granularen
 Owner-/Rechtelistenfelder nicht. Lokale Operationspakete aktualisieren ihren privaten
@@ -247,6 +257,10 @@ tatsächlichen Schlüsseln angeboten. Kompakte Bereitschaftsinformationen zeigen
 fehlende Veröffentlichungsvoraussetzungen ohne unveränderte Owner-Adressen.
 Ein fehlender initialer Owner wird für betroffene granulare Vorlagen gemeinsam
 erfragt; unabhängige lokale Rechteergänzungen können trotzdem vorgeschlagen werden.
+Diese quellseitig bestimmten Entscheidungen werden gegen tatsächlich ausgegebene
+Fragen oder eine wörtlich belegte Vertagung durch den Nutzer geprüft. Ein allgemeines
+Prüfurteil genügt nicht. Andere Einstellungsänderungen und Vorlagen mit vorhandenem
+Owner erzeugen diese Entscheidung nicht.
 
 Nach bestätigter Umstellung älterer Rollen verwendet das Profilwerkzeug mit
 `replaceLegacyAccess: true` dieselbe native Umstellungsfunktion wie der Editor.

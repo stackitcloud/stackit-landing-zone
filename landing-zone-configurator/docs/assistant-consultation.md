@@ -116,6 +116,14 @@ reply can carry only the latest successfully validated local proposal; a rejecte
 replacement clears that handle. Neither text nor a function name can execute cloud
 changes. The final answer still passes the same semantic review before publication.
 
+Typed mutation tools extend the latest validated proposal in the current turn.
+The validator accepts only proposal handles it issued in that turn, replays the
+bounded operation batch from the original configuration and revalidates its full
+effect. Rejected candidates cannot become a base or the final response. A generic
+validation call can explicitly select a base or start a fresh candidate.
+When a valid proposal still needs a user decision, the answer tool returns both
+the proposal and a structured question; a question in prose alone is insufficient.
+
 The tool schemas remain compact. An empty question list, reference list or proposal
 is normalized as empty; omitted fields cannot activate a component or grant access.
 Generated replies use the same bounded 16,384-character budget as the native transport, and adding a draft notice never silently cuts
@@ -186,6 +194,9 @@ Compact readiness metadata exposes missing publication prerequisites without
 copying unchanged owner addresses into review. A missing initial owner is asked
 once across affected granular templates; independent local rights additions can
 still be proposed.
+These source-derived decisions are checked against real question indices, or a
+literal user-bound deferral, rather than a general review verdict. Unrelated
+settings edits and templates with an existing owner do not create that decision.
 
 For a confirmed legacy access transition, the profile tool accepts
 `replaceLegacyAccess: true` and calls the editor's native transition function.

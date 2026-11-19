@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import {
   consultationCompilerEvidence,
   consultationProposalDiff,
+  consultationPublicationDecisions,
   consultationTemplateReadiness,
 } from "../apps/api/src/assistant/proposal-diff.js";
 
@@ -37,6 +38,36 @@ it("reports granular publication prerequisites without exposing unchanged owner 
   ).toEqual(["custom_roles"]);
   expect(JSON.stringify(readiness)).not.toContain("private@example.invalid");
   expect(JSON.stringify(readiness)).not.toContain('"value"');
+  expect(
+    consultationPublicationDecisions(readiness, [
+      {
+        path: "projectTemplates.missing.settings.network_prefix_length",
+        after: 26,
+      },
+    ]),
+  ).toEqual([]);
+  expect(
+    consultationPublicationDecisions(readiness, [
+      {
+        path: "projectTemplates.existing.accessProfile.permissions",
+        added: ["ske.cluster.get"],
+      },
+    ]),
+  ).toEqual([]);
+  expect(
+    consultationPublicationDecisions(readiness, [
+      {
+        path: "projectTemplates.missing.accessProfile.permissions",
+        added: ["ske.cluster.get"],
+      },
+    ]),
+  ).toMatchObject([
+    {
+      id: "template-initial-owner",
+      path: "projectTemplates",
+      templateKeys: ["missing"],
+    },
+  ]);
 });
 
 import {

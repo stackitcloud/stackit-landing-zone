@@ -32,6 +32,111 @@ const requestChecks = [
     met: true,
   },
 ];
+it("requires actual structured questions or user-bound deferrals for source-required decisions", async () => {
+  const requiredDecisions = [
+    {
+      id: "missing-owner",
+      path: "projectTemplates",
+      requirement: "Choose the central initial owner.",
+    },
+  ];
+  const response = {
+    ready: true,
+    findings: [],
+    requestChecks,
+    boundaryChecks: [],
+  };
+  const reviewInput = { ...input, serviceFacts: {}, requiredDecisions };
+  for (const decisionChecks of [
+    [],
+    [{ id: "missing-owner", disposition: "question", questionIndices: [0] }],
+    [
+      {
+        id: "missing-owner",
+        disposition: "deferred",
+        questionIndices: [],
+        deferral: { userTurn: 0, quote: "invented deferral" },
+      },
+    ],
+  ]) {
+    const complete = vi.fn().mockResolvedValue({ ...response, decisionChecks });
+    expect(
+      (await reviewConsultationAnswer({ ...reviewInput, complete })).ready,
+    ).toBe(false);
+  }
+  const questionCheck = [
+    { id: "missing-owner", disposition: "question", questionIndices: [0] },
+  ];
+  const complete = vi
+    .fn()
+    .mockResolvedValue({ ...response, decisionChecks: questionCheck });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...reviewInput,
+        complete,
+        answer: {
+          ...answer,
+          questions: [
+            {
+              path: "projectTemplates",
+              text: "Which central initial owner?",
+              answerType: "requirements",
+            },
+          ],
+        },
+      })
+    ).ready,
+  ).toBe(true);
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...reviewInput,
+        complete,
+        answer: {
+          ...answer,
+          questions: [
+            {
+              path: "devops.git_flavor",
+              text: "Which plan?",
+              answerType: "requirements",
+            },
+          ],
+        },
+      })
+    ).ready,
+  ).toBe(false);
+  const deferral = { userTurn: 0, quote: "Set the owner later." };
+  const deferred = vi.fn().mockResolvedValue({
+    ...response,
+    decisionChecks: [
+      {
+        id: "missing-owner",
+        disposition: "deferred",
+        questionIndices: [],
+        deferral,
+      },
+    ],
+  });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...reviewInput,
+        complete: deferred,
+        turns: [{ role: "user", content: deferral.quote }],
+      })
+    ).ready,
+  ).toBe(true);
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...reviewInput,
+        complete: deferred,
+        turns: [{ role: "assistant", content: deferral.quote }],
+      })
+    ).ready,
+  ).toBe(false);
+});
 it.each([
   { boundaryChecks: [] },
   {

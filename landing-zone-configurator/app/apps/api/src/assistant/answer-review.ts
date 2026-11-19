@@ -31,6 +31,26 @@ const reviewSchema = z.strictObject({
     )
     .max(12)
     .default([]),
+  decisionChecks: z
+    .array(
+      z.strictObject({
+        id: z.string().min(1).max(120),
+        disposition: z.enum(["question", "deferred"]),
+        questionIndices: z
+          .array(z.number().int().min(0).max(20))
+          .max(8)
+          .default([]),
+        deferral: z
+          .strictObject({
+            userTurn: z.number().int().min(0).max(40),
+            quote: z.string().min(1).max(1000),
+          })
+          .nullable()
+          .optional(),
+      }),
+    )
+    .max(12)
+    .default([]),
   findings: z.array(z.string().min(1).max(1200)).max(8),
   ready: z.boolean(),
   memory: memorySchema.optional(),
@@ -90,6 +110,12 @@ export async function reviewConsultationAnswer(input: {
   delta: ProposalDelta[] | undefined;
   compilerEvidence?: ConsultationCompilerEvidence | undefined;
   templateReadiness?: unknown;
+  requiredDecisions?: {
+    id: string;
+    path: string;
+    requirement: string;
+    templateKeys?: string[];
+  }[];
   signal?: AbortSignal;
 }) {
   const paragraphs = input.answer.explanation
@@ -118,7 +144,7 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
         content: JSON.stringify({
           task: "review_final_response",
           requestReviewContract:
-            "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Reference the supplied zero-based USER turn index as userTurn and summarize its requirement. Record the expected result and the observed actual result, and set met=false for any mismatch. User-turn indices identify the evidence; do not regenerate verbatim quotes. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. A singular template kind is not permission to select every matching template: when several candidates share that kind and the user did not explicitly request all, require a structured choice with the actual keys and no proposed changes to those ambiguous targets. Use templateReadiness to distinguish independent local edits from missing publication prerequisites. Missing initial owners of relevant granular templates need one shared owner question, not repeated per template; a valid independent rights proposal may accompany it. Existing legacy access settings require an explicit confirmed transition before replacing them; do not silently migrate them or invent a granular owner. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
+            "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Reference the supplied zero-based USER turn index as userTurn and summarize its requirement. Record the expected result and the observed actual result, and set met=false for any mismatch. User-turn indices identify the evidence; do not regenerate verbatim quotes. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. A singular template kind is not permission to select every matching template: when several candidates share that kind and the user did not explicitly request all, require a structured choice with the actual keys and no proposed changes to those ambiguous targets. Use templateReadiness to distinguish independent local edits from missing publication prerequisites. Missing initial owners of relevant granular templates need one shared structured owner question in answer.questions at path projectTemplates, not repeated per template or merely an inline question in prose; a valid independent rights proposal may accompany it. Existing legacy access settings require an explicit confirmed transition before replacing them; do not silently migrate them or invent a granular owner. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
           compilerEvidenceContract:
             "verifiedOperations are server-proven exact native preset or official catalogue-union permission effects, compared with the real compiler candidate. Large proven permission arrays are represented by their actual added/removed group counts and an effect hash. Review whether the user requested that preset/services, templates and principals, review removed groups and all other delta fields, and explain critical consequences. Use the supplied projectIamScope and principalRoles facts: project-IAM permission edits support Public/Corporate/Sandbox and are not cluster/service provisioning or SNA setup. Do not demand deployment settings for a permission-only proposal or ask again for a recipient already identified by the user's described actor. Do not reconstruct hundreds of already-proven permission names. Explicit custom lists and mismatching outputs remain complete. A proof grants no rights and does not authorize a user request.",
           boundaryReviewContract: {
@@ -135,6 +161,9 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
           reviewedKnowledge: input.rules,
           relevantServiceFacts: input.serviceFacts,
           templateReadiness: input.templateReadiness ?? [],
+          requiredDecisions: input.requiredDecisions ?? [],
+          decisionReviewContract:
+            "For each requiredDecision return one decisionChecks entry. disposition=question must cite real zero-based answer.questions indices that ask this decision at the supplied path. Prose alone, including an inline question, is insufficient. disposition=deferred requires the literal USER turn and quote explicitly deferring that decision; a general change request or the Assistant's own suggestion is not a deferral. Do not invent missing questions. If no matching question or explicit deferral exists, ready=false and explain the repair.",
           answerParagraphs: paragraphs,
           inspectedEvidence: reviewEvidence(input.inspections),
           validatedNativeDefaultChoices: input.nativeDefaultChoices ?? [],
@@ -195,6 +224,31 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
       checked.ready = false;
       checked.findings.push(
         `Requested: ${check.expected}. Actual: ${check.actual}.`,
+      );
+    }
+  }
+  for (const decision of input.requiredDecisions ?? []) {
+    const check = checked.decisionChecks.find(
+      (entry) => entry.id === decision.id,
+    );
+    const source = check?.deferral
+      ? input.turns[check.deferral.userTurn]
+      : undefined;
+    const deferred =
+      check?.disposition === "deferred" &&
+      source?.role === "user" &&
+      !!check.deferral?.quote &&
+      source.content.includes(check.deferral.quote);
+    const questioned =
+      check?.disposition === "question" &&
+      check.questionIndices.length > 0 &&
+      check.questionIndices.every(
+        (index) => input.answer.questions[index]?.path === decision.path,
+      );
+    if (!deferred && !questioned) {
+      checked.ready = false;
+      checked.findings.push(
+        `Expose ${decision.id} as a real structured question at ${decision.path}, keeping the validated proposal, or cite an explicit USER deferral. An inline question or a notice is insufficient. ${decision.requirement}`,
       );
     }
   }
