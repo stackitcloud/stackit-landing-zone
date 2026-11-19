@@ -68,6 +68,28 @@ it("retains a reviewed answer and source-bound memory with actual boundary evide
   expect(result.ready).toBe(true);
   expect(result.memory?.goal).toBe("Application VM rights");
 });
+it("normalizes null evidence only for explicitly inapplicable boundaries", async () => {
+  const complete = vi.fn().mockResolvedValue({
+    ready: true,
+    findings: [],
+    boundaryChecks: [
+      { id: "keys", applicable: false, covered: null, paragraphs: null },
+    ],
+  });
+  expect((await reviewConsultationAnswer({ ...input, complete })).ready).toBe(
+    true,
+  );
+  complete.mockResolvedValue({
+    ready: true,
+    findings: [],
+    boundaryChecks: [
+      { id: "keys", applicable: true, covered: null, paragraphs: null },
+    ],
+  });
+  await expect(
+    reviewConsultationAnswer({ ...input, complete }),
+  ).rejects.toThrow();
+});
 it("never silently truncates a contextual answer when adding the draft notice", () => {
   const text = "a".repeat(3500) + " Important final boundary.";
   expect(

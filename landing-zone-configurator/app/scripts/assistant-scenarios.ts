@@ -3473,6 +3473,9 @@ export function assistantPrematurePersistenceClaim(explanation: string) {
     (claim) =>
       !/\b(?:kein\w*|nicht|nichts|weder)\b/i.test(
         claim[1]!.replace(/\bnicht\s+nur\b/gi, ""),
+      ) &&
+      !/\b(?:kann|konnen|können|könnte|könnten|würde|würden|werden|wird|soll|sollen|darf|dürfen)\b/i.test(
+        claim[1]!,
       ),
   );
 }

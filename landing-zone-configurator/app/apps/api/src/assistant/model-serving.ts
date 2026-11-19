@@ -5629,6 +5629,12 @@ export class AssistantModelServing extends LegacyAssistantModelServing {
           result,
         );
       },
+      (round) =>
+        options?.onEvent?.({
+          round,
+          action: "transport-normalization",
+          code: "qwen_tagged_tool_call",
+        }),
     );
     return runConsultation({
       selection,

@@ -93,6 +93,7 @@ export type ConsultationOptions = {
     topics?: string[];
     status?: string;
     code?: string;
+    issues?: { path: string; code: string }[];
   }) => void;
 };
 const readSchema = z.discriminatedUnion("tool", [
@@ -335,7 +336,7 @@ Retain the business brief, topology, already answered questions and current task
 Choose and explain suitable offerings from confirmed requirements and reviewed facts. Do not ask users to research internal flavor IDs. Eliminate options that violate hard limits; if exactly one reviewed option fits, recommend it and move to the genuinely missing decision. A request to set up a service authorizes a reviewable recommendation; do not request another confirmation of a fitting recommendation before preparing the draft. Explain decisive constraints and why alternatives fail them. Explain boundaries and alternative architectures when none fits. A numeric user ceiling is not a performance guarantee. Ask concise useful business questions with choices, retaining answered requirements. Catalogue selections use answerType=catalogue at the exact supplied field path; goals, access policy and workload questions use requirements. Offer concrete usable choices using existing configuration and actual native defaults, rather than repeating an empty technical field.
 'Use the default', including short replies and German equivalents, is a deliberate choice of the ACTUAL Accelerator default for the pending field. Use that field's actual native-default fact from decisionOptions or the default tool and include it in the proposal with the user's quoted instruction as basis. Do not demand that users spell its literal JSON/CIDR or reconfirm the same default. State the resolved value and its practical effect. An unanswered question alone is not a choice of a public ACL. A company/VPN-only choice requires actual source networks or an explicitly chosen existing allowlist; never infer company egress from private SNA ranges. If the user later chooses the default, adopt that correction and finish the proposal. Never repeat 'who can access' after it was answered.
 For proposals, inspect the relevant service knowledge and schema, then validate_proposal. Use merge for partial object/map changes, preserving sibling values and stable keys. Use union for adding to an existing array without replacing it; preset applies only a supplied registered preset and materializes the complete native value in application code. Both are local draft transformations, never execution. Arrays are atomic. replace/default need an actual requested replacement/reset; default restores a native override, value=null. New native component objects need all mandatory fields from their schema. Native defaults may fill unrequested optional settings; do not ask for every technical field. PendingProposal contains the previous UNACCEPTED compiler delta, not current configuration or confirmed user choices. Use it to continue the same draft without losing earlier suggestions; discard it when the user changes scope. Revalidate the complete resulting proposal. Preserve pending draft values across turns; do not apply unrelated examples or recreate an existing order. Naming can be delegated using the user's company/prefix, preserving identities and permissions. Protected/operator inputs are not editable here.
-The validator returns a proposal handle or actionable feedback. Correct a rejected proposal using that feedback and the user's intent; do not expose internal errors or send the user back to research field syntax. Ask only when a genuinely missing decision cannot be resolved from the supplied context/default instruction. Validation does not accept, save or execute anything. Finish with a natural-language explanation after a successful validation, or use send_answer for structured clarification questions and explicit proposal handles. Advice needs neither a proposal nor configuration reads. A setup request needs a concrete proposal or focused missing questions, not a spoken promise. The final explanation is YOUR useful contextual answer, never a generic catalogue preamble. Be concise: normally 1-3 short paragraphs or a small useful list. Avoid repeating the same boundaries in multiple summary sections. Questions must not repeat decisions already answered. Keep memory compact, retaining relevant confirmed decisions and open questions. activeTopics lists only the inspected topics relevant to the next turn, not every topic ever read. Use the application's selected language for all user-facing text, including headings/options. References must name inspected knowledge topics. Do not claim to have inspected a live Plan or deployed resources.`;
+The validator returns a proposal handle or actionable feedback. Correct a rejected proposal using that feedback and the user's intent; do not expose internal errors or send the user back to research field syntax. Ask only when a genuinely missing decision cannot be resolved from the supplied context/default instruction. Validation does not accept, save or execute anything. Finish with a natural-language explanation after a successful validation, or use send_answer for structured clarification questions and explicit proposal handles. Advice needs neither a proposal nor configuration reads. A setup request needs a concrete proposal or focused missing questions, not a spoken promise. The final explanation is YOUR useful contextual answer, never a generic catalogue preamble. Keep internal proposal handles, hashes and tool details out of the user-facing explanation. Be concise: normally 1-3 short paragraphs or a small useful list. Avoid repeating the same boundaries in multiple summary sections. Questions must not repeat decisions already answered. Keep memory compact, retaining relevant confirmed decisions and open questions. activeTopics lists only the inspected topics relevant to the next turn, not every topic ever read. Use the application's selected language for all user-facing text, including headings/options. References must name inspected knowledge topics. Do not claim to have inspected a live Plan or deployed resources.`;
 
 export async function runConsultation(input: {
   selection: unknown;
@@ -477,6 +478,7 @@ export async function runConsultation(input: {
     for (const rule of newRules) deliveredRules.add(rule.id);
     return {
       rules: newRules,
+      selectedTopics: ids,
       ruleReferences: result.rules.map((rule) => rule.id),
       catalogueFields: context.fields
         .filter(
@@ -581,10 +583,6 @@ export async function runConsultation(input: {
       .map((topic) => topic.id);
   // Start with mandatory operating rules and the active brief. The model retrieves
   // service knowledge through tools instead of receiving every product manual.
-  const reviewedKnowledge = assistantKnowledgeForTopics(
-    context,
-    context.topics.map((topic) => topic.id),
-  );
   const initialKnowledge = scoped(previous?.topics ?? []);
   const proposalDefaults = new Map<string, unknown[]>();
   const inspections: unknown[] = [];
@@ -636,6 +634,26 @@ export async function runConsultation(input: {
                     keys: Object.keys(
                       objectValue(input.current.projectTemplates as JsonValue),
                     ),
+                    templates: Object.entries(
+                      objectValue(input.current.projectTemplates as JsonValue),
+                    ).map(([key, value]) => {
+                      const template = objectValue(value),
+                        profile = objectValue(template.accessProfile),
+                        settings = objectValue(template.settings);
+                      return {
+                        key,
+                        kind: template.kind,
+                        accessProfileMode: profile.mode ?? "legacy",
+                        hasInitialOwner:
+                          typeof profile.initialOwnerEmail === "string" &&
+                          Boolean(profile.initialOwnerEmail),
+                        legacyInputs: [
+                          "automation_role",
+                          "custom_roles",
+                          "role_assignments",
+                        ].filter((field) => settings[field] !== undefined),
+                      };
+                    }),
                     contract:
                       "This is a PLATFORM configuration with reusable project templates. Edit the named existing projectTemplates entry, not a concrete landing_zones project or IAM role_assignment. Requester and Application service-account permissions are template principal lists; their users/accounts are bound during ordering, so adding permissions does not require an email for either principal. Preserve the separate existing initialOwnerEmail. Read projectTemplates and knowledge project-templates for native shapes and operations.",
                   }
@@ -937,6 +955,18 @@ export async function runConsultation(input: {
         : raw,
     );
     if (!parsed.success) {
+      const nativeRepairs: Record<string, string> = {
+        invalid_native_arguments:
+          "Reissue the selected native function with valid JSON arguments matching its schema.",
+        invalid_native_tool_encoding:
+          "Use native function calls for operations. Return ordinary prose only for the final explanation; do not mix tool-call markup with prose.",
+        dependent_native_calls_must_be_sequential:
+          "Read results before validating or answering. Batch independent reads together, but submit all desired changes in ONE local validation call and wait for its result before the final answer.",
+      };
+      const repair =
+        typeof rawStep.action === "string"
+          ? nativeRepairs[rawStep.action]
+          : undefined;
       input.options?.onEvent?.({
         round,
         action: "protocol-validation",
@@ -950,7 +980,11 @@ export async function runConsultation(input: {
       messages.push({
         role: "user",
         content: JSON.stringify({
-          protocolValidation: { ok: false, ...feedback(parsed.error) },
+          protocolValidation: {
+            ok: false,
+            ...feedback(parsed.error),
+            ...(repair ? { code: rawStep.action, instruction: repair } : {}),
+          },
         }),
       });
       continue;
@@ -1474,7 +1508,7 @@ export async function runConsultation(input: {
         complete: input.complete,
         turns,
         language: input.language,
-        rules: reviewedKnowledge.rules,
+        rules: assistantKnowledgeForTopics(context, dialogue.references).rules,
         inspections,
         brief: verifiedMemory,
         pendingProposal: input.options?.pendingProposal,
@@ -1536,6 +1570,14 @@ export async function runConsultation(input: {
         action: "answer-validation",
         status: "rejected",
         code: feedback(error).code,
+        ...(error instanceof z.ZodError
+          ? {
+              issues: error.issues.slice(0, 12).map((issue) => ({
+                path: issue.path.join("."),
+                code: issue.code,
+              })),
+            }
+          : {}),
       });
       messages.push({
         role: "user",

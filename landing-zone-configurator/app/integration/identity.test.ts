@@ -2510,7 +2510,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     }
     const answerRequest = JSON.parse(requests[1]!);
     expect(answerRequest.response_format).toBeUndefined();
-    expect(answerRequest.tools).toHaveLength(6);
+    expect(answerRequest.tools).toHaveLength(8);
     const readResult = JSON.parse(
       logicalFixtureRequest(answerRequest).messages.at(-1)!.content,
     ).toolResults[1].result;

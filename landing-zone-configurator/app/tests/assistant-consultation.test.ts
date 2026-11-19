@@ -84,7 +84,7 @@ function model(
       expect(raw.response_format).toEqual({ type: "json_object" });
     else {
       expect(raw.response_format).toBeUndefined();
-      expect(raw.tools).toHaveLength(6);
+      expect(raw.tools).toHaveLength(8);
       expect(raw.messages[0].content).toContain("NATIVE_CONSULTATION_PROTOCOL");
     }
     const review = body.messages.some(

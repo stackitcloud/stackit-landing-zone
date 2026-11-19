@@ -26,6 +26,93 @@ const call = (name: string, args: unknown): NativeToolCall => ({
   type: "function",
   function: { name, arguments: JSON.stringify(args) },
 });
+it("maps exact template permission lists without adding preset rights", async () => {
+  const request = vi.fn().mockResolvedValue({
+    role: "assistant",
+    content: null,
+    tool_calls: [
+      call("propose_template_access_profile", {
+        templateKeys: ["central"],
+        selection: {
+          kind: "custom",
+          initialOwnerEmail: "owner@example.test",
+          permissions: ["iaas.server.get", "resource-manager.project.get"],
+          automationPermissions: ["iaas.server.get"],
+        },
+      }),
+    ],
+  });
+  const result = await new NativeConsultation(request).next(context, schema);
+  expect(result).toMatchObject({
+    action: "validate_proposal",
+    basis: [],
+    changes: [
+      {
+        path: "projectTemplates.central.accessProfile",
+        operation: "replace",
+        value: {
+          mode: "granular",
+          initialOwnerEmail: "owner@example.test",
+          permissions: ["iaas.server.get", "resource-manager.project.get"],
+          automationPermissions: ["iaas.server.get"],
+        },
+      },
+    ],
+  });
+});
+it("maps full Owner selection to the registered atomic preset", async () => {
+  const request = vi.fn().mockResolvedValue({
+    role: "assistant",
+    content: null,
+    tool_calls: [
+      call("propose_template_access_profile", {
+        templateKeys: ["central"],
+        selection: { kind: "preset", id: "owner" },
+      }),
+    ],
+  });
+  expect(await new NativeConsultation(request).next(context, schema)).toEqual({
+    action: "validate_proposal",
+    basis: [],
+    changes: [
+      {
+        path: "projectTemplates.central.accessProfile",
+        operation: "preset",
+        value: { id: "owner" },
+      },
+    ],
+  });
+});
+it("keeps additions scoped to the selected templates and principals", async () => {
+  const selection = {
+    templateKeys: ["public"],
+    principals: ["requester"],
+    source: { kind: "permissions", ids: ["iaas.server.get"] },
+  };
+  const request = vi.fn().mockResolvedValue({
+    role: "assistant",
+    content: null,
+    tool_calls: [call("propose_template_permissions", selection)],
+  });
+  expect(await new NativeConsultation(request).next(context, schema)).toEqual({
+    action: "validate_proposal",
+    basis: [],
+    changes: [
+      {
+        path: "projectTemplates",
+        operation: "add_permissions",
+        value: selection,
+      },
+    ],
+  });
+  const tool = nativeConsultationTools(schema).find(
+    (t) => t.function.name === "propose_template_permissions",
+  )!;
+  expect(tool.function.parameters).toMatchObject({
+    type: "object",
+    required: expect.arrayContaining(["templateKeys", "principals", "source"]),
+  });
+});
 it("uses small native schemas and keeps the user's actual message as a user turn", async () => {
   const request = vi.fn(async (messages: NativeMessage[]) => {
     expect(messages.at(-1)).toEqual({
@@ -52,6 +139,8 @@ it("uses small native schemas and keeps the user's actual message as a user turn
     "read_catalogue",
     "validate_proposal",
     "send_answer",
+    "propose_template_permissions",
+    "propose_template_access_profile",
   ]);
   expect(JSON.stringify(tools).length).toBeLessThan(20000);
   const properties = tools.find(
@@ -209,5 +298,122 @@ it("rejects unknown functions and empty final messages without executing them", 
   );
   await expect(empty.next(context, schema)).rejects.toMatchObject({
     reason: "empty_native_answer",
+  });
+});
+
+it("normalizes a provider tag-only call into matching native tool roles without publishing markup", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content:
+        '<tool_call>\n{"name":"read_knowledge","arguments":{"topics":["devops-git"]}}\n</tool_call>',
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: "Git100 supports up to 100 users.",
+    });
+  const normalized = vi.fn(),
+    native = new NativeConsultation(request, normalized);
+  expect(await native.next(context, schema)).toMatchObject({
+    action: "inspect",
+    requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+  });
+  expect(normalized).toHaveBeenCalledWith(0);
+  const answer = await native.next(
+    [
+      ...context,
+      {
+        role: "user",
+        content: JSON.stringify({
+          toolResults: [
+            {
+              request: { tool: "knowledge", topics: ["devops-git"] },
+              result: {
+                topics: [{ id: "devops-git" }],
+                selectedTopics: ["devops-git"],
+              },
+            },
+          ],
+        }),
+      },
+    ],
+    schema,
+  );
+  expect(answer).toMatchObject({
+    action: "answer",
+    explanation: "Git100 supports up to 100 users.",
+  });
+  const messages = request.mock.calls[1]?.[0] as NativeMessage[];
+  const assistant = messages.find(
+    (message) => message.role === "assistant" && message.tool_calls,
+  );
+  expect(assistant).toMatchObject({
+    content: null,
+    tool_calls: [{ id: "native-text-0-0" }],
+  });
+  expect(messages.at(-1)).toMatchObject({
+    role: "tool",
+    tool_call_id: "native-text-0-0",
+  });
+});
+it("bounds automatic citations and prioritizes the selected topic over dependencies", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [call("read_knowledge", { topics: ["important"] })],
+    })
+    .mockResolvedValueOnce({ role: "assistant", content: "Reviewed answer." });
+  const native = new NativeConsultation(request);
+  await native.next(context, schema);
+  const answer = (await native.next(
+    [
+      ...context,
+      {
+        role: "user",
+        content: JSON.stringify({
+          toolResults: [
+            {
+              request: { tool: "knowledge", topics: ["important"] },
+              result: {
+                topics: [
+                  ...Array.from({ length: 12 }, (_, index) => ({
+                    id: `dependency-${index}`,
+                  })),
+                  { id: "important" },
+                ],
+                selectedTopics: ["important"],
+              },
+            },
+          ],
+        }),
+      },
+    ],
+    schema,
+  )) as { references: string[] };
+  expect(answer.references).toHaveLength(8);
+  expect(answer.references[0]).toBe("important");
+});
+it("rejects mixed or malformed tool markup and never interprets arbitrary functions", async () => {
+  const mixed = new NativeConsultation(
+    vi.fn().mockResolvedValue({
+      role: "assistant",
+      content:
+        'Please do this: <tool_call>{"name":"read_knowledge","arguments":{}}</tool_call>',
+    }),
+  );
+  expect(await mixed.next(context, schema)).toMatchObject({
+    action: "invalid_native_tool_encoding",
+  });
+  const unknown = new NativeConsultation(
+    vi.fn().mockResolvedValue({
+      role: "assistant",
+      content: '<tool_call>{"name":"execute_cloud","arguments":{}}</tool_call>',
+    }),
+  );
+  await expect(unknown.next(context, schema)).rejects.toMatchObject({
+    reason: "unsupported_native_tool",
   });
 });

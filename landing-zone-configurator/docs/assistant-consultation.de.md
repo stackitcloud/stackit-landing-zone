@@ -58,6 +58,21 @@ Der bestehende Compiler prüft den Kandidaten während der Beratung und erneut v
 Speichern des Vorschlags. Rechte, Eigentümer, Revision und Ablauf bleiben bei der
 Übernahme maßgeblich.
 
+Acht native Funktionen bilden die gemeinsamen Beratungsoperationen ab. Zwei
+Template-Werkzeuge unterscheiden zusätzliche Berechtigungen von einem vollständigen
+Zugriffsprofil und verwenden dieselbe Vorschlagsvalidierung. Explizite eigene
+Berechtigungslisten ersetzen die bisherigen Listen exakt. Volle Owner-Rechte
+verwenden das registrierte atomare Profil. Die anfängliche Template-Übersicht
+kennzeichnet vorhandene Profile und ältere Eingabefelder.
+
+Zur Kompatibilität werden Antworten, die ausschließlich aus gültigen markierten
+`tool_call`-Blöcken bestehen, in native Aufrufe normalisiert. Gemischter Text,
+fehlerhafte Blöcke und unbekannte Funktionen werden weder ausgeführt noch als
+Beratung veröffentlicht. Quellenreferenzen priorisieren ausgewählte Themen und
+bleiben begrenzt. Die Antwortprüfung erhält relevante Fakten und die tatsächlichen
+Compiler-Änderungen, einschließlich angeforderter Namen, Schlüssel und exakter
+Listen, ohne wiederholte Erkennungsschemata.
+
 Der Transport verwendet native `tool_calls` der Assistant-Rolle und zugehörige
 `tool`-Ergebnisse mit Aufruf-ID. Ergebnisse werden nicht als neue Nutzernachrichten
 nachgebildet. Erklärungen dürfen normaler Text sein; strukturierte Rückfragen nutzen

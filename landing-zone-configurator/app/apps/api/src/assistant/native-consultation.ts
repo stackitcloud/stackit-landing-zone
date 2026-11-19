@@ -1,6 +1,25 @@
 import { assistantAnswerTextMaxLength } from "@lzc/contracts";
+import { defaultApplicationAccessProfile } from "@lzc/domain";
 import { z } from "zod";
 import { AssistantInferenceError } from "./model-serving.js";
+import { consultationAccessPresets } from "./proposal-operations.js";
+
+const templateAccessInput = z.strictObject({
+  templateKeys: z.array(z.string().min(1).max(100)).min(1).max(8),
+  selection: z.discriminatedUnion("kind", [
+    z.strictObject({
+      kind: z.literal("preset"),
+      id: z.enum(consultationAccessPresets),
+      initialOwnerEmail: z.string().min(1).max(254).optional(),
+    }),
+    z.strictObject({
+      kind: z.literal("custom"),
+      initialOwnerEmail: z.string().min(1).max(254),
+      permissions: z.array(z.string().min(1).max(200)).max(512),
+      automationPermissions: z.array(z.string().min(1).max(200)).max(512),
+    }),
+  ]),
+});
 
 export const nativeToolCallSchema = z.object({
   id: z.string().min(1).max(200),
@@ -36,7 +55,7 @@ export const nativeCompletionSchema = z.object({
             .max(assistantAnswerTextMaxLength)
             .nullable()
             .optional(),
-          tool_calls: z.array(nativeToolCallSchema).min(1).max(6).optional(),
+          tool_calls: z.array(nativeToolCallSchema).max(6).optional(),
         }),
       }),
     )
@@ -166,6 +185,39 @@ export function nativeConsultationTools(
   validation.required = (validation.required as string[]).filter(
     (key) => key !== "basis",
   );
+  const changeItems = object(
+    object(object(variant(schema, "validate_proposal").properties).changes)
+      .items,
+  );
+  const operations = changeItems.oneOf ?? changeItems.anyOf;
+  const addition = object(
+    (Array.isArray(operations) ? operations : []).find(
+      (operation) =>
+        object(object(object(operation).properties).operation).const ===
+        "add_permissions",
+    ),
+  );
+  tools.push({
+    type: "function",
+    function: {
+      name: "propose_template_permissions",
+      description:
+        "Propose ADDING official service groups, key-management sets or exact permissions to existing Application landing-zone templates. Select template keys and requester/automation principals. Their existing separate rights and initial owner are preserved. This sets template project IAM; accounts bind during ordering. Use this for requested Kubernetes/SKE or other service rights within Public/Corporate/Sandbox templates. All changes remain a LOCAL reviewable proposal.",
+      parameters: {
+        ...object(object(addition.properties).value),
+        ...(schema.$defs ? { $defs: schema.$defs } : {}),
+      },
+    },
+  });
+  tools.push({
+    type: "function",
+    function: {
+      name: "propose_template_access_profile",
+      description:
+        "Propose a COMPLETE access profile for selected existing Application templates. Choose a registered workload/VM/full-Owner preset when requested, or custom for EXACT requester and automation permission lists. Custom lists replace the old lists; additions use propose_template_permissions. Reuse an existing/confirmed central initial owner for granular profiles. The full Owner preset has no initialOwnerEmail. No user or service-account email is needed for the requester/automation themselves: ordering binds those principals. This validates a LOCAL draft only.",
+      parameters: z.toJSONSchema(templateAccessInput),
+    },
+  });
   return tools;
 }
 
@@ -178,6 +230,8 @@ export class NativeConsultation {
   private retrievedKnowledge = false;
   private proposal: string | null = null;
   private topics = new Set<string>();
+  private selectedTopics = new Set<string>();
+  private round = 0;
   private remember(value: unknown): void {
     const data = object(value);
     if (Array.isArray(data.topics))
@@ -185,6 +239,12 @@ export class NativeConsultation {
         const id = object(topic).id;
         if (typeof id === "string") this.topics.add(id);
       }
+    if (Array.isArray(data.selectedTopics))
+      for (const id of data.selectedTopics)
+        if (typeof id === "string" && this.topics.has(id)) {
+          this.selectedTopics.delete(id);
+          this.selectedTopics.add(id);
+        }
     if (data.knowledge) this.remember(data.knowledge);
     if (data.result) this.remember(data.result);
     const validation = object(data.validation);
@@ -199,6 +259,7 @@ export class NativeConsultation {
       language?: "de" | "en",
       requiredFunction?: string,
     ) => Promise<Completion>,
+    private readonly onNormalization?: (round: number) => void,
   ) {}
   async next(
     logical: LogicalMessage[],
@@ -284,14 +345,50 @@ export class NativeConsultation {
       }
     }
     this.consumed = logical.length;
+    this.pending = [];
     const tools = nativeConsultationTools(schema);
-    const result = await this.request(
+    let result = await this.request(
       [...this.messages],
       tools,
       signal,
       language,
       this.retrievedKnowledge ? undefined : "read_knowledge",
     );
+    const round = this.round++;
+    if (!result.tool_calls?.length && result.content?.includes("<tool_call>")) {
+      const pattern = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g;
+      const blocks = [...result.content.matchAll(pattern)];
+      if (
+        !blocks.length ||
+        blocks.length > 6 ||
+        result.content.replace(pattern, "").trim()
+      ) {
+        this.messages.push({ role: "assistant", content: result.content });
+        return { action: "invalid_native_tool_encoding" };
+      }
+      try {
+        const calls = blocks.map((block, index) => {
+          const data = object(JSON.parse(block[1]!));
+          const arguments_ =
+            typeof data.arguments === "string"
+              ? data.arguments
+              : JSON.stringify(data.arguments);
+          return nativeToolCallSchema.parse({
+            id: `native-text-${round}-${index}`,
+            type: "function",
+            function: { name: data.name, arguments: arguments_ },
+          });
+        });
+        result = { role: "assistant", content: null, tool_calls: calls };
+        this.onNormalization?.(round);
+      } catch {
+        this.messages.push({
+          role: "assistant",
+          content: result.content ?? null,
+        });
+        return { action: "invalid_native_tool_encoding" };
+      }
+    }
     this.pending = result.tool_calls ?? [];
     this.messages.push({
       role: "assistant",
@@ -306,8 +403,12 @@ export class NativeConsultation {
         kind: this.proposal ? "proposal" : "advice",
         explanation: result.content,
         questions: [],
-        references: [...this.topics],
-        activeTopics: [...this.topics].slice(-6),
+        references: [
+          ...new Set(
+            [...this.selectedTopics].reverse().concat([...this.topics]),
+          ),
+        ].slice(0, 8),
+        activeTopics: [...this.selectedTopics].slice(-6),
         proposal: this.proposal,
       };
     }
@@ -335,6 +436,54 @@ export class NativeConsultation {
     if (calls.length !== 1)
       return { action: "dependent_native_calls_must_be_sequential" };
     const call = calls[0]!;
+    if (call.name === "propose_template_permissions") {
+      this.proposal = null;
+      return {
+        action: "validate_proposal",
+        changes: [
+          {
+            path: "projectTemplates",
+            operation: "add_permissions",
+            value: call.arguments,
+          },
+        ],
+        basis: [],
+      };
+    }
+    if (call.name === "propose_template_access_profile") {
+      this.proposal = null;
+      const input = templateAccessInput.safeParse(call.arguments);
+      if (!input.success) return { action: "invalid_native_arguments" };
+      const { selection, templateKeys } = input.data;
+      return {
+        action: "validate_proposal",
+        basis: [],
+        changes: templateKeys.map((key) =>
+          selection.kind === "preset"
+            ? {
+                path: `projectTemplates.${key}.accessProfile`,
+                operation: "preset",
+                value: {
+                  id: selection.id,
+                  ...(selection.initialOwnerEmail
+                    ? { initialOwnerEmail: selection.initialOwnerEmail }
+                    : {}),
+                },
+              }
+            : {
+                path: `projectTemplates.${key}.accessProfile`,
+                operation: "replace",
+                value: {
+                  ...defaultApplicationAccessProfile(
+                    selection.initialOwnerEmail,
+                  ),
+                  permissions: selection.permissions,
+                  automationPermissions: selection.automationPermissions,
+                },
+              },
+        ),
+      };
+    }
     if (call.name === "validate_proposal") {
       this.proposal = null;
       const { nativeDefaults, ...arguments_ } = call.arguments;

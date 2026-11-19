@@ -1623,3 +1623,16 @@ it("distinguishes explicit no-save statements from affirmative persistence claim
     ),
   ).toBe(true);
 });
+
+it("accepts a draft that can be saved later while rejecting a claim it is already saved", () => {
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Der Entwurf ist lokal validiert und kann bei Bedarf akzeptiert, gespeichert oder weiter bearbeitet werden.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Der Entwurf ist gespeichert und kann weiter bearbeitet werden.",
+    ),
+  ).toBe(true);
+});

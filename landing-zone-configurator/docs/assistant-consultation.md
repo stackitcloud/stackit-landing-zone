@@ -63,6 +63,19 @@ missing or truncated catalogue data is not proof of unavailability. The model su
 replace that explanation with a generic catalogue preamble. Recommendation cards
 are informational and grant neither configuration acceptance nor execution rights.
 
+Eight native functions expose the shared consultation operations. Two template
+helpers distinguish adding permissions from selecting a complete access profile;
+they use the same proposal validator. Explicit custom permission lists replace
+the previous lists exactly. Full Owner selection uses the registered atomic preset.
+The initial template summary identifies existing profiles and legacy inputs.
+
+For provider compatibility, a response consisting entirely of valid tagged
+`tool_call` blocks is normalized into native calls. Mixed prose, malformed blocks
+and unknown functions cannot become executable operations or published advice.
+Source references prioritize selected topics and remain bounded. Answer review
+receives relevant source facts and the actual compiler delta, including checks
+against requested names, keys and exact lists, without repeated discovery schemas.
+
 The model submits draft changes to the validator and receives feedback before its
 final answer. There is no tool for saving, granting permissions, provisioning,
 publishing, approving or executing cloud changes. All tool envelopes, native paths,
