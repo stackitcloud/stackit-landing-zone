@@ -83,12 +83,22 @@ Quellenauswahl. Eine fachliche Anfrage verwendet dieses Paket, statt aus einzeln
 Verben eine unvollständige Liste zu rekonstruieren. Ausdrücklich exakte Listen von
 Berechtigungskennungen bleiben exakt. Regressionen prüfen beide Fälle.
 
-Acht native Funktionen bilden die gemeinsamen Beratungsoperationen ab. Zwei
+Neun native Funktionen bilden die gemeinsamen Beratungsoperationen ab. Zwei
 Template-Werkzeuge unterscheiden zusätzliche Berechtigungen von einem vollständigen
 Zugriffsprofil und verwenden dieselbe Vorschlagsvalidierung. Explizite eigene
 Berechtigungslisten ersetzen die bisherigen Listen exakt. Volle Owner-Rechte
 verwenden das registrierte atomare Profil. Die anfängliche Template-Übersicht
 kennzeichnet vorhandene Profile und ältere Eingabefelder.
+
+Interaktive Entscheidungen verwenden `ask_question` mit jeweils einem flachen
+Pfad-/Text-/Auswahlargument. Mehrere unabhängige Fragen können als mehrere Aufrufe
+in einer Antwort zurückkommen. Der Adapter bildet daraus die bestehende öffentliche
+Fragenliste und behält den validierten Vorschlag. `send_answer` dient entschiedenen
+Antworten. Damit entfallen verschachtelte Fragenlisten, die das Kandidatenmodell
+wiederholt als fehlerhafte JSON-Strings lieferte. Nur gültige JSON-Container an
+ausdrücklich entsprechend typisierten Feldern werden zur Transportkompatibilität
+dekodiert. Fehlerhaftes JSON und freie/literale Werte werden nicht repariert oder
+umgedeutet. Grenzen und sämtliche Vorschlagsprüfungen gelten unverändert.
 
 Zur Kompatibilität werden Antworten, die ausschließlich aus gültigen markierten
 `tool_call`-Blöcken bestehen, in native Aufrufe normalisiert. Gemischter Text,

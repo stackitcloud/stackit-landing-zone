@@ -26,6 +26,154 @@ const call = (name: string, args: unknown): NativeToolCall => ({
   type: "function",
   function: { name, arguments: JSON.stringify(args) },
 });
+it("assembles independent flat questions while retaining the validated proposal and exact quoted text", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("propose_template_access_profile", {
+          templateKeys: ["central"],
+          selection: {
+            kind: "preset",
+            id: "application-vm-v1",
+            initialOwnerEmail: "owner@example.test",
+          },
+        }),
+      ],
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("ask_question", {
+          path: "projectTemplates",
+          text: 'Use profile for Corporate "central"?',
+          options: ["Confirm", "Keep existing"],
+          explanation: "Choose the remaining decisions.",
+          references: ["project-templates"],
+        }),
+        call("ask_question", {
+          path: "projectTemplates",
+          text: "Which central initial owner?",
+          explanation: "Choose the remaining decisions.",
+          references: ["project-templates"],
+        }),
+      ],
+    });
+  const native = new NativeConsultation(request);
+  await native.next(context, schema);
+  const answer = await native.next(
+    [
+      ...context,
+      {
+        role: "user",
+        content: JSON.stringify({
+          validation: { ok: true, proposal: "valid-profile" },
+        }),
+      },
+    ],
+    schema,
+  );
+  expect(answer).toMatchObject({
+    action: "answer",
+    kind: "proposal",
+    proposal: "valid-profile",
+    explanation: "Choose the remaining decisions.",
+    questions: [
+      {
+        path: "projectTemplates",
+        text: 'Use profile for Corporate "central"?',
+      },
+      { path: "projectTemplates", text: "Which central initial owner?" },
+    ],
+  });
+  expect(consultationStepSchema.safeParse(answer).success).toBe(true);
+  const tools = nativeConsultationTools(schema);
+  expect(
+    (
+      tools.find((t) => t.function.name === "send_answer")!.function.parameters
+        .properties as Record<string, unknown>
+    ).questions,
+  ).toBeUndefined();
+});
+it("decodes valid schema-typed containers without changing JSON-looking literal values", async () => {
+  const normalized = vi.fn();
+  const changes = [
+    {
+      path: "company_name",
+      operation: "replace",
+      value: '["literal company name"]',
+    },
+  ];
+  const native = new NativeConsultation(
+    vi.fn().mockResolvedValue({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("validate_proposal", {
+          changes: JSON.stringify(changes),
+          nativeDefaults: "[]",
+        }),
+      ],
+    }),
+    normalized,
+  );
+  const step = await native.next(context, schema);
+  expect(step).toMatchObject({
+    action: "validate_proposal",
+    changes,
+    basis: [],
+  });
+  expect(consultationStepSchema.safeParse(step).success).toBe(true);
+  expect(normalized).toHaveBeenCalledWith(0, "json_encoded_tool_argument");
+});
+it.each([
+  '[{path:"company_name",operation:"replace",value:"invalid JSON"}]',
+  JSON.stringify(
+    Array.from({ length: 9 }, () => ({
+      path: "company_name",
+      operation: "replace",
+      value: "Company",
+    })),
+  ),
+])(
+  "keeps malformed and oversized encoded operations invalid (%s)",
+  async (changes) => {
+    const native = new NativeConsultation(
+      vi.fn().mockResolvedValue({
+        role: "assistant",
+        content: null,
+        tool_calls: [call("validate_proposal", { changes })],
+      }),
+    );
+    expect(
+      consultationStepSchema.safeParse(await native.next(context, schema))
+        .success,
+    ).toBe(false);
+  },
+);
+it("preserves unknown flat-question fields for strict rejection", async () => {
+  const native = new NativeConsultation(
+    vi.fn().mockResolvedValue({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("ask_question", {
+          path: "projectTemplates",
+          text: "Owner?",
+          explanation: "Choose the owner.",
+          execute: true,
+        }),
+      ],
+    }),
+  );
+  expect(
+    consultationStepSchema.safeParse(await native.next(context, schema))
+      .success,
+  ).toBe(false);
+});
 it("maps exact template permission lists without adding preset rights", async () => {
   const request = vi.fn().mockResolvedValue({
     role: "assistant",
@@ -192,6 +340,7 @@ it("uses small native schemas and keeps the user's actual message as a user turn
     "read_catalogue",
     "validate_proposal",
     "send_answer",
+    "ask_question",
     "propose_template_permissions",
     "propose_template_access_profile",
   ]);

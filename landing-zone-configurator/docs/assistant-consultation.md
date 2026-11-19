@@ -88,11 +88,20 @@ selection. A natural-language capability request uses that bundle instead of
 reconstructing an incomplete list from individual verbs. Explicit exact lists of
 technical permission identifiers remain exact. Regressions cover both paths.
 
-Eight native functions expose the shared consultation operations. Two template
+Nine native functions expose the shared consultation operations. Two template
 helpers distinguish adding permissions from selecting a complete access profile;
 they use the same proposal validator. Explicit custom permission lists replace
 the previous lists exactly. Full Owner selection uses the registered atomic preset.
 The initial template summary identifies existing profiles and legacy inputs.
+
+Interactive decisions use `ask_question` with one flat path/text/options payload
+per question. Independent questions may be returned as several calls in one reply;
+the adapter assembles the existing public question list and retains the validated
+proposal. `send_answer` handles fully decided responses. This avoids nested lists
+of question objects that the candidate model repeatedly returned as malformed JSON
+strings. Only valid JSON containers at explicitly typed schema fields may be
+decoded for transport compatibility; malformed JSON and literal/free-form values
+are not repaired or coerced. Bounds and all proposal checks still apply.
 
 For provider compatibility, a response consisting entirely of valid tagged
 `tool_call` blocks is normalized into native calls. Mixed prose, malformed blocks

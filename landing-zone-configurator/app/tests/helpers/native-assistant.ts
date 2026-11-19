@@ -16,17 +16,35 @@ export function nativeStepResponse(step: unknown, model = "test-model") {
             arguments: arguments_,
           }),
         )
-      : [
-          {
-            name:
-              value.action === "validate_proposal"
-                ? "validate_proposal"
-                : "send_answer",
-            arguments: Object.fromEntries(
-              Object.entries(value).filter(([key]) => key !== "action"),
-            ),
-          },
-        ];
+      : value.action === "answer" &&
+          Array.isArray(value.questions) &&
+          value.questions.length
+        ? value.questions.map((question: Record<string, unknown>) => ({
+            name: "ask_question",
+            arguments: {
+              ...Object.fromEntries(
+                Object.entries(value).filter(
+                  ([key]) => !["action", "kind", "questions"].includes(key),
+                ),
+              ),
+              ...question,
+            },
+          }))
+        : [
+            {
+              name:
+                value.action === "validate_proposal"
+                  ? "validate_proposal"
+                  : "send_answer",
+              arguments: Object.fromEntries(
+                Object.entries(value).filter(
+                  ([key]) =>
+                    key !== "action" &&
+                    (value.action !== "answer" || key !== "questions"),
+                ),
+              ),
+            },
+          ];
   for (const call of calls)
     if (call.name === "validate_proposal") {
       call.arguments.nativeDefaults = call.arguments.basis ?? [];
