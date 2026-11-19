@@ -26,6 +26,122 @@ const call = (name: string, args: unknown): NativeToolCall => ({
   type: "function",
   function: { name, arguments: JSON.stringify(args) },
 });
+it("collects questions sequentially and retains them through final prose without leaking them into a later repair", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("ask_question", {
+          path: "projectTemplates",
+          text: "Which initial owner?",
+          explanation: "Choose an owner.",
+          references: ["project-templates"],
+          finish: false,
+        }),
+      ],
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("ask_question", {
+          path: "projectTemplates",
+          text: "Confirm Workload transition?",
+          explanation: "Review the transition.",
+          references: ["project-templates"],
+          finish: false,
+        }),
+      ],
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: "Both decisions remain open. Nothing saved.",
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: "Corrected advice without questions.",
+    });
+  const native = new NativeConsultation(request);
+  const logical = [...context];
+  expect(await native.next(logical, schema)).toEqual({
+    action: "stage_questions",
+    pendingCount: 1,
+  });
+  logical.push({
+    role: "user",
+    content: JSON.stringify({ questionStaging: { ok: true } }),
+  });
+  expect(await native.next(logical, schema)).toEqual({
+    action: "stage_questions",
+    pendingCount: 2,
+  });
+  logical.push({
+    role: "user",
+    content: JSON.stringify({ questionStaging: { ok: true } }),
+  });
+  const answer = await native.next(logical, schema);
+  expect(answer).toMatchObject({
+    action: "answer",
+    questions: [
+      { text: "Which initial owner?" },
+      { text: "Confirm Workload transition?" },
+    ],
+  });
+  expect(consultationStepSchema.safeParse(answer).success).toBe(true);
+  expect(request.mock.calls[1]![0].at(-1)).toMatchObject({ role: "tool" });
+  logical.push({
+    role: "user",
+    content: JSON.stringify({ answerReview: { ready: false } }),
+  });
+  expect(await native.next(logical, schema)).toMatchObject({ questions: [] });
+});
+it("finishes accumulated questions with the final question call", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("ask_question", {
+          path: "projectTemplates",
+          text: "Owner?",
+          explanation: "Choose decisions.",
+          finish: false,
+        }),
+      ],
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("ask_question", {
+          path: "projectTemplates",
+          text: "Confirm?",
+          explanation: "Choose decisions.",
+          finish: true,
+        }),
+      ],
+    });
+  const native = new NativeConsultation(request);
+  await native.next(context, schema);
+  expect(
+    await native.next(
+      [
+        ...context,
+        {
+          role: "user",
+          content: JSON.stringify({ questionStaging: { ok: true } }),
+        },
+      ],
+      schema,
+    ),
+  ).toMatchObject({
+    action: "answer",
+    questions: [{ text: "Owner?" }, { text: "Confirm?" }],
+  });
+});
 it("assembles independent flat questions while retaining the validated proposal and exact quoted text", async () => {
   const request = vi
     .fn()

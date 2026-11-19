@@ -187,6 +187,10 @@ const basisSchema = z.strictObject({
 });
 export const consultationStepSchema = z.discriminatedUnion("action", [
   z.strictObject({
+    action: z.literal("stage_questions"),
+    pendingCount: z.number().int().min(1).max(8),
+  }),
+  z.strictObject({
     action: z.literal("inspect"),
     requests: z.array(readSchema).min(1).max(6),
   }),
@@ -471,8 +475,19 @@ export async function runConsultation(input: {
     accessChoices.set(path, choices.slice(0, 6));
   }
   const deliveredRules = new Set<string>();
+  const deliveredServiceFacts = new Set<string>();
+  const deliveredSchemas = new Set<string>();
+  let deliveredApplicationAccess = false;
   const scoped = (ids: string[]) => {
     const result = assistantKnowledgeForTopics(context, ids);
+    const freshFacts = result.topics.filter(
+      (topic) =>
+        reviewedServiceFacts[topic.id] && !deliveredServiceFacts.has(topic.id),
+    );
+    for (const topic of freshFacts) deliveredServiceFacts.add(topic.id);
+    const includeApplicationAccess =
+      ids.includes("project-templates") && !deliveredApplicationAccess;
+    if (includeApplicationAccess) deliveredApplicationAccess = true;
     for (const [path, choices] of accessChoices)
       if (
         result.topics.some((topic) =>
@@ -522,7 +537,7 @@ export async function runConsultation(input: {
             field.path.split(".").length <= 2 && !field.path.includes("[*]"),
         )
         .map(({ path, mode }) => ({ path, mode })),
-      applicationAccess: ids.includes("project-templates")
+      applicationAccess: includeApplicationAccess
         ? {
             overview: applicationAccessOverview(input.language),
             presets: consultationAccessPresets,
@@ -558,10 +573,11 @@ export async function runConsultation(input: {
       ),
       reviewedConstraints: reviewedUserLimits,
       serviceFacts: Object.fromEntries(
-        result.topics
-          .filter((topic) => reviewedServiceFacts[topic.id])
-          .map((topic) => [topic.id, reviewedServiceFacts[topic.id]]),
+        freshFacts.map((topic) => [topic.id, reviewedServiceFacts[topic.id]]),
       ),
+      serviceFactReferences: result.topics
+        .filter((topic) => reviewedServiceFacts[topic.id])
+        .map((topic) => topic.id),
       lifecycleInstructions: ids.includes("configuration-lifecycle")
         ? Object.fromEntries(
             [
@@ -652,7 +668,14 @@ export async function runConsultation(input: {
                     keys: Object.keys(
                       objectValue(input.current.projectTemplates as JsonValue),
                     ),
-                    templates: consultationTemplateReadiness(input.current),
+                    templates: consultationTemplateReadiness(input.current).map(
+                      (template) => ({
+                        ...template,
+                        readPath: `projectTemplates.${template.key}`,
+                      }),
+                    ),
+                    metadataContract:
+                      "templates contains server-computed readiness metadata, not configuration fields. legacyInputs, legacyRoleParameter, hasInitialOwner and requiresInitialOwnerBeforePublication are already supplied facts, not readable dotted paths. Use each readPath for the actual template settings and profile. Read existing values; Application presets are not Accelerator native variable defaults.",
                     profileQuestionPath: "projectTemplates",
                     ownerChoices: assistantOwnerChoices(
                       ownerIdentities,
@@ -740,6 +763,10 @@ export async function runConsultation(input: {
         }
         return project(objectValue(value as JsonValue)[head ?? ""], rest);
       };
+      const freshSchemaRoots = roots.filter(
+        (root) => !deliveredSchemas.has(root),
+      );
+      for (const root of freshSchemaRoots) deliveredSchemas.add(root);
       return {
         knowledge: scoped(topicOwners(request.paths)),
         missingPaths: request.paths
@@ -798,7 +825,8 @@ export async function runConsultation(input: {
             ),
           ]),
         ),
-        schemas: roots
+        schemaReferences: roots,
+        schemas: freshSchemaRoots
           .filter((root) => root !== "projectTemplates")
           .map((root) => ({ root, type: inputDefinition(root).type })),
         fields: context.fields.filter((field) =>
@@ -809,7 +837,7 @@ export async function runConsultation(input: {
               field.path.startsWith(`${path}[*]`),
           ),
         ),
-        templateProposalSchema: roots.includes("projectTemplates")
+        templateProposalSchema: freshSchemaRoots.includes("projectTemplates")
           ? z.toJSONSchema(assistantEditorChangeSchema("projectTemplates"))
           : undefined,
         templateQuestionContract: roots.includes("projectTemplates")
@@ -1029,6 +1057,20 @@ export async function runConsultation(input: {
         : {}),
     });
     messages.push({ role: "assistant", content: JSON.stringify(step) });
+    if (step.action === "stage_questions") {
+      messages.push({
+        role: "user",
+        content: JSON.stringify({
+          questionStaging: {
+            ok: true,
+            pendingCount: step.pendingCount,
+            instruction:
+              "Questions are staged privately, not yet presented. Add the remaining independent decisions with ask_question, then finish=true or provide the final contextual explanation. Previously staged questions are retained. No user has answered or confirmed them.",
+          },
+        }),
+      });
+      continue;
+    }
     if (step.action === "inspect") {
       const results = step.requests.map((request) => {
         try {

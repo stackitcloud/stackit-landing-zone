@@ -60,6 +60,11 @@ of repeated. The service catalogue and relevant editable roots are discoverable
 without a separate intent classifier. Schemas are read with the actual configuration,
 rather than embedding thousands of unrelated field paths in every tool definition.
 
+Immutable service contracts and root schemas are delivered once per consultation;
+subsequent reads retain source references and actual requested values. Readiness
+summaries identify actual template read paths separately from computed metadata,
+which is not exposed as invented configuration fields.
+
 Tools read already scoped public configuration and catalogue snapshots. They cannot
 select another tenant, arbitrary HTTP endpoints, credentials, live State or a Plan.
 Native schemas and defaults come from the generated Accelerator input contract;
@@ -95,8 +100,12 @@ the previous lists exactly. Full Owner selection uses the registered atomic pres
 The initial template summary identifies existing profiles and legacy inputs.
 
 Interactive decisions use `ask_question` with one flat path/text/options payload
-per question. Independent questions may be returned as several calls in one reply;
-the adapter assembles the existing public question list and retains the validated
+per question. Independent questions may be returned as several calls in one reply.
+`finish=false` stages a question privately while further reads or questions continue.
+The final question with `finish=true`, or a final explanation, assembles all staged
+questions before ordinary validation and review. Staging grants no authority and
+does not expose a partial response. The same eight-question and turn budgets apply.
+The adapter assembles the existing public question list and retains the validated
 proposal. `send_answer` handles fully decided responses. This avoids nested lists
 of question objects that the candidate model repeatedly returned as malformed JSON
 strings. Only valid JSON containers at explicitly typed schema fields may be

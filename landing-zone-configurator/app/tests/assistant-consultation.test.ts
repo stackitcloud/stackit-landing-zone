@@ -157,6 +157,100 @@ function model(
   return { client: new AssistantModelServing(configuration, request), request };
 }
 const lastResult = (body: Request) => JSON.parse(body.messages.at(-1)!.content);
+it("continues staged decision calls and reviews the complete public question list only at the end", async () => {
+  const { client, request } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["configuration-lifecycle"] }],
+    }),
+    () =>
+      final({
+        finish: false,
+        questions: [{ path: "company_name", text: "Which company name?" }],
+      }),
+    (body) => {
+      expect(lastResult(body).questionStaging).toMatchObject({
+        ok: true,
+        pendingCount: 1,
+      });
+      return final({
+        finish: false,
+        questions: [{ path: "company_code", text: "Which company prefix?" }],
+      });
+    },
+    (body) => {
+      expect(lastResult(body).questionStaging).toMatchObject({
+        ok: true,
+        pendingCount: 2,
+      });
+      return final();
+    },
+  ]);
+  const answer = await client.converse(
+    selection,
+    {},
+    [],
+    "Help me choose company basics.",
+  );
+  expect(answer.questions.map((question) => question.path)).toEqual([
+    "company_name",
+    "company_code",
+  ]);
+  expect(request).toHaveBeenCalledTimes(5);
+});
+it("delivers immutable schemas and service contracts once while preserving scoped reads and source references", async () => {
+  const fixture = assistantScenarioFixture(
+    assistantScenarios.find(
+      (entry) => entry.id === "application-access-owner-already-covered",
+    )!,
+  );
+  const read = {
+    action: "inspect",
+    requests: [
+      {
+        tool: "configuration",
+        paths: ["projectTemplates.central.accessProfile"],
+      },
+    ],
+  };
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["project-templates"] }],
+    }),
+    (body) => {
+      expect(
+        lastResult(body).toolResults[0].result.applicationAccess,
+      ).toBeDefined();
+      return read;
+    },
+    (body) => {
+      const first = lastResult(body).toolResults[0].result;
+      expect(first.templateProposalSchema).toBeDefined();
+      expect(first.knowledge.serviceFactReferences).toContain(
+        "project-templates",
+      );
+      expect(first.knowledge.serviceFacts["project-templates"]).toBeUndefined();
+      expect(first.knowledge.applicationAccess).toBeUndefined();
+      return read;
+    },
+    (body) => {
+      const repeated = lastResult(body).toolResults[0].result;
+      expect(repeated.templateProposalSchema).toBeUndefined();
+      expect(repeated.schemaReferences).toEqual(["projectTemplates"]);
+      expect(repeated.values["projectTemplates.central.accessProfile"]).toEqual(
+        { schemaVersion: 1, mode: "owner" },
+      );
+      return final({ references: ["project-templates"] });
+    },
+  ]);
+  await client.converse(
+    selection,
+    fixture.values,
+    [],
+    "Explain the existing template profile.",
+  );
+});
 it("extends only a validated local proposal and retains both principals across sequential tools", async () => {
   const fixture = assistantScenarioFixture(
     assistantScenarios.find(

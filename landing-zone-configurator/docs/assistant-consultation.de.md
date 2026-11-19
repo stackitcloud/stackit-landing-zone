@@ -47,6 +47,11 @@ referenziert. Themen und bearbeitbare Wurzeln sind ohne separaten Intent-Klassif
 auffindbar. Native Schemas werden gezielt mit den Konfigurationswerten gelesen,
 statt tausende unbeteiligte Feldpfade in jede Werkzeugdefinition einzubetten.
 
+Unveränderliche Dienstverträge und Wurzelschemata werden je Beratung einmal
+geliefert. Folgeabfragen enthalten Quellenverweise und die angefragten Werte.
+Die Bereitschaftsübersicht trennt tatsächliche Template-Lesepfade von berechneten
+Metadaten, die keine zusätzlichen Konfigurationsfelder darstellen.
+
 ## Werkzeuge und Validierung
 
 Das Modell kann Wissen, Konfiguration, Defaults und Kataloge gemeinsam nachschlagen.
@@ -91,7 +96,11 @@ verwenden das registrierte atomare Profil. Die anfängliche Template-Übersicht
 kennzeichnet vorhandene Profile und ältere Eingabefelder.
 
 Interaktive Entscheidungen verwenden `ask_question` mit jeweils einem flachen
-Pfad-/Text-/Auswahlargument. Mehrere unabhängige Fragen können als mehrere Aufrufe
+Pfad-/Text-/Auswahlargument. Fragen können mit `finish=false` intern gesammelt werden, während weitere
+Leseaufrufe oder Rückfragen folgen. `finish=true` oder die abschließende Erklärung
+führt sie vor der normalen Validierung und Prüfung zusammen. Eine Teilantwort
+wird dabei nicht angezeigt; Rechte sowie Fragen- und Laufzeitgrenzen bleiben gleich.
+Mehrere unabhängige Fragen können als mehrere Aufrufe
 in einer Antwort zurückkommen. Der Adapter bildet daraus die bestehende öffentliche
 Fragenliste und behält den validierten Vorschlag. `send_answer` dient entschiedenen
 Antworten. Damit entfallen verschachtelte Fragenlisten, die das Kandidatenmodell
