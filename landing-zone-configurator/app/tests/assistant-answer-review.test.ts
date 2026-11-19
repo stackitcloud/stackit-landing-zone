@@ -23,6 +23,14 @@ const input = {
   answer,
   delta: [],
 };
+const requestChecks = [
+  {
+    requestQuote: "Explain the VM preset.",
+    expected: "Explain the requested profile and its boundaries",
+    actual: explanation,
+    met: true,
+  },
+];
 it.each([
   { boundaryChecks: [] },
   {
@@ -43,9 +51,12 @@ it.each([
 ])(
   "rejects missing or unsupported critical-boundary coverage (%j)",
   async ({ boundaryChecks }) => {
-    const complete = vi
-      .fn()
-      .mockResolvedValue({ ready: true, findings: [], boundaryChecks });
+    const complete = vi.fn().mockResolvedValue({
+      requestChecks,
+      ready: true,
+      findings: [],
+      boundaryChecks,
+    });
     expect((await reviewConsultationAnswer({ ...input, complete })).ready).toBe(
       false,
     );
@@ -53,6 +64,7 @@ it.each([
 );
 it("retains a reviewed answer and source-bound memory with actual boundary evidence", async () => {
   const complete = vi.fn().mockResolvedValue({
+    requestChecks,
     ready: true,
     findings: [],
     boundaryChecks: [
@@ -70,6 +82,7 @@ it("retains a reviewed answer and source-bound memory with actual boundary evide
 });
 it("normalizes null evidence only for explicitly inapplicable boundaries", async () => {
   const complete = vi.fn().mockResolvedValue({
+    requestChecks,
     ready: true,
     findings: [],
     boundaryChecks: [
@@ -80,6 +93,7 @@ it("normalizes null evidence only for explicitly inapplicable boundaries", async
     true,
   );
   complete.mockResolvedValue({
+    requestChecks,
     ready: true,
     findings: [],
     boundaryChecks: [
@@ -89,6 +103,58 @@ it("normalizes null evidence only for explicitly inapplicable boundaries", async
   await expect(
     reviewConsultationAnswer({ ...input, complete }),
   ).rejects.toThrow();
+});
+it("rejects a mismatched request or invented user evidence even when ready is true", async () => {
+  for (const check of [
+    {
+      ...requestChecks[0]!,
+      met: false,
+      actual: "A different profile was explained",
+    },
+    { ...requestChecks[0]!, requestQuote: "Grant every permission" },
+  ]) {
+    const complete = vi.fn().mockResolvedValue({
+      ready: true,
+      findings: [],
+      requestChecks: [check],
+      boundaryChecks: [
+        { id: "keys", applicable: false, covered: false, paragraphs: [] },
+      ],
+    });
+    expect((await reviewConsultationAnswer({ ...input, complete })).ready).toBe(
+      false,
+    );
+  }
+});
+it("requires boundary coverage when a source-registered preset is described", async () => {
+  const complete = vi.fn().mockResolvedValue({
+    ready: true,
+    findings: [],
+    requestChecks,
+    boundaryChecks: [
+      { id: "keys", applicable: false, covered: false, paragraphs: [] },
+    ],
+  });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...input,
+        complete,
+        answer: { ...answer, explanation: "Use application-vm-v1." },
+        serviceFacts: {
+          "project-templates": {
+            criticalBoundaries: [
+              {
+                id: "keys",
+                mustExplain: true,
+                triggerIdentifiers: ["application-vm-v1"],
+              },
+            ],
+          },
+        },
+      })
+    ).ready,
+  ).toBe(false);
 });
 it("never silently truncates a contextual answer when adding the draft notice", () => {
   const text = "a".repeat(3500) + " Important final boundary.";

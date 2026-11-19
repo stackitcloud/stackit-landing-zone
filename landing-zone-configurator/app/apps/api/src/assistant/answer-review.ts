@@ -5,8 +5,17 @@ import type { Dialogue } from "./dialogue.js";
 import type { ProposalDelta } from "./proposal-diff.js";
 
 const reviewSchema = z.strictObject({
-  ready: z.boolean(),
-  memory: memorySchema.optional(),
+  requestChecks: z
+    .array(
+      z.strictObject({
+        requestQuote: z.string().min(1).max(1000),
+        expected: z.string().min(1).max(1200),
+        actual: z.string().min(1).max(1200),
+        met: z.boolean(),
+      }),
+    )
+    .min(1)
+    .max(20),
   boundaryChecks: z
     .array(
       z.strictObject({
@@ -19,6 +28,8 @@ const reviewSchema = z.strictObject({
     .max(12)
     .default([]),
   findings: z.array(z.string().min(1).max(1200)).max(8),
+  ready: z.boolean(),
+  memory: memorySchema.optional(),
 });
 
 /** Native/schema checks already ran. Review the intent and real effect, not
@@ -80,7 +91,11 @@ export async function reviewConsultationAnswer(input: {
     .map((text, index) => ({ index, text }));
   const boundaries = Object.values(input.serviceFacts).flatMap((fact) => {
     const value = fact as {
-      criticalBoundaries?: { id: string; mustExplain?: boolean }[];
+      criticalBoundaries?: {
+        id: string;
+        mustExplain?: boolean;
+        triggerIdentifiers?: string[];
+      }[];
     };
     return value.criticalBoundaries ?? [];
   });
@@ -96,6 +111,8 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
         role: "user",
         content: JSON.stringify({
           task: "review_final_response",
+          requestReviewContract:
+            "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Quote the user's literal words in requestQuote, record the expected result and the observed actual result, and set met=false for any mismatch. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
           boundaryReviewContract: {
             requiredIds: boundaries
               .filter((entry) => entry.mustExplain)
@@ -156,12 +173,34 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
     memory: undefined,
   });
   if (memory.success) checked.memory = memory.data;
+  for (const check of checked.requestChecks) {
+    if (
+      !input.turns.some(
+        (turn) =>
+          turn.role === "user" && turn.content.includes(check.requestQuote),
+      )
+    ) {
+      checked.ready = false;
+      checked.findings.push(
+        "Ground requestChecks in literal USER statements, not assistant text or invented requirements.",
+      );
+    } else if (!check.met) {
+      checked.ready = false;
+      checked.findings.push(
+        `Requested: ${check.expected}. Actual: ${check.actual}.`,
+      );
+    }
+  }
   for (const boundary of boundaries.filter((entry) => entry.mustExplain)) {
     const check = checked.boundaryChecks.find(
       (entry) => entry.id === boundary.id,
     );
+    const explicitlyDescribed = boundary.triggerIdentifiers?.some(
+      (identifier) => input.answer.explanation.includes(identifier),
+    );
     if (
       !check ||
+      (explicitlyDescribed && !check.applicable) ||
       (check.applicable &&
         (!check.covered ||
           !check.paragraphs.length ||

@@ -2427,7 +2427,24 @@ describe("real PostgreSQL session and tenant boundaries", () => {
               finish_reason: "stop",
               message: {
                 role: "assistant",
-                content: JSON.stringify({ ready: true, findings: [] }),
+                content: JSON.stringify({
+                  ready: true,
+                  findings: [],
+                  requestChecks: [
+                    {
+                      requestQuote: JSON.parse(
+                        payload.messages.find(
+                          (entry: { role: string }) => entry.role === "user",
+                        ).content,
+                      ).turns.find(
+                        (turn: { role: string }) => turn.role === "user",
+                      ).content,
+                      expected: "Requested draft",
+                      actual: "Validated draft",
+                      met: true,
+                    },
+                  ],
+                }),
               },
             },
           ],

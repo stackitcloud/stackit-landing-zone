@@ -113,12 +113,31 @@ function model(
         ),
       };
       if (result instanceof Response) return result;
+      const reviewPayload = JSON.parse(
+        body.messages.find((message) => message.role === "user")!.content,
+      );
+      const reviewedResult = {
+        requestChecks: [
+          {
+            requestQuote: reviewPayload.turns.find(
+              (turn: { role: string }) => turn.role === "user",
+            ).content,
+            expected: "Requested scoped task",
+            actual: "Mocked scoped result",
+            met: true,
+          },
+        ],
+        ...result,
+      };
       return Response.json({
         model: configuration.model,
         choices: [
           {
             finish_reason: "stop",
-            message: { role: "assistant", content: JSON.stringify(result) },
+            message: {
+              role: "assistant",
+              content: JSON.stringify(reviewedResult),
+            },
           },
         ],
       });

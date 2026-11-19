@@ -94,8 +94,8 @@ changes. The final answer still passes the same semantic review before publicati
 The tool schemas remain compact. An empty question list, reference list or proposal
 is normalized as empty; omitted fields cannot activate a component or grant access.
 Generated replies use the same bounded 16,384-character budget as the native transport, and adding a draft notice never silently cuts
-off an explanation or an important boundary. A turn has at most eight consultation
-steps, two bounded reviews and a three-minute deadline. Individual requests retain
+off an explanation or an important boundary. A turn has at most twelve consultation
+steps, three bounded reviews and a three-minute deadline. Individual requests retain
 their existing limits. HTTP failures do not trigger a hidden controller fallback or
 an unbounded inference retry.
 
@@ -106,7 +106,12 @@ identities and IAM metadata are omitted. Review findings return to the same
 consultation for correction. This is an internal quality check, not another user
 approval or a guarantee that every answer is correct. Critical capability boundaries
 require explicit coverage and references to server-numbered answer paragraphs.
-The reviewer does not have to regenerate a verbatim copy of the answer. Validated native-default
+The reviewer first records literal user requirements with expected and actual
+results, then decides readiness. An unmet check or a quote absent from user turns
+cannot approve the answer. Registered preset identifiers in an explanation also
+require their documented critical boundary; the reviewer cannot mark that boundary
+inapplicable. These checks improve qualification but do not make semantic review
+infallible. The reviewer does not have to regenerate a verbatim copy of the answer. Validated native-default
 choices are supplied with their source value and user evidence, so a later explicit
 default choice is not reinterpreted as an earlier access preference. HTTP failures are not retried
 through the review loop; acceptance and execution boundaries remain unchanged.

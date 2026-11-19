@@ -925,7 +925,7 @@ export async function runConsultation(input: {
   const turnSignal = input.stream?.signal
     ? AbortSignal.any([input.stream.signal, turnDeadline])
     : turnDeadline;
-  for (let round = 0; round < 8; round++) {
+  for (let round = 0; round < 12; round++) {
     input.stream?.signal?.throwIfAborted();
     const raw = await input.complete(
       messages,
@@ -1501,7 +1501,7 @@ export async function runConsultation(input: {
         ),
         input.language,
       );
-      if (reviews >= 2)
+      if (reviews >= 3)
         throw new AssistantInferenceError("consultation_review_failed");
       reviews++;
       const review = await reviewConsultationAnswer({
@@ -1536,7 +1536,7 @@ export async function runConsultation(input: {
           content: JSON.stringify({
             answerReview: review,
             instruction:
-              "Correct these concrete mismatches using the same user request and tools. Do not ask the user to repeat known decisions or turn a technical problem into a new business question.",
+              "Correct these concrete mismatches using the same user request and tools. If the actual compiler delta is wrong, submit a corrected proposal to validation before answering again: changing the explanation cannot change an immutable validated proposal. Do not ask the user to repeat known decisions or turn a technical problem into a new business question.",
           }),
         });
         continue;

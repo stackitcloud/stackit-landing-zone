@@ -96,6 +96,7 @@ export const reviewedServiceFacts: Record<string, unknown> = {
     criticalBoundaries: [
       {
         id: "project-wide-service-account-key-management",
+        triggerIdentifiers: ["application-workloads-v1", "application-vm-v1"],
         appliesWhen:
           "Describing or recommending application-workloads-v1, application-vm-v1, or service-account key management. Both presets include requester key-management rights.",
         mustExplain: true,

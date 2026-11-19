@@ -73,6 +73,13 @@ bleiben begrenzt. Die Antwortprüfung erhält relevante Fakten und die tatsächl
 Compiler-Änderungen, einschließlich angeforderter Namen, Schlüssel und exakter
 Listen, ohne wiederholte Erkennungsschemata.
 
+Die Antwortprüfung erfasst zuerst wörtlich belegte Nutzeranforderungen mit Soll und
+Ist, bevor sie die Antwort bewertet. Nicht erfüllte Anforderungen oder erfundene
+Nutzerzitate verhindern eine Freigabe. Wird ein registriertes Profil in der Antwort
+beschrieben, muss seine dokumentierte kritische Grenze abgedeckt sein; sie kann
+dann nicht als unzutreffend markiert werden. Diese Prüfungen verbessern die
+Qualifikation, garantieren aber keine fehlerfreie semantische Bewertung.
+
 Der Transport verwendet native `tool_calls` der Assistant-Rolle und zugehörige
 `tool`-Ergebnisse mit Aufruf-ID. Ergebnisse werden nicht als neue Nutzernachrichten
 nachgebildet. Erklärungen dürfen normaler Text sein; strukturierte Rückfragen nutzen
@@ -84,7 +91,7 @@ für beide Antwortformen verpflichtend.
 Leere Fragen-, Referenz- und Vorschlagsfelder dürfen entfallen; dies aktiviert keine
 Komponente und gewährt keinen Zugriff. Generierte Antworten verwenden dasselbe begrenzte Budget von 16.384 Zeichen wie der native Transport.
 Der Entwurfshinweis schneidet keine Erklärung oder wichtige Grenze still ab.
-Ein Turn bleibt auf acht Beratungsschritte, zwei Schlussprüfungen und drei Minuten
+Ein Turn bleibt auf zwölf Beratungsschritte, drei Schlussprüfungen und drei Minuten
 begrenzt. Die bisherigen Einzelaufruf-Limits gelten weiter. HTTP-Fehler verursachen
 weder einen versteckten Controller-Wechsel noch unbegrenzte Wiederholungen.
 
