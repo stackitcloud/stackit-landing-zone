@@ -25,7 +25,8 @@ const input = {
 };
 const requestChecks = [
   {
-    requestQuote: "Explain the VM preset.",
+    userTurn: 0,
+    requirement: "Explain the VM preset.",
     expected: "Explain the requested profile and its boundaries",
     actual: explanation,
     met: true,
@@ -111,7 +112,7 @@ it("rejects a mismatched request or invented user evidence even when ready is tr
       met: false,
       actual: "A different profile was explained",
     },
-    { ...requestChecks[0]!, requestQuote: "Grant every permission" },
+    { ...requestChecks[0]!, userTurn: 40 },
   ]) {
     const complete = vi.fn().mockResolvedValue({
       ready: true,

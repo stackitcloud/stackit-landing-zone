@@ -2432,13 +2432,14 @@ describe("real PostgreSQL session and tenant boundaries", () => {
                   findings: [],
                   requestChecks: [
                     {
-                      requestQuote: JSON.parse(
+                      userTurn: JSON.parse(
                         payload.messages.find(
                           (entry: { role: string }) => entry.role === "user",
                         ).content,
-                      ).turns.find(
+                      ).turns.findIndex(
                         (turn: { role: string }) => turn.role === "user",
-                      ).content,
+                      ),
+                      requirement: "Requested draft",
                       expected: "Requested draft",
                       actual: "Validated draft",
                       met: true,

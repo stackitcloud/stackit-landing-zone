@@ -106,9 +106,9 @@ identities and IAM metadata are omitted. Review findings return to the same
 consultation for correction. This is an internal quality check, not another user
 approval or a guarantee that every answer is correct. Critical capability boundaries
 require explicit coverage and references to server-numbered answer paragraphs.
-The reviewer first records literal user requirements with expected and actual
-results, then decides readiness. An unmet check or a quote absent from user turns
-cannot approve the answer. Registered preset identifiers in an explanation also
+The reviewer first records user requirements with expected and actual results and
+references the numbered user turn, then decides readiness. An unmet check or an
+invalid user-turn reference cannot approve the answer. Registered preset identifiers in an explanation also
 require their documented critical boundary; the reviewer cannot mark that boundary
 inapplicable. These checks improve qualification but do not make semantic review
 infallible. The reviewer does not have to regenerate a verbatim copy of the answer. Validated native-default

@@ -119,9 +119,10 @@ function model(
       const reviewedResult = {
         requestChecks: [
           {
-            requestQuote: reviewPayload.turns.find(
+            userTurn: reviewPayload.turns.findIndex(
               (turn: { role: string }) => turn.role === "user",
-            ).content,
+            ),
+            requirement: "Requested scoped task",
             expected: "Requested scoped task",
             actual: "Mocked scoped result",
             met: true,

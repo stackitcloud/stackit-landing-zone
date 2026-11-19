@@ -73,9 +73,9 @@ bleiben begrenzt. Die Antwortprüfung erhält relevante Fakten und die tatsächl
 Compiler-Änderungen, einschließlich angeforderter Namen, Schlüssel und exakter
 Listen, ohne wiederholte Erkennungsschemata.
 
-Die Antwortprüfung erfasst zuerst wörtlich belegte Nutzeranforderungen mit Soll und
-Ist, bevor sie die Antwort bewertet. Nicht erfüllte Anforderungen oder erfundene
-Nutzerzitate verhindern eine Freigabe. Wird ein registriertes Profil in der Antwort
+Die Antwortprüfung erfasst zuerst Nutzeranforderungen mit Soll, Ist und Verweis auf
+den nummerierten Nutzerturn, bevor sie die Antwort bewertet. Nicht erfüllte Anforderungen
+oder ungültige Nutzerturn-Verweise verhindern eine Freigabe. Wird ein registriertes Profil in der Antwort
 beschrieben, muss seine dokumentierte kritische Grenze abgedeckt sein; sie kann
 dann nicht als unzutreffend markiert werden. Diese Prüfungen verbessern die
 Qualifikation, garantieren aber keine fehlerfreie semantische Bewertung.

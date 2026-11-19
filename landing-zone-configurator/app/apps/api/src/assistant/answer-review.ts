@@ -8,7 +8,8 @@ const reviewSchema = z.strictObject({
   requestChecks: z
     .array(
       z.strictObject({
-        requestQuote: z.string().min(1).max(1000),
+        userTurn: z.number().int().min(0).max(40),
+        requirement: z.string().min(1).max(1000),
         expected: z.string().min(1).max(1200),
         actual: z.string().min(1).max(1200),
         met: z.boolean(),
@@ -112,7 +113,7 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
         content: JSON.stringify({
           task: "review_final_response",
           requestReviewContract:
-            "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Quote the user's literal words in requestQuote, record the expected result and the observed actual result, and set met=false for any mismatch. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
+            "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Reference the supplied zero-based USER turn index as userTurn and summarize its requirement. Record the expected result and the observed actual result, and set met=false for any mismatch. User-turn indices identify the evidence; do not regenerate verbatim quotes. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
           boundaryReviewContract: {
             requiredIds: boundaries
               .filter((entry) => entry.mustExplain)
@@ -174,15 +175,10 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
   });
   if (memory.success) checked.memory = memory.data;
   for (const check of checked.requestChecks) {
-    if (
-      !input.turns.some(
-        (turn) =>
-          turn.role === "user" && turn.content.includes(check.requestQuote),
-      )
-    ) {
+    if (input.turns[check.userTurn]?.role !== "user") {
       checked.ready = false;
       checked.findings.push(
-        "Ground requestChecks in literal USER statements, not assistant text or invented requirements.",
+        "Ground requestChecks in supplied USER turn indices, not assistant turns or invented source indices.",
       );
     } else if (!check.met) {
       checked.ready = false;
