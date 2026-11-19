@@ -177,6 +177,23 @@ Platform context distinguishes reusable project-template principal lists from
 concrete project members, so template changes do not request individual user
 addresses. New presets still require a confirmed initial owner.
 
+Project-IAM permission edits apply to Public, Corporate and Sandbox templates;
+they do not provision a cluster or depend on an SNA, node pools or cluster names.
+The person receiving rights when ordering identifies the requester; automation
+and the central initial owner are separate roles. Multiple templates of a requested
+singular kind require a choice of actual keys, rather than an implicit edit of all.
+Compact readiness metadata exposes missing publication prerequisites without
+copying unchanged owner addresses into review. A missing initial owner is asked
+once across affected granular templates; independent local rights additions can
+still be proposed.
+
+For a confirmed legacy access transition, the profile tool accepts
+`replaceLegacyAccess: true` and calls the editor's native transition function.
+It removes incompatible legacy role settings and their parameter policy while
+preserving other settings, template identities and subsequent permission additions.
+The complete resulting template map is compiler-validated; service-right additions
+alone never implicitly migrate a legacy or full-Owner profile.
+
 ## Context and native defaults
 
 The final review also produces a compact brief. The brief records the goal, confirmed decisions, recommendations and open questions.

@@ -14,7 +14,10 @@ export type ApplicationAccessTransitionPatch = {
 
 /** Preview only: applying this one patch requires a separate user confirmation. */
 export function previewApplicationAccessTransition(
-  template: ProjectTemplateDraft,
+  template: Pick<
+    ProjectTemplateDraft,
+    "kind" | "settings" | "accessProfile" | "parameterPolicy"
+  >,
 ) {
   if (template.accessProfile || template.kind === "sandbox")
     throw new Error(

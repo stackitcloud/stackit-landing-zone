@@ -18,6 +18,90 @@ function fixture() {
   )!;
   return assistantScenarioFixture(scenario);
 }
+it("uses the editor transition for confirmed legacy conversion and retains subsequent additions", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "application-access-both-kubernetes-mixed-legacy",
+  )!;
+  const { draft, values } = assistantScenarioFixture(scenario);
+  const before = structuredClone(draft);
+  const changes = materializeConsultationChanges(
+    [
+      {
+        path: "projectTemplates.central.accessProfile",
+        operation: "preset",
+        value: {
+          id: "application-workloads-v1",
+          initialOwnerEmail: "platform-owner@example.test",
+          replaceLegacyAccess: true,
+        },
+      },
+      {
+        path: "projectTemplates",
+        operation: "add_permissions",
+        value: {
+          templateKeys: ["central"],
+          principals: ["requester", "automation"],
+          source: { kind: "services", ids: ["ske"] },
+        },
+      },
+    ],
+    values,
+  );
+  expect(changes).toHaveLength(1);
+  expect(changes[0]?.operation).toBe("replace");
+  const candidate = applyAssistantChanges(draft, changes);
+  const original = before.projectTemplates!.find((t) => t.key === "central")!;
+  const actual = candidate.projectTemplates!.find((t) => t.key === "central")!;
+  const settings = { ...original.settings };
+  delete settings.automation_role;
+  expect(actual.settings).toEqual(settings);
+  expect({
+    ...actual,
+    settings: original.settings,
+    accessProfile: undefined,
+  }).toEqual({
+    ...original,
+    accessProfile: undefined,
+  });
+  expect(
+    candidate.projectTemplates!.find((t) => t.key === "public-workload"),
+  ).toEqual(before.projectTemplates!.find((t) => t.key === "public-workload"));
+  expect(actual.accessProfile?.mode).toBe("granular");
+  if (actual.accessProfile?.mode !== "granular") throw Error("profile");
+  expect(actual.accessProfile.initialOwnerEmail).toBe(
+    "platform-owner@example.test",
+  );
+  for (const principal of ["permissions", "automationPermissions"] as const)
+    expect(actual.accessProfile[principal]).toContain("ske.cluster.create");
+  expect(draft).toEqual(before);
+  expect(values.projectTemplates).toHaveProperty(
+    "central.settings.automation_role",
+    "owner",
+  );
+});
+it("does not silently migrate a legacy template for service-right additions", () => {
+  const { values } = assistantScenarioFixture(
+    assistantScenarios.find(
+      (entry) => entry.id === "application-access-both-kubernetes-mixed-legacy",
+    )!,
+  );
+  expect(() =>
+    materializeConsultationChanges(
+      [
+        {
+          path: "projectTemplates",
+          operation: "add_permissions",
+          value: {
+            templateKeys: ["central"],
+            principals: ["requester"],
+            source: { kind: "services", ids: ["ske"] },
+          },
+        },
+      ],
+      values,
+    ),
+  ).toThrow("assistant_granular_profile_required");
+});
 it("unions official service rights for both principals without losing owner or unrelated rights", () => {
   const { draft, values } = fixture();
   const before = structuredClone(draft);

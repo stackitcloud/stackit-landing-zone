@@ -89,6 +89,7 @@ export async function reviewConsultationAnswer(input: {
   answer: Dialogue;
   delta: ProposalDelta[] | undefined;
   compilerEvidence?: ConsultationCompilerEvidence | undefined;
+  templateReadiness?: unknown;
   signal?: AbortSignal;
 }) {
   const paragraphs = input.answer.explanation
@@ -117,9 +118,9 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
         content: JSON.stringify({
           task: "review_final_response",
           requestReviewContract:
-            "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Reference the supplied zero-based USER turn index as userTurn and summarize its requirement. Record the expected result and the observed actual result, and set met=false for any mismatch. User-turn indices identify the evidence; do not regenerate verbatim quotes. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
+            "Before judging the answer, derive the expected result from the USER statements. In requestChecks compare each explicitly requested target, literal map key/name/value/list and requested explanation with the actual compiler delta or answer. Reference the supplied zero-based USER turn index as userTurn and summarize its requirement. Record the expected result and the observed actual result, and set met=false for any mismatch. User-turn indices identify the evidence; do not regenerate verbatim quotes. Do not replace a requested VM profile with a broader Workload profile, or a requested map key with a name derived from its DNS value. Include requested factual boundaries and unchanged scope. A singular template kind is not permission to select every matching template: when several candidates share that kind and the user did not explicitly request all, require a structured choice with the actual keys and no proposed changes to those ambiguous targets. Use templateReadiness to distinguish independent local edits from missing publication prerequisites. Missing initial owners of relevant granular templates need one shared owner question, not repeated per template; a valid independent rights proposal may accompany it. Existing legacy access settings require an explicit confirmed transition before replacing them; do not silently migrate them or invent a granular owner. Do not let a fluent answer or its own claims establish correctness. ready comes only after these comparisons.",
           compilerEvidenceContract:
-            "verifiedOperations are server-proven exact native preset or official catalogue-union permission effects, compared with the real compiler candidate. Large proven permission arrays are represented by their actual added/removed group counts and an effect hash. Review whether the user requested that preset/services, templates and principals, review removed groups and all other delta fields, and explain critical consequences. Do not reconstruct hundreds of already-proven permission names. Explicit custom lists and mismatching outputs remain complete. A proof grants no rights and does not authorize a user request.",
+            "verifiedOperations are server-proven exact native preset or official catalogue-union permission effects, compared with the real compiler candidate. Large proven permission arrays are represented by their actual added/removed group counts and an effect hash. Review whether the user requested that preset/services, templates and principals, review removed groups and all other delta fields, and explain critical consequences. Use the supplied projectIamScope and principalRoles facts: project-IAM permission edits support Public/Corporate/Sandbox and are not cluster/service provisioning or SNA setup. Do not demand deployment settings for a permission-only proposal or ask again for a recipient already identified by the user's described actor. Do not reconstruct hundreds of already-proven permission names. Explicit custom lists and mismatching outputs remain complete. A proof grants no rights and does not authorize a user request.",
           boundaryReviewContract: {
             requiredIds: boundaries
               .filter((entry) => entry.mustExplain)
@@ -133,6 +134,7 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
           previousUnacceptedProposal: input.pendingProposal ?? null,
           reviewedKnowledge: input.rules,
           relevantServiceFacts: input.serviceFacts,
+          templateReadiness: input.templateReadiness ?? [],
           answerParagraphs: paragraphs,
           inspectedEvidence: reviewEvidence(input.inspections),
           validatedNativeDefaultChoices: input.nativeDefaultChoices ?? [],

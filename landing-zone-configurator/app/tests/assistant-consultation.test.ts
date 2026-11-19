@@ -150,6 +150,92 @@ function model(
   return { client: new AssistantModelServing(configuration, request), request };
 }
 const lastResult = (body: Request) => JSON.parse(body.messages.at(-1)!.content);
+it("extends only a validated local proposal and retains both principals across sequential tools", async () => {
+  const fixture = assistantScenarioFixture(
+    assistantScenarios.find(
+      (entry) =>
+        entry.id === "application-server-operations-permissions-proposal",
+    )!,
+  );
+  let base = "";
+  const addition = (service: string, principal: string) => ({
+    path: "projectTemplates",
+    operation: "add_permissions",
+    value: {
+      templateKeys: ["central"],
+      principals: [principal],
+      source: { kind: "services", ids: [service] },
+    },
+  });
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["project-templates"] }],
+    }),
+    () => ({
+      action: "validate_proposal",
+      changes: [addition("server-backup", "requester")],
+    }),
+    (body) => {
+      expect(lastResult(body).validation.ok).toBe(true);
+      base = lastResult(body).validation.proposal;
+      return {
+        action: "validate_proposal",
+        baseProposal: "unissued-proposal",
+        changes: [addition("server-update", "automation")],
+      };
+    },
+    (body) => {
+      expect(lastResult(body).validation.code).toBe(
+        "assistant_unknown_base_proposal",
+      );
+      return {
+        action: "validate_proposal",
+        baseProposal: base,
+        changes: [addition("server-update", "automation")],
+      };
+    },
+    (body) =>
+      final({
+        kind: "proposal",
+        proposal: lastResult(body).validation.proposal,
+        references: ["project-templates"],
+      }),
+  ]);
+  const result = await client.converse(
+    selection,
+    fixture.values,
+    [],
+    "Add server-backup rights for the requester and server-update rights for automation in central.",
+    undefined,
+    [],
+    undefined,
+    {
+      validateChanges: (changes) =>
+        assistantPublicValues(applyAssistantChanges(fixture.draft, changes)),
+    },
+  );
+  const candidate = applyAssistantChanges(fixture.draft, result.changes);
+  const actual = candidate.projectTemplates!.find(
+    (t) => t.key === "central",
+  )!.accessProfile;
+  const original = fixture.draft.projectTemplates!.find(
+    (t) => t.key === "central",
+  )!.accessProfile;
+  if (actual?.mode !== "granular" || original?.mode !== "granular")
+    throw Error("fixture");
+  expect(actual.permissions).toContain("server-backup.backup.create");
+  expect(actual.automationPermissions).toContain(
+    "server-update.update-schedule.create",
+  );
+  expect(actual.permissions).not.toContain(
+    "server-update.update-schedule.create",
+  );
+  expect(actual.automationPermissions).not.toContain(
+    "server-backup.backup.create",
+  );
+  expect(actual.initialOwnerEmail).toBe(original.initialOwnerEmail);
+});
 const catalogues: AssistantCatalogueContext = {
   regions: [
     {

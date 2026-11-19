@@ -16,6 +16,40 @@ export type ProposalDelta = {
   removedGroups?: Record<string, number>;
 };
 
+/** Relevant readiness without copying unchanged owner identities into review. */
+export function consultationTemplateReadiness(values: Record<string, unknown>) {
+  const object = (value: unknown): Record<string, unknown> =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  return Object.entries(object(values.projectTemplates)).map(([key, value]) => {
+    const template = object(value),
+      profile = object(template.accessProfile),
+      settings = object(template.settings);
+    const hasInitialOwner =
+      typeof profile.initialOwnerEmail === "string" &&
+      profile.initialOwnerEmail.trim().length > 0;
+    return {
+      key,
+      name: template.name,
+      kind: template.kind,
+      accessProfileMode: profile.mode ?? "legacy",
+      hasInitialOwner,
+      requiresInitialOwnerBeforePublication:
+        profile.mode === "granular" && !hasInitialOwner,
+      legacyInputs: [
+        "automation_role",
+        "custom_roles",
+        "role_assignments",
+        "initial_owner_email",
+      ].filter((field) => settings[field] !== undefined),
+      legacyRoleParameter:
+        object(object(template.parameterPolicy).fields).role_assignments !==
+        undefined,
+    };
+  });
+}
+
 /** Compact only exact, server-materialized catalogue transformations. Explicit
  * custom lists and any mismatching compiler output retain the complete delta. */
 export function consultationCompilerEvidence(

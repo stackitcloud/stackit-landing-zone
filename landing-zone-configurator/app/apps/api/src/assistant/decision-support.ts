@@ -74,6 +74,28 @@ export function evaluateCatalogueRequirements(
  */
 export const reviewedServiceFacts: Record<string, unknown> = {
   "project-templates": {
+    targetSelection: {
+      rule: "A singular template kind identifies one template only when there is a unique candidate. With multiple matches, offer the actual stable keys and names in one structured question; do not assume all matches or a preferred key. Explicit all/both or a later selected key resolves scope. Keep other requested kinds in the same pending task.",
+      legacyTransition:
+        "Templates without accessProfile may use legacy automation_role/custom_roles/role_assignments and a role parameter policy. Read their actual settings. Adding granular service rights requires an explicitly confirmed transition to a complete profile, not an implicit destructive migration. The registered native transition removes only incompatible legacy access fields and preserves other settings; the initial central owner is a separate confirmed choice.",
+    },
+    projectIamScope: {
+      supportedTemplateKinds: ["public", "corporate", "sandbox"],
+      effect:
+        "accessProfile sets project IAM rights, not the service instance or its networking. Public templates support SKE and other service IAM just like Corporate/Sandbox templates; corporate SNA is not a prerequisite for these permission edits.",
+      notRequiredForPermissionEdits:
+        "Cluster names, node pools, namespaces, DNS, source CIDRs, private Runner reachability and SNA setup. These belong to separate service/deployment requests, not a proof of permission availability.",
+      boundary:
+        "Project IAM does not configure in-cluster Kubernetes RBAC or prove service orderability, control-plane reachability or successful execution. No cluster or other service is created by this proposal.",
+    },
+    principalRoles: {
+      requester:
+        "The verified human who orders the Application Landing Zone. A request for people to receive service rights when ordering already identifies requester; do not ask that recipient again.",
+      automation:
+        "The separate Application service account used by execution/automation. Include it when requested or part of an explicitly selected complete preset; do not confuse it with the person ordering.",
+      initialOwner:
+        "The separate central initial project Owner for granular profiles; it is not the requester or the automation recipient list. A contact/root email alone is not a confirmed selection for this role. Preserve existing selected owners; when relevant granular templates lack an owner, ask one common owner question while still preparing the independent rights proposal. This is required before publication, not a reason to block valid local permission additions.",
+    },
     workflowBundles: {
       "service-account-keys": {
         purpose:

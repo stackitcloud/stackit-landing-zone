@@ -851,6 +851,11 @@ it("checks exact SNA values and rejects missing or unrelated settings", () => {
 });
 
 it("requires factual Automatic/DNS advice and rejects fixed-size or DNS-removal claims", () => {
+  expect(
+    assistantCorporateIpv4Failures(
+      "Automatisch = natives null. Bei Corporate-Projekten löst der Accelerator die default_prefix_length der regionalen SNA (hier /28) vor dem Plan auf und behält die DNS-Server bei. Der ältere Provider akzeptierte null mit DNS nicht; numerische Overrides gewinnen Vorrang. Ein /24 ist nicht zwingend und DNS muss nicht deaktiviert werden. Freie Adressen sind nicht garantiert.",
+    ),
+  ).toEqual([]);
   const correct =
     "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert.";
   expect(assistantCorporateIpv4Failures(correct)).toEqual([]);
@@ -1652,6 +1657,20 @@ it("associates a recommendation heading with its immediate Primary answer, not a
   expect(assistantDnsRoleFailures(roles, "roles")).toContain(
     "dns_primary_recommendation_missing",
   );
+  expect(
+    assistantDnsRoleFailures(
+      roles +
+        "\n\n**Empfehlung für eine bei STACKIT verwaltete Firmenzone**\nFür die von euch gepflegte Zone ist primary der passende Typ.",
+      "roles",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      roles +
+        "\n\n**Empfehlung für die Firmenzone**\nSecondary ist der passende Typ. Primary bleibt eine andere Möglichkeit.",
+      "roles",
+    ),
+  ).toContain("dns_primary_recommendation_missing");
   expect(
     assistantDnsRoleFailures(
       roles +

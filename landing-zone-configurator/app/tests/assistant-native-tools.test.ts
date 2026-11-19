@@ -60,6 +60,59 @@ it("maps exact template permission lists without adding preset rights", async ()
     ],
   });
 });
+it("bases a later typed permission tool on the successful local profile proposal", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("propose_template_access_profile", {
+          templateKeys: ["central"],
+          selection: {
+            kind: "preset",
+            id: "application-workloads-v1",
+            initialOwnerEmail: "owner@example.test",
+            replaceLegacyAccess: true,
+          },
+        }),
+      ],
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("propose_template_permissions", {
+          templateKeys: ["central"],
+          principals: ["requester"],
+          source: { kind: "services", ids: ["ske"] },
+        }),
+      ],
+    });
+  const native = new NativeConsultation(request);
+  const first = await native.next(context, schema);
+  expect(first).toMatchObject({
+    changes: [{ value: { replaceLegacyAccess: true } }],
+  });
+  expect(consultationStepSchema.safeParse(first).success).toBe(true);
+  const second = await native.next(
+    [
+      ...context,
+      {
+        role: "user",
+        content: JSON.stringify({
+          validation: { ok: true, proposal: "validated-transition" },
+        }),
+      },
+    ],
+    schema,
+  );
+  expect(second).toMatchObject({
+    action: "validate_proposal",
+    baseProposal: "validated-transition",
+  });
+  expect(consultationStepSchema.safeParse(second).success).toBe(true);
+});
 it("maps full Owner selection to the registered atomic preset", async () => {
   const request = vi.fn().mockResolvedValue({
     role: "assistant",

@@ -238,6 +238,24 @@ Owner-/Rechtelistenfelder nicht. Lokale Operationspakete aktualisieren ihren pri
 Arbeitsstand der Reihe nach und behandeln Profile atomar. Eine vorherige Owner-
 Änderung bleibt dadurch bei anschließenden Rechteergänzungen erhalten.
 
+Projekt-IAM-Rechte können in Public-, Corporate- und Sandbox-Vorlagen ergänzt
+werden. Dafür werden weder Cluster noch SNA, Node-Pools oder Cluster-Namen
+benötigt. Der Besteller, der Rechte bei einer Bestellung erhalten soll, ist bereits
+als Empfänger bestimmt; Automation und zentraler initialer Owner sind eigene Rollen.
+Passen mehrere Vorlagen zur gewünschten einzelnen Art, wird eine Auswahl mit den
+tatsächlichen Schlüsseln angeboten. Kompakte Bereitschaftsinformationen zeigen
+fehlende Veröffentlichungsvoraussetzungen ohne unveränderte Owner-Adressen.
+Ein fehlender initialer Owner wird für betroffene granulare Vorlagen gemeinsam
+erfragt; unabhängige lokale Rechteergänzungen können trotzdem vorgeschlagen werden.
+
+Nach bestätigter Umstellung älterer Rollen verwendet das Profilwerkzeug mit
+`replaceLegacyAccess: true` dieselbe native Umstellungsfunktion wie der Editor.
+Sie entfernt unvereinbare Rollenfelder und die zugehörige Parameterregel, erhält
+andere Einstellungen und Vorlagenidentitäten und unterstützt anschließende
+Rechteergänzungen. Die vollständige resultierende Vorlagenmap wird vom Compiler
+geprüft. Eine reine Rechteergänzung migriert weder alte Rollen noch volle Owner-
+Profile implizit.
+
 Das native Validierungswerkzeug verwendet optionale `nativeDefaults`-Belege nur für
 tatsächliche native Variablendefaults. Literale Werte, Katalogauswahl und registrierte
 Profile benötigen diese Belege nicht; Quellen-, Schema- und Compilerprüfungen gelten

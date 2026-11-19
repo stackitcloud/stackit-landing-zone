@@ -4,6 +4,8 @@ import {
   defaultApplicationAccessProfile,
   type JsonValue,
   objectValue,
+  type ProjectTemplateDraft,
+  previewApplicationAccessTransition,
 } from "@lzc/domain";
 
 export type ConsultationChange = {
@@ -42,6 +44,7 @@ export function materializeConsultationChanges(
   operation: "merge" | "replace" | "default";
 })[] {
   const working = structuredClone(current);
+  let replacedTemplateAccess = false;
   const merge = (left: JsonValue, right: JsonValue): JsonValue => {
     if (!right || typeof right !== "object" || Array.isArray(right))
       return right;
@@ -113,6 +116,15 @@ export function materializeConsultationChanges(
         )
           throw new Error("assistant_existing_template_required");
         for (const principal of principals) {
+          if (
+            objectValue(read([key, "accessProfile"]) as JsonValue).mode !==
+            "granular"
+          )
+            throw new ConsultationOperationError(
+              "assistant_granular_profile_required",
+              `projectTemplates.${key}.accessProfile`,
+              "This template has no granular permission lists. Inspect its actual access profile and legacy access settings. Do not silently convert legacy/Owner access. Explain the transition to a complete registered profile and obtain the missing user decision; propose_template_access_profile supports replaceLegacyAccess=true only for a confirmed legacy transition.",
+            );
           const path = `projectTemplates.${key}.accessProfile.${principal === "requester" ? "permissions" : "automationPermissions"}`;
           if (services.length)
             expanded.push({
@@ -218,6 +230,17 @@ export function materializeConsultationChanges(
       const choice = objectValue(change.value);
       if (!consultationAccessPresets.some((id) => id === choice.id))
         throw new Error("assistant_unknown_preset");
+      const existingTemplate = objectValue(read([segments[0]!]) as JsonValue);
+      if (choice.replaceLegacyAccess === true) {
+        const transition = previewApplicationAccessTransition(
+          existingTemplate as unknown as ProjectTemplateDraft,
+        );
+        objectValue(working[root] as JsonValue)[segments[0]!] = {
+          ...existingTemplate,
+          ...transition.patch,
+        } as JsonValue;
+        replacedTemplateAccess = true;
+      }
       if (choice.id === "owner") {
         if (choice.initialOwnerEmail !== undefined)
           throw new ConsultationOperationError(
@@ -322,5 +345,11 @@ export function materializeConsultationChanges(
       });
     else throw new Error("assistant_conflicting_operations");
   }
+  if (replacedTemplateAccess)
+    combined.set("projectTemplates", {
+      path: "projectTemplates",
+      operation: "replace",
+      value: working.projectTemplates as JsonValue,
+    });
   return [...combined.values()];
 }

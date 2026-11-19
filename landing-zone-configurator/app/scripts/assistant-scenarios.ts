@@ -3617,7 +3617,9 @@ export function assistantDnsRoleFailures(
     !sentences.some(
       (sentence) =>
         /primary/.test(sentence) &&
-        /empfehl|geeignet|wahl|recommend|neue|new /.test(sentence),
+        /empfehl|geeignet|passend|wahl|recommend|appropriate|suitable|neue|new /.test(
+          sentence,
+        ),
     ) &&
     !normalized.split(/\n\s*\n/).some((block) => {
       const [heading, ...body] = block.split("\n");
@@ -3818,7 +3820,9 @@ export function assistantCorporateIpv4Failures(explanation: string): string[] {
     !/sna|network area/.test(text) ||
     !/standard|default/.test(text) ||
     !/28/.test(text) ||
-    !/übern|uebern|erbt|inherit|lies|liest|read|abfrag/.test(text)
+    !/übern|uebern|erbt|inherit|lies|liest|read|abfrag|(?:löst|loest)[^.!?\n]{0,100}(?:präfix|praefix|prefix)[^.!?\n]{0,100}\bauf\b|resolv[^.!?\n]{0,100}(?:prefix|default)/.test(
+      text,
+    )
   )
     failures.push("corporate_ipv4_automatic_inheritance_missing");
   if (

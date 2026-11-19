@@ -11,6 +11,7 @@ const templateAccessInput = z.strictObject({
       kind: z.literal("preset"),
       id: z.enum(consultationAccessPresets),
       initialOwnerEmail: z.string().min(1).max(254).optional(),
+      replaceLegacyAccess: z.boolean().optional(),
     }),
     z.strictObject({
       kind: z.literal("custom"),
@@ -214,7 +215,7 @@ export function nativeConsultationTools(
     function: {
       name: "propose_template_access_profile",
       description:
-        "Propose a COMPLETE access profile for selected existing Application templates. Choose a registered workload/VM/full-Owner preset when requested, or custom for EXACT requester and automation permission lists. Custom lists replace the old lists; additions use propose_template_permissions. Reuse an existing/confirmed central initial owner for granular profiles. The full Owner preset has no initialOwnerEmail. No user or service-account email is needed for the requester/automation themselves: ordering binds those principals. This validates a LOCAL draft only.",
+        "Propose a COMPLETE access profile for selected existing Application templates. Choose a registered workload/VM/full-Owner preset when requested, or custom for EXACT requester and automation permission lists. Custom lists replace the old lists; additions use propose_template_permissions. Reuse an existing/confirmed central initial owner for granular profiles. For a legacy template without accessProfile, set replaceLegacyAccess=true only after the user confirms replacement of its legacy roles/policy with the selected preset. This uses the same native transition as the editor and preserves unrelated template settings; do not recreate legacy fields manually. The full Owner preset has no initialOwnerEmail. No user or service-account email is needed for the requester/automation themselves: ordering binds those principals. This validates a LOCAL draft only.",
       parameters: z.toJSONSchema(templateAccessInput),
     },
   });
@@ -229,6 +230,7 @@ export class NativeConsultation {
   private pending: NativeToolCall[] = [];
   private retrievedKnowledge = false;
   private proposal: string | null = null;
+  private validatedBase: string | null = null;
   private topics = new Set<string>();
   private selectedTopics = new Set<string>();
   private round = 0;
@@ -248,8 +250,10 @@ export class NativeConsultation {
     if (data.knowledge) this.remember(data.knowledge);
     if (data.result) this.remember(data.result);
     const validation = object(data.validation);
-    if (validation.ok === true && typeof validation.proposal === "string")
+    if (validation.ok === true && typeof validation.proposal === "string") {
       this.proposal = validation.proposal;
+      this.validatedBase = validation.proposal;
+    }
   }
   constructor(
     private readonly request: (
@@ -440,6 +444,7 @@ export class NativeConsultation {
       this.proposal = null;
       return {
         action: "validate_proposal",
+        ...(this.validatedBase ? { baseProposal: this.validatedBase } : {}),
         changes: [
           {
             path: "projectTemplates",
@@ -457,6 +462,7 @@ export class NativeConsultation {
       const { selection, templateKeys } = input.data;
       return {
         action: "validate_proposal",
+        ...(this.validatedBase ? { baseProposal: this.validatedBase } : {}),
         basis: [],
         changes: templateKeys.map((key) =>
           selection.kind === "preset"
@@ -465,6 +471,9 @@ export class NativeConsultation {
                 operation: "preset",
                 value: {
                   id: selection.id,
+                  ...(selection.replaceLegacyAccess === true
+                    ? { replaceLegacyAccess: true }
+                    : {}),
                   ...(selection.initialOwnerEmail
                     ? { initialOwnerEmail: selection.initialOwnerEmail }
                     : {}),

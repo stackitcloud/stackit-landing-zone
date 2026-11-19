@@ -3,7 +3,42 @@ import { expect, it } from "vitest";
 import {
   consultationCompilerEvidence,
   consultationProposalDiff,
+  consultationTemplateReadiness,
 } from "../apps/api/src/assistant/proposal-diff.js";
+
+it("reports granular publication prerequisites without exposing unchanged owner identities", () => {
+  const readiness = consultationTemplateReadiness({
+    projectTemplates: {
+      missing: {
+        kind: "public",
+        accessProfile: { mode: "granular", initialOwnerEmail: "" },
+      },
+      existing: {
+        kind: "corporate",
+        accessProfile: {
+          mode: "granular",
+          initialOwnerEmail: "private@example.invalid",
+        },
+      },
+      owner: { kind: "public", accessProfile: { mode: "owner" } },
+      legacy: {
+        kind: "corporate",
+        settings: { custom_roles: { private: "value" } },
+      },
+    },
+  });
+  expect(
+    readiness
+      .filter((template) => template.requiresInitialOwnerBeforePublication)
+      .map((template) => template.key),
+  ).toEqual(["missing"]);
+  expect(
+    readiness.find((template) => template.key === "legacy")?.legacyInputs,
+  ).toEqual(["custom_roles"]);
+  expect(JSON.stringify(readiness)).not.toContain("private@example.invalid");
+  expect(JSON.stringify(readiness)).not.toContain('"value"');
+});
+
 import {
   type ConsultationChange,
   materializeConsultationChanges,
