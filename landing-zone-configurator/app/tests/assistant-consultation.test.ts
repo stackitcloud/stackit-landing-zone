@@ -157,6 +157,54 @@ function model(
   return { client: new AssistantModelServing(configuration, request), request };
 }
 const lastResult = (body: Request) => JSON.parse(body.messages.at(-1)!.content);
+it("sources owner picker options from the scoped application instead of model-written addresses", async () => {
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["project-templates"] }],
+    }),
+    () =>
+      final({
+        references: ["project-templates"],
+        questions: [
+          {
+            path: "projectTemplates.central.accessProfile.initialOwnerEmail",
+            text: "Which initial owner should we use?",
+            options: ["foreign@example.test"],
+          },
+        ],
+      }),
+  ]);
+  const answer = await client.converse(
+    selection,
+    {
+      "assistant.language": "en",
+      "assistant.platform_service_account_emails": [
+        "bootstrap-platform@sa.stackit.cloud",
+      ],
+      projectTemplates: {
+        central: {
+          kind: "corporate",
+          settings: {},
+          accessProfile: {
+            schemaVersion: 1,
+            mode: "granular",
+            initialOwnerEmail: "",
+            permissions: [],
+            automationPermissions: [],
+          },
+        },
+      },
+    },
+    [],
+    "Help me select an initial owner for central.",
+  );
+  expect(answer.questions[0]?.options).toEqual([
+    "Platform service account (bootstrap-platform@sa.stackit.cloud)",
+    "Provide another email address",
+  ]);
+  expect(answer.changes).toEqual([]);
+});
 it("continues staged decision calls and reviews the complete public question list only at the end", async () => {
   const { client, request } = model([
     () => ({

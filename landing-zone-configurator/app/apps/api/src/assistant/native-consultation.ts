@@ -200,7 +200,7 @@ export function nativeConsultationTools(
     [
       "answer",
       "send_answer",
-      "Finish a fully decided answer or validated proposal. Use ask_question for interactive decisions. For ordinary advice or explaining a validated proposal, respond directly in natural language instead. Never invent a proposal handle. User acceptance/save/Plan/Apply remain separate.",
+      "Finish advice, a validated proposal or questions already staged with ask_question. It presents the staged questions without adding another question. Supply the contextual explanation and actual proposal handle, if any. Natural-language final explanations also finalize staged questions. Never invent a proposal handle or add a dummy summary question just to finish. User acceptance/save/Plan/Apply remain separate.",
     ],
   ])
     tools.push({
@@ -724,7 +724,23 @@ export class NativeConsultation {
       };
     }
     if (call.name === "send_answer")
-      return this.finishQuestions({ ...call.arguments, action: "answer" });
+      return this.finishQuestions({
+        ...call.arguments,
+        action: "answer",
+        proposal:
+          call.arguments.proposal === undefined
+            ? this.proposal
+            : call.arguments.proposal,
+        references:
+          Array.isArray(call.arguments.references) &&
+          call.arguments.references.length
+            ? call.arguments.references
+            : [
+                ...new Set(
+                  [...this.selectedTopics].reverse().concat([...this.topics]),
+                ),
+              ].slice(0, 8),
+      });
     throw new AssistantInferenceError("unsupported_native_tool");
   }
 }

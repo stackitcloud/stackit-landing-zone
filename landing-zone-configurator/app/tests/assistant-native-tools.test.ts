@@ -26,6 +26,39 @@ const call = (name: string, args: unknown): NativeToolCall => ({
   type: "function",
   function: { name, arguments: JSON.stringify(args) },
 });
+it("uses observed source references when a native final answer omits them, without overwriting explicit references", async () => {
+  for (const [references, expected] of [
+    [[], ["project-templates"]],
+    [["unknown-reference"], ["unknown-reference"]],
+  ] as const) {
+    const native = new NativeConsultation(
+      vi.fn().mockResolvedValue({
+        role: "assistant",
+        content: null,
+        tool_calls: [
+          call("send_answer", {
+            kind: "advice",
+            explanation: "Reviewed advice.",
+            references,
+          }),
+        ],
+      }),
+    );
+    const supplied = [
+      context[0]!,
+      {
+        role: "user" as const,
+        content: JSON.stringify({
+          knowledge: { topics: [{ id: "project-templates" }], rules: [] },
+          turns: [],
+        }),
+      },
+    ];
+    expect(await native.next(supplied, schema)).toMatchObject({
+      references: expected,
+    });
+  }
+});
 it("collects questions sequentially and retains them through final prose without leaking them into a later repair", async () => {
   const request = vi
     .fn()

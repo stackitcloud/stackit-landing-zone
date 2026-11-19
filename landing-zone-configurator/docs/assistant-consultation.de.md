@@ -102,8 +102,13 @@ führt sie vor der normalen Validierung und Prüfung zusammen. Eine Teilantwort
 wird dabei nicht angezeigt; Rechte sowie Fragen- und Laufzeitgrenzen bleiben gleich.
 Mehrere unabhängige Fragen können als mehrere Aufrufe
 in einer Antwort zurückkommen. Der Adapter bildet daraus die bestehende öffentliche
-Fragenliste und behält den validierten Vorschlag. `send_answer` dient entschiedenen
-Antworten. Damit entfallen verschachtelte Fragenlisten, die das Kandidatenmodell
+Fragenliste und behält den validierten Vorschlag. `send_answer` kann bereits
+gesammelte Fragen ohne zusätzliche Platzhalterfrage abschließen. Registrierte
+Initial-Owner-Felder erhalten Auswahloptionen aus den verifizierten Anwendungsdaten
+sowie eine manuelle E-Mail-Option. Modellbeschriftungen belegen oder wählen keine
+Identität. Fehlende Referenzmetadaten werden ausschließlich aus bereits gelieferten
+Quellen ergänzt; explizite fremde Referenzen werden weiterhin geprüft.
+Damit entfallen verschachtelte Fragenlisten, die das Kandidatenmodell
 wiederholt als fehlerhafte JSON-Strings lieferte. Nur gültige JSON-Container an
 ausdrücklich entsprechend typisierten Feldern werden zur Transportkompatibilität
 dekodiert. Fehlerhaftes JSON und freie/literale Werte werden nicht repariert oder

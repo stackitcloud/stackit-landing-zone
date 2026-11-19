@@ -8,7 +8,10 @@ import {
   assistantOwnerChoices,
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
-import { assistantTemplateQuestionPaths } from "../apps/api/src/assistant/template-paths.js";
+import {
+  assistantTemplateQuestionPaths,
+  enrichTemplateOwnerQuestions,
+} from "../apps/api/src/assistant/template-paths.js";
 
 const current = {
   region: "eu01",
@@ -16,6 +19,67 @@ const current = {
     central: { kind: "corporate", settings: { region: "eu02" } },
   },
 };
+it("supplies scoped owner choices itself while preserving questions and rejecting unsafe question text", () => {
+  const paths = assistantTemplateQuestionPaths(current);
+  const identities = {
+    serviceAccountEmails: ["bootstrap-platform@sa.stackit.cloud"],
+    verifiedUserEmail: "user@example.test",
+  };
+  const questions = [
+    {
+      path: "projectTemplates.central.accessProfile.initialOwnerEmail",
+      text: "Which initial owner?",
+      options: ["foreign@example.test"],
+    },
+  ];
+  const enriched = enrichTemplateOwnerQuestions(
+    questions,
+    paths,
+    identities,
+    "en",
+  );
+  expect(enriched[0]).toMatchObject({
+    text: "Which initial owner?",
+    multiple: false,
+    options: [
+      "Platform service account (bootstrap-platform@sa.stackit.cloud)",
+      "Verified signed-in user (user@example.test)",
+      "Provide another email address",
+    ],
+  });
+  expect(questions[0]!.options).toEqual(["foreign@example.test"]);
+  expect(
+    enrichTemplateOwnerQuestions(
+      [
+        {
+          ...questions[0]!,
+          path: "projectTemplates.unknown.accessProfile.initialOwnerEmail",
+        },
+      ],
+      paths,
+      identities,
+      "en",
+    )[0]!.options,
+  ).toEqual(["foreign@example.test"]);
+  expect(() =>
+    validateDialogue(
+      {
+        explanation: "Nothing saved.",
+        questions: enrichTemplateOwnerQuestions(
+          [{ ...questions[0]!, text: "Provide the admin password." }],
+          paths,
+          identities,
+          "en",
+        ),
+        changes: [],
+        references: ["project-templates"],
+      },
+      ["project-templates"],
+      identities,
+      paths,
+    ),
+  ).toThrow();
+});
 it("uses the native field registry for scoped template selectors and their region", () => {
   const paths = assistantTemplateQuestionPaths(current);
   const path = "projectTemplates.central.settings.git.flavor";

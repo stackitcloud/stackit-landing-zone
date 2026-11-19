@@ -106,7 +106,12 @@ The final question with `finish=true`, or a final explanation, assembles all sta
 questions before ordinary validation and review. Staging grants no authority and
 does not expose a partial response. The same eight-question and turn budgets apply.
 The adapter assembles the existing public question list and retains the validated
-proposal. `send_answer` handles fully decided responses. This avoids nested lists
+proposal. `send_answer` can also finish already-staged questions without adding a
+dummy question. Registered initial-owner fields receive choices from scoped
+application identities, plus a manual email option, like source-owned catalogue
+pickers; model-supplied option labels never establish an identity or select it.
+Absent reference metadata uses only already observed source references; explicit
+foreign references remain subject to rejection. This avoids nested lists
 of question objects that the candidate model repeatedly returned as malformed JSON
 strings. Only valid JSON containers at explicitly typed schema fields may be
 decoded for transport compatibility; malformed JSON and literal/free-form values
