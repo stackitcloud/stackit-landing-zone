@@ -75,6 +75,7 @@ export class AssistantError extends Error {
 
 import type { ConsultationState } from "./consultation.js";
 import { consultationProposalDiff } from "./proposal-diff.js";
+import { assistantTemplateQuestionPaths } from "./template-paths.js";
 
 type Message = {
   id: string;
@@ -897,6 +898,7 @@ export class AssistantConversations {
             ? identity.identity?.email
             : undefined,
         },
+        assistantTemplateQuestionPaths(modelValues),
       );
       const proposal = enrichCatalogueQuestions(
         validatedProposal,

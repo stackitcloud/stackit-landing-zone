@@ -347,6 +347,7 @@ export function validateDialogue(
   input: unknown,
   ruleIds: readonly string[],
   ownerIdentities?: AssistantOwnerIdentityContext,
+  additionalQuestionPaths: readonly string[] = [],
 ): Dialogue {
   assertAssistantEditorValue(input);
   const result = dialogueSchema.parse(input);
@@ -387,6 +388,7 @@ export function validateDialogue(
         (question.answerType === "catalogue" &&
           catalogueField(question.path) === null) ||
         (question.path !== "projectTemplates" &&
+          !additionalQuestionPaths.includes(question.path) &&
           !editable.some((field) => field.path === question.path)) ||
         /\b(?:plan|project|projekt|organization|organisation|gateway|tenant)[\s_-]*id\b|\buuid\b|interne[\s]+kennung/i.test(
           questionContent(question),

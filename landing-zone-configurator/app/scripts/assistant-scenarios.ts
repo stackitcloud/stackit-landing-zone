@@ -3424,9 +3424,7 @@ export function validateAssistantScenario(
       failures.push("missing_unsaved_notice");
     if (
       scenario.id !== "firewall-ha-already-saved" &&
-      /\b(?:wurde|wurden|ist|sind)\b[^.!?\n]{0,100}\b(?:konfiguriert|gespeichert|eingetragen|bereitgestellt)\b/i.test(
-        dialogue.explanation,
-      )
+      assistantPrematurePersistenceClaim(dialogue.explanation)
     )
       failures.push("premature_saved_claim");
     const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
@@ -3467,6 +3465,18 @@ export function validateAssistantScenario(
   return { dialogue, failures };
 }
 
+export function assistantPrematurePersistenceClaim(explanation: string) {
+  const claims = explanation.matchAll(
+    /\b(?:wurde|wurden|ist|sind)\b((?:(?!\b(?:wurde|wurden|ist|sind)\b)[^.!?\n]){0,100})\b(?:konfiguriert|gespeichert|eingetragen|bereitgestellt)\b/gi,
+  );
+  return [...claims].some(
+    (claim) =>
+      !/\b(?:kein\w*|nicht|nichts|weder)\b/i.test(
+        claim[1]!.replace(/\bnicht\s+nur\b/gi, ""),
+      ),
+  );
+}
+
 export function assistantDevOpsDefaultFailures(explanation: string) {
   const sentences = explanation.toLowerCase().split(/\n+|(?<=[.!?])\s+/);
   const failures: string[] = [];
@@ -3495,11 +3505,23 @@ export function assistantDnsRoleFailures(
   explanation: string,
   mode: "roles" | "secondary",
 ) {
-  const sentences = explanation
+  const normalized = explanation
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .split(/\n+|(?<=[.!?])\s+/);
+    .toLowerCase();
+  const sentences = normalized.split(/\n+|(?<=[.!?])\s+/);
+  const roleDescriptions = (role: "primary" | "secondary") => [
+    ...sentences,
+    ...normalized.split(/\n\s*\n/).filter((block) => {
+      const heading = block.split("\n")[0] ?? "";
+      return (
+        new RegExp(`\\b${role}\\b`).test(heading) &&
+        !new RegExp(
+          `\\b${role === "primary" ? "secondary" : "primary"}\\b`,
+        ).test(heading)
+      );
+    }),
+  ];
   const authority = /autoritat|authoritat/;
   const failures: string[] = [];
   if (
@@ -3513,7 +3535,7 @@ export function assistantDnsRoleFailures(
   )
     failures.push("dns_secondary_authority_denied");
   if (
-    !sentences.some(
+    !roleDescriptions("secondary").some(
       (sentence) =>
         /secondary/.test(sentence) &&
         /repli[zk]|kopie|copy|replic|ubernehm|ubernimm/.test(sentence),
@@ -3531,7 +3553,7 @@ export function assistantDnsRoleFailures(
     failures.push("dns_secondary_limit_missing");
   if (mode === "secondary") return failures;
   if (
-    !sentences.some(
+    !roleDescriptions("primary").some(
       (sentence) =>
         /primary/.test(sentence) &&
         /fuhrend|verwal|pfleg|original|bearbeit|manage|edit/.test(sentence),

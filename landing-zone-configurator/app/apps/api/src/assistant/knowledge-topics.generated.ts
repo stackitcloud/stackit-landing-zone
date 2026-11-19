@@ -43,17 +43,27 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
           sha256:
-            "7c5b455713f4d7f23219e917ad95717d46c797c39538d64d2e94612ee493bb04",
+            "988b4fed0bf4428a9e87f543689247ad4d6f616f4357610fbc593f4dd8a03940",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "69aea6e8971e1694d3a22de65e079abdfe90b93dd68c51ba70065653e72335b0",
+            "5e30c72e152a1f54b2ecae7a4e6c6eb1bdc91c912f2bc7202d1cbb7fcaf527b4",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -63,12 +73,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -78,12 +88,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -113,7 +123,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -207,7 +217,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -217,12 +237,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -232,12 +252,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -267,7 +287,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -379,7 +399,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -389,12 +419,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -404,12 +434,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -439,7 +469,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -529,7 +559,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -539,12 +579,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -554,12 +594,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -589,7 +629,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -714,7 +754,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -724,12 +774,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -739,12 +789,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -774,7 +824,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -860,7 +910,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "69aea6e8971e1694d3a22de65e079abdfe90b93dd68c51ba70065653e72335b0",
+            "5e30c72e152a1f54b2ecae7a4e6c6eb1bdc91c912f2bc7202d1cbb7fcaf527b4",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
@@ -870,7 +920,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -880,12 +940,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -895,12 +955,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -930,7 +990,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1054,7 +1114,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -1064,12 +1134,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1079,12 +1149,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -1114,7 +1184,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1198,7 +1268,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -1208,12 +1288,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1223,12 +1303,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -1258,7 +1338,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1349,7 +1429,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -1359,12 +1449,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1374,12 +1464,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -1409,7 +1499,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1520,7 +1610,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -1530,12 +1630,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1545,12 +1645,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -1580,7 +1680,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1710,7 +1810,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -1720,12 +1830,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1735,12 +1845,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -1770,7 +1880,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -1972,7 +2082,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -1982,12 +2102,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1997,12 +2117,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -2032,7 +2152,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2183,7 +2303,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -2193,12 +2323,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2208,12 +2338,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -2243,7 +2373,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2334,7 +2464,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "69aea6e8971e1694d3a22de65e079abdfe90b93dd68c51ba70065653e72335b0",
+            "5e30c72e152a1f54b2ecae7a4e6c6eb1bdc91c912f2bc7202d1cbb7fcaf527b4",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -2359,7 +2489,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -2369,12 +2509,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2384,12 +2524,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -2419,7 +2559,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2506,7 +2646,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -2516,12 +2666,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2531,12 +2681,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -2566,7 +2716,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2748,7 +2898,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -2758,12 +2918,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2773,12 +2933,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -2808,7 +2968,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -2919,7 +3079,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -2929,12 +3099,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2944,12 +3114,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -2979,7 +3149,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -3062,7 +3232,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -3072,12 +3252,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3087,12 +3267,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -3122,7 +3302,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",
@@ -3213,12 +3393,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "69aea6e8971e1694d3a22de65e079abdfe90b93dd68c51ba70065653e72335b0",
+            "5e30c72e152a1f54b2ecae7a4e6c6eb1bdc91c912f2bc7202d1cbb7fcaf527b4",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
           sha256:
-            "7c5b455713f4d7f23219e917ad95717d46c797c39538d64d2e94612ee493bb04",
+            "988b4fed0bf4428a9e87f543689247ad4d6f616f4357610fbc593f4dd8a03940",
         },
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
@@ -3268,7 +3448,17 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "d2837f0938c5b662f70b471a71f71fd5fc3c8ac4d99b3ebe3069a68b16999d2e",
+            "4e35c5613e9cfafa334d6f95d072f1b9e513ff3c2dac7646a2043f404b9e90ad",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
+          sha256:
+            "f1a0f6df5de9ac7b649eef14c578e1fedbf9845545db59db3c34abc79bb488c2",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/template-paths.ts",
+          sha256:
+            "0084fbdfb70ca1d2cef7f7b7265cd8f25fdd2b1bf5ab52458dded23ea5b959ef",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation-memory.ts",
@@ -3278,12 +3468,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "86357091245c36a647330ab20f2a2242bff5d076c65a73fe77fe126ce0cf5c40",
+            "fd3ed951a16bd14baa3d0671baad2e3e439a7670c4d61cf3050a43a3a5c1ee45",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "48fa039223dccfb9301e1916737893929dd68a6f16151c175527ef9f32d39783",
+            "4f7c908a92da16736d8bb0f0ba93c6abe844c8aed995958ae58f93569996af32",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3293,12 +3483,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/decision-support.ts",
           sha256:
-            "991123ef06f3b6ef4a7358d18efd5714969d93a1915011aa8032250c7ed18666",
+            "81f00a10b351d0ed0d082bc5d7289298faf26149a802dc552c9cd73d00ed7ee9",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-operations.ts",
           sha256:
-            "de2cfe79628d654a1aade2e9e2c19c425bfcbd020666d26118f1b80482cb54cf",
+            "5ab682519d683e4fa390db9b04dfcac2a0cce45b9cd618334091f176322df276",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/architecture-advice.ts",
@@ -3323,7 +3513,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/catalogue-guidance.ts",
           sha256:
-            "a214c7a485ff5f331e5110708e7b3e7fe8fa430bfea1676edc719ab7ddeb1c88",
+            "178ed7b7aa52cd49e1f4c87e28d51b4c5e745cb9d2a284ada6b2fc52f574e568",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service-requirements.ts",

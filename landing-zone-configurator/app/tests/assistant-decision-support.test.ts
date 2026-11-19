@@ -141,3 +141,53 @@ it("rejects a new offering absent from a complete project catalogue while retain
     ),
   ).toEqual([]);
 });
+
+it("checks a template selection against that template's region, not the Platform region", () => {
+  const catalogues = {
+    regions: [
+      {
+        region: "eu01" as const,
+        fetchedAt: null,
+        products: {
+          gitFlavors: {
+            status: "available" as const,
+            options: [{ value: "git-10", label: "Git10" }],
+            totalOptions: 1,
+            truncated: false,
+          },
+        },
+      },
+      {
+        region: "eu02" as const,
+        fetchedAt: null,
+        products: {
+          gitFlavors: {
+            status: "available" as const,
+            options: [{ value: "git-100", label: "Git100" }],
+            totalOptions: 1,
+            truncated: false,
+          },
+        },
+      },
+    ],
+  };
+  const after = {
+    region: "eu01",
+    projectTemplates: {
+      central: { settings: { region: "eu02", git: { flavor: "git-100" } } },
+    },
+  };
+  expect(unavailableCatalogueChoices({}, after, catalogues)).toEqual([]);
+  expect(
+    unavailableCatalogueChoices(
+      {},
+      {
+        ...after,
+        projectTemplates: {
+          central: { settings: { region: "eu01", git: { flavor: "git-100" } } },
+        },
+      },
+      catalogues,
+    ),
+  ).toMatchObject([{ path: "projectTemplates.central.settings.git.flavor" }]);
+});

@@ -18,6 +18,12 @@ export type ConsultationChange = {
   value: JsonValue;
 };
 
+export const consultationAccessPresets = [
+  "application-workloads-v1",
+  "application-vm-v1",
+  "owner",
+] as const;
+
 export class ConsultationOperationError extends Error {
   constructor(
     code: string,
@@ -43,7 +49,10 @@ export function materializeConsultationChanges(
     for (const [key, value] of Object.entries(right)) {
       if (["__proto__", "constructor", "prototype"].includes(key))
         throw new Error("assistant_invalid_scope");
-      result[key] = merge(result[key] ?? null, value);
+      result[key] =
+        key === "accessProfile"
+          ? structuredClone(value)
+          : merge(result[key] ?? null, value);
     }
     return result;
   };
@@ -170,8 +179,14 @@ export function materializeConsultationChanges(
             );
         }
       }
-      if (root !== "projectTemplates" || !segments.length)
+      if (root !== "projectTemplates" || !segments.length) {
+        if (root === "projectTemplates")
+          working[root] =
+            change.operation === "merge"
+              ? merge((working[root] ?? {}) as JsonValue, change.value)
+              : structuredClone(change.value);
         return { ...change, operation: change.operation };
+      }
       if (change.operation === "default")
         throw new Error("assistant_use_registered_preset");
       if (!objectValue(working[root] as JsonValue)[segments[0]!])
@@ -188,6 +203,7 @@ export function materializeConsultationChanges(
       }
       let patch = value;
       for (const key of [...keys].reverse()) patch = { [key]: patch };
+      working[root] = merge((working[root] ?? {}) as JsonValue, patch);
       return { path: root, operation: "merge" as const, value: patch };
     }
     let value: JsonValue;
@@ -200,12 +216,23 @@ export function materializeConsultationChanges(
       )
         throw new Error("assistant_invalid_preset_path");
       const choice = objectValue(change.value);
-      if (
-        !["application-workloads-v1", "application-vm-v1"].includes(
-          String(choice.id),
-        )
-      )
+      if (!consultationAccessPresets.some((id) => id === choice.id))
         throw new Error("assistant_unknown_preset");
+      if (choice.id === "owner") {
+        if (choice.initialOwnerEmail !== undefined)
+          throw new ConsultationOperationError(
+            "assistant_owner_preset_parameter",
+            change.path,
+            "The owner profile has no initialOwnerEmail field. Use value={id:owner} for the explicitly requested full Owner profile; a separate initial owner is part of a granular profile.",
+          );
+        let patch: JsonValue = { schemaVersion: 1, mode: "owner" };
+        for (const key of [...segments].reverse()) patch = { [key]: patch };
+        objectValue(working[root] as JsonValue)[segments[0]!] = {
+          ...objectValue(objectValue(working[root] as JsonValue)[segments[0]!]),
+          accessProfile: { schemaVersion: 1, mode: "owner" },
+        };
+        return { path: root, operation: "merge" as const, value: patch };
+      }
       const existingOwner = objectValue(
         read(segments) as JsonValue,
       ).initialOwnerEmail;

@@ -57,7 +57,7 @@ const reads = {
   ],
   knowledge: [
     "read_knowledge",
-    "Read detailed reviewed service metadata and critical boundaries for the selected topics. Use this for concepts, capabilities and operating guidance; it does not require an installed/configured service.",
+    "Search and read reviewed service facts and critical boundaries. Supply an English query when unsure of the topic; optional topics selects known IDs. The server also searches the current user request in the curated bundle. Use this for concepts, capabilities and operating guidance; it does not require an installed/configured service.",
   ],
   default: [
     "read_native_default",
@@ -153,6 +153,19 @@ export function nativeConsultationTools(
     )
   )
     throw new AssistantInferenceError("native_tool_schema");
+  const validation = tools.find(
+    (tool) => tool.function.name === "validate_proposal",
+  )!.function.parameters;
+  const properties = object(validation.properties);
+  properties.nativeDefaults = {
+    ...object(properties.basis),
+    description:
+      "Optional proof ONLY for choosing actual native variable defaults read by the tools. Omit for literals, catalogue offerings and registered access-profile presets. These are not native-default selections.",
+  };
+  delete properties.basis;
+  validation.required = (validation.required as string[]).filter(
+    (key) => key !== "basis",
+  );
   return tools;
 }
 
@@ -324,7 +337,12 @@ export class NativeConsultation {
     const call = calls[0]!;
     if (call.name === "validate_proposal") {
       this.proposal = null;
-      return { ...call.arguments, action: "validate_proposal" };
+      const { nativeDefaults, ...arguments_ } = call.arguments;
+      return {
+        ...arguments_,
+        basis: nativeDefaults ?? arguments_.basis ?? [],
+        action: "validate_proposal",
+      };
     }
     if (call.name === "send_answer")
       return { ...call.arguments, action: "answer" };

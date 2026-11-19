@@ -30,7 +30,12 @@ Mandatory rules and the active brief are supplied initially. The model retrieves
 reviewed service facts and dependencies through native OpenAI function calls. The
 first inference names `read_knowledge` explicitly in `tool_choice`, so general model
 knowledge cannot bypass the initial source lookup; later calls use automatic selection.
-Independent reads may be batched. Already delivered rules are referenced instead
+The knowledge tool ranks the current request and an optional English search query
+against the selected curated corpus with BM25. Relevant matches augment requested
+topic IDs, so choosing a neighbouring topic does not omit the actual service facts.
+Short generic follow-ups do not create an unrelated search result; the active brief
+and explicit topic selection remain available. This reads no remote documents or
+customer data. Independent reads may be batched. Already delivered rules are referenced instead
 of repeated. The service catalogue and relevant editable roots are discoverable
 without a separate intent classifier. Schemas are read with the actual configuration,
 rather than embedding thousands of unrelated field paths in every tool definition.
@@ -45,6 +50,10 @@ The shared evaluator compares them with reviewed numeric ceilings and matched
 catalogue facts. It distinguishes eligible, excluded and unknown offerings. Known
 Git user limits and supplied VM/VPN characteristics use the same evaluator; unknown
 capacity or unverified RAM units cannot become a performance claim.
+
+The native validator exposes optional `nativeDefaults` evidence only for actual
+native variable defaults. Literal values, catalogue selections and registered presets
+do not need this evidence. All still pass source/schema/compiler checks.
 
 A uniquely fitting option appears as a source-bound recommendation with its
 requirements and characteristics. This remains visible even while another decision
@@ -89,11 +98,19 @@ choices are supplied with their source value and user evidence, so a later expli
 default choice is not reinterpreted as an earlier access preference. HTTP failures are not retried
 through the review loop; acceptance and execution boundaries remain unchanged.
 
+The chat capabilities are read-only/local; the Configurator product separately runs
+approved jobs. Describing the product must not confuse those two scopes. Proposal
+effects are described as proposed effects, not already granted cloud access.
+
 Typed `union`, `add_permissions` and registered `preset` operations materialize complete native
 values locally. The model selects a reviewed operation rather than reproducing
 hundreds of permission strings. Application access profiles remain atomic:
 permission additions name the selected templates and principals explicitly and retain
-the initial owner, the other principal and unrelated rights. Each operation chooses
+the initial owner, the other principal and unrelated rights. Registered presets include workload, VM and full Owner variants. Granular profiles
+need an initial owner; the native Owner variant has no granular owner/permission-list
+fields. Local batches update a private working snapshot in order and preserve atomic
+profiles, including an earlier owner edit followed by permission additions.
+Each permission-addition operation chooses
 one source: service groups, a registered permission set, or exact identifiers.
 Unused optional arguments cannot accidentally enable an unrelated permission set. Official service groups are resolved from the existing catalogue; IAM
 requires explicit permission identifiers. The materialized proposal passes the

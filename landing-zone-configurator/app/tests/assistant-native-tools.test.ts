@@ -54,6 +54,11 @@ it("uses small native schemas and keeps the user's actual message as a user turn
     "send_answer",
   ]);
   expect(JSON.stringify(tools).length).toBeLessThan(20000);
+  const properties = tools.find(
+    (tool) => tool.function.name === "validate_proposal",
+  )!.function.parameters.properties as Record<string, unknown>;
+  expect(properties.nativeDefaults).toBeDefined();
+  expect(properties.basis).toBeUndefined();
 });
 it("returns pure results through matching tool roles and carries only a successful local proposal", async () => {
   const request = vi

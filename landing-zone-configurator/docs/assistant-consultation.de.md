@@ -16,6 +16,12 @@ Zu Beginn werden Pflichtregeln und der aktive Gesprächsstand übergeben. Das Mo
 liest Servicewissen und Abhängigkeiten über native OpenAI-Funktionsaufrufe. Der
 erste Aufruf wählt `read_knowledge` ausdrücklich per `tool_choice`; allgemeines
 Modellvorwissen ersetzt den ersten Quellenabruf nicht. Danach wählt das Modell automatisch.
+Das Wissenswerkzeug bewertet die aktuelle Frage und eine optionale englische
+Suchanfrage per BM25 gegen den ausgewählten kuratierten Bestand. Relevante Treffer
+ergänzen gewählte Themen-IDs, damit ein benachbartes Thema nicht die benötigten
+Servicefakten ausblendet. Kurze allgemeine Folgeantworten erzeugen keinen fremden
+Themenwechsel. Aktiver Gesprächsstand und explizite Themenwahl bleiben verfügbar;
+externe Dokumente und Kundendaten werden nicht durchsucht.
 Unabhängige Abfragen können gebündelt werden. Bereits gelieferte Regeln werden
 referenziert. Themen und bearbeitbare Wurzeln sind ohne separaten Intent-Klassifizierer
 auffindbar. Native Schemas werden gezielt mit den Konfigurationswerten gelesen,
@@ -156,3 +162,25 @@ benötigen einen expliziten Abdeckungsnachweis mit Referenzen auf serverseitig n
 Antwortabsätze. Die Prüfung muss den Antworttext nicht nochmals wortgleich erzeugen.
 Validierte Default-Wahlen werden mit nativem Wert und Nutzerbeleg an die Prüfung
 übergeben, damit eine spätere Wahl nicht als frühere Zugriffsvorgabe interpretiert wird.
+
+## Beratung und lokale Operationen
+
+Die Chat-Werkzeuge sind lesend/lokal; das Configurator-Produkt führt separat
+freigegebene Jobs aus. Eine Produktbeschreibung darf diese beiden Ebenen nicht
+verwechseln. Vorschläge beschreiben geplante Wirkungen, keine schon erteilten Rechte.
+
+Registrierte Profile umfassen Workload, VM und vollen Owner. Granulare Profile
+brauchen einen initialen Owner; die native Owner-Variante hat diese granularen
+Owner-/Rechtelistenfelder nicht. Lokale Operationspakete aktualisieren ihren privaten
+Arbeitsstand der Reihe nach und behandeln Profile atomar. Eine vorherige Owner-
+Änderung bleibt dadurch bei anschließenden Rechteergänzungen erhalten.
+
+Das native Validierungswerkzeug verwendet optionale `nativeDefaults`-Belege nur für
+tatsächliche native Variablendefaults. Literale Werte, Katalogauswahl und registrierte
+Profile benötigen diese Belege nicht; Quellen-, Schema- und Compilerprüfungen gelten
+weiter für alle Vorschläge.
+
+Vorhandene Template-Settings werden auf das passende native Projekt-/Sandbox-Modul
+abgebildet. Ihre Auswahllisten verwenden dieselbe Feldregistrierung wie der Editor.
+Katalogabruf und -prüfung verwenden die Template-Region statt der Plattform-Region;
+unbekannte Template-Schlüssel werden nicht als Frageziele akzeptiert.

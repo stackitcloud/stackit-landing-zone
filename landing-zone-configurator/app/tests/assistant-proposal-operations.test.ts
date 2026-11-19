@@ -188,3 +188,108 @@ it("materializes one business operation for all requested principals without cop
     expect(actual.accessProfile.automationPermissions).toContain(permission);
   }
 });
+
+it("materializes the explicit full Owner preset as its complete native variant", () => {
+  const current = {
+    projectTemplates: {
+      central: {
+        accessProfile: {
+          schemaVersion: 1,
+          mode: "granular",
+          initialOwnerEmail: "owner@example.test",
+          permissions: ["iaas.server.get"],
+          automationPermissions: [],
+        },
+        settings: { region: "eu01" },
+      },
+    },
+  };
+  expect(
+    materializeConsultationChanges(
+      [
+        {
+          path: "projectTemplates.central.accessProfile",
+          operation: "preset",
+          value: { id: "owner" },
+        },
+      ],
+      current,
+    ),
+  ).toEqual([
+    {
+      path: "projectTemplates",
+      operation: "merge",
+      value: {
+        central: { accessProfile: { schemaVersion: 1, mode: "owner" } },
+      },
+    },
+  ]);
+  expect(current.projectTemplates.central.accessProfile.mode).toBe("granular");
+  expect(() =>
+    materializeConsultationChanges(
+      [
+        {
+          path: "projectTemplates.central.accessProfile",
+          operation: "preset",
+          value: { id: "owner", initialOwnerEmail: "owner@example.test" },
+        },
+      ],
+      current,
+    ),
+  ).toThrow("assistant_owner_preset_parameter");
+});
+
+it("retains an earlier owner edit when the same local batch adds permissions", () => {
+  const current = {
+    projectTemplates: {
+      central: {
+        accessProfile: {
+          schemaVersion: 1,
+          mode: "granular",
+          initialOwnerEmail: "old@example.test",
+          permissions: ["iaas.server.get"],
+          automationPermissions: ["ske.cluster.get"],
+        },
+      },
+    },
+  };
+  const result = materializeConsultationChanges(
+    [
+      {
+        path: "projectTemplates.central.accessProfile.initialOwnerEmail",
+        operation: "replace",
+        value: "new@example.test",
+      },
+      {
+        path: "projectTemplates",
+        operation: "add_permissions",
+        value: {
+          templateKeys: ["central"],
+          principals: ["requester"],
+          source: { kind: "permissions", ids: ["iaas.server.delete"] },
+        },
+      },
+    ],
+    current,
+  );
+  expect(result).toEqual([
+    {
+      path: "projectTemplates",
+      operation: "merge",
+      value: {
+        central: {
+          accessProfile: {
+            schemaVersion: 1,
+            mode: "granular",
+            initialOwnerEmail: "new@example.test",
+            permissions: ["iaas.server.get", "iaas.server.delete"],
+            automationPermissions: ["ske.cluster.get"],
+          },
+        },
+      },
+    },
+  ]);
+  expect(current.projectTemplates.central.accessProfile.initialOwnerEmail).toBe(
+    "old@example.test",
+  );
+});

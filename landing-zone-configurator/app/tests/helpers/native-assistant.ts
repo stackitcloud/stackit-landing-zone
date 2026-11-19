@@ -27,6 +27,11 @@ export function nativeStepResponse(step: unknown, model = "test-model") {
             ),
           },
         ];
+  for (const call of calls)
+    if (call.name === "validate_proposal") {
+      call.arguments.nativeDefaults = call.arguments.basis ?? [];
+      delete call.arguments.basis;
+    }
   return {
     model,
     choices: [

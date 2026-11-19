@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "99c34ae14e9e392baea28decd8c4d01a107e53158adad7bf39a37d99cca1abf1",
+  "knowledgeSha256": "9c6509f360734182e9885335323b18ccf2b1668bb9f27bec02487edbc94e4aab",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "e8adf2ca73de135370aefe03163faa7e39db91e460aaebec3198da9a3a10a7b2",
+    "scripts/assistant-scenarios.ts": "dc795966a0406575f7d92d423ee97b4cb4a917a3b159d7d1d9ef6f4909b0d012",
     "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "6e2c95fb7563683825d7383826b5da02ca763cdc6a70ae2090a639af23a03017",
+  "suiteSha256": "0e7ba8e6837ff6409bd6f45664052c0e2530a786ef659ae94982ef4fd375e061",
   "topics": [
     {
       "id": "credential-foundations",

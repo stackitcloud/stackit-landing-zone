@@ -26,6 +26,12 @@ export function configuredCatalogueRegions(
       if (region === "eu01" || region === "eu02") regions.add(region);
     }
   }
+  for (const template of Object.values(
+    objectValue(current.projectTemplates as JsonValue),
+  )) {
+    const region = objectValue(objectValue(template).settings).region;
+    if (region === "eu01" || region === "eu02") regions.add(region);
+  }
   return [...regions];
 }
 
@@ -33,6 +39,17 @@ export function catalogueQuestionRegion(
   path: string,
   current: Record<string, unknown>,
 ) {
+  const templatePath = /^projectTemplates\.([^.]+)\.settings(?:\.|$)/.exec(
+    path,
+  );
+  if (templatePath) {
+    const template = objectValue(
+      objectValue(current.projectTemplates as JsonValue)[templatePath[1]!],
+    );
+    if (!Object.keys(template).length) return null;
+    const region = objectValue(template.settings).region ?? current.region;
+    return region === "eu01" || region === "eu02" ? region : null;
+  }
   const regional = path.startsWith("connectivity_regions")
     ? objectValue(current.connectivity_regions as JsonValue)
     : path.startsWith("platform_kubernetes")

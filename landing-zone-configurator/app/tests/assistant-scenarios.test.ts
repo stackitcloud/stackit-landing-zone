@@ -21,6 +21,7 @@ import {
   assistantDnsRoleFailures,
   assistantFirewallBootstrapFailures,
   assistantPlatformImpactReviewFailures,
+  assistantPrematurePersistenceClaim,
   assistantScenarioFixture,
   assistantScenarios,
   buildAssistantScenarioInventory,
@@ -1575,4 +1576,50 @@ it("accepts actual VM-preset counts in VM advice and rejects invented count pair
       explanation: explanation.replace("projektweit", "lokal"),
     }).failures,
   ).toContain("application_access_missing_project-key-scope");
+});
+
+it("recognizes DNS roles across Markdown paragraphs while rejecting reversed roles", () => {
+  const text =
+    "Beide Zonentypen primary und secondary sind autoritativ; public/private ist keine Typauswahl.\n\n**Primary-Zone:**\nHier werden die originalen DNS-Einträge verwaltet. Empfohlen für eine neue Firmenzone.\n\n**Secondary-Zone:**\nSie repliziert eine externe Primärzone. Der native Accelerator bildet die Secondary-Transferkonfiguration nicht vollständig ab.";
+  expect(assistantDnsRoleFailures(text, "roles")).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text.replace(
+        "Sie repliziert eine externe Primärzone.",
+        "Sie erzeugt unabhängige Daten.",
+      ),
+      "roles",
+    ),
+  ).toContain("dns_secondary_role_missing");
+  expect(
+    assistantDnsRoleFailures(
+      text + "\nSecondary ist nicht autoritativ.",
+      "roles",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+});
+it("distinguishes explicit no-save statements from affirmative persistence claims", () => {
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Es wurden keine Änderungen ausgeführt oder gespeichert.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Es wurde nichts gespeichert, veröffentlicht oder ausgeführt.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim("Die Konfiguration ist gespeichert."),
+  ).toBe(true);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Es wurde nichts gespeichert. Die Konfiguration ist jetzt gespeichert.",
+    ),
+  ).toBe(true);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Es wurde nicht nur gespeichert, sondern auch bereitgestellt.",
+    ),
+  ).toBe(true);
 });

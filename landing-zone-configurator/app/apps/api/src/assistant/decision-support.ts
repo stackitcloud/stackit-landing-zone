@@ -134,12 +134,17 @@ export function unavailableCatalogueChoices(
     value && typeof value === "object" && !Array.isArray(value)
       ? (value as Record<string, unknown>)
       : {};
-  const visit = (prior: unknown, next: unknown, path: string): void => {
+  const visit = (
+    prior: unknown,
+    next: unknown,
+    path: string,
+    regionHint?: "eu01" | "eu02",
+  ): void => {
     if (prior === next || path.startsWith("assistant.")) return;
     if (typeof next === "string") {
       const field = catalogueField(path);
       if (!field) return;
-      const region = catalogueQuestionRegion(path, after);
+      const region = regionHint ?? catalogueQuestionRegion(path, after);
       if (!region) return;
       const product = catalogues.regions.find(
         (entry) => entry.region === region,
@@ -163,12 +168,18 @@ export function unavailableCatalogueChoices(
           Array.isArray(prior) ? prior[index] : undefined,
           value,
           `${path}[*]`,
+          regionHint,
         );
       }
       return;
     }
+    const explicitRegion = plain(next).region;
+    const region =
+      explicitRegion === "eu01" || explicitRegion === "eu02"
+        ? explicitRegion
+        : regionHint;
     for (const [key, value] of Object.entries(plain(next)))
-      visit(plain(prior)[key], value, path ? `${path}.${key}` : key);
+      visit(plain(prior)[key], value, path ? `${path}.${key}` : key, region);
   };
   for (const [key, value] of Object.entries(after)) {
     if (key.includes(".") && Object.hasOwn(after, key.split(".")[0]!)) continue;

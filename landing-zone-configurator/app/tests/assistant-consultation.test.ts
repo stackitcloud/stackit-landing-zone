@@ -1027,3 +1027,68 @@ it("does not turn malformed advisory memory or topic hints into a user-facing fa
   expect(onState.mock.calls[0]?.[0].topics).toEqual([]);
   expect(onState.mock.calls[0]?.[0].memory.decisions).toEqual([]);
 });
+
+it("resolves template setting defaults through the actual native module contract", () => {
+  const current = {
+    projectTemplates: {
+      central: { kind: "corporate", settings: { region: "eu02" } },
+    },
+  };
+  const native = consultationNativeDefault("landing_zones[*].git.enabled");
+  expect(
+    consultationNativeDefault(
+      "projectTemplates.central.settings.git.enabled",
+      current,
+    ),
+  ).toEqual({
+    ...native,
+    path: "projectTemplates.central.settings.git.enabled",
+    nativePath: "landing_zones[*].git.enabled",
+  });
+  expect(() =>
+    consultationNativeDefault(
+      "projectTemplates.central.accessProfile",
+      current,
+    ),
+  ).toThrow("assistant_invalid_scope");
+  expect(() =>
+    consultationNativeDefault(
+      "projectTemplates.unknown.settings.git.enabled",
+      current,
+    ),
+  ).toThrow("assistant_invalid_scope");
+});
+
+it("retrieves actual State coordination facts even if the model selects a neighbouring lifecycle topic", async () => {
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["configuration-lifecycle"] }],
+    }),
+    (body) => {
+      const result = lastResult(body).toolResults[0].result;
+      expect(result.retrieval.matched).toContain("management-state");
+      expect(
+        result.rules.some(
+          (rule: { id: string; text: string }) =>
+            rule.id === "management-state" && rule.text.includes("PostgreSQL"),
+        ),
+      ).toBe(true);
+      return final({
+        explanation:
+          "CLI requires a single writer per State; the Configurator coordinates jobs through PostgreSQL. Conditional S3 writes do not provide locking and no native date is announced.",
+        references: ["management-state"],
+      });
+    },
+  ]);
+  expect(
+    (
+      await client.converse(
+        selection,
+        {},
+        [],
+        "How is concurrent State access protected if conditional S3 writes are not enforced? Explain CLI and Configurator locking.",
+      )
+    ).changes,
+  ).toEqual([]);
+});
