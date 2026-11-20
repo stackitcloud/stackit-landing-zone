@@ -79,6 +79,10 @@ gh secret set LZC_MAILOUT_BINDINGS --repo stackitcloud/stackit-landing-zone \
 ```
 
 Production deployment requires the SMTP binding and fails before activation if it is missing.
+The protected `lzc-prod-release` variable `LZC_PROJECT_ID` must match the binding’s
+project. It is passed to both backend and application preparation. A
+`mailout_bindings_invalid` error before staging can indicate a missing or mismatched
+project in runtime preparation; verify the binding and project variable together.
 
 The Production Release workflow passes this secret to runtime preparation and
 verifies the actual CF MailOut binding before SMTP connection checks. Staging email is disabled. Runner and migration applications never receive SMTP credentials or send mail.

@@ -143,6 +143,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       LZC_PUBLISHED_RELEASE: 'true'
+      LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
       LZC_RELEASE_REVISION: ${{ needs.source.outputs.revision }}
       LZC_RELEASE_RUN_ID: ${{ needs.source.outputs.run_id }}
       LZC_RELEASE_MODE: ${{ needs.source.outputs.mode }}
