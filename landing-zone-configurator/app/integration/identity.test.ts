@@ -10279,7 +10279,7 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       ),
     ).rejects.toMatchObject({ code: "42501" });
   });
-  it("keeps memberships server-managed and readonly users unable to write", async () => {
+  it("keeps readonly members out of configuration storage and shares it after a platform role grant", async () => {
     await migration.query(
       "INSERT INTO lzc.memberships(tenant_id,user_id,role) VALUES($1,$2,'viewer')",
       [alice.tenantId, bob.userId],
@@ -10311,16 +10311,17 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           client.query("SELECT id FROM lzc.configurations"),
         )
       ).rows,
-    ).toEqual([]);
+    ).toContainEqual({ id: aliceDocument });
     expect(
       (
         await withTenant(pool, viewer, (client) =>
-          client.query("DELETE FROM lzc.configurations WHERE id=$1", [
-            aliceDocument,
-          ]),
+          client.query(
+            "UPDATE lzc.configurations SET name='Shared edit' WHERE id=$1",
+            [aliceDocument],
+          ),
         )
       ).rowCount,
-    ).toBe(0);
+    ).toBe(1);
     await migration.query(
       "DELETE FROM lzc.memberships WHERE tenant_id=$1 AND user_id=$2",
       [alice.tenantId, bob.userId],
@@ -10975,6 +10976,157 @@ describe("organisation draft workspaces", () => {
     bob = (await create(902)).session;
   });
   const organisations = new PostgresOrganisations(pool);
+  it("shares saved configurations across platform members with revision conflicts and private assistant history", async () => {
+    const tenantId = await organisations.create(
+      alice,
+      "Shared configurations",
+      randomUUID(),
+    );
+    await organisations.switch(alice, tenantId);
+    const owner = { ...alice, tenantId };
+    await inviteMember(owner, bob, ["platform-engineer"], false);
+    await organisations.switch(bob, tenantId);
+    const collaborator = { ...bob, tenantId };
+    const configurations = new Configurations(pool);
+    try {
+      const draft = createEditorConfiguration("standalone", randomUUID());
+      draft.name = "Shared configuration";
+      const stored = await configurations.create(owner, draft);
+      expect(await configurations.list(collaborator)).toContainEqual({
+        id: stored.id,
+        name: stored.name,
+        revision: 1,
+        updatedAt: stored.updatedAt,
+      });
+      expect(await configurations.get(collaborator, stored.id)).toEqual(stored);
+
+      const edited = await configurations.update(collaborator, stored.id, 1, {
+        ...draft,
+        name: "Edited by colleague",
+      });
+      expect(edited.revision).toBe(2);
+      expect((await configurations.get(owner, stored.id)).draft.name).toBe(
+        "Edited by colleague",
+      );
+      await expect(
+        configurations.update(owner, stored.id, 1, draft),
+      ).rejects.toMatchObject({ status: 409, code: "configuration_changed" });
+      const saved = await configurations.update(owner, stored.id, 2, {
+        ...draft,
+        name: "Reviewed together",
+      });
+      expect(saved.revision).toBe(3);
+      await expect(
+        configurations.remove(collaborator, stored.id, 2),
+      ).rejects.toMatchObject({ status: 409, code: "configuration_changed" });
+
+      const conversationId = randomUUID();
+      await withTenant(pool, owner, (client) =>
+        client.query(
+          "INSERT INTO lzc.assistant_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,3,$5)",
+          [
+            conversationId,
+            stored.id,
+            tenantId,
+            owner.userId,
+            buildAssistantKnowledge().sha256,
+          ],
+        ),
+      );
+      expect(
+        (
+          await withTenant(pool, collaborator, (client) =>
+            client.query(
+              "SELECT id FROM lzc.assistant_conversations WHERE configuration_id=$1",
+              [stored.id],
+            ),
+          )
+        ).rows,
+      ).toEqual([]);
+      await withTenant(pool, collaborator, (client) =>
+        client.query(
+          "INSERT INTO lzc.assistant_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,3,$5)",
+          [
+            randomUUID(),
+            stored.id,
+            tenantId,
+            collaborator.userId,
+            buildAssistantKnowledge().sha256,
+          ],
+        ),
+      );
+      expect(
+        (
+          await withTenant(pool, owner, (client) =>
+            client.query(
+              "SELECT id FROM lzc.assistant_conversations WHERE configuration_id=$1",
+              [stored.id],
+            ),
+          )
+        ).rows,
+      ).toEqual([{ id: conversationId }]);
+      await expect(
+        withTenant(pool, collaborator, (client) =>
+          client.query(
+            "UPDATE lzc.configurations SET created_by=$1 WHERE id=$2",
+            [collaborator.userId, stored.id],
+          ),
+        ),
+      ).rejects.toMatchObject({ code: "42501" });
+
+      const outsiderLogin = await store.createSession({
+        githubId: 88763,
+        login: "configuration-outsider",
+        id: randomUUID(),
+        hash: newSessionToken().hash,
+        csrfToken: randomBytes(32).toString("base64url"),
+        expiresAt: new Date(Date.now() + 3600000),
+      });
+      const outsider = await inWorkspace(pool, outsiderLogin);
+      expect(await configurations.list(outsider)).toEqual([]);
+      await expect(
+        configurations.get(outsider, stored.id),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        configurations.update(outsider, stored.id, 3, draft),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        configurations.remove(outsider, stored.id, 3),
+      ).rejects.toMatchObject({ status: 404 });
+
+      await organisations.editMember(
+        owner,
+        collaborator.userId,
+        ["application-owner"],
+        false,
+      );
+      await expect(configurations.list(collaborator)).rejects.toMatchObject({
+        code: "42501",
+      });
+      expect(
+        (
+          await withTenant(pool, collaborator, (client) =>
+            client.query("SELECT id FROM lzc.configurations WHERE id=$1", [
+              stored.id,
+            ]),
+          )
+        ).rows,
+      ).toEqual([]);
+      await organisations.editMember(
+        owner,
+        collaborator.userId,
+        ["platform-engineer"],
+        false,
+      );
+      await configurations.remove(collaborator, stored.id, 3);
+      await expect(configurations.get(owner, stored.id)).rejects.toMatchObject({
+        status: 404,
+      });
+    } finally {
+      await organisations.switch(alice, alice.tenantId);
+      await organisations.switch(bob, bob.tenantId);
+    }
+  });
   it("authorizes owner-scoped organisation credentials by product role, including role revocation", async () => {
     const id = await organisations.create(
       alice,
