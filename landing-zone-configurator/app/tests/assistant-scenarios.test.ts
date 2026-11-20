@@ -1835,6 +1835,22 @@ it("accepts a native-default proposal only with visible provenance and preserves
     ],
   };
   expect(validateAssistantScenario(setup, proposal).failures).toEqual([]);
+  const refine = {
+    path: "devops.allowed_network_ranges",
+    text: "Would you like to narrow the proposed default?",
+    answerType: "requirements" as const,
+    options: ["Keep proposed default", "Specify networks"],
+  };
+  expect(
+    validateAssistantScenario(setup, { ...proposal, questions: [refine] })
+      .failures,
+  ).toEqual([]);
+  expect(
+    validateAssistantScenario(setup, {
+      ...proposal,
+      questions: [{ ...refine, path: "company_name" }],
+    }).failures,
+  ).toContain("setup_default_proposal_unverified");
   expect(
     validateAssistantScenario(setup, { ...proposal, defaults: [] }).failures,
   ).toContain("setup_default_proposal_unverified");

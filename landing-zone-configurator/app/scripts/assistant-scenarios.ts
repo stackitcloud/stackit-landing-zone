@@ -2913,7 +2913,9 @@ export function validateAssistantScenario(
           String(git.git_flavor),
         ) ||
         !isDeepStrictEqual(git.allowed_network_ranges, ["0.0.0.0/0"]) ||
-        dialogue.questions.length ||
+        dialogue.questions.some(
+          (question) => !scenario.setupQuestionPaths!.includes(question.path),
+        ) ||
         !dialogue.defaults?.some(
           (item) =>
             item.path === "devops.allowed_network_ranges" &&
