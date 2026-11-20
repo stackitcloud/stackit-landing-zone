@@ -430,6 +430,14 @@ Destroy-Aktion. Die Migration muss vor Nutzung der neuen API aktiviert sein.
 
 Eine abgeschlossene Bootstrap-Migration behält `pending_backend_id` als Nachweis. Entspricht diese Referenz dem aktiven Backend und wurde der Bootstrap-Ciphertext entfernt, ist die Migration abgeschlossen. Ein anderes vorgemerktes Backend oder ein noch vorhandener Bootstrap-State bleibt gesperrt.
 
+Nach einem gemeldeten S3-Fehler `apply_failed` stoppt die Hintergrundwartung nach
+einer kurzen Abschlussfrist genau den geprüften Runner. Die App bleibt zur Prüfung
+gestoppt; die normale Bereinigung folgt dem Abgleich. Dies gibt den Lauf nicht frei
+und verändert keinen State. Timeouts, unklare Fehler, separate Recovery-States und
+offene Migrationen sind ausgeschlossen. Ein Wartungszeitpunkt verhindert nur
+wiederholte Stop-Anfragen; Checkpoint und Bestätigung prüfen den aktuellen CF-App-,
+Task- und Prozesszustand weiterhin unabhängig.
+
 Bei einem bestehenden S3-Backend prüft die Recovery den registrierten Remote-State
 anstelle eines Bootstrap-Checkpoints. Nur der Eigentümer eines mit `apply_failed`
 beendeten Laufs darf die erneute Planung bestätigen. Genau dieser Runner muss

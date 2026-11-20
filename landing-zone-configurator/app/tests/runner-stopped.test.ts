@@ -180,3 +180,31 @@ it("checks the exact recovery task without accepting normal or warm runners", as
   );
   await expect(f.run()).rejects.toThrow("Runner identity mismatch");
 });
+
+it("stops an exact failed runner only after source verification, then still requires independent process proof", async () => {
+  const f = fixture();
+  (f.data[`apps/${f.app}`] as { state: string }).state = "STARTED";
+  f.data[`apps/${f.app}/actions/stop`] = {};
+  await f.runner.stopReportedFailure(f.id, f.app, f.source);
+  expect(
+    f.calls
+      .filter((c) => c.method === "POST" && c.url.includes("/v3/"))
+      .map((c) => c.url),
+  ).toEqual([expect.stringContaining(`/v3/apps/${f.app}/actions/stop`)]);
+  await expect(f.run()).resolves.toBe(false);
+  (f.data[`apps/${f.app}`] as { state: string }).state = "STOPPED";
+  await expect(f.run()).resolves.toBe(true);
+});
+it("never stops a runner with a different source checksum", async () => {
+  const f = fixture();
+  (f.data[`apps/${f.app}`] as { state: string }).state = "STARTED";
+  (
+    f.data[`apps/${f.app}/droplets/current`] as { checksum: { value: string } }
+  ).checksum = { value: "b".repeat(64) };
+  await expect(
+    f.runner.stopReportedFailure(f.id, f.app, f.source),
+  ).rejects.toThrow();
+  expect(
+    f.calls.some((c) => c.method === "POST" && c.url.includes("/v3/")),
+  ).toBe(false);
+});

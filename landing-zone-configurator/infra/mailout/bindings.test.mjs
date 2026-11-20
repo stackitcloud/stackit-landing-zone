@@ -20,3 +20,11 @@ test('the real CF manifest carries enabled and disabled bindings through to the 
  for(const name of ['../../deploy/runner/manifest.yml','../../deploy/cloud-foundry/migration-manifest.yml'])
   assert.doesNotMatch(readFileSync(new URL(name,import.meta.url),'utf8'),/LZC_MAILOUT_/);
 });
+
+test('binds production SMTP only to the production sender and validates it after activation',()=>{
+ const b={...binding,projectId:prod,from:'notifications@landing-zone.runs.onstackit.cloud'};
+ assert.equal(mailoutEnvironment(JSON.stringify(b),'lzc-prod',prod).LZC_MAILOUT_ENABLED,'true');
+ const workflow=readFileSync(new URL('../../../.github/workflows/configurator-production.yml',import.meta.url),'utf8');
+ assert.match(workflow,/LZC_MAILOUT_BINDINGS: \$\{\{ secrets.LZC_MAILOUT_BINDINGS \}\}/);
+ assert.match(workflow,/node infra\/ci\/verify-mailout-binding.mjs/);
+});

@@ -8,7 +8,11 @@ import {spawnSync} from 'node:child_process';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const hostname=/^(?:[a-z0-9_][a-z0-9_-]*\.)+[a-z0-9-]+$/;
 export function validateManifest(c) {
- if(c.environment!=='lzc-dev'||c.projectId!=='7dbff805-6788-4d5d-88c0-a5212ac5e90f'||c.region!=='eu01'||c.domain!=='dev.landing-zone.runs.onstackit.cloud'||c.from!==`notifications@${c.domain}`||!uuid.test(c.dnsProjectId)||!uuid.test(c.dnsZoneId)||c.dnsZone!=='landing-zone.runs.onstackit.cloud'||!c.senderDescription||c.senderDescription.length>100)throw Error('mailout_manifest_invalid');
+ const target={
+  'lzc-dev':{project:'7dbff805-6788-4d5d-88c0-a5212ac5e90f',domain:'dev.landing-zone.runs.onstackit.cloud'},
+  'lzc-prod':{project:'b601468a-e897-4f74-8e10-ac4ab1e448af',domain:'landing-zone.runs.onstackit.cloud'},
+ }[c.environment];
+ if(!target||c.projectId!==target.project||c.region!=='eu01'||c.domain!==target.domain||c.from!==`notifications@${c.domain}`||!uuid.test(c.dnsProjectId)||!uuid.test(c.dnsZoneId)||c.dnsZone!=='landing-zone.runs.onstackit.cloud'||!c.senderDescription||c.senderDescription.length>100)throw Error('mailout_manifest_invalid');
  return c;
 }
 export function dnsRecords(c,config) {
@@ -19,7 +23,7 @@ export function dnsRecords(c,config) {
   if(host==='@'||host==='')host=c.domain;
   else if(host!==c.domain&&!host.endsWith(`.${c.domain}`))host=`${host}.${c.domain}`;
   if(!hostname.test(host)||!(host===c.domain||host.endsWith(`.${c.domain}`))||!['TXT','CNAME'].includes(r.type)||typeof r.value!=='string'||!r.value||/[\r\n]/.test(r.value))throw Error('mailout_dns_record_outside_scope');
-  return {name:`${host}.`,type:r.type,ttl:300,records:[{content:r.type==='CNAME'?`${r.value.replace(/\.$/,'')}.`:r.value}],comment:'Landing Zone Configurator Dev MailOut'};
+  return {name:`${host}.`,type:r.type,ttl:300,records:[{content:r.type==='CNAME'?`${r.value.replace(/\.$/,'')}.`:r.value}],comment:`Landing Zone Configurator ${c.environment} MailOut`};
  });
 }
 export async function reconcile(c,request,{apply=false,binding,saveBinding=()=>{},saveRecovery=()=>{},record=()=>{}}={}) {
@@ -37,6 +41,7 @@ export async function reconcile(c,request,{apply=false,binding,saveBinding=()=>{
  if(!uuid.test(domain.id))throw Error('mailout_domain_identity_invalid');
  const root=`${base}/${domain.id}`;
  const detail=await request('mailout',root);
+ if(detail.state==='creating'&&!detail.config?.dnsRecords?.spf)return {domainId:domain.id,state:'creating',ready:false,dnsCreates:0};
  const desired=dnsRecords(c,detail.config);
  const existing=await request('dns',`${dns}/rrsets?pageSize=10000`);
  if(existing.totalPages>1||!Array.isArray(existing.rrSets))throw Error('mailout_dns_inventory_incomplete');
@@ -74,8 +79,10 @@ export async function reconcile(c,request,{apply=false,binding,saveBinding=()=>{
 async function main() {
  process.umask(0o077);
  const mode=process.argv[2];if(!['plan','apply'].includes(mode))throw Error('expected_plan_or_apply');
- const c=validateManifest(JSON.parse(readFileSync(new URL('./environments/lzc-dev.json',import.meta.url))));
- const dir=resolve(process.env.LZC_MAILOUT_PRIVATE??fileURLToPath(new URL('../../.local/mailout/',import.meta.url)));mkdirSync(dir,{recursive:true,mode:0o700});
+ const environment=process.argv[3]??'lzc-dev';
+ if(!['lzc-dev','lzc-prod'].includes(environment)||process.argv.length>4)throw Error('mailout_environment_invalid');
+ const c=validateManifest(JSON.parse(readFileSync(new URL(`./environments/${environment}.json`,import.meta.url))));
+ const dir=resolve(process.env.LZC_MAILOUT_PRIVATE??fileURLToPath(new URL(environment==='lzc-dev'?'../../.local/mailout/':'../../.local/mailout-prod/',import.meta.url)));mkdirSync(dir,{recursive:true,mode:0o700});
  if(statSync(dir).mode&0o077)throw Error('mailout_private_directory_permissions');
  const file=resolve(dir,'bindings.private.json');let binding;
  if(existsSync(file)){if(statSync(file).mode&0o077)throw Error('mailout_binding_permissions');binding=JSON.parse(readFileSync(file));}

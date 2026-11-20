@@ -5,17 +5,17 @@
 Dieses Verzeichnis richtet die Absender-Anbindung des Betreibers ein, kein
 Kunden-Landing-Zone-Feature. Da der gepinnte STACKIT-Terraform-Provider keine
 MailOut-Ressourcen bereitstellt, verwendet es die offiziellen MailOut-v1beta1-
-und DNS-v1-APIs. `environments/lzc-dev.json` beschreibt den geprüften Sollzustand.
+und DNS-v1-APIs. `environments/lzc-dev.json` und `environments/lzc-prod.json` definieren getrennte Absenderdomains, Projekte und Sender.
 Der Reconciler erzeugt nur fehlende dedizierte Ressourcen und prüft bestehende.
 Er überschreibt keine DNS-Richtlinien und rotiert oder löscht keine Zugangsdaten
-automatisch. Produktion ist für diesen ersten Dev-Rollout ausdrücklich kein Ziel.
+automatisch. Für Produktion die geprüfte Umgebung ausdrücklich auswählen; Standard bleibt Dev.
 
 ## Einrichten und anbinden
 
 Node 24.21.0 und die offizielle STACKIT CLI verwenden. Der Betreiber-Key benötigt
-MailOut-Zugriff in Dev und DNS-Zugriff auf die vorhandene Elternzone. Schlüssel
+MailOut-Zugriff im gewählten Projekt und DNS-Zugriff auf die vorhandene Elternzone. Schlüssel
 nicht versionieren. Die App-Route bleibt unverändert; verwaltet werden ausschließlich
-SPF, DMARC, DKIM und Return-Path der Absender-Subdomain. MailOut prüft die Einträge
+SPF, DMARC, DKIM und Return-Path der Absenderdomain. MailOut prüft die Einträge
 fortlaufend; nach erfolgreicher Verifikation nicht entfernen.
 
 ```sh
@@ -67,6 +67,29 @@ Nach der Aktivierung vergleicht der Release alle tatsächlich in CF gesetzten
 MailOut-Werte mit der freigegebenen Bindung, bevor er SMTP prüft. Fehlende,
 deaktivierte oder veraltete Bindungen lassen den Release fehlschlagen;
 Verbindungstests können eingerichteten E-Mail-Versand nicht unbemerkt überspringen.
+
+## Produktion einrichten
+
+Mit `provision.mjs plan lzc-prod` den Umfang prüfen und anschließend
+`provision.mjs apply lzc-prod` ausführen. Während der Provider die Domain anlegt,
+kann `ready:false` ohne DNS-Prüfdaten erscheinen; später denselben Abgleich
+wiederholen. Produktion verwendet `notifications@landing-zone.runs.onstackit.cloud`
+und eine eigene private Bindung in `.local/mailout-prod/bindings.private.json`.
+Dev-Zugangsdaten sind nicht wiederverwendbar. Nur eine geprüfte, bereite Bindung
+veröffentlichen:
+
+```sh
+gh secret set LZC_MAILOUT_BINDINGS --repo stackitcloud/stackit-landing-zone \
+  --env lzc-prod-release < landing-zone-configurator/.local/mailout-prod/bindings.private.json
+```
+
+Das Prod-Deployment verlangt die SMTP-Bindung und bricht bei fehlender Bindung vor der Aktivierung ab.
+
+Production Release übergibt dieses Secret an die Runtime-Vorbereitung und prüft
+die tatsächliche CF-MailOut-Bindung vor dem SMTP-Verbindungstest. Staging, Runner
+und Migrations-App erhalten keine SMTP-Zugangsdaten und versenden keine Mails.
+Vorlagen im STACKIT-Erscheinungsbild, Sprache und persönliche Themenpräferenzen
+entsprechen Dev; den Einladungsversand wählt der Einladende.
 
 ## Zustellungsdiagnose und Wiederherstellung
 
