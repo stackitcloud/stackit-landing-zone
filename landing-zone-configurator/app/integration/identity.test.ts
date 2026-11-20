@@ -862,9 +862,9 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             )
           ).rowCount,
       ),
-    ).toBe(0);
+    ).toBe(1);
     await assistant.send(alice, stored.id, 1, "Neue Rueckfrage");
-    expect(model.converse.mock.calls[1]?.[5]).toEqual([]);
+    expect(model.converse.mock.calls[1]?.[5]).toEqual(advice.messages);
     await configurations.remove(alice, stored.id, 1);
   });
 
@@ -2711,11 +2711,9 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     expect(discarded.revision).toBe(proposal.revision + 1);
     expect(discarded.messages).toHaveLength(proposal.messages.length);
     expect(
-      discarded.messages.map(({ id, role, content }) => ({
-        id,
-        role,
-        content,
-      })),
+      discarded.messages.map(
+        ({ proposalDiscarded: _discarded, ...message }) => message,
+      ),
     ).toEqual(proposal.messages);
     expect(discarded.messages.at(-1)?.proposalDiscarded).toBe(true);
     expect(model.converse).toHaveBeenCalledTimes(2);
@@ -10976,7 +10974,169 @@ describe("organisation draft workspaces", () => {
     bob = (await create(902)).session;
   });
   const organisations = new PostgresOrganisations(pool);
-  it("shares saved configurations across platform members with revision conflicts and private assistant history", async () => {
+  it("shares configuration chat across collaborators while preserving private legacy histories and actor identity", async () => {
+    const tenantId = await organisations.create(
+      alice,
+      "Shared team chat",
+      randomUUID(),
+    );
+    await organisations.switch(alice, tenantId);
+    const owner = { ...alice, tenantId };
+    await inviteMember(owner, bob, ["platform-engineer"], false);
+    await organisations.switch(bob, tenantId);
+    const collaborator = { ...bob, tenantId };
+    const configurations = new Configurations(pool);
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
+        explanation: "Gemeinsamer Konfigurationskontext",
+        questions: [],
+        changes: [],
+        references: ["configuration-contract"],
+      })),
+    };
+    const assistant = new AssistantConversations(pool, model);
+    try {
+      const stored = await configurations.create(
+        owner,
+        createEditorConfiguration("standalone", randomUUID()),
+      );
+      const other = await configurations.create(
+        collaborator,
+        createEditorConfiguration("standalone", randomUUID()),
+      );
+      const privateId = randomUUID();
+      await withTenant(pool, owner, async (client) => {
+        await client.query(
+          "INSERT INTO lzc.assistant_personal_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,1,$5)",
+          [
+            privateId,
+            stored.id,
+            tenantId,
+            owner.userId,
+            buildAssistantKnowledge().sha256,
+          ],
+        );
+        await client.query(
+          "UPDATE lzc.assistant_personal_conversations SET messages=$2 WHERE id=$1",
+          [
+            privateId,
+            JSON.stringify([
+              {
+                id: randomUUID(),
+                role: "user",
+                content: "Anforderungen von Alice",
+              },
+              {
+                id: randomUUID(),
+                role: "assistant",
+                content: "Bisheriger privater Kontext",
+                consultationState: { privateIdentity: "owner-only" },
+              },
+            ]),
+          ],
+        );
+      });
+      expect(await assistant.get(owner, stored.id)).toBeNull();
+      expect((await assistant.getPrivate(owner, stored.id))?.id).toBe(
+        privateId,
+      );
+      expect(await assistant.getPrivate(collaborator, stored.id)).toBeNull();
+      await expect(
+        assistant.sharePrivate(collaborator, stored.id, {
+          conversationId: privateId,
+          revision: 1,
+        }),
+      ).rejects.toMatchObject({ status: 404 });
+      const shared = await assistant.sharePrivate(owner, stored.id, {
+        conversationId: privateId,
+        revision: 1,
+      });
+      expect((await assistant.get(collaborator, stored.id))?.id).toBe(
+        shared.id,
+      );
+      expect(await assistant.get(collaborator, other.id)).toBeNull();
+      expect(
+        JSON.stringify(await assistant.get(collaborator, stored.id)),
+      ).not.toContain("owner-only");
+      await expect(
+        assistant.sharePrivate(owner, stored.id, {
+          conversationId: privateId,
+          revision: 1,
+        }),
+      ).rejects.toMatchObject({ status: 409 });
+      const reply = await assistant.send(
+        collaborator,
+        stored.id,
+        1,
+        "Welche Grundlagen fehlen noch?",
+        undefined,
+        undefined,
+        "de",
+        { id: shared.id, revision: shared.revision },
+      );
+      expect(reply.messages).toHaveLength(4);
+      expect(reply.messages.at(-2)?.authorId).toBe(collaborator.userId);
+      expect(model.converse.mock.calls[0]?.[2][0]?.content).toContain(
+        "another authorized workspace participant",
+      );
+      expect(model.converse.mock.calls[0]?.[7]?.state).toBeUndefined();
+      await expect(
+        assistant.send(
+          owner,
+          stored.id,
+          1,
+          "Veraltete Antwort",
+          undefined,
+          undefined,
+          "de",
+          { id: shared.id, revision: shared.revision },
+        ),
+      ).rejects.toMatchObject({ code: "assistant_conversation_changed" });
+      expect(model.converse).toHaveBeenCalledTimes(1);
+      await expect(
+        assistant.remove(owner, stored.id, {
+          id: shared.id,
+          revision: shared.revision,
+        }),
+      ).rejects.toMatchObject({ code: "assistant_conversation_changed" });
+      expect((await assistant.get(owner, stored.id))?.revision).toBe(
+        reply.revision,
+      );
+      expect((await configurations.get(owner, stored.id)).revision).toBe(1);
+      await organisations.editMember(
+        owner,
+        collaborator.userId,
+        ["application-owner"],
+        false,
+      );
+      await expect(
+        assistant.get(collaborator, stored.id),
+      ).rejects.toBeDefined();
+      await configurations.remove(owner, stored.id, 1);
+      expect(
+        (
+          await admin.query(
+            "SELECT id FROM lzc.assistant_personal_conversations WHERE configuration_id=$1",
+            [stored.id],
+          )
+        ).rows,
+      ).toEqual([]);
+      expect(
+        (
+          await admin.query(
+            "SELECT id FROM lzc.assistant_conversations WHERE configuration_id=$1",
+            [stored.id],
+          )
+        ).rows,
+      ).toEqual([]);
+      await configurations.remove(owner, other.id, 1);
+    } finally {
+      await organisations.switch(alice, alice.tenantId);
+      await organisations.switch(bob, bob.tenantId);
+    }
+  });
+
+  it("shares saved configurations and their single conversation across authorized platform members with revision conflicts", async () => {
     const tenantId = await organisations.create(
       alice,
       "Shared configurations",
@@ -11042,19 +11202,21 @@ describe("organisation draft workspaces", () => {
             ),
           )
         ).rows,
-      ).toEqual([]);
-      await withTenant(pool, collaborator, (client) =>
-        client.query(
-          "INSERT INTO lzc.assistant_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,3,$5)",
-          [
-            randomUUID(),
-            stored.id,
-            tenantId,
-            collaborator.userId,
-            buildAssistantKnowledge().sha256,
-          ],
+      ).toEqual([{ id: conversationId }]);
+      await expect(
+        withTenant(pool, collaborator, (client) =>
+          client.query(
+            "INSERT INTO lzc.assistant_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,3,$5)",
+            [
+              randomUUID(),
+              stored.id,
+              tenantId,
+              collaborator.userId,
+              buildAssistantKnowledge().sha256,
+            ],
+          ),
         ),
-      );
+      ).rejects.toMatchObject({ code: "23505" });
       expect(
         (
           await withTenant(pool, owner, (client) =>

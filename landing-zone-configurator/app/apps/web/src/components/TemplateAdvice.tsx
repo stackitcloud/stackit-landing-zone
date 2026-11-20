@@ -74,7 +74,11 @@ export function TemplateAdvice({
   useEffect(() => {
     const controller = new AbortController();
     lifetime.current = controller;
-    void fetch(endpoint, { signal: controller.signal })
+    void fetch(endpoint, {
+      signal: controller.signal,
+      cache: "no-store",
+      headers: { "x-lzc-tenant": session.tenant?.id ?? "" },
+    })
       .then(checked)
       .then((response) => response.json())
       .then((body) => {
@@ -87,7 +91,7 @@ export function TemplateAdvice({
           );
       });
     return () => controller.abort();
-  }, []);
+  }, [session.tenant?.id]);
   useEffect(() => {
     if ((advice || previewText !== null) && messages.current)
       messages.current.scrollTop = messages.current.scrollHeight;
@@ -115,6 +119,7 @@ export function TemplateAdvice({
           signal: controller.signal,
           headers: {
             "x-lzc-csrf": session.csrfToken,
+            "x-lzc-tenant": session.tenant?.id ?? "",
             ...(!remove ? { "Content-Type": "application/json" } : {}),
             ...(!remove ? { Accept: "application/x-ndjson" } : {}),
           },

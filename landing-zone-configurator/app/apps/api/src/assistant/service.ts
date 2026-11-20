@@ -82,6 +82,8 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   proposalDiscarded?: boolean;
+  authorId?: string;
+  authorName?: string;
   consultationState?: ConsultationState;
   recommendations?: AssistantRecommendation[];
 };
@@ -674,12 +676,96 @@ export class AssistantConversations {
     });
   }
 
-  remove(session: Session, id: string) {
-    return this.work(session, id, async (client) => {
+  getPrivate(session: Session, id: string) {
+    return this.work(session, id, async (client, configuration) => {
+      const row = (
+        await client.query<Conversation>(
+          "SELECT * FROM lzc.assistant_personal_conversations WHERE configuration_id=$1 AND created_by=$2 AND expires_at>now()",
+          [id, session.userId],
+        )
+      ).rows[0];
+      return row ? response(row, configuration) : null;
+    });
+  }
+  sharePrivate(session: Session, id: string, raw: unknown) {
+    const input = z
+      .strictObject({
+        conversationId: z.uuid(),
+        revision: z.number().int().positive(),
+      })
+      .parse(raw);
+    return this.work(session, id, async (client, configuration) => {
+      const row = (
+        await client.query<Conversation>(
+          "SELECT * FROM lzc.assistant_personal_conversations WHERE configuration_id=$1 AND id=$2 AND revision=$3 AND created_by=$4 AND expires_at>now() FOR UPDATE",
+          [id, input.conversationId, input.revision, session.userId],
+        )
+      ).rows[0];
+      if (!row)
+        throw new AssistantError(
+          404,
+          "assistant_private_conversation_unavailable",
+        );
+      const created = (
+        await client.query<{ id: string }>(
+          "INSERT INTO lzc.assistant_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(configuration_id) DO NOTHING RETURNING id",
+          [
+            randomUUID(),
+            id,
+            session.tenantId,
+            session.userId,
+            row.base_revision,
+            row.knowledge_hash,
+          ],
+        )
+      ).rows[0];
+      if (!created)
+        throw new AssistantError(409, "assistant_shared_conversation_exists");
+      const messages = row.messages.map((entry) => ({
+        ...entry,
+        authorId: session.userId,
+        ...(entry.role === "user" ? { authorName: session.login } : {}),
+      }));
+      const shared = (
+        await client.query<Conversation>(
+          "UPDATE lzc.assistant_conversations SET messages=$2,proposal=$3,proposal_baseline=$4,revision=$5 WHERE id=$1 RETURNING *",
+          [
+            created.id,
+            JSON.stringify(messages),
+            row.proposal ? JSON.stringify(row.proposal) : null,
+            row.proposal_baseline
+              ? JSON.stringify(row.proposal_baseline)
+              : null,
+            row.revision,
+          ],
+        )
+      ).rows[0]!;
       await client.query(
-        "DELETE FROM lzc.assistant_conversations WHERE configuration_id=$1",
-        [id],
+        "UPDATE lzc.assistant_configuration_context SET workspace_shared=true WHERE configuration_id=$1 AND created_by=$2",
+        [id, session.userId],
       );
+      return response(shared, configuration);
+    });
+  }
+
+  remove(
+    session: Session,
+    id: string,
+    expected?: { id: string; revision: number },
+  ) {
+    return this.work(session, id, async (client) => {
+      if (expected) {
+        const removed = await client.query(
+          "DELETE FROM lzc.assistant_conversations WHERE configuration_id=$1 AND id=$2 AND revision=$3",
+          [id, expected.id, expected.revision],
+        );
+        if (!removed.rowCount)
+          throw new AssistantError(409, "assistant_conversation_changed");
+      } else
+        await client.query(
+          "DELETE FROM lzc.assistant_conversations WHERE configuration_id=$1",
+          [id],
+        );
     });
   }
 
@@ -726,6 +812,7 @@ export class AssistantConversations {
     stream?: AssistantStream,
     localDraft?: unknown,
     language?: AssistantLanguage,
+    expectedConversation?: { id: string | null; revision: number | null },
   ) {
     const message = chatMessageSchema.parse(text);
     if (this.active >= 5) throw new AssistantError(429, "assistant_busy");
@@ -750,8 +837,21 @@ export class AssistantConversations {
           if (document.id !== saved.id)
             throw new AssistantError(400, "assistant_invalid_request");
           const values = assistantPublicValues(document);
+          if (expectedConversation) {
+            const existing = (
+              await client.query<Conversation>(
+                "SELECT * FROM lzc.assistant_conversations WHERE configuration_id=$1",
+                [id],
+              )
+            ).rows[0];
+            if (
+              (existing?.id ?? null) !== expectedConversation.id ||
+              (existing?.revision ?? null) !== expectedConversation.revision
+            )
+              throw new AssistantError(409, "assistant_conversation_changed");
+          }
           await client.query(
-            "INSERT INTO lzc.assistant_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(configuration_id,created_by) DO NOTHING",
+            "INSERT INTO lzc.assistant_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(configuration_id) DO NOTHING",
             [
               randomUUID(),
               id,
@@ -773,7 +873,7 @@ export class AssistantConversations {
             throw new AssistantError(409, "assistant_conversation_full");
           const context = (
             await client.query<{ messages: Message[]; expires_at: Date }>(
-              "SELECT messages,expires_at FROM lzc.assistant_configuration_context WHERE configuration_id=$1 AND expires_at>now()",
+              "SELECT messages,expires_at FROM lzc.assistant_configuration_context WHERE configuration_id=$1 AND workspace_shared AND expires_at>now()",
               [id],
             )
           ).rows[0];
@@ -858,13 +958,17 @@ export class AssistantConversations {
           base.row.messages.map((entry) => ({
             role: entry.role,
             content:
-              entry.role === "assistant" && entry.proposalDiscarded === true
-                ? "The user explicitly discarded the preceding proposal. This turn is closed: no proposal, selection question or setup request remains pending. Do not resume or reissue that proposal without a new explicit user request."
-                : entry.content +
-                  (entry.recommendations?.length
-                    ? "\nReviewed recommendations: " +
-                      JSON.stringify(entry.recommendations)
-                    : ""),
+              entry.role === "user" &&
+              entry.authorId &&
+              entry.authorId !== session.userId
+                ? `Earlier requirement from another authorized workspace participant (${entry.authorName ?? "team member"}):\n${entry.content}`
+                : entry.role === "assistant" && entry.proposalDiscarded === true
+                  ? "The user explicitly discarded the preceding proposal. This turn is closed: no proposal, selection question or setup request remains pending. Do not resume or reissue that proposal without a new explicit user request."
+                  : entry.content +
+                    (entry.recommendations?.length
+                      ? "\nReviewed recommendations: " +
+                        JSON.stringify(entry.recommendations)
+                      : ""),
           })),
           message,
           catalogues,
@@ -874,7 +978,9 @@ export class AssistantConversations {
             pendingProposal,
             state: latestAssistant?.proposalDiscarded
               ? undefined
-              : latestAssistant?.consultationState,
+              : latestAssistant?.authorId === session.userId
+                ? latestAssistant.consultationState
+                : undefined,
             onState: (state) => {
               consultationState = state;
             },
@@ -943,10 +1049,17 @@ export class AssistantConversations {
           throw new AssistantError(409, "configuration_changed");
         const messages = [
           ...base.row.messages,
-          { id: randomUUID(), role: "user", content: message },
+          {
+            id: randomUUID(),
+            role: "user",
+            content: message,
+            authorId: session.userId,
+            authorName: session.login,
+          },
           {
             id: randomUUID(),
             role: "assistant",
+            authorId: session.userId,
             ...(consultationState ? { consultationState } : {}),
             ...(proposal.recommendations?.length
               ? { recommendations: proposal.recommendations }

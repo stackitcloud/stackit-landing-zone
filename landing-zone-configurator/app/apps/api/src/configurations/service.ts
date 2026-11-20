@@ -100,7 +100,7 @@ export class Configurations {
       if (!row) throw new ConfigurationError(503, "configuration_save_failed");
       if (templateAdvice) {
         const context = await client.query(
-          "INSERT INTO lzc.assistant_configuration_context(configuration_id,advice_id,tenant_id,created_by,advice_revision,expires_at,messages) SELECT $1,id,tenant_id,created_by,revision,expires_at,messages FROM lzc.assistant_template_advice WHERE id=$2 AND revision=$3 AND created_by=$4 AND expires_at>now() AND recommendation->>'knowledgeSha256'=$5 RETURNING configuration_id",
+          "INSERT INTO lzc.assistant_configuration_context(configuration_id,advice_id,tenant_id,created_by,advice_revision,expires_at,messages,workspace_shared) SELECT $1,id,tenant_id,created_by,revision,expires_at,messages,true FROM lzc.assistant_template_advice WHERE id=$2 AND revision=$3 AND created_by=$4 AND expires_at>now() AND recommendation->>'knowledgeSha256'=$5 RETURNING configuration_id",
           [
             row.id,
             z.uuid().parse(templateAdvice.id),

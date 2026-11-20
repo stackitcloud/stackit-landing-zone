@@ -2314,6 +2314,7 @@ it("requires login, current origin and CSRF for chat and rejects injected tenant
       undefined,
       undefined,
       "en",
+      undefined,
     );
     expect(
       (

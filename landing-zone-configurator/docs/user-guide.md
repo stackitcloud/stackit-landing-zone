@@ -43,8 +43,16 @@ Saved configurations belong to the selected workspace. Its Platform Engineers
 can open, edit and delete them, including configurations saved by another member.
 Unsaved drafts stay in the current browser. If another member saves first, reload
 the newer revision and review your changes before saving; an outdated revision
-cannot overwrite their work. Assistant conversations and credential profiles
-remain personal. Sharing a configuration grants no cloud execution permissions.
+cannot overwrite their work. New Assistant conversations belong to the saved
+configuration: authorized Platform Engineers can read and continue the same
+conversation. Switching workspace or configuration loads its own history; messages
+show their author, and concurrent replies require a refresh instead of overwriting
+newer messages. Deleting a shared conversation removes it for the team. Existing
+private histories remain visible only to their author, who can explicitly share
+one when no shared conversation exists. Credential profiles and consultations
+before creating a configuration remain personal. Sharing a configuration grants
+no cloud execution permissions. Proposals still require explicit acceptance and
+configuration changes require saving.
 
 **Open save options →** only opens storage choices. **Save configuration** writes a
 new database revision; **Save and prepare deployment** performs the same save and

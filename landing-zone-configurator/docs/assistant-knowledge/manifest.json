@@ -639,8 +639,8 @@
     {
       "id": "configuration-lifecycle",
       "file": "configuration-lifecycle.md",
-      "version": 14,
-      "checkedOn": "2026-11-09",
+      "version": 15,
+      "checkedOn": "2026-11-20",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [],
       "mandatory": true,
@@ -652,7 +652,6 @@
         "landing-zone-configurator/app/apps/api/src/assistant/knowledge.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
-        "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
         "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
         "landing-zone-configurator/docs/application-execution-lifecycle.md",
         "landing-zone-configurator/app/apps/api/src/applications/execution-lifecycle.ts",
@@ -660,7 +659,8 @@
         "landing-zone-configurator/app/packages/domain/src/application-upgrades.ts",
         "landing-zone-configurator/app/apps/api/src/applications/upgrades.ts",
         "landing-zone-configurator/app/packages/contracts/src/application-upgrades.ts",
-        "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql"
+        "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql",
+        "landing-zone-configurator/app/apps/api/db/102_shared_configuration_chat.sql"
       ],
       "externalSources": [],
       "scenarios": [

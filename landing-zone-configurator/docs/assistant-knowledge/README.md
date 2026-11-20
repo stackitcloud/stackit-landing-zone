@@ -288,7 +288,12 @@ conversation message. Confirmed decisions cite actual user turns; unsupported
 memory is discarded. Knowledge hash changes invalidate the brief, not the original
 history. Discarding closes pending context. New responses preserve the original
 expiry and atomically replace the proposal and knowledge hash. Stale proposals
-cannot be silently accepted. No database migration is required.
+cannot be silently accepted. Migration 102 gives saved configurations one shared
+conversation with workspace authorization and attributed messages. Existing private
+histories require their author’s explicit sharing into an empty shared conversation.
+The browser reloads on workspace/configuration switches and polls for team updates.
+A different participant rebuilds the consultation brief from shared history using
+their own current identity; another participant’s private brief is not reused.
 
 The bundle hash includes curated content, manifest metadata, engine revision and
 local source fingerprints. Source edits make generated knowledge stale and require

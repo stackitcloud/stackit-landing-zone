@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "ac8ef349e8a260e10a3fa63b2d5d29eb5840692ef33e2033ceab0f67403210fb",
+  "knowledgeSha256": "51ce3f79e3eae451212e22a23702a40c579ff53ba9b497f5b83fd3bb774a3592",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "e8a36a6b4201040ad97952aa4da661a5d275dd6b3ca3388efdd02fe2c1623f09",
+    "scripts/assistant-scenarios.ts": "340b60fe7a464d67b04509adde98af5055e7d30b3c225cd116d567b4028b9863",
     "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "daad945181ed1c7def28bbb158e9ec68e7c4af5536aae66fa6bde2cf74856b18",
+  "suiteSha256": "2951928e744a0daab0b779013e4002e7fdcd5b94df2bfb3ccbad41d446a7f075",
   "topics": [
     {
       "id": "credential-foundations",
@@ -7785,6 +7785,17 @@
       "id": "configuration-lifecycle",
       "fields": [],
       "cases": [
+        {
+          "id": "configuration-shared-chat-advice",
+          "topic": "configuration-lifecycle",
+          "fixture": "baseline",
+          "message": "Wie arbeiten zwei berechtigte Platform Engineers im selben Arbeitsbereich am Assistant-Chat einer gespeicherten Konfiguration zusammen? Was passiert beim Wechsel der Konfiguration, mit bisher privaten Verläufen und mit meiner Identität beim Fortsetzen? Erkläre auch, ob ein Chat automatisch speichert oder deployt. Nur beraten, keine Änderungen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
         {
           "id": "application-template-upgrade-advice",
           "topic": "configuration-lifecycle",

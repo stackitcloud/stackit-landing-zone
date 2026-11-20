@@ -49,8 +49,17 @@ Platform Engineers können sie gemeinsam öffnen, bearbeiten und löschen, auch
 wenn ein anderes Mitglied sie gespeichert hat. Nicht gespeicherte Entwürfe bleiben
 im aktuellen Browser. Speichert ein anderes Mitglied zuerst, lade dessen neue
 Revision und prüfe deine Änderungen erneut; ein veralteter Stand kann seine Arbeit
-nicht überschreiben. Assistant-Verläufe und Zugangsdatenprofile bleiben persönlich.
-Das Teilen einer Konfiguration erteilt keine Rechte zur Cloud-Ausführung.
+nicht überschreiben. Neue Assistant-Verläufe gehören zur gespeicherten
+Konfiguration: Berechtigte Platform Engineers können denselben Verlauf lesen und
+fortsetzen. Beim Arbeitsbereichs- oder Konfigurationswechsel wird der zugehörige
+Verlauf geladen. Nachrichten zeigen ihren Autor; bei konkurrierenden Antworten
+ist ein Aktualisieren erforderlich, statt neue Nachrichten zu überschreiben. Das
+Löschen eines gemeinsamen Verlaufs betrifft das ganze Team. Bestehende private
+Verläufe bleiben nur für ihren Autor sichtbar. Dieser kann einen Verlauf
+ausdrücklich teilen, solange noch kein gemeinsamer Verlauf existiert.
+Zugangsdatenprofile und Beratungen vor dem Anlegen einer Konfiguration bleiben
+persönlich. Das Teilen einer Konfiguration erteilt keine Rechte zur Cloud-Ausführung.
+Vorschläge müssen weiterhin ausdrücklich übernommen und Änderungen gespeichert werden.
 
 **Speicheroptionen öffnen →** öffnet nur die Speicherauswahl. **Konfiguration
 speichern** schreibt eine neue Datenbankrevision; **Speichern und zur

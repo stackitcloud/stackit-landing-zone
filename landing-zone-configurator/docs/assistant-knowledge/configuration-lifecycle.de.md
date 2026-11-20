@@ -70,6 +70,13 @@ veröffentlichen noch Bindungen ändern, entsperren oder ausführen.
 
 Bereitschaft ist keine Ausführung und keine Autorisierung.
 
+Der Konfigurations-Chat ist ein gemeinsamer Verlauf je Konfiguration und Arbeitsbereich
+für berechtigte Plattform-Mitglieder. Autoren bleiben erkennbar. Bisherige private
+Verläufe brauchen die ausdrückliche Freigabe ihres Autors und werden nicht vermischt.
+Bei einem Autorenwechsel wird der interne Gesprächsbrief mit der aktuellen Identität
+und deren Rechten neu aufgebaut. Nicht gespeicherte Entwürfe bleiben lokal.
+Gesprächsversionen schützen parallele Antworten; Kontextwechsel brechen alte Anfragen ab.
+
 ## Dialog
 
 Bestätigte Anforderungen, Verlauf und unbenannte Folgefragen verwenden;
