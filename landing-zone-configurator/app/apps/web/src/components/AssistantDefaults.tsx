@@ -25,14 +25,17 @@ export function AssistantDefaults({
           </strong>
           <p>
             <code>
-              {(Array.isArray(item.value) ? item.value : [item.value])
+              {(Array.isArray(item.value) && item.value.length
+                ? item.value
+                : [item.value]
+              )
                 .map((value) =>
                   value === "0.0.0.0/0"
                     ? `${t("Alle IPv4-Adressen")} (0.0.0.0/0)`
                     : value === "::/0"
                       ? `${t("Alle IPv6-Adressen")} (::/0)`
                       : value === null
-                        ? t("Automatisch")
+                        ? t("Nicht gesetzt")
                         : typeof value === "boolean"
                           ? t(value ? "Ja" : "Nein")
                           : typeof value === "object"

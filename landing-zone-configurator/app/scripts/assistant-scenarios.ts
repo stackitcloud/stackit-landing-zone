@@ -179,6 +179,7 @@ export type AssistantScenario = {
   requiredOverviewFields?: readonly string[];
   editorExpected?: { path: string; value: JsonValue };
   auditQuestionPaths?: readonly string[];
+  auditDefaultProposal?: { acl: readonly string[] };
   setupQuestionPaths?: readonly string[];
   setupDefaultProposal?: { allowedFlavors: readonly string[] };
   gitCapacityRecommendation?: { users: number; flavor: "git-10" | "git-100" };
@@ -638,6 +639,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     history: sparseAuditHistory,
     message: "90 Tage",
     auditQuestionPaths: ["audit_logs.acl", "audit_logs.s3_object_lock"],
+    auditDefaultProposal: { acl: ["0.0.0.0/0"] },
   },
   {
     id: "editor-audit-partial-acl",
@@ -650,6 +652,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     ],
     message: "203.0.113.0/24",
     auditQuestionPaths: ["audit_logs.s3_object_lock"],
+    auditDefaultProposal: { acl: ["203.0.113.0/24"] },
   },
   {
     id: "editor-audit-partial-lock",
@@ -2959,6 +2962,39 @@ export function validateAssistantScenario(
     return { dialogue, failures };
   }
   if (scenario.auditQuestionPaths) {
+    if (dialogue.changes.length && scenario.auditDefaultProposal) {
+      const before = compileCommonConfiguration(fixture.draft);
+      const after = compileCommonConfiguration(
+        applyAssistantChanges(fixture.draft, dialogue.changes),
+      );
+      const audit = objectValue(after.audit_logs);
+      if (
+        audit.retention_days !== 90 ||
+        audit.s3_object_lock !== true ||
+        !isDeepStrictEqual(audit.acl, scenario.auditDefaultProposal.acl) ||
+        dialogue.questions.some(
+          (question) => !scenario.auditQuestionPaths!.includes(question.path),
+        ) ||
+        scenario.auditQuestionPaths.some(
+          (path) =>
+            !dialogue.defaults?.some(
+              (item) =>
+                item.path === path &&
+                item.source === "accelerator" &&
+                isDeepStrictEqual(item.value, audit[path.split(".")[1]!]),
+            ),
+        )
+      )
+        failures.push("audit_unanswered_decisions_not_preserved");
+      const withoutAudit = (value: Record<string, JsonValue>) => {
+        const copy = structuredClone(value);
+        delete copy.audit_logs;
+        return copy;
+      };
+      if (!isDeepStrictEqual(withoutAudit(before), withoutAudit(after)))
+        failures.push("audit_default_changed_other_components");
+      return { dialogue, failures };
+    }
     if (
       dialogue.changes.length ||
       !isDeepStrictEqual(
@@ -3555,7 +3591,7 @@ export function validateAssistantScenario(
 
 export function assistantUnsavedNotice(explanation: string) {
   const text = explanation.replace(/\*\*/g, "");
-  return /noch (?:nichts|nicht) gespeichert|no(?:thing| changes?) (?:has|have) been saved|then save the configuration|\b(?:nichts|keine Änderung(?:en)?)\s+(?:(?:geändert|vorbereitet)\s*,\s*)?gespeichert\b/i.test(
+  return /noch (?:nichts|nicht) gespeichert|no(?:thing| changes?) (?:has|have) been saved|\bnothing saved\b|\bnot yet saved\b|then save the configuration|\b(?:nichts|keine Änderung(?:en)?)\s+(?:(?:geändert|vorbereitet)\s*,\s*)?gespeichert\b/i.test(
     text,
   );
 }

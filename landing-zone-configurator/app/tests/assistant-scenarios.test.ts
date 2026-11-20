@@ -1387,7 +1387,7 @@ it("rejects omitted or changed manually requested audit scopes", () => {
 });
 
 it.each(assistantScenarios.filter((s) => s.auditQuestionPaths))(
-  "requires the actual remaining audit decisions: $id",
+  "preserves audit decisions and requires provenance for proposed defaults: $id",
   (scenario) => {
     const answer = {
       explanation: "Noch nichts gespeichert.",
@@ -1400,6 +1400,30 @@ it.each(assistantScenarios.filter((s) => s.auditQuestionPaths))(
       })),
     };
     expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+    if (scenario.auditDefaultProposal) {
+      const value = {
+        retention_days: 90,
+        acl: [...scenario.auditDefaultProposal.acl],
+        s3_object_lock: true,
+      };
+      const proposed = {
+        ...answer,
+        questions: [],
+        changes: [{ path: "audit_logs", operation: "replace" as const, value }],
+        defaults: scenario.auditQuestionPaths!.map((path) => ({
+          path,
+          value: value[path.split(".")[1]! as keyof typeof value],
+          source: "accelerator" as const,
+        })),
+      };
+      expect(validateAssistantScenario(scenario, proposed).failures).toEqual(
+        [],
+      );
+      expect(
+        validateAssistantScenario(scenario, { ...proposed, defaults: [] })
+          .failures,
+      ).toContain("audit_unanswered_decisions_not_preserved");
+    }
     expect(
       validateAssistantScenario(scenario, { ...answer, questions: [] })
         .failures,
@@ -1744,6 +1768,8 @@ it("accepts coordinated unsaved statements without accepting affirmative or cont
     "Es wurde daher **keine Änderung** vorbereitet, gespeichert oder ausgeführt.",
     "Noch nichts gespeichert.",
     "Nothing has been saved.",
+    "Reviewable draft prepared (nothing saved or deployed).",
+    "The draft is not yet saved.",
   ])
     expect(assistantUnsavedNotice(text)).toBe(true);
   for (const text of [

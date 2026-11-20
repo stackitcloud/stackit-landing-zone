@@ -153,7 +153,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -327,7 +327,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -519,7 +519,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -689,7 +689,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -894,7 +894,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -1070,7 +1070,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -1103,8 +1103,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "audit-logs",
       file: "audit-logs.md",
-      version: 6,
-      checkedOn: "2026-11-09",
+      version: 7,
+      checkedOn: "2026-11-20",
       qualification: "local-draft-not-reviewed-release",
       groups: ["management"],
       mandatory: false,
@@ -1274,7 +1274,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -1438,7 +1438,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -1609,7 +1609,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -1800,7 +1800,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -2010,7 +2010,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -2292,7 +2292,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -2523,7 +2523,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -2548,8 +2548,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "devops-git",
       file: "devops-git.md",
-      version: 5,
-      checkedOn: "2026-11-19",
+      version: 6,
+      checkedOn: "2026-11-20",
       qualification: "local-draft-not-reviewed-release",
       groups: ["platform"],
       mandatory: false,
@@ -2719,7 +2719,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
       ],
       externalSources: [
@@ -2886,7 +2886,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -3148,7 +3148,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -3339,7 +3339,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -3502,7 +3502,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
@@ -3723,7 +3723,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
+            "a81045bcd4b2ec7ad2345b22fd0499afc04ada4ad1e7f1bee667245f21f83997",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
