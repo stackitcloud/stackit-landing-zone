@@ -14,6 +14,15 @@ function outputs(){
  const values=Object.fromEntries(runtimeKeys.map(key=>[key,`synthetic-${key}`]));
  return [{cf_runtime:{value:cf},plan_runner_cf:{value:runner},database_migration:{value:{host:values.LZC_DATABASE_HOST,port:values.LZC_DATABASE_PORT,database:"configurator",username:"configurator_migration",password:"migration-only"}},assistant_test_model_serving_token:{value:"test-token-never-publish"}}, {space:{value:{id,name:"configurator"}},runner_space:{value:{id:runnerId,name:"plans",org_id:runnerId}},app_environment:{value:{...values,LZC_SERVICE_ACCOUNT_KEY:"no"}},release_credentials:{value:{username:"app-space-deployer",password:"app-space-only"}},dispatcher_credentials:{value:{credentials:{username:"runner-space-deployer",password:"runner-space-only"}}},public_endpoint:{value:{origin:"https://app.landing-zone.runs.onstackit.cloud"}}}];
 }
+test("redeploying an existing release runs deploy despite the skipped publication ancestor",()=>{
+ const workflow=readFileSync(new URL("../../../.github/workflows/configurator-production.yml",import.meta.url),"utf8");
+ const deployment=workflow.split("\n  deploy:\n")[1];
+ assert.ok(deployment,"Production deployment job is required");
+ const condition=deployment.match(/^    if: (.+)$/m)?.[1];
+ assert.match(condition??"",/always\(\)/,"A skipped publish ancestor must not add implicit success() to deploy");
+ assert.match(condition,/!cancelled\(\)/,"A cancelled workflow must not deploy");
+ assert.match(condition,/needs\.source\.result == 'success'/,"Only a verified published source may deploy");
+});
 test("production project binding is available to every deployment phase",()=>{
  const workflow=readFileSync(new URL("../../../.github/workflows/configurator-production.yml",import.meta.url),"utf8");
  const deployment=workflow.split("\n  deploy:\n")[1];

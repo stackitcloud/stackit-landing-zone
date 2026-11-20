@@ -131,7 +131,7 @@ jobs:
 
   deploy:
     needs: source
-    if: needs.source.result == 'success'
+    if: always() && !cancelled() && needs.source.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 100
     environment:
