@@ -2178,6 +2178,69 @@ describe.skipIf(!enabled)(
       await test.plans.cancel(test.owner, fresh.id);
     });
 
+    it("reconciles S3 after completed bootstrap migration without treating the retained reference as pending", async () => {
+      const test = await failedRemoteApply();
+      const key = stableStateKey(test.owner, test.manifest);
+      await migration!.query(
+        "UPDATE lzc.platform_states SET pending_backend_id=backend_id WHERE state_key=$1",
+        [key],
+      );
+      const checkpoint = await test.plans.checkpoint(test.owner, test.run.id);
+      expect(checkpoint.pendingMigration).toBe(false);
+      expect(checkpoint.canResume).toBe(true);
+      const before = [...test.remote];
+      await test.plans.reconcile(test.owner, test.run.id, {
+        confirmRemoteState: true,
+        stateVersion: checkpoint.stateVersion,
+        checkpointSha256: checkpoint.checkpointSha256,
+        remoteIdentity: checkpoint.remoteIdentity,
+      });
+      expect([...test.remote]).toEqual(before);
+      const state = (
+        await migration!.query(
+          "SELECT backend_id,pending_backend_id,ciphertext FROM lzc.platform_states WHERE state_key=$1",
+          [key],
+        )
+      ).rows[0];
+      expect(state.pending_backend_id).toBe(state.backend_id);
+      expect(state.ciphertext).toBeNull();
+      expect(
+        (
+          await migration!.query(
+            "SELECT status FROM lzc.plan_runs WHERE id=$1",
+            [test.run.id],
+          )
+        ).rows[0].status,
+      ).toBe("failed");
+    });
+
+    it("retains a genuinely pending S3 migration recovery hold", async () => {
+      const test = await failedRemoteApply();
+      const other = await test.backends.register(test.owner, {
+        descriptor: { ...test.descriptor, key: "other.tfstate" },
+        credentials: {
+          accessKeyId: "private-access",
+          secretAccessKey: "private-secret",
+        },
+      });
+      const key = stableStateKey(test.owner, test.manifest);
+      await migration!.query(
+        "UPDATE lzc.platform_states SET pending_backend_id=$2 WHERE state_key=$1",
+        [key, other.id],
+      );
+      await expect(
+        test.plans.checkpoint(test.owner, test.run.id),
+      ).rejects.toMatchObject({ code: "reconciliation_not_available" });
+      expect(
+        (
+          await migration!.query(
+            "SELECT status FROM lzc.plan_runs WHERE id=$1",
+            [test.run.id],
+          )
+        ).rows[0].status,
+      ).toBe("recovery_required");
+    });
+
     it.each([
       "runner-live",
       "s3-lock",

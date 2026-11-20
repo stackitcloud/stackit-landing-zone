@@ -194,6 +194,8 @@ The user can then save the corrected configuration, choose a new preparation and
 
 ### Replanning after a failed Apply using S3
 
+A completed bootstrap migration retains `pending_backend_id` as evidence. When it matches the active backend and bootstrap ciphertext has been removed, it is a completed migration, not an open migration. A different pending backend or retained bootstrap State remains blocked.
+
 For an existing S3 backend, recovery inspects the registered remote State rather
 than a bootstrap checkpoint. Only the owner of a reported `apply_failed` run may
 confirm replanning. The exact Runner must be stopped or already cleaned; local

@@ -265,7 +265,7 @@ export class Plans {
         checkpointSha256: sha256(bytes),
         serial: document.serial,
         lockHeld: Boolean(state.lock_run_id),
-        pendingMigration: Boolean(state.pending_backend_id),
+        pendingMigration: Boolean(state.pending_backend_id && !remote),
         recoveryAvailable: recovery.rows[0]?.available === true,
         canResume:
           run.error_code === "apply_failed" &&
@@ -273,7 +273,9 @@ export class Plans {
           Boolean(run.finished_at) &&
           BigInt(state.version) > 0n &&
           !state.lock_run_id &&
-          !state.pending_backend_id &&
+          (!state.pending_backend_id ||
+            (Boolean(remote) &&
+              state.pending_backend_id === state.backend_id)) &&
           recovery.rows[0]?.available === false,
         resources: [...resources.values()].sort((left, right) =>
           `${left.mode}:${left.type}`.localeCompare(
@@ -300,7 +302,8 @@ export class Plans {
     if (
       !state.backend_id ||
       state.ciphertext ||
-      state.pending_backend_id ||
+      (state.pending_backend_id &&
+        state.pending_backend_id !== state.backend_id) ||
       state.lock_run_id ||
       run.error_code !== "apply_failed" ||
       !run.input_claimed ||
