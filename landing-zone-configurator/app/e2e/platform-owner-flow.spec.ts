@@ -529,6 +529,7 @@ test("template-draft Assistant uses the saved configuration and accepts locally 
         revision: 1,
         message: "Bitte den Namen dieses Templates verbessern.",
         language: "de",
+        conversation: { id: null, revision: null },
         draft: original,
       });
       sent++;

@@ -1644,6 +1644,7 @@ test("firewall HA merges local edits, reviews conflicts and saves separately", a
         revision: 2,
         message: "Bitte HA erneut vorschlagen.",
         language: "de",
+        conversation: { id, revision: conversationRevision },
         draft: localDraft,
       });
       proposalBaseRevision = revision;
