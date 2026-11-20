@@ -2,11 +2,12 @@ const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
  "v2.2.3": {
-  introduction:"Shared configuration conversations for collaborative platform work.",
+  introduction:"Collaborative configuration conversations, production email and S3 Apply recovery.",
   changes:[
    "Let authorized Platform Engineers read and continue one Assistant conversation per saved configuration, with authors and concurrent-update protection.",
    "Load the matching conversation when switching workspace or configuration, and refresh teammate replies while preserving unsent input.",
    "Preserve existing private histories and offer explicit sharing by their author; proposals still require acceptance and configuration changes require saving.",
+   "Include dedicated production MailOut provisioning and verified backend SMTP binding, plus source-verified runner retirement after reported S3 Apply failures while retaining State and recovery holds.",
   ],
  },
  "v2.2.2": {
