@@ -428,6 +428,8 @@ Destroy-Aktion. Die Migration muss vor Nutzung der neuen API aktiviert sein.
 
 ### Erneute Planung nach einem fehlgeschlagenen Apply mit S3
 
+Eine abgeschlossene Bootstrap-Migration behält `pending_backend_id` als Nachweis. Entspricht diese Referenz dem aktiven Backend und wurde der Bootstrap-Ciphertext entfernt, ist die Migration abgeschlossen. Ein anderes vorgemerktes Backend oder ein noch vorhandener Bootstrap-State bleibt gesperrt.
+
 Bei einem bestehenden S3-Backend prüft die Recovery den registrierten Remote-State
 anstelle eines Bootstrap-Checkpoints. Nur der Eigentümer eines mit `apply_failed`
 beendeten Laufs darf die erneute Planung bestätigen. Genau dieser Runner muss
