@@ -14,6 +14,13 @@ function outputs(){
  const values=Object.fromEntries(runtimeKeys.map(key=>[key,`synthetic-${key}`]));
  return [{cf_runtime:{value:cf},plan_runner_cf:{value:runner},database_migration:{value:{host:values.LZC_DATABASE_HOST,port:values.LZC_DATABASE_PORT,database:"configurator",username:"configurator_migration",password:"migration-only"}},assistant_test_model_serving_token:{value:"test-token-never-publish"}}, {space:{value:{id,name:"configurator"}},runner_space:{value:{id:runnerId,name:"plans",org_id:runnerId}},app_environment:{value:{...values,LZC_SERVICE_ACCOUNT_KEY:"no"}},release_credentials:{value:{username:"app-space-deployer",password:"app-space-only"}},dispatcher_credentials:{value:{credentials:{username:"runner-space-deployer",password:"runner-space-only"}}},public_endpoint:{value:{origin:"https://app.landing-zone.runs.onstackit.cloud"}}}];
 }
+test("production project binding is available to every deployment phase",()=>{
+ const workflow=readFileSync(new URL("../../../.github/workflows/configurator-production.yml",import.meta.url),"utf8");
+ const deployment=workflow.split("\n  deploy:\n")[1];
+ assert.ok(deployment,"Production deployment job is required");
+ const jobEnvironment=deployment.split("\n    env:\n")[1]?.split("\n    steps:\n")[0];
+ assert.match(jobEnvironment??"",/^      LZC_PROJECT_ID: \$\{\{ vars\.LZC_PROJECT_ID \}\}$/m,"The project ID must reach backend AND application preparation");
+});
 test("release publication excludes infrastructure identities and binds both spaces to the production project",()=>{
  const [platform,runtime]=outputs(),binding=productionBindings(platform,runtime,id);
  assert.equal(validateProductionBindings(binding,id),binding);
@@ -88,6 +95,16 @@ test("production preparation uses scoped bindings, exact PKCE origin and three r
   const prepared=JSON.parse(readFileSync(join(directory,"lzc-release/app-vars.json"),"utf8"));
   assert.equal(prepared.LZC_APP_INSTANCES,3);assert.equal(prepared.LZC_APP_ROUTE,"app.landing-zone.runs.onstackit.cloud");assert.equal(prepared.LZC_ASSISTANT_ENABLED,"true");assert.equal(prepared.LZC_RUNNER_CF_USERNAME,"runner-space-deployer");
   assert.ok(!JSON.stringify(prepared).includes("org-manager"));assert.equal(existsSync(join(directory,"lzc-release/platform.backend.hcl")),false);
+  const mailout={schemaVersion:1,projectId:id,domainId:id,senderId:runnerId,from:"notifications@landing-zone.runs.onstackit.cloud",host:"smtp.mailout.eu01.stackit.cloud",port:25,username:"synthetic-smtp-user",password:"synthetic-smtp-password"};
+  env.LZC_MAILOUT_BINDINGS=JSON.stringify(mailout);
+  assert.equal(run("application").status,0,"Production SMTP preparation must accept the bound project");
+  const withMail=JSON.parse(readFileSync(join(directory,"lzc-release/app-vars.json"),"utf8"));
+  assert.equal(withMail.LZC_MAILOUT_ENABLED,"true");assert.equal(withMail.LZC_MAILOUT_FROM,mailout.from);
+  delete env.LZC_PROJECT_ID;
+  assert.notEqual(run("application").status,0,"Missing production project must reject SMTP binding");
+  env.LZC_PROJECT_ID=runnerId;
+  assert.notEqual(run("application").status,0,"Another project must not accept the SMTP binding");
+  env.LZC_PROJECT_ID=id;
   env.LZC_STACKIT_REDIRECT_URI="https://lzc-dev-configurator.apps.01.cf.eu01.stackit.cloud/auth/stackit/callback";assert.notEqual(run("application").status,0);
   env.LZC_STACKIT_REDIRECT_URI="https://app.landing-zone.runs.onstackit.cloud/auth/stackit/callback";
   env.LZC_RELEASE_MODE="skip";
