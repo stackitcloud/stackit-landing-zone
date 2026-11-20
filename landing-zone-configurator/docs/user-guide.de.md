@@ -44,6 +44,14 @@ Service-Account-Berechtigungen oder Kapazität.
 Speichere Änderungen ausdrücklich. Bei einem Fork ist das Speichern im Repository eine
 separate Aktion. Exporte unterstützen den unabhängigen Terraform/OpenTofu-Workflow.
 
+Gespeicherte Konfigurationen gehören zum ausgewählten Arbeitsbereich. Seine
+Platform Engineers können sie gemeinsam öffnen, bearbeiten und löschen, auch
+wenn ein anderes Mitglied sie gespeichert hat. Nicht gespeicherte Entwürfe bleiben
+im aktuellen Browser. Speichert ein anderes Mitglied zuerst, lade dessen neue
+Revision und prüfe deine Änderungen erneut; ein veralteter Stand kann seine Arbeit
+nicht überschreiben. Assistant-Verläufe und Zugangsdatenprofile bleiben persönlich.
+Das Teilen einer Konfiguration erteilt keine Rechte zur Cloud-Ausführung.
+
 **Speicheroptionen öffnen →** öffnet nur die Speicherauswahl. **Konfiguration
 speichern** schreibt eine neue Datenbankrevision; **Speichern und zur
 Bereitstellung** speichert genauso und öffnet anschließend die Vorbereitung.

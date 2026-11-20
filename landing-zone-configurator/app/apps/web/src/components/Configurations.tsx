@@ -323,7 +323,9 @@ export function Configurations({
         </label>
       )}
       <p className="muted">
-        {t("Deine Konfigurationen in diesem Arbeitsbereich.")}
+        {t(
+          "Gespeicherte Konfigurationen können von Plattform-Nutzern dieses Arbeitsbereichs gemeinsam bearbeitet werden.",
+        )}
       </p>
       {!session ? (
         <p>

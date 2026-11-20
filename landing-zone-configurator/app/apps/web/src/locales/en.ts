@@ -1930,8 +1930,8 @@ export const englishMessages: Record<string, string> = {
     "Your GitHub authorization has expired or been revoked. Please sign in again.",
   "Deine Konfiguration wurde als JSON und tfvars gemeinsam im Fork gespeichert.":
     "Your configuration was saved to the fork as both JSON and tfvars.",
-  "Deine Konfigurationen in diesem Arbeitsbereich.":
-    "Your configurations in this workspace.",
+  "Gespeicherte Konfigurationen können von Plattform-Nutzern dieses Arbeitsbereichs gemeinsam bearbeitet werden.":
+    "Platform users in this workspace can edit saved configurations together.",
   "Deine Organisation": "Your organization",
   "Deine Sitzung ist nicht mehr aktuell. Bitte lade die Seite neu.":
     "Your session is no longer current. Please reload the page.",
