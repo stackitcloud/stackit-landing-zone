@@ -5,16 +5,16 @@
 This directory provisions the operator's sending integration, not a customer
 Landing Zone feature. It uses the official MailOut v1beta1 and DNS v1 APIs because
 the pinned STACKIT Terraform provider does not provide MailOut resources.
-`environments/lzc-dev.json` is the reviewed declarative desired state. The reconciler
+`environments/lzc-dev.json` and `environments/lzc-prod.json` declare separate sending domains, projects and senders. The reconciler
 only creates missing dedicated resources and validates existing ones; it never
 rewrites existing DNS policies or automatically rotates/deletes credentials.
-Production is deliberately not an accepted target in this first Dev rollout.
+Select the reviewed environment explicitly for production; the default remains Dev.
 
 ## Provision and bind
 
 Use Node 24.21.0 and the official STACKIT CLI. The operator key needs MailOut access
-in Dev and DNS access to the existing parent zone. Keep keys outside version control.
-The application route/domain is not changed; only the sending subdomain's SPF,
+in the selected project and DNS access to the existing parent zone. Keep keys outside version control.
+The application route/domain is not changed; only the sending domain's SPF,
 DMARC, DKIM and return-path records are managed. Do not remove these records after
 validation: MailOut checks them continuously.
 
@@ -63,6 +63,28 @@ MailOut setting before running the SMTP check. Missing, disabled or stale bindin
 fail the release; connection checks cannot silently skip configured email delivery.
 The existing artifact-encryption key encrypts invitation tokens with separate,
 context-bound purposes; preserve that key while encrypted pending jobs exist.
+
+## Production setup
+
+Use `provision.mjs plan lzc-prod` and, after reviewing the scoped plan,
+`provision.mjs apply lzc-prod`. Provider creation can initially report `ready:false`
+without authentication records; rerun reconciliation once the domain is ready.
+Production uses `notifications@landing-zone.runs.onstackit.cloud`, with a separate
+private binding in `.local/mailout-prod/bindings.private.json`. Dev credentials
+cannot be reused. Publish only a validated, ready binding:
+
+```sh
+gh secret set LZC_MAILOUT_BINDINGS --repo stackitcloud/stackit-landing-zone \
+  --env lzc-prod-release < landing-zone-configurator/.local/mailout-prod/bindings.private.json
+```
+
+Production deployment requires the SMTP binding and fails before activation if it is missing.
+
+The Production Release workflow passes this secret to runtime preparation and
+verifies the actual CF MailOut binding before SMTP connection checks. Staging,
+Runner and migration applications never receive SMTP credentials or send mail.
+Production sending uses the same branded templates, language and per-user topic
+preferences as Dev; invitation delivery is selected by the inviter.
 
 ## Delivery diagnostics and recovery
 

@@ -188,8 +188,11 @@ jobs:
           LZC_RELEASE_BINDINGS: ${{ secrets.LZC_RELEASE_BINDINGS }}
           LZC_PROJECT_ID: ${{ vars.LZC_PROJECT_ID }}
       - name: Prepare authenticated production runtime
-        run: node infra/ci/prepare-release.mjs application
+        run: |
+          test -n "$LZC_MAILOUT_BINDINGS"
+          node infra/ci/prepare-release.mjs application
         env:
+          LZC_MAILOUT_BINDINGS: ${{ secrets.LZC_MAILOUT_BINDINGS }}
           LZC_AUTH_ENABLED: 'true'
           LZC_ASSISTANT_ENABLED: 'true'
           LZC_STACKIT_DEVICE_ENABLED: 'true'
@@ -215,6 +218,7 @@ jobs:
         run: node infra/ci/check-production-route.mjs
       - name: Verify runtime service and isolated Runner connections
         run: |
+          node infra/ci/verify-mailout-binding.mjs
           cf run-task landing-zone-configurator --command './runtime/bin/node apps/api/dist/check-connections.js' --name "connections-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
           cf run-task landing-zone-configurator --command "./runtime/bin/node apps/api/dist/check-plan-runner.js $GITHUB_RUN_ID" --name "runner-$GITHUB_RUN_ID" -m 128M -k 4096M --wait
           for attempt in 1 2 3; do

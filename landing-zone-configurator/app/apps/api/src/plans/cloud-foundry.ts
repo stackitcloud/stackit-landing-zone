@@ -25,6 +25,11 @@ export interface PlanRunner {
     sourceDropletId: string,
   ): Promise<boolean>;
   removeRecovery?(id: string, appId: string | null): Promise<void>;
+  stopReportedFailure?(
+    id: string,
+    appId: string,
+    sourceDropletId: string,
+  ): Promise<void>;
   isStopped?(
     id: string,
     appId: string,
@@ -427,6 +432,17 @@ export class CloudFoundryPlanRunner implements PlanRunner {
   }
   async isStopped(id: string, appId: string, sourceDropletId: string) {
     return this.inspectStopped(id, appId, sourceDropletId, false);
+  }
+  async stopReportedFailure(
+    id: string,
+    appId: string,
+    sourceDropletId: string,
+  ) {
+    // Verify exact app, space and immutable source before any CF mutation.
+    // Only the broker's reported-failure retirement path may call this method.
+    if (await this.inspectStopped(id, appId, sourceDropletId, false)) return;
+    const call = await this.authorized();
+    await call(`apps/${appId}/actions/stop`, "POST");
   }
   async isRecoveryStopped(id: string, appId: string, sourceDropletId: string) {
     return this.inspectStopped(id, appId, sourceDropletId, true);

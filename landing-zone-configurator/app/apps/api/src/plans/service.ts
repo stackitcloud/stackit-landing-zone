@@ -1508,6 +1508,36 @@ export class Plans {
     });
   }
   async maintain() {
+    let retirementError: unknown;
+    if (this.runner.stopReportedFailure && this.runner.isStopped) {
+      const failed = (
+        await this.pool.query(
+          "SELECT * FROM lzc_auth.reported_s3_apply_runners()",
+        )
+      ).rows;
+      for (const run of failed) {
+        try {
+          await this.runner.stopReportedFailure(
+            run.id,
+            run.runner_app_id,
+            run.runner_droplet_id,
+          );
+          if (
+            await this.runner.isStopped(
+              run.id,
+              run.runner_app_id,
+              run.runner_droplet_id,
+            )
+          )
+            await this.pool.query(
+              "SELECT lzc_auth.record_reported_s3_runner_stopped($1,$2,$3)",
+              [run.id, run.runner_app_id, run.runner_droplet_id],
+            );
+        } catch (error) {
+          retirementError ??= error;
+        }
+      }
+    }
     const rows = (
       await this.pool.query("SELECT * FROM lzc_auth.expire_plan_runs()")
     ).rows;
@@ -1515,5 +1545,6 @@ export class Plans {
       await this.runner.remove(row.id, row.runner_app_id);
       await this.pool.query("SELECT lzc_auth.mark_plan_cleaned($1)", [row.id]);
     }
+    if (retirementError) throw retirementError;
   }
 }

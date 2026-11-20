@@ -2093,6 +2093,157 @@ describe.skipIf(!enabled)(
       return { ...test, run, saved, descriptor, stopped };
     }
 
+    it("automatically stops a reported failed S3 runner without changing State or clearing the recovery hold", async () => {
+      const test = await failedRemoteApply();
+      test.stopped.mockResolvedValue(false);
+      await expect(
+        test.plans.checkpoint(test.owner, test.run.id),
+      ).rejects.toMatchObject({ code: "runner_not_stopped" });
+      await migration!.query(
+        "UPDATE lzc.plan_runs SET finished_at=now()-interval '1 minute' WHERE id=$1",
+        [test.run.id],
+      );
+      const key = stableStateKey(test.owner, test.manifest);
+      // Cover the normal Configurator bootstrap migration marker as well.
+      await migration!.query(
+        "UPDATE lzc.platform_states SET pending_backend_id=backend_id WHERE state_key=$1",
+        [key],
+      );
+      const before = (
+        await migration!.query(
+          "SELECT * FROM lzc.platform_states WHERE state_key=$1",
+          [key],
+        )
+      ).rows[0];
+      const remoteBefore = [...test.remote];
+      const stop = vi.fn(async (_id: string, _app: string, _source: string) => {
+        test.stopped.mockResolvedValue(true);
+      });
+      Object.assign(test.runner, { stopReportedFailure: stop });
+      await test.plans.maintain();
+      expect(stop).toHaveBeenCalledWith(
+        test.run.id,
+        expect.any(String),
+        expect.any(String),
+      );
+      const run = (
+        await migration!.query(
+          "SELECT status,cleaned,runner_stop_confirmed_at FROM lzc.plan_runs WHERE id=$1",
+          [test.run.id],
+        )
+      ).rows[0];
+      expect(run.status).toBe("recovery_required");
+      expect(run.cleaned).toBe(false);
+      expect(run.runner_stop_confirmed_at).not.toBeNull();
+      expect(
+        (
+          await migration!.query(
+            "SELECT * FROM lzc.platform_states WHERE state_key=$1",
+            [key],
+          )
+        ).rows[0],
+      ).toEqual(before);
+      expect([...test.remote]).toEqual(remoteBefore);
+      expect(
+        (await test.plans.checkpoint(test.owner, test.run.id)).canResume,
+      ).toBe(true);
+      // A prior maintenance receipt never substitutes for a fresh process check.
+      test.stopped.mockResolvedValue(false);
+      await expect(
+        test.plans.checkpoint(test.owner, test.run.id),
+      ).rejects.toMatchObject({ code: "runner_not_stopped" });
+      stop.mockClear();
+      await test.plans.maintain();
+      expect(stop.mock.calls.filter((c) => c[0] === test.run.id)).toHaveLength(
+        0,
+      );
+    });
+
+    it.each([
+      "fresh",
+      "timed_out",
+      "state_failed",
+      "runner_unavailable",
+      "pending-target",
+      "backup",
+      "recovery",
+      "stop-unconfirmed",
+      "stop-error",
+    ])(
+      "keeps S3 failure recovery blocked for retirement case %s",
+      async (reason) => {
+        const test = await failedRemoteApply();
+        const key = stableStateKey(test.owner, test.manifest);
+        await migration!.query(
+          "UPDATE lzc.plan_runs SET finished_at=now()-interval '1 minute' WHERE id=$1",
+          [test.run.id],
+        );
+        if (reason === "fresh")
+          await migration!.query(
+            "UPDATE lzc.plan_runs SET finished_at=now() WHERE id=$1",
+            [test.run.id],
+          );
+        if (
+          ["timed_out", "state_failed", "runner_unavailable"].includes(reason)
+        )
+          await migration!.query(
+            "UPDATE lzc.plan_runs SET error_code=$2 WHERE id=$1",
+            [test.run.id, reason],
+          );
+        if (reason === "pending-target") {
+          const other = await test.backends.register(test.owner, {
+            descriptor: { ...test.descriptor, key: "pending.tfstate" },
+            credentials: {
+              accessKeyId: "fixture-only",
+              secretAccessKey: "fixture-only",
+            },
+          });
+          await migration!.query(
+            "UPDATE lzc.platform_states SET pending_backend_id=$2 WHERE state_key=$1",
+            [key, other.id],
+          );
+        }
+        if (reason === "backup")
+          await migration!.query(
+            "UPDATE lzc.platform_states SET backend_id=NULL,ciphertext=$2 WHERE state_key=$1",
+            [key, Buffer.from("retained-bootstrap-backup")],
+          );
+        if (reason === "recovery")
+          await migration!.query(
+            "INSERT INTO lzc.state_recoveries(run_id,tenant_id,state_key,sha256,ciphertext) SELECT $1,tenant_id,state_key,$2,$3 FROM lzc.platform_states WHERE state_key=$4",
+            [
+              test.run.id,
+              "a".repeat(64),
+              Buffer.from("separate-recovery"),
+              key,
+            ],
+          );
+        test.stopped.mockResolvedValue(false);
+        const stop = vi.fn(
+          async (_id: string, _app: string, _source: string) => {
+            if (reason === "stop-error") throw new Error("stop-unavailable");
+          },
+        );
+        Object.assign(test.runner, { stopReportedFailure: stop });
+        await test.plans.maintain().catch((error) => {
+          expect(reason).toBe("stop-error");
+          expect(error.message).toBe("stop-unavailable");
+        });
+        if (!["stop-unconfirmed", "stop-error"].includes(reason))
+          expect(
+            stop.mock.calls.filter((c) => c[0] === test.run.id),
+          ).toHaveLength(0);
+        const run = (
+          await migration!.query(
+            "SELECT status,runner_stop_confirmed_at FROM lzc.plan_runs WHERE id=$1",
+            [test.run.id],
+          )
+        ).rows[0];
+        expect(run.status).toBe("recovery_required");
+        expect(run.runner_stop_confirmed_at).toBeNull();
+      },
+    );
+
     it("reconciles a reported S3 Apply failure without changing remote state or replaying the approved plan", async () => {
       const test = await failedRemoteApply();
       const key = stableStateKey(test.owner, test.manifest);

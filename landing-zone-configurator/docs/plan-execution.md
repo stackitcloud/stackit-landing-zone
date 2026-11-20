@@ -196,6 +196,13 @@ The user can then save the corrected configuration, choose a new preparation and
 
 A completed bootstrap migration retains `pending_backend_id` as evidence. When it matches the active backend and bootstrap ciphertext has been removed, it is a completed migration, not an open migration. A different pending backend or retained bootstrap State remains blocked.
 
+After a reported S3 `apply_failed`, background maintenance stops the exact verified
+Runner after a short completion grace period. The app remains stopped for inspection;
+normal cleanup follows reconciliation. This neither reconciles the run nor changes
+State. Timeouts, ambiguous failures, separate recovery State and open migrations are
+excluded. A maintenance timestamp only avoids repeated stop requests; checkpoint and
+confirmation always independently verify current CF app, task and process status.
+
 For an existing S3 backend, recovery inspects the registered remote State rather
 than a bootstrap checkpoint. Only the owner of a reported `apply_failed` run may
 confirm replanning. The exact Runner must be stopped or already cleaned; local

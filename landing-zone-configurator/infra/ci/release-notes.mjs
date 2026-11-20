@@ -1,6 +1,14 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.2.2": {
+  introduction:"Production email delivery and reliable recovery after reported S3 Apply failures.",
+  changes:[
+   "Provision a dedicated production MailOut sender and bind SMTP only to the application backend, with DNS validation and deployment verification.",
+   "Stop source-verified runners after explicitly reported S3 Apply failures so checkpoint inspection can proceed; retain State and require independent process checks and owner confirmation.",
+   "Preserve recovery holds for timeouts, ambiguous interruptions, pending migrations and separate recovery States.",
+  ],
+ },
  "v2.2.1": {
   introduction:"Context-aware service consultation in the Landing Zone Configurator.",
   changes:[

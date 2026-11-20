@@ -42,3 +42,19 @@ test('fails closed if an existing sender password has been lost',async()=>{
 test('does not issue sender credentials before domain validation succeeds',async()=>{
  const f=fixture({state:'validating'});assert.equal((await reconcile(c,f.request,{apply:true})).ready,false);assert.equal(f.saved.length,0);assert.ok(!f.calls.some(r=>r.path.endsWith('/authorized-senders')));
 });
+
+test('accepts the reviewed production sender scope without accepting cross-stage manifests',()=>{
+ const prod=JSON.parse(readFileSync(new URL('./environments/lzc-prod.json',import.meta.url)));
+ assert.equal(validateManifest(prod),prod);
+ assert.throws(()=>validateManifest({...prod,projectId:c.projectId}));
+ assert.throws(()=>validateManifest({...prod,domain:c.domain}));
+ assert.throws(()=>validateManifest({...prod,from:c.from}));
+ assert.ok(dnsRecords(prod,config).every(r=>r.name===`${prod.domain}.`||r.name.endsWith(`.${prod.domain}.`)));
+});
+
+test('waits for provider creation before expecting authentication records or issuing writes',async()=>{
+ const f=fixture({state:'creating'});
+ const request=async(...args)=>{const response=await f.request(...args);return args[1].endsWith(`/${domainId}`)?{...response,config:{dnsRecords:{}}}:response;};
+ const result=await reconcile(c,request,{apply:true});assert.equal(result.ready,false);assert.equal(result.state,'creating');
+ assert.ok(f.calls.every(call=>call.method==='GET'));assert.equal(f.saved.length,0);
+});
