@@ -39,6 +39,13 @@ availability, network reachability, service-account permissions or capacity.
 Save changes explicitly. If you use a fork, saving to the repository is a separate
 action. Exports support the independent Terraform/OpenTofu workflow.
 
+Saved configurations belong to the selected workspace. Its Platform Engineers
+can open, edit and delete them, including configurations saved by another member.
+Unsaved drafts stay in the current browser. If another member saves first, reload
+the newer revision and review your changes before saving; an outdated revision
+cannot overwrite their work. Assistant conversations and credential profiles
+remain personal. Sharing a configuration grants no cloud execution permissions.
+
 **Open save options →** only opens storage choices. **Save configuration** writes a
 new database revision; **Save and prepare deployment** performs the same save and
 then opens preparation. Downloading an example uses the local draft and does not
