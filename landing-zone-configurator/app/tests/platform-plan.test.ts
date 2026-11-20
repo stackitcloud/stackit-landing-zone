@@ -2016,6 +2016,223 @@ describe.skipIf(!enabled)(
       ).rejects.toBeDefined();
     });
 
+    async function failedRemoteApply() {
+      const test = await fixture();
+      const descriptor = {
+        bucket: `customer-${test.configurationId}-tfstate`,
+        endpoint: "https://object.storage.eu01.onstackit.cloud",
+        region: "eu01",
+        key: "terraform.tfstate",
+        useLockfile: true,
+      } as const;
+      const registered = await test.backends.register(test.owner, {
+        descriptor,
+        credentials: {
+          accessKeyId: "private-access",
+          secretAccessKey: "private-secret",
+        },
+      });
+      const document = {
+        version: 4,
+        serial: 99,
+        lineage: randomUUID(),
+        outputs: { secret: { value: "private-output", sensitive: true } },
+        resources: [
+          {
+            mode: "managed",
+            type: "time_rotating",
+            name: "private-name",
+            instances: [{ attributes: { secret: "private-key" } }],
+          },
+        ],
+      };
+      test.remote.set(descriptor.key, Buffer.from(JSON.stringify(document)));
+      const manifest = {
+        ...test.manifest,
+        backend: {
+          ...registered,
+          stateIdentity: stableStateKey(test.owner, test.manifest),
+        },
+      };
+      await migration!.query(
+        "UPDATE lzc.deployment_preparations SET manifest=$2 WHERE id=$1",
+        [test.preparationId, JSON.stringify(manifest)],
+      );
+      const saved = await test.plan();
+      const run = await test.plans.apply(
+        test.owner,
+        test.token,
+        saved.id,
+        test.approval(saved.artifactSha256),
+      );
+      await vi.waitFor(async () => {
+        expect(
+          (
+            await migration!.query(
+              "SELECT runner_droplet_id FROM lzc.plan_runs WHERE id=$1",
+              [run.id],
+            )
+          ).rows[0]?.runner_droplet_id,
+        ).toBeTruthy();
+      });
+      const ticket = test.tickets.get(run.id)!;
+      await waitForRunnerBinding(ticket);
+      await test.plans.input(ticket);
+      await test.plans.stage(ticket, "validating");
+      await test.plans.stage(ticket, "applying");
+      test.remote.set(
+        descriptor.key,
+        Buffer.from(JSON.stringify({ ...document, serial: 100 })),
+      );
+      await test.plans.result(ticket, {
+        status: "failed",
+        errorCode: "apply_failed",
+      });
+      const stopped = vi.fn(async () => true);
+      Object.assign(test.runner, { isStopped: stopped });
+      return { ...test, run, saved, descriptor, stopped };
+    }
+
+    it("reconciles a reported S3 Apply failure without changing remote state or replaying the approved plan", async () => {
+      const test = await failedRemoteApply();
+      const key = stableStateKey(test.owner, test.manifest);
+      const before = (
+        await migration!.query(
+          "SELECT * FROM lzc.platform_states WHERE state_key=$1",
+          [key],
+        )
+      ).rows[0];
+      const remoteBefore = [...test.remote];
+      const starts = test.runner.start.mock.calls.length;
+      const checkpoint = await test.plans.checkpoint(test.owner, test.run.id);
+      expect(checkpoint.canResume).toBe(true);
+      expect(checkpoint.serial).toBe(100);
+      expect(JSON.stringify(checkpoint)).not.toMatch(
+        /private-output|private-key|private-name|private-secret/,
+      );
+      expect(
+        (
+          await migration!.query(
+            "SELECT * FROM lzc.platform_states WHERE state_key=$1",
+            [key],
+          )
+        ).rows[0],
+      ).toEqual(before);
+      const input = {
+        confirmRemoteState: true,
+        stateVersion: checkpoint.stateVersion,
+        checkpointSha256: checkpoint.checkpointSha256,
+        remoteIdentity: checkpoint.remoteIdentity,
+      };
+      await expect(
+        test.plans.reconcile(test.owner, test.run.id, {
+          ...input,
+          remoteIdentity: "changed",
+        }),
+      ).rejects.toMatchObject({ code: "checkpoint_changed" });
+      await expect(
+        test.plans.reconcile(test.owner, test.run.id, {
+          confirmRetainState: true,
+          stateVersion: checkpoint.stateVersion,
+          checkpointSha256: checkpoint.checkpointSha256,
+        }),
+      ).rejects.toBeDefined();
+      await Promise.all([
+        test.plans.reconcile(test.owner, test.run.id, input),
+        test.plans.reconcile(test.owner, test.run.id, input),
+      ]);
+      expect(
+        (
+          await migration!.query(
+            "SELECT status FROM lzc.plan_runs WHERE id=$1",
+            [test.run.id],
+          )
+        ).rows[0].status,
+      ).toBe("failed");
+      const after = (
+        await migration!.query(
+          "SELECT * FROM lzc.platform_states WHERE state_key=$1",
+          [key],
+        )
+      ).rows[0];
+      expect(after.ciphertext).toBeNull();
+      expect(after.backend_id).toBe(before.backend_id);
+      expect(BigInt(after.version)).toBe(BigInt(before.version) + 1n);
+      expect(after.remote_identity).toBe(checkpoint.remoteIdentity);
+      expect([...test.remote]).toEqual(remoteBefore);
+      expect(test.runner.start).toHaveBeenCalledTimes(starts);
+      await expect(
+        test.plans.apply(
+          test.owner,
+          test.token,
+          test.saved.id,
+          test.approval(test.saved.artifactSha256),
+        ),
+      ).rejects.toBeDefined();
+      const fresh = await test.plans.start(
+        test.owner,
+        test.token,
+        test.preparationId,
+      );
+      await vi.waitFor(() => expect(test.tickets.has(fresh.id)).toBe(true));
+      await test.plans.cancel(test.owner, fresh.id);
+    });
+
+    it.each([
+      "runner-live",
+      "s3-lock",
+      "changed",
+      "invalid",
+      "missing",
+      "owner",
+    ])("retains the S3 recovery hold for %s", async (reason) => {
+      const test = await failedRemoteApply();
+      const checkpoint = await test.plans.checkpoint(test.owner, test.run.id);
+      if (reason === "runner-live") test.stopped.mockResolvedValue(false);
+      if (reason === "s3-lock")
+        test.remote.set(`${test.descriptor.key}.tflock`, Buffer.from("locked"));
+      if (reason === "changed")
+        test.remote.set(
+          test.descriptor.key,
+          Buffer.from(
+            JSON.stringify({
+              version: 4,
+              serial: 101,
+              lineage: randomUUID(),
+              resources: [],
+            }),
+          ),
+        );
+      if (reason === "invalid")
+        test.remote.set(test.descriptor.key, Buffer.from("invalid"));
+      if (reason === "missing") test.remote.delete(test.descriptor.key);
+      const owner = reason === "owner" ? await session() : test.owner;
+      await expect(
+        test.plans.reconcile(owner, test.run.id, {
+          confirmRemoteState: true,
+          stateVersion: checkpoint.stateVersion,
+          checkpointSha256: checkpoint.checkpointSha256,
+          remoteIdentity: checkpoint.remoteIdentity,
+        }),
+      ).rejects.toBeDefined();
+      expect(
+        (
+          await migration!.query(
+            "SELECT status FROM lzc.plan_runs WHERE id=$1",
+            [test.run.id],
+          )
+        ).rows[0].status,
+      ).toBe("recovery_required");
+      expect(
+        (
+          await migration!.query(
+            "SELECT count(*)::int AS count FROM lzc.platform_reconciliations WHERE run_id=$1",
+            [test.run.id],
+          )
+        ).rows[0].count,
+      ).toBe(0);
+    });
+
     async function failedCheckpoint(platformRoot = false) {
       const test = await fixture(false, platformRoot, false, platformRoot);
       const currentPreparation = platformRoot

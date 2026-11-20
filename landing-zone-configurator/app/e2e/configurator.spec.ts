@@ -5886,6 +5886,7 @@ test.describe("explicit saved-plan approval", () => {
 
   for (const outcome of [
     "success",
+    "remote-state",
     "changed",
     "locked",
     "migration",
@@ -5903,7 +5904,9 @@ test.describe("explicit saved-plan approval", () => {
       const releaseLabel = migrating
         ? "Backend-Migration bestätigen"
         : "Erneute Planung freigeben";
+      const remote = outcome === "remote-state";
       const checkpoint = {
+        ...(remote ? { remoteIdentity: "e".repeat(64) } : {}),
         stateVersion: "1",
         checkpointSha256: "d".repeat(64),
         serial: 1,
@@ -5976,7 +5979,9 @@ test.describe("explicit saved-plan approval", () => {
         expect(route.request().postDataJSON()).toEqual({
           ...(migrating
             ? { confirmCompleteMigration: true, remoteIdentity: "e".repeat(64) }
-            : { confirmRetainState: true }),
+            : remote
+              ? { confirmRemoteState: true, remoteIdentity: "e".repeat(64) }
+              : { confirmRetainState: true }),
           stateVersion: "1",
           checkpointSha256: "d".repeat(64),
         });
@@ -6095,7 +6100,9 @@ test.describe("explicit saved-plan approval", () => {
         const confirm = review.getByRole("checkbox", {
           name: migrating
             ? /Ich habe den S3-Abgleich geprüft/
-            : /Ich habe den Checkpoint geprüft/,
+            : remote
+              ? /Ich habe den S3-State geprüft/
+              : /Ich habe den Checkpoint geprüft/,
         });
         const release = review.getByRole("button", {
           name: releaseLabel,
