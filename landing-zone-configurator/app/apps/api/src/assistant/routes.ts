@@ -125,6 +125,8 @@ export function registerAssistant(
         | "sendTemplateAdvice"
         | "removeTemplateAdvice"
         | "preview"
+        | "getPrivate"
+        | "sharePrivate"
       >
     >,
 ) {
@@ -202,6 +204,18 @@ export function registerAssistant(
         });
     }
     const prefix = "/api/v1/configurations/:id/assistant";
+    if (assistant.sharePrivate)
+      routes.post(`${prefix}/share-private`, async (request) => {
+        const session = (await authenticatedSession(request, auth))!;
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        return {
+          conversation: await assistant.sharePrivate!(
+            session,
+            id,
+            request.body,
+          ),
+        };
+      });
     for (const action of [
       "get",
       "send",
@@ -222,9 +236,29 @@ export function registerAssistant(
             return reply.code(401).send({ error: "authentication_required" });
           const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
           if (action === "get")
-            return { conversation: await assistant.get(session, id) };
+            return {
+              conversation: await assistant.get(session, id),
+              privateConversation: await assistant.getPrivate?.(session, id),
+            };
           if (action === "remove") {
-            await assistant.remove(session, id);
+            const match = request.headers["if-match"];
+            if (match !== undefined) {
+              const parts = z
+                .string()
+                .regex(/^"[a-f0-9-]{36}:[1-9][0-9]*"$/i)
+                .parse(match)
+                .slice(1, -1)
+                .split(":");
+              await assistant.remove(session, id, {
+                id: z.uuid().parse(parts[0]),
+                revision: z
+                  .number()
+                  .int()
+                  .positive()
+                  .safe()
+                  .parse(Number(parts[1])),
+              });
+            } else await assistant.remove(session, id);
             return reply.code(204).send();
           }
           if (action === "discard")
@@ -232,12 +266,22 @@ export function registerAssistant(
               conversation: await assistant.discard(session, id, request.body),
             };
           if (action === "send") {
-            const { revision, message, draft, language } = z
+            const { revision, message, draft, language, conversation } = z
               .strictObject({
                 revision: z.number().int().positive(),
                 message: chatMessageSchema,
                 language: assistantLanguageSchema.optional(),
                 draft: z.unknown().optional(),
+                conversation: z
+                  .strictObject({
+                    id: z.uuid().nullable(),
+                    revision: z.number().int().positive().nullable(),
+                  })
+                  .refine(
+                    (value) =>
+                      (value.id === null) === (value.revision === null),
+                  )
+                  .optional(),
               })
               .parse(request.body);
             if (request.headers.accept === "application/x-ndjson")
@@ -250,6 +294,7 @@ export function registerAssistant(
                   stream,
                   draft,
                   language,
+                  conversation,
                 ),
               }));
             return {
@@ -261,6 +306,7 @@ export function registerAssistant(
                 undefined,
                 draft,
                 language,
+                conversation,
               ),
             };
           }

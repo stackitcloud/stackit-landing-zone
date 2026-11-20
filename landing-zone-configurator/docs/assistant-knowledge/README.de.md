@@ -320,7 +320,13 @@ Bestätigte Entscheidungen zitieren echte Benutzerbeiträge; unbelegte Angaben w
 verworfen. Ein neuer Wissenshash verwirft den Kontext, nicht den Verlauf. Verwerfen
 schließt offene Vorschlagskontexte. Neue Antworten behalten den ursprünglichen
 Ablaufzeitpunkt und ersetzen Vorschlag und Wissenshash atomar. Veraltete Vorschläge
-werden nicht still übernommen. Eine Datenbankmigration ist nicht nötig.
+werden nicht still übernommen. Migration 102 gibt gespeicherten Konfigurationen
+einen gemeinsamen Verlauf mit Arbeitsbereichsrechten und Autorenangabe. Bisher
+private Verläufe teilt nur ihr Autor ausdrücklich in einen noch leeren gemeinsamen
+Verlauf. Bei Arbeitsbereichs- und Konfigurationswechsel lädt der Browser neu und
+fragt Änderungen anderer Mitglieder regelmäßig ab. Bei einem Teilnehmerwechsel
+wird der Beratungskontext aus dem gemeinsamen Verlauf mit der aktuellen Identität
+neu aufgebaut; der private Kontext eines anderen Teilnehmers wird nicht übernommen.
 
 Der Bundle-Hash umfasst kuratierte Inhalte, Manifest, Engine-Revision und lokale
 Quellfingerabdrücke. Quelländerungen verlangen geprüfte Neugenerierung; Build und

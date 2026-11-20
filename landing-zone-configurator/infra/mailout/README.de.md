@@ -86,8 +86,7 @@ gh secret set LZC_MAILOUT_BINDINGS --repo stackitcloud/stackit-landing-zone \
 Das Prod-Deployment verlangt die SMTP-Bindung und bricht bei fehlender Bindung vor der Aktivierung ab.
 
 Production Release übergibt dieses Secret an die Runtime-Vorbereitung und prüft
-die tatsächliche CF-MailOut-Bindung vor dem SMTP-Verbindungstest. Staging, Runner
-und Migrations-App erhalten keine SMTP-Zugangsdaten und versenden keine Mails.
+die tatsächliche CF-MailOut-Bindung vor dem SMTP-Verbindungstest. Im Staging ist der Versand deaktiviert. Runner und Migrations-App erhalten keine SMTP-Zugangsdaten und versenden keine Mails.
 Vorlagen im STACKIT-Erscheinungsbild, Sprache und persönliche Themenpräferenzen
 entsprechen Dev; den Einladungsversand wählt der Einladende.
 

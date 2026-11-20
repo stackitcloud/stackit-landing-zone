@@ -600,7 +600,7 @@ function App() {
   const assistantPanel =
     platformAccess && draft && session ? (
       <AssistantChat
-        key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? "unsaved"}`}
+        key={`assistant:${workspaceKey(session)}:${configurationBinding?.id ?? (isCommonDraft(draft) ? draft.id : "unsaved-legacy")}`}
         session={session}
         binding={configurationBinding}
         dirty={draftDirty}

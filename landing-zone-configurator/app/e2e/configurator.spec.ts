@@ -499,6 +499,134 @@ test("template advice is available before any config and explicitly opens a reco
   ).toHaveCount(0);
 });
 
+test("configuration chat isolates configuration switches and refreshes teammate history without losing input", async ({
+  page,
+}) => {
+  const ids = [
+    "11111111-2222-4333-8444-000000000011",
+    "11111111-2222-4333-8444-000000000012",
+  ];
+  const configurations = ids.map((id, index) => {
+    const draft = createEditorConfiguration("standalone", id);
+    draft.name = `Team config ${index + 1}`;
+    return {
+      id,
+      name: draft.name,
+      revision: 1,
+      updatedAt: new Date().toISOString(),
+      draft,
+    };
+  });
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: "alice-id", login: "alice" },
+        csrfToken: "csrf-test",
+        tenant: {
+          id: "team-workspace",
+          kind: "workspace",
+          roles: ["platform-engineer"],
+        },
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      },
+    }),
+  );
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { github: false, stackit: true, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/configurations", (route) =>
+    route.fulfill({ json: { configurations } }),
+  );
+  let peerUpdated = false;
+  for (const [index, configuration] of configurations.entries()) {
+    await page.route(`**/api/v1/configurations/${configuration.id}`, (route) =>
+      route.fulfill({ json: { configuration } }),
+    );
+    await page.route(
+      `**/api/v1/configurations/${configuration.id}/assistant`,
+      (route) => {
+        expect(route.request().headers()["x-lzc-tenant"]).toBe(
+          "team-workspace",
+        );
+        expect(route.request().method()).toBe("GET");
+        return route.fulfill({
+          json: {
+            conversation: {
+              id: configuration.id,
+              revision: peerUpdated && index === 0 ? 2 : 1,
+              baseRevision: 1,
+              stale: false,
+              expiresAt: "2027-01-10T09:00:00Z",
+              proposal: null,
+              messages: [
+                {
+                  id: "peer-message",
+                  role: "user",
+                  authorId: "bob-id",
+                  authorName: "Bob",
+                  content: `Configuration ${index + 1} requirements`,
+                },
+                ...(peerUpdated && index === 0
+                  ? [
+                      {
+                        id: "peer-update",
+                        role: "assistant",
+                        content: "Teammate continuation",
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          },
+        });
+      },
+    );
+  }
+  await page.goto("/repositories");
+  await page
+    .getByRole("button", {
+      name: "Konfiguration öffnen: Team config 1",
+      exact: true,
+    })
+    .click();
+  const chat = page.getByRole("region", { name: "Konfigurations-Chat" });
+  await expect(
+    chat.getByText("Configuration 1 requirements", { exact: true }),
+  ).toBeVisible();
+  await expect(chat.getByText("Bob", { exact: true })).toBeVisible();
+  await chat
+    .getByRole("textbox", { name: "Deine Nachricht" })
+    .fill("My unsent requirements");
+  peerUpdated = true;
+  await expect(
+    chat.getByText("Teammate continuation", { exact: true }),
+  ).toBeVisible({ timeout: 10000 });
+  await expect(
+    chat.getByRole("textbox", { name: "Deine Nachricht" }),
+  ).toHaveValue("My unsent requirements");
+  await openConfigurationStorage(page);
+  await page
+    .getByRole("button", {
+      name: "Konfiguration öffnen: Team config 2",
+      exact: true,
+    })
+    .click();
+  await expect(
+    chat.getByText("Configuration 2 requirements", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    chat.getByText("Configuration 1 requirements", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    chat.getByText("Teammate continuation", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    chat.getByRole("textbox", { name: "Deine Nachricht" }),
+  ).toHaveValue("");
+});
+
 test("configuration chat sends answers directly and requires explicit proposal acceptance", async ({
   page,
 }, testInfo) => {
@@ -1516,6 +1644,7 @@ test("firewall HA merges local edits, reviews conflicts and saves separately", a
         revision: 2,
         message: "Bitte HA erneut vorschlagen.",
         language: "de",
+        conversation: { id, revision: conversationRevision },
         draft: localDraft,
       });
       proposalBaseRevision = revision;

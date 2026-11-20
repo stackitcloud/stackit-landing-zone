@@ -42,6 +42,8 @@ type Conversation = {
     role: "user" | "assistant";
     content: string;
     proposalDiscarded?: boolean;
+    authorId?: string;
+    authorName?: string;
     recommendations?: AssistantRecommendation[];
   }[];
   proposal: {
@@ -77,6 +79,12 @@ class MergeConfirmation extends Error {
 }
 
 const errors: Record<string, string> = {
+  assistant_private_conversation_unavailable:
+    "Der private Verlauf ist nicht mehr verfügbar. Bitte neu laden.",
+  assistant_shared_conversation_exists:
+    "Für diese Konfiguration gibt es bereits einen gemeinsamen Verlauf. Lade ihn, um daran weiterzuarbeiten.",
+  stale_tenant_context:
+    "Der Arbeitsbereich wurde geändert. Lade die Seite neu.",
   assistant_inference_failed:
     "Die Modellantwort konnte nicht sicher verarbeitet werden. Bitte erneut versuchen; deine Anfrage bleibt erhalten und es wurde nichts geändert.",
   assistant_observability_plan_incompatible:
@@ -128,7 +136,14 @@ async function checked(response: Response) {
   return response;
 }
 
-export function AssistantChat({
+export function AssistantChat(
+  props: Parameters<typeof ScopedAssistantChat>[0],
+) {
+  const scope = `${props.session.tenant?.id ?? ""}:${props.session.user.id ?? ""}:${props.binding?.id ?? (isCommonDraft(props.draft) ? props.draft.id : "unsaved-legacy")}`;
+  return <ScopedAssistantChat key={scope} {...props} />;
+}
+
+function ScopedAssistantChat({
   session,
   binding,
   dirty,
@@ -149,6 +164,8 @@ export function AssistantChat({
 }) {
   const [open, setOpen] = useState(true);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [privateConversation, setPrivateConversation] =
+    useState<Conversation | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | AssistantFailureError>("");
@@ -173,27 +190,69 @@ export function AssistantChat({
     ? `/api/v1/configurations/${binding.id}/assistant`
     : null;
 
+  const refreshGeneration = useRef(0);
+  const latestConversation = useRef(conversation);
+  latestConversation.current = conversation;
   useEffect(() => {
     const controller = new AbortController();
     lifetime.current = controller;
-    if (endpoint && binding?.revision)
-      void fetch(endpoint, { signal: controller.signal })
-        .then(checked)
-        .then((response) => response.json())
-        .then((body) => {
-          if (!controller.signal.aborted) {
-            setConversation(body.conversation);
-            setSelectedPaths(null);
-          }
-        })
-        .catch((reason) => {
-          if (!controller.signal.aborted)
-            setError(
-              reason instanceof AssistantFailureError ? reason : reason.message,
+    async function refresh() {
+      if (!endpoint || !binding?.revision || active.current) return;
+      const generation = ++refreshGeneration.current;
+      try {
+        const response = await checked(
+          await fetch(endpoint, {
+            signal: controller.signal,
+            cache: "no-store",
+            headers: { "x-lzc-tenant": session.tenant?.id ?? "" },
+          }),
+        );
+        const body = await response.json();
+        if (
+          controller.signal.aborted ||
+          active.current ||
+          generation !== refreshGeneration.current
+        )
+          return;
+        const current = latestConversation.current;
+        const next: Conversation | null = body.conversation ?? null;
+        if (
+          current?.id !== next?.id ||
+          current?.revision !== next?.revision ||
+          current?.stale !== next?.stale
+        ) {
+          setConversation(next);
+          setSelectedPaths(null);
+          setConfirmation(null);
+          if (current)
+            setNotice(
+              "Der gemeinsame Chat wurde aktualisiert. Deine Nachricht bleibt erhalten.",
             );
-        });
-    return () => controller.abort();
-  }, [endpoint, binding?.revision]);
+        }
+        setPrivateConversation(body.privateConversation ?? null);
+      } catch (reason) {
+        if (
+          !controller.signal.aborted &&
+          generation === refreshGeneration.current
+        )
+          setError(
+            reason instanceof AssistantFailureError
+              ? reason
+              : reason instanceof Error
+                ? reason.message
+                : "Anfrage fehlgeschlagen.",
+          );
+      }
+    }
+    void refresh();
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void refresh();
+    }, 4000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [endpoint, binding?.revision, session.tenant?.id]);
 
   useEffect(() => {
     if (open && (conversation || previewText !== null) && messages.current)
@@ -250,7 +309,7 @@ export function AssistantChat({
   );
 
   async function act(
-    action: "send" | "accept" | "discard" | "remove",
+    action: "send" | "accept" | "discard" | "remove" | "share",
     approved?: NonNullable<typeof confirmation>,
     outgoingMessage = message,
   ) {
@@ -269,10 +328,15 @@ export function AssistantChat({
     if (action === "discard" && !conversation?.proposal) return;
     if (
       action === "remove" &&
-      !window.confirm(t("Gespräch und Vorschlag endgültig löschen?"))
+      !window.confirm(
+        t(
+          "Gemeinsames Gespräch und Vorschlag für diese Konfiguration endgültig löschen?",
+        ),
+      )
     )
       return;
     active.current = true;
+    refreshGeneration.current++;
     setBusy(true);
     setError("");
     setNotice("");
@@ -300,8 +364,8 @@ export function AssistantChat({
         throw new Error(errors.assistant_editor_changed);
       const response = await checked(
         await fetch(
-          action === "accept" || action === "discard"
-            ? `${endpoint}/${action}`
+          action === "accept" || action === "discard" || action === "share"
+            ? `${endpoint}/${action === "share" ? "share-private" : action}`
             : endpoint,
           {
             method: action === "remove" ? "DELETE" : "POST",
@@ -311,7 +375,13 @@ export function AssistantChat({
                 ? { "Content-Type": "application/json" }
                 : {}),
               ...(action === "send" ? { Accept: "application/x-ndjson" } : {}),
+              ...(action === "remove" && conversation
+                ? {
+                    "If-Match": `"${conversation.id}:${conversation.revision}"`,
+                  }
+                : {}),
               "x-lzc-csrf": session.csrfToken,
+              "x-lzc-tenant": session.tenant?.id ?? "",
             },
             ...(action === "send"
               ? {
@@ -319,34 +389,55 @@ export function AssistantChat({
                     revision: binding.revision,
                     message: outgoingMessage,
                     language: currentLanguage(),
+                    conversation: conversation
+                      ? { id: conversation.id, revision: conversation.revision }
+                      : { id: null, revision: null },
                     draft,
                   }),
                 }
-              : action === "discard"
+              : action === "share"
                 ? {
                     body: JSON.stringify({
-                      conversationId: conversation?.id,
-                      revision: conversation?.revision,
+                      conversationId: privateConversation?.id,
+                      revision: privateConversation?.revision,
                     }),
                   }
-                : action === "accept"
+                : action === "discard"
                   ? {
                       body: JSON.stringify({
-                        ...acceptance,
-                        ...(approved
-                          ? {
-                              confirmedRevision: approved.configurationRevision,
-                            }
-                          : {}),
+                        conversationId: conversation?.id,
+                        revision: conversation?.revision,
                       }),
                     }
-                  : {}),
+                  : action === "accept"
+                    ? {
+                        body: JSON.stringify({
+                          ...acceptance,
+                          ...(approved
+                            ? {
+                                confirmedRevision:
+                                  approved.configurationRevision,
+                              }
+                            : {}),
+                        }),
+                      }
+                    : {}),
           },
         ),
       );
       if (signal?.aborted) return;
       if (action === "remove") {
         setConversation(null);
+        return;
+      }
+      if (action === "share") {
+        const body = await response.json();
+        if (signal?.aborted) return;
+        setConversation(body.conversation);
+        setSelectedPaths(null);
+        setNotice(
+          "Dein Verlauf ist jetzt für berechtigte Mitglieder dieses Arbeitsbereichs sichtbar.",
+        );
         return;
       }
       if (action === "discard") {
@@ -450,6 +541,42 @@ export function AssistantChat({
       </div>
       {open && (
         <div className="assistant-body">
+          <p className="field-hint">
+            {t(
+              "Berechtigte Teammitglieder können den Chat dieser Konfiguration lesen und fortsetzen.",
+            )}
+          </p>
+          {privateConversation && (
+            <details className="assistant-private-history">
+              <summary>{t("Bisheriger privater Verlauf")}</summary>
+              <p>
+                {t(
+                  "Dieser ältere Verlauf ist nur für dich sichtbar. Du kannst ihn für diese Konfiguration teilen, solange noch kein gemeinsamer Verlauf besteht.",
+                )}
+              </p>
+              {privateConversation.messages.map((entry) => (
+                <div
+                  className={`assistant-message ${entry.role}`}
+                  key={entry.id}
+                >
+                  <strong>
+                    {t(entry.role === "user" ? "Du" : "Assistent")}
+                  </strong>
+                  <p>{entry.content}</p>
+                </div>
+              ))}
+              {!conversation && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() => void act("share")}
+                >
+                  {t("Privaten Verlauf für diese Konfiguration teilen")}
+                </button>
+              )}
+            </details>
+          )}
           {conversation && (
             <p className="muted">
               {t("Gespräch gültig bis")}{" "}
@@ -467,7 +594,13 @@ export function AssistantChat({
           >
             {conversation?.messages.map((entry) => (
               <div className={`assistant-message ${entry.role}`} key={entry.id}>
-                <strong>{t(entry.role === "user" ? "Du" : "Assistent")}</strong>
+                <strong>
+                  {entry.role === "user"
+                    ? entry.authorId && entry.authorId !== session.user.id
+                      ? (entry.authorName ?? t("Teammitglied"))
+                      : t("Du")
+                    : t("Assistent")}
+                </strong>
                 <p>{entry.content}</p>
                 {entry.role === "assistant" && entry.recommendations && (
                   <AssistantRecommendations items={entry.recommendations} />

@@ -1,4 +1,25 @@
 export const englishMessages: Record<string, string> = {
+  "Der Arbeitsbereich wurde geändert. Lade die Seite neu.":
+    "The workspace has changed. Reload the page.",
+  "Der private Verlauf ist nicht mehr verfügbar. Bitte neu laden.":
+    "The private history is no longer available. Please reload.",
+  "Für diese Konfiguration gibt es bereits einen gemeinsamen Verlauf. Lade ihn, um daran weiterzuarbeiten.":
+    "This configuration already has a shared conversation. Load it to continue working together.",
+  "Der gemeinsame Chat wurde aktualisiert. Deine Nachricht bleibt erhalten.":
+    "The shared chat was updated. Your message has been kept.",
+  "Gemeinsames Gespräch und Vorschlag für diese Konfiguration endgültig löschen?":
+    "Permanently delete the shared conversation and proposal for this configuration?",
+  "Dein Verlauf ist jetzt für berechtigte Mitglieder dieses Arbeitsbereichs sichtbar.":
+    "Your history is now visible to authorized members of this workspace.",
+  "Berechtigte Teammitglieder können den Chat dieser Konfiguration lesen und fortsetzen.":
+    "Authorized team members can read and continue this configuration's chat.",
+  "Bisheriger privater Verlauf": "Previous private history",
+  "Dieser ältere Verlauf ist nur für dich sichtbar. Du kannst ihn für diese Konfiguration teilen, solange noch kein gemeinsamer Verlauf besteht.":
+    "This earlier history is visible only to you. You can share it for this configuration if no shared conversation exists yet.",
+  "Privaten Verlauf für diese Konfiguration teilen":
+    "Share private history for this configuration",
+  Teammitglied: "Team member",
+
   "Vorgeschlagene Standardwerte": "Proposed defaults",
   "Prüfe diese Standardwerte, bevor du den Vorschlag übernimmst.":
     "Review these defaults before accepting the proposal.",

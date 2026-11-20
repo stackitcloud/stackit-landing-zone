@@ -185,6 +185,7 @@ export function buildAssistantKnowledgeTopics() {
             "landing-zone-configurator/app/packages/contracts/src/application-upgrades.ts",
             "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql",
             "landing-zone-configurator/app/apps/api/db/098_managed_state_serialization.sql",
+            "landing-zone-configurator/app/apps/api/db/102_shared_configuration_chat.sql",
             "docs/state-locking.md",
           ].includes(path))
       )

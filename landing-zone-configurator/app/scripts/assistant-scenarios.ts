@@ -1429,6 +1429,13 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Nutze die Email meines aktuell verifiziert angemeldeten STACKIT-Benutzers als Organisations-Owner.",
   },
   {
+    id: "configuration-shared-chat-advice",
+    topic: "configuration-lifecycle",
+    fixture: "baseline",
+    message:
+      "Wie arbeiten zwei berechtigte Platform Engineers im selben Arbeitsbereich am Assistant-Chat einer gespeicherten Konfiguration zusammen? Was passiert beim Wechsel der Konfiguration, mit bisher privaten Verläufen und mit meiner Identität beim Fortsetzen? Erkläre auch, ob ein Chat automatisch speichert oder deployt. Nur beraten, keine Änderungen.",
+  },
+  {
     id: "application-template-upgrade-advice",
     topic: "configuration-lifecycle",
     fixture: "baseline",
@@ -2270,6 +2277,20 @@ export function validateAssistantScenario(
     assistantTemplateQuestionPaths(fixture.values),
   );
   const failures: string[] = [];
+  if (scenario.id === "configuration-shared-chat-advice") {
+    const text = dialogue.explanation;
+    if (!/gemeinsam|geteilt|shared/i.test(text))
+      failures.push("shared_configuration_chat_missing");
+    if (
+      !/privat|private/i.test(text) ||
+      !/Autor|author|ausdrücklich|explicit/i.test(text)
+    )
+      failures.push("legacy_private_history_consent_missing");
+    if (!/Identität|identity|Berechtigung|permission/i.test(text))
+      failures.push("current_actor_context_missing");
+    if (dialogue.changes.length || dialogue.questions.length)
+      failures.push("shared_chat_unrequested_changes_or_questions");
+  }
   if (scenario.id === "firewall-access-bootstrap-advice") {
     failures.push(...assistantFirewallBootstrapFailures(dialogue.explanation));
     if (dialogue.changes.length || dialogue.questions.length)

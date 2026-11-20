@@ -48,7 +48,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "5e30c72e152a1f54b2ecae7a4e6c6eb1bdc91c912f2bc7202d1cbb7fcaf527b4",
+            "0ebc392adf2961343911c1289e62cdd975b9073592cddb549f29d60f6d5a9a30",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
@@ -158,7 +158,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [
@@ -332,7 +332,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [
@@ -524,7 +524,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -694,7 +694,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -899,7 +899,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -960,7 +960,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "5e30c72e152a1f54b2ecae7a4e6c6eb1bdc91c912f2bc7202d1cbb7fcaf527b4",
+            "0ebc392adf2961343911c1289e62cdd975b9073592cddb549f29d60f6d5a9a30",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
@@ -1075,7 +1075,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [
@@ -1279,7 +1279,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -1443,7 +1443,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -1614,7 +1614,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [
@@ -1805,7 +1805,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -2015,7 +2015,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -2297,7 +2297,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -2528,7 +2528,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -2589,22 +2589,22 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/routes.ts",
           sha256:
-            "8fa3d3277b95194b96d42cf0e2ec72fac6a478511ef3b06640b81c8545676ae0",
+            "75a4189a8f2af753a56b9ad7abc2e45f553b6cb8f455121b01e803135c72fd46",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "5e30c72e152a1f54b2ecae7a4e6c6eb1bdc91c912f2bc7202d1cbb7fcaf527b4",
+            "0ebc392adf2961343911c1289e62cdd975b9073592cddb549f29d60f6d5a9a30",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx",
           sha256:
-            "dba870729eded3f3eb22734743609e0ac04a371108f5929aa8cfbf9932414037",
+            "c811de2ce928b471debf221237da428eb102ff6153aacc0488e988fe0c323b0f",
         },
         {
           path: "src/modules/landing-zone/8-git.tf",
@@ -2891,7 +2891,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -3153,7 +3153,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [
@@ -3344,7 +3344,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -3507,7 +3507,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -3557,8 +3557,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "configuration-lifecycle",
       file: "configuration-lifecycle.md",
-      version: 14,
-      checkedOn: "2026-11-09",
+      version: 15,
+      checkedOn: "2026-11-20",
       qualification: "local-draft-not-reviewed-release",
       groups: [],
       mandatory: true,
@@ -3573,17 +3573,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
           sha256:
-            "5e30c72e152a1f54b2ecae7a4e6c6eb1bdc91c912f2bc7202d1cbb7fcaf527b4",
+            "0ebc392adf2961343911c1289e62cdd975b9073592cddb549f29d60f6d5a9a30",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
           sha256:
             "cd1c5d72edd2c41c25dc840e8bda22d1654f26c3a811e3e4514af06ef83ec9f2",
-        },
-        {
-          path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
-          sha256:
-            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
@@ -3624,6 +3619,11 @@ export const assistantKnowledgeTopics = {
           path: "landing-zone-configurator/app/apps/api/db/093_platform_destructive_impact_review.sql",
           sha256:
             "64bc29316d0e28c021ad412ce1ef48cd771a6b9774b549482275f5a5dbdcb53b",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/db/102_shared_configuration_chat.sql",
+          sha256:
+            "be39ebc8c1ee809aa092c764f04f84984d7e20c0e05a89a9f810acb09e22de9f",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
@@ -3686,6 +3686,11 @@ export const assistantKnowledgeTopics = {
             "151ea86a683cfdc18bbb519786b292e02e31a7bbbe7c4a1e423b5b143e41d525",
         },
         {
+          path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
+          sha256:
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
+        },
+        {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
           sha256:
             "4e123d0911f65ba8d138cad3f74f7fbd6957ad0964aedcbbfa55b2392fc94e7f",
@@ -3728,7 +3733,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
+            "f11a78ebc22213562dd372a4b3c95581ce2606d20b5f29c4d0e0ad106ce34181",
         },
       ],
       externalSources: [],
@@ -3747,9 +3752,9 @@ export const assistantKnowledgeTopics = {
       fieldPaths: [],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/configuration-lifecycle.md",
-      text: '# Configuration, Conversation and Execution Lifecycle\n\n## Purpose\n\nAuth; acceptance ≠ execution.\n\n## Accelerator Contract\n\nNative tfvars; defaults/catalogues enable nothing. Patches: company\nname/code/region, existing folders, native SNA. Naming consent is NAMES ONLY;\npreserve keys/metadata, never IDs/region/access/owners/roles. Save/publish/order/Plan/Apply/Destroy/Recovery separate. Apply=foundations+enabled inputs.\nPinned IaC/lock/tools+patched Worker.\n\nOrigin=template Git; desired=Accelerator, not draft; lastApplied=successful\nApply source, NOT State/Recovery.\nSource upgrade preserves order/project/State/backend/policy; then fresh\nPlan review (changes/replacements/deletions), explicit separate Apply approval.\nFailure keeps desired but MAY CHANGE State/resources; never promise no loss,\nunchanged failed State or reorder. Recovery=interrupted snapshot/source;\nPlan=actual State, not lastApplied. Withdrawn sources/unresolved Recovery block\nupgrades. Operator: reviewed recovery package; no bypass/fake hashes/arbitrary Git.\n\nTemplate: Platform Owner publishes same-family forward path. Keep order/project/\nState/backend/answers; ask new required answers. Confirm desired snapshot; fresh\nPlan/separate Apply. Block disallowed infrastructure/service/account/credential\nremoval/replacement and unknown evidence; no checkbox override. Exact Plan may\npermit project custom-role/role-assignment removal/replacement as sensitive IAM.\nSensitive IAM/keys/network/services/availability follow PATH, not NEW-ORDER policy.\nSelf-service: Application Owner reviews fresh Plan, confirms Apply; NO extra\nPlatform Owner approval. Default separate approval binds Plan/artifact/candidate,\neven ordinary changes. Policy edit appends immutable publication; old targets/Plans\nretain policy. Reselect latest path+fresh Plan; no retroactive unlock.\nShared firewall/routes affect ALL Applications, no private old copy. Platform\nOwner decides known complete shared deletes/replacements from Plan changes,\ncounts, data-loss warning and affected Applications. Explicit impact ack\nbinds Plan/artifact/State/dependencies; separate normal/destructive Apply approval.\nBlock unknown/incomplete evidence, active execution/Recovery, changed State.\nAudit Logs→Observability: same review. Fresh Plan; never relabel old Plans.\nPublish actual successful contract path; requester adopts; same template allowed.\nOrg/placement/SNA/backend migration separate. Chat cannot Git/publish/order/upgrade/unlock/execute or expose raw State/Plan.\n\n## Dependencies\n\nReady ≠ executed.\n\n## Dialogue\n\nReuse history/requirements/follow-ups; topic switches win.\nState assumptions; later enables nothing. Split business/operator choices;\nOne missing firewall question. Options ≠ consent. multiple=true: compatible answers,\nfree text. Revalidate subsets; save only whole-proposal acceptance. New configs inherit server revision-bound context; no retrofit. Groups/parameters constrain versions.\n\n## Examples\n\n"SNA first, firewall later": SNA only; disclose inherited firewall. No selective Apply; tfvars need external credentials/backend.\n\n## Limits\n\nRecheck auth/base/candidate on acceptance/inference/reauth.\nChats expire three calendar months from\nCREATION; activity/deletion/late inference never extend expiry or restore derived\ncontext. Refresh knowledge; keep drafts on errors. 5 sessions=load target, not quota.\n\n## Credentials\n\nSession ≠ rights; no tokens/keys/raw errors/protected model data.\n\n## Sources\n\nManifest.\n',
+      text: '# Configuration, Conversation and Execution Lifecycle\n\n## Purpose\n\nAuth; accept≠execute.\n\n## Accelerator Contract\n\nNative tfvars; defaults/catalogues enable nothing. Patches: company\nname/code/region, existing folders, native SNA. Naming consent is NAMES ONLY;\npreserve keys/metadata, never IDs/region/access/owners/roles. Save/publish/order/Plan/Apply/Destroy/Recovery separate. Apply=foundations+enabled inputs.\nPinned IaC/lock/tools+patched Worker.\n\nOrigin=template Git; desired=Accelerator; lastApplied=successful Apply source, not State/Recovery or draft.\nSource upgrade preserves order/project/State/backend/policy; then fresh\nPlan review (changes/replacements/deletions), explicit separate Apply approval.\nFailure preserves desired, may change State/resources. Never promise lossless failure or reorder. Recovery=interrupted snapshot/source;\nPlan=actual State, not lastApplied. Withdrawn sources/unresolved Recovery block\nupgrades. Operator: reviewed recovery package; no bypass/fake hashes/arbitrary Git.\n\nTemplate: Platform Owner publishes same-family forward path. Keep order/project/\nState/backend/answers; ask new required answers. Confirm desired snapshot; fresh\nPlan/separate Apply. Block disallowed infrastructure/service/account/credential\nremoval/replacement and unknown evidence; no checkbox override. Exact Plan may\npermit project custom-role/role-assignment removal/replacement as sensitive IAM.\nIAM/keys/network/services/availability follow PATH policy, not NEW-ORDER.\nSelf-service: Application Owner reviews fresh Plan, confirms Apply; no Platform Owner approval. Separate approval always binds Plan/artifact/candidate. Policy edit appends immutable publication; old targets/Plans\nretain policy. Reselect latest path+fresh Plan; no retroactive unlock.\nShared firewall/routes affect ALL Applications; no private copy. Platform\nOwner decides known complete shared deletes/replacements from Plan changes,\ncounts, data-loss warning and affected Applications. Explicit impact ack\nbinds Plan/artifact/State/dependencies; separate normal/destructive Apply approval.\nBlock unknown/incomplete evidence, active execution/Recovery, changed State.\nAudit→Observability: same review. Fresh Plan; never relabel old Plans.\nPublish successful contract path; requester adopts; same template allowed.\nOrg/placement/SNA/backend migration separate. Chat cannot Git/publish/order/upgrade/unlock/execute or expose raw State/Plan.\n\n## Dependencies\n\nReady≠executed.\n\n## Dialogue\n\nReuse history; topic switches win.\nConfig chat shared by authorized platform members. Retain authors; author shares legacy private logs, never merge. Actor switch rebuilds brief with current identity/rights. Drafts local; chat CAS; switch abort/reset.\nState assumptions; later enables nothing. Split business/operator choices;\nOne missing firewall question. Options ≠ consent. multiple=true: compatible answers/free text. Revalidate subsets; whole-proposal acceptance only. New configs inherit revision-bound context; no retrofit. Groups/parameters constrain versions.\n\n## Examples\n\n"SNA first": SNA only; disclose inherited firewall. No selective Apply; tfvars need external credentials/backend.\n\n## Limits\n\nRecheck auth/base/candidate on acceptance/inference/reauth.\nChat expiry=3 calendar months from creation; no activity/late-inference extension or automatic context resurrection. Refresh knowledge; keep drafts on errors. 5 sessions=load target, not quota.\n\n## Credentials\n\nSession ≠ rights; no tokens/keys/raw errors/protected model data.\n\n## Sources\n\nManifest.\n',
       sha256:
-        "70a353e3705603d273d782bffd59d75bf26a78d2674aa2f9b6cafc11834a37e9",
+        "8c8c15401188db6596d305ed6ca2cd38a08eb28f1fa9e1878ca38b610b826241",
     },
   ],
 } as const;

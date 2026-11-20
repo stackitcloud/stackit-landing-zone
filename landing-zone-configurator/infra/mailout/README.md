@@ -81,8 +81,7 @@ gh secret set LZC_MAILOUT_BINDINGS --repo stackitcloud/stackit-landing-zone \
 Production deployment requires the SMTP binding and fails before activation if it is missing.
 
 The Production Release workflow passes this secret to runtime preparation and
-verifies the actual CF MailOut binding before SMTP connection checks. Staging,
-Runner and migration applications never receive SMTP credentials or send mail.
+verifies the actual CF MailOut binding before SMTP connection checks. Staging email is disabled. Runner and migration applications never receive SMTP credentials or send mail.
 Production sending uses the same branded templates, language and per-user topic
 preferences as Dev; invitation delivery is selected by the inviter.
 
