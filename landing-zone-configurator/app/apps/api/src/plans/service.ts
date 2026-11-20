@@ -188,7 +188,7 @@ export class Plans {
         throw invalid("credential_role_required", 403);
       const run = (
         await client.query(
-          "SELECT operation,status,state_key,error_code,input_claimed,finished_at FROM lzc.plan_runs WHERE id=$1 AND owner_user_id=$2 FOR SHARE",
+          "SELECT * FROM lzc.plan_runs WHERE id=$1 AND owner_user_id=$2 FOR SHARE",
           [id, session.userId],
         )
       ).rows[0];
@@ -197,13 +197,16 @@ export class Plans {
         throw invalid("checkpoint_not_available");
       const state = (
         await client.query(
-          "SELECT state_key,version,ciphertext,stable_aad,backend_id,lock_run_id,pending_backend_id FROM lzc.platform_states WHERE state_key=$1 FOR SHARE",
+          "SELECT * FROM lzc.platform_states WHERE state_key=$1 FOR SHARE",
           [run.state_key],
         )
       ).rows[0];
-      if (!state || state.backend_id || !state.ciphertext)
+      if (!state || (!state.backend_id && !state.ciphertext))
         throw invalid("checkpoint_not_available");
-      const bytes = execution.bootstrap(session, state);
+      const remote = state.backend_id
+        ? await this.remoteCheckpoint(client, session, run, state)
+        : undefined;
+      const bytes = remote?.bytes ?? execution.bootstrap(session, state);
       const document = stateDocument(bytes);
       const resources = new Map<
         string,
@@ -257,6 +260,7 @@ export class Plans {
           : undefined;
       return {
         ...(migration ? { migration } : {}),
+        ...(remote ? { remoteIdentity: remote.identity } : {}),
         stateVersion: String(state.version),
         checkpointSha256: sha256(bytes),
         serial: document.serial,
@@ -279,6 +283,52 @@ export class Plans {
       };
     });
   }
+  private async remoteCheckpoint(
+    client: pg.PoolClient,
+    session: Session,
+    run: {
+      id: string;
+      error_code: string;
+      input_claimed: boolean;
+      finished_at: unknown;
+      runner_app_id: string | null;
+      runner_droplet_id: string | null;
+      cleaned: boolean;
+    },
+    state: Parameters<PlatformExecution["current"]>[2],
+  ) {
+    if (
+      !state.backend_id ||
+      state.ciphertext ||
+      state.pending_backend_id ||
+      state.lock_run_id ||
+      run.error_code !== "apply_failed" ||
+      !run.input_claimed ||
+      !run.finished_at
+    )
+      throw invalid("reconciliation_not_available");
+    const recovery = await client.query(
+      "SELECT 1 FROM lzc.state_recoveries WHERE run_id=$1",
+      [run.id],
+    );
+    if (recovery.rowCount) throw invalid("reconciliation_not_available");
+    if (
+      !run.cleaned &&
+      (!run.runner_app_id ||
+        !run.runner_droplet_id ||
+        !this.runner.isStopped ||
+        !(await this.runner.isStopped(
+          run.id,
+          run.runner_app_id,
+          run.runner_droplet_id,
+        )))
+    )
+      throw invalid("runner_not_stopped");
+    const backends = this.execution?.backends;
+    if (!backends) throw invalid("backend_service_unavailable", 503);
+    const backend = await backends.runner(client, session, state.backend_id);
+    return backends.current(backend, true);
+  }
   async reconcile(session: Session, id: string, raw: unknown) {
     z.uuid().parse(id);
     const input = z
@@ -287,6 +337,12 @@ export class Plans {
           confirmRetainState: z.literal(true),
           stateVersion: z.string().regex(/^[1-9][0-9]*$/),
           checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),
+        }),
+        z.strictObject({
+          confirmRemoteState: z.literal(true),
+          stateVersion: z.string().regex(/^[1-9][0-9]*$/),
+          checkpointSha256: z.string().regex(/^[a-f0-9]{64}$/),
+          remoteIdentity: z.string().min(1).max(512),
         }),
         z.strictObject({
           confirmCompleteMigration: z.literal(true),
@@ -383,38 +439,68 @@ export class Plans {
         "SELECT run_id FROM lzc.state_recoveries WHERE run_id=$1",
         [id],
       );
-      if (
-        !state ||
-        state.backend_id ||
-        state.lock_run_id ||
-        (!completingMigration && state.pending_backend_id) ||
-        !state.ciphertext ||
-        recoveries.rowCount
-      )
-        throw invalid("reconciliation_not_available");
-      const bytes = execution.bootstrap(session, state);
-      stateDocument(bytes);
-      if (
-        String(state.version) !== input.stateVersion ||
-        sha256(bytes) !== input.checkpointSha256
-      )
-        throw invalid("checkpoint_changed");
-      if ("confirmCompleteMigration" in input) {
-        const preparation = (
-          await client.query(
-            "SELECT manifest FROM lzc.deployment_preparations WHERE id=$1",
-            [run.preparation_id],
-          )
-        ).rows[0];
-        if (!preparation) throw invalid("input_invalid");
-        await execution.migration(
+      if ("confirmRemoteState" in input) {
+        if (!state || recoveries.rowCount)
+          throw invalid("reconciliation_not_available");
+        const remote = await this.remoteCheckpoint(client, session, run, state);
+        if (
+          String(state.version) !== input.stateVersion ||
+          remote.identity !== input.remoteIdentity ||
+          sha256(remote.bytes) !== input.checkpointSha256
+        )
+          throw invalid("checkpoint_changed");
+        // Re-read before committing. A State written since the user's inspection
+        // invalidates this confirmation; never write, restore or unlock S3 here.
+        const current = await this.remoteCheckpoint(
           client,
           session,
           run,
-          "complete",
-          preparation.manifest.organization.id,
-          input,
+          state,
         );
+        if (
+          current.identity !== remote.identity ||
+          sha256(current.bytes) !== input.checkpointSha256
+        )
+          throw invalid("checkpoint_changed");
+        if (state.remote_identity !== current.identity)
+          await client.query(
+            "UPDATE lzc.platform_states SET version=version+1,remote_identity=$2 WHERE state_key=$1",
+            [state.state_key, current.identity],
+          );
+      } else {
+        if (
+          !state ||
+          state.backend_id ||
+          state.lock_run_id ||
+          (!completingMigration && state.pending_backend_id) ||
+          !state.ciphertext ||
+          recoveries.rowCount
+        )
+          throw invalid("reconciliation_not_available");
+        const bytes = execution.bootstrap(session, state);
+        stateDocument(bytes);
+        if (
+          String(state.version) !== input.stateVersion ||
+          sha256(bytes) !== input.checkpointSha256
+        )
+          throw invalid("checkpoint_changed");
+        if ("confirmCompleteMigration" in input) {
+          const preparation = (
+            await client.query(
+              "SELECT manifest FROM lzc.deployment_preparations WHERE id=$1",
+              [run.preparation_id],
+            )
+          ).rows[0];
+          if (!preparation) throw invalid("input_invalid");
+          await execution.migration(
+            client,
+            session,
+            run,
+            "complete",
+            preparation.manifest.organization.id,
+            input,
+          );
+        }
       }
       await client.query(
         "INSERT INTO lzc.platform_reconciliations(run_id,tenant_id,owner_user_id,session_id,state_key,state_version,checkpoint_sha256) VALUES($1,$2,$3,$4,$5,$6,$7)",

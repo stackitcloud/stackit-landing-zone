@@ -47,6 +47,7 @@ export const platformCheckpointSchema = z.strictObject({
   pendingMigration: z.boolean(),
   recoveryAvailable: z.boolean(),
   canResume: z.boolean(),
+  remoteIdentity: z.string().min(1).max(512).optional(),
   migration: z
     .strictObject({
       remoteIdentity: z.string().min(1).max(512),

@@ -309,6 +309,8 @@ function PlanOutput({ run }: { run: Run }) {
 }
 
 const checkpointFailures: Record<string, string> = {
+  runner_not_stopped:
+    "Der Runner ist noch nicht nachweislich beendet. Warte kurz und prüfe erneut.",
   migration_verification_failed:
     "Der S3-State stimmt nicht mit dem Bootstrap-Checkpoint überein. Die Migration bleibt gesperrt; keinen erneuten Apply starten.",
   migration_not_ready:
@@ -376,18 +378,25 @@ function CheckpointReview({
           body: JSON.stringify(
             action === "checkpoint"
               ? {}
-              : checkpoint?.migration
+              : checkpoint?.remoteIdentity
                 ? {
-                    confirmCompleteMigration: true,
+                    confirmRemoteState: true,
                     stateVersion: checkpoint.stateVersion,
                     checkpointSha256: checkpoint.checkpointSha256,
-                    remoteIdentity: checkpoint.migration.remoteIdentity,
+                    remoteIdentity: checkpoint.remoteIdentity,
                   }
-                : {
-                    confirmRetainState: true,
-                    stateVersion: checkpoint?.stateVersion,
-                    checkpointSha256: checkpoint?.checkpointSha256,
-                  },
+                : checkpoint?.migration
+                  ? {
+                      confirmCompleteMigration: true,
+                      stateVersion: checkpoint.stateVersion,
+                      checkpointSha256: checkpoint.checkpointSha256,
+                      remoteIdentity: checkpoint.migration.remoteIdentity,
+                    }
+                  : {
+                      confirmRetainState: true,
+                      stateVersion: checkpoint?.stateVersion,
+                      checkpointSha256: checkpoint?.checkpointSha256,
+                    },
           ),
         },
       );
@@ -465,6 +474,14 @@ function CheckpointReview({
               )}
             </dd>
           </dl>
+          {checkpoint.remoteIdentity && (
+            <dl className="summary-list">
+              <dt>{t("S3-Prüfstand")}</dt>
+              <dd>
+                <code>{checkpoint.remoteIdentity}</code>
+              </dd>
+            </dl>
+          )}
           {checkpoint.migration && (
             <dl className="summary-list">
               <dt>{t("S3-Abgleich")}</dt>
@@ -508,7 +525,9 @@ function CheckpointReview({
                 {t(
                   checkpoint.migration
                     ? "Ich habe den S3-Abgleich geprüft und bestätige die Umstellung auf diesen S3-State ohne erneuten Apply."
-                    : "Ich habe den Checkpoint geprüft und bestätige, dass der bestehende State unverändert erhalten bleibt.",
+                    : checkpoint.remoteIdentity
+                      ? "Ich habe den S3-State geprüft und bestätige die erneute Planung mit diesem State. Bestehende Ressourcen bleiben erhalten."
+                      : "Ich habe den Checkpoint geprüft und bestätige, dass der bestehende State unverändert erhalten bleibt.",
                 )}
               </label>
               <button
