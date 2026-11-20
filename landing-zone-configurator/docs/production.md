@@ -198,6 +198,11 @@ remain only for historical provenance: published `accepted-assistant-limitations
 releases remain readable; `dev-skip-assistant-qualification` stays Dev-only and
 non-promotable.
 
+Installing an existing release with `publish=false` skips publication only; source
+verification and the protected deployment job still run. Confirm that the `deploy`
+job actually completed successfully, including runtime checks. An overall green
+workflow with `deploy` skipped does not prove installation.
+
 ## Recovery and rotation
 
 Keep previous published release assets and their protected buildpack tags.

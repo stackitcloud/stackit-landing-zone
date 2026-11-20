@@ -215,6 +215,12 @@ Die alten Modi sind nur für historische Nachweise erhalten: veröffentlichte
 `accepted-assistant-limitations`-Releases bleiben kompatibel lesbar;
 `dev-skip-assistant-qualification` bleibt Dev-only und nicht promotierbar.
 
+Bei der Installation eines bestehenden Releases mit `publish=false` entfällt nur
+die Veröffentlichung. Quellprüfung und geschützter Deploy-Job laufen weiterhin.
+Prüfe, dass `deploy` einschließlich Laufzeitprüfungen tatsächlich erfolgreich
+abgeschlossen wurde. Ein insgesamt grüner Workflow mit übersprungenem `deploy`
+belegt keine Installation.
+
 ## Wiederherstellung und Rotation
 
 Vorherige veröffentlichte Release-Assets und ihre geschützten Buildpack-Tags
