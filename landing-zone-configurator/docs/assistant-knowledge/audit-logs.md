@@ -35,13 +35,14 @@ read central ingestion secrets.
 
 ## Dialogue
 
-Editor: ask retention/ACL/Lock/coverage. Only Audit USER answers authorize
-days/CIDRs/Lock; no defaults/other components. Managed: managed_resources=true,
+Editor: propose actual native defaults as labelled assumptions for unspecified
+retention/ACL/Lock; explain locking consequences. Explicit USER restrictions win;
+no guessed values or other components. Managed: managed_resources=true,
 no invented IDs.
 
 ## Examples
 
-Missing ACL → ask; no borrowed Firewall net.
+Missing ACL → labelled native default or question; no borrowed Firewall net.
 
 ## Limits
 

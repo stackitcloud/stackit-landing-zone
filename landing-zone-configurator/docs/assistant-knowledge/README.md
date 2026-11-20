@@ -54,7 +54,9 @@ with scoped offerings and reviewed ceilings using one shared evaluator. A unique
 fitting recommendation remains visible while another decision is open; it is not
 another required confirmation. Native-default selections resolve to actual native
 values, including omission/null semantics, and remain reviewable draft changes.
-Unanswered questions alone never authorize service activation or public access.
+Actual native defaults may also be labelled assumptions in an unapplied proposal.
+Explicit restrictions and decisions the user reserves take precedence; an unanswered
+question is not consent. The proposal displays default provenance for review.
 
 Folder display-name changes preserve stable keys, parent bindings, permissions and
 identities. Actual source checks, protected fields, the compiler, tenant ownership,

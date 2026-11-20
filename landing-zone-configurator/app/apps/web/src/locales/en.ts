@@ -1,7 +1,7 @@
 export const englishMessages: Record<string, string> = {
-  "Vorgeschlagene Zugriffsstandards": "Proposed access defaults",
-  "Prüfe diese Zugriffseinstellungen, bevor du den Vorschlag übernimmst.":
-    "Review these access settings before accepting the proposal.",
+  "Vorgeschlagene Standardwerte": "Proposed defaults",
+  "Prüfe diese Standardwerte, bevor du den Vorschlag übernimmst.":
+    "Review these defaults before accepting the proposal.",
   "Alle IPv4-Adressen": "Any IPv4 address",
   "Alle IPv6-Adressen": "Any IPv6 address",
   "Erlaubte Quelle": "Allowed source",

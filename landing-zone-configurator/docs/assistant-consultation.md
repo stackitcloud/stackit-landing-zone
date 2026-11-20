@@ -134,8 +134,12 @@ renderer: actual Accelerator defaults, saved allowlists and manual public-egress
 input. Model wording does not have to match private labels character for character.
 Unsupported model-written options cannot enter the displayed choice list. This
 changes no value: the user's selection and proposal/default evidence remain required.
-Validated native access defaults are also rendered beside the active proposal's
-field changes. Unrestricted IPv4/IPv6 sources are named explicitly, from server-owned
+Actual native defaults may supply unspecified proposal fields as visible assumptions,
+without pretending they are user decisions. Omitted required creation fields are
+materialized only from real native defaults; explicit null, false and empty lists
+retain their semantics. Existing unrelated configuration and explicit restrictions
+take precedence. Access profiles and identities are not native variable defaults.
+Defaults are rendered beside the active proposal's field changes. Unrestricted IPv4/IPv6 sources are named explicitly, from server-owned
 metadata rather than a model claim. The notice is hidden when its field is no longer
 part of the pending proposal. Rendering a notice does not select or accept a value.
 Absent reference metadata uses only already observed source references; explicit

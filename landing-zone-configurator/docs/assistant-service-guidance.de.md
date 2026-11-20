@@ -40,6 +40,12 @@ Firmen-/VPN-Egress-Netze werden nicht aus privaten SNA-Netzen oder der Topologie
 anderer Services abgeleitet. Eine unbeantwortete Frage allein erlaubt keinen
 öffentlichen Service.
 
+Der Assistant darf tatsächliche dokumentierte Accelerator-Defaults als erkennbare
+Annahmen für nicht festgelegte Felder vorschlagen. Der Vorschlag zeigt diese Werte
+zur Prüfung; sie sind keine Benutzerentscheidungen. Ausdrückliche
+Zugriffsbeschränkungen und offenzuhaltende Entscheidungen haben Vorrang.
+Übernahme, Speichern und Plan/Apply bleiben getrennte Schritte.
+
 ## Gemeinsame Katalogauswahl
 
 `packages/contracts/src/cloud-catalogue-fields.ts` ordnet die Felder ihren

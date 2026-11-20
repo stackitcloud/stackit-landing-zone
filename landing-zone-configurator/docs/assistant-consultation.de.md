@@ -345,6 +345,15 @@ tatsächliche native Variablendefaults. Literale Werte, Katalogauswahl und regis
 Profile benötigen diese Belege nicht; Quellen-, Schema- und Compilerprüfungen gelten
 weiter für alle Vorschläge.
 
+Tatsächliche native Defaults dürfen nicht festgelegte Vorschlagsfelder als sichtbare
+Annahmen ergänzen; sie gelten dadurch nicht als Benutzerentscheidungen. Fehlende
+Pflichtfelder neuer Komponenten werden nur aus echten nativen Defaults ergänzt.
+Explizite null-, false- und leere Listenwerte behalten ihre Bedeutung. Bestehende
+andere Konfiguration und ausdrückliche Einschränkungen haben Vorrang. Zugriffsprofile
+und Identitäten sind keine nativen Variablendefaults. Der Vorschlag zeigt verwendete
+Defaults neben den Feldänderungen zur Prüfung; öffentliche IPv4-/IPv6-Netze werden
+ausdrücklich benannt. Übernahme, Speichern und Plan/Apply bleiben getrennt.
+
 Vorhandene Template-Settings werden auf das passende native Projekt-/Sandbox-Modul
 abgebildet. Ihre Auswahllisten verwenden dieselbe Feldregistrierung wie der Editor.
 Katalogabruf und -prüfung verwenden die Template-Region statt der Plattform-Region;

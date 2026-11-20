@@ -1,5 +1,5 @@
 import {
-  type AssistantAccessDefaultNotice,
+  type AssistantDefaultNotice,
   type AssistantMergeConflict,
   type AssistantRecommendation,
   assistantAdditiveField,
@@ -22,7 +22,7 @@ import { AssistantFailureError } from "../assistant-errors";
 import { readAssistantResponse } from "../assistant-stream";
 import { currentLanguage, t } from "../i18n";
 import type { Session } from "./Account";
-import { AssistantAccessDefaults } from "./AssistantAccessDefaults";
+import { AssistantDefaults } from "./AssistantDefaults";
 import {
   type AssistantQuestion,
   AssistantQuestions,
@@ -45,7 +45,7 @@ type Conversation = {
     recommendations?: AssistantRecommendation[];
   }[];
   proposal: {
-    accessDefaults?: AssistantAccessDefaultNotice[];
+    defaults?: AssistantDefaultNotice[];
     explanation: string;
     references: string[];
     questions?: (AssistantQuestion & { path: string })[];
@@ -516,15 +516,14 @@ export function AssistantChat({
           {conversation?.proposal && fields.length > 0 && (
             <div className="assistant-proposal">
               <h2>{t("Änderungsvorschlag")}</h2>
-              <AssistantAccessDefaults
-                items={(conversation.proposal.accessDefaults ?? []).filter(
-                  (item) =>
-                    fields.some(
-                      (field) =>
-                        field.path === item.path &&
-                        (field.operation === "default" ||
-                          assistantValuesEqual(field.value, item.sources)),
-                    ),
+              <AssistantDefaults
+                items={(conversation.proposal.defaults ?? []).filter((item) =>
+                  fields.some(
+                    (field) =>
+                      field.path === item.path &&
+                      (field.operation === "default" ||
+                        assistantValuesEqual(field.value, item.value)),
+                  ),
                 )}
               />
               <div className="assistant-diff">

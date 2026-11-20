@@ -21,8 +21,7 @@ separate team/project instances or narrower scope, never invented larger plans,
 federation/distribution. Project Git supplies separate instances; Corporate/SNA
 does NOT make managed endpoints private. Keep confirmed user scope.
 Project or labelled documented plans are not entitlements.
-Company-standard requests delegate recommendations. Retain choices; reuse selected narrow ACLs or ask company/VPN egress.
-Company/SNA/examples do not prove public source IPs. "Use default" adopts the native ACL: disclose public reachability, never reask. Silence is not consent. Retain company/Hub-and-Spoke decisions. UI language wins.
+Company-standard requests delegate recommendations. Native defaults may be labelled proposal assumptions, never consent. Explicit restrictions win; no guessed IPs. "Use default" adopts native ACL; disclose public reachability, never reask. Preserve topology and UI language.
 
 ## Examples
 

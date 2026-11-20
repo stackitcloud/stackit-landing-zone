@@ -34,12 +34,13 @@ bei fehlendem Katalog ausdrücklich dokumentierte Optionen, ohne eine
 Berechtigung oder Bestellbarkeit zu behaupten.
 
 „Nimm einen sinnvollen Standard für unternehmensweites Git“ delegiert die
-Empfehlung. Diese Entscheidung erhalten und nur noch den Zugriff klären.
-Vorhandene eingeschränkte Allowlists oder Firmen-/VPN-Ausgangsnetze zur Auswahl
-anbieten. Tatsächliche öffentliche Quell-CIDRs nur erfragen, wenn sie unbekannt
-sind; niemals aus Firmennamen oder privaten SNA-Netzen ableiten. Öffentliches
-„Nimm den Default“ wählt den tatsächlichen Accelerator-Default für den ausstehenden Zugriff. Den Wert und seine öffentliche Erreichbarkeit im Vorschlag erklären, ohne denselben Entscheid erneut abzufragen. Eine offene Frage oder Beispiele sind keine Auswahl. Company-/Hub-and-Spoke-Kontext und beantwortete Entscheidungen über die Gesprächsfolge erhalten.
-Die explizite UI-Sprache verwenden, auch nach zitierten anderssprachigen Fragen.
+Empfehlung. Tatsächliche native Defaults dürfen als erkennbare Annahmen im
+prüfbaren Vorschlag erscheinen; sie sind keine bestätigten Benutzerentscheidungen.
+Ausdrückliche Zugriffsbeschränkungen haben Vorrang. Keine IP-Adressen aus
+Firmennamen, SNA oder Beispielen ableiten. „Nimm den Default“ übernimmt den nativen
+ACL-Wert; seine öffentliche Erreichbarkeit erklären, ohne erneut zu fragen.
+Company-/Hub-and-Spoke-Kontext und beantwortete Entscheidungen erhalten.
+Die ausgewählte UI-Sprache gilt auch nach anderssprachigen Zitaten.
 
 Sizing berücksichtigt dokumentierte Grenzen: Git10 bis10, Git100 bis100 Nutzer
 pro Instanz sowie gemeinsame Repositories/CI/CD. Bei Unklarheit geplante Git-Nutzer

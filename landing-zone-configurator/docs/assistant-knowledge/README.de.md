@@ -48,8 +48,10 @@ Die Browser-Sprache steuert Antworten. Ein gemeinsamer Auswerter vergleicht
 numerische Anforderungen mit Angeboten und geprüften Grenzen. Eine eindeutig
 passende Empfehlung bleibt sichtbar und verlangt keine zusätzliche Bestätigung.
 Default-Wünsche werden mit echten nativen Werten einschließlich null/Weglassen
-vorgeschlagen. Unbeantwortete Fragen aktivieren keinen Service oder öffentlichen
-Zugriff.
+vorgeschlagen. Tatsächliche native Defaults dürfen auch als sichtbare Annahmen in
+einem nicht angewendeten Vorschlag erscheinen. Ausdrückliche Einschränkungen und
+offenzuhaltende Entscheidungen haben Vorrang; offene Fragen sind keine Zustimmung.
+Der Vorschlag zeigt die verwendeten Defaults zur Prüfung.
 
 Ordnernamen ändern keine stabilen Schlüssel, Elternbindungen, Rechte oder
 Identitäten. Quellprüfung, geschützte Felder, Compiler, Mandant, Revision und

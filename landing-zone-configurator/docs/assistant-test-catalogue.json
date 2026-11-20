@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "e4dcdaebc7872b915f423df8f700710f2d49772b5b2dba80f5fd4837aaa05a5b",
+  "knowledgeSha256": "a25c73970dead5a6b8106d10e52a9fc9a95d863e83e59355775d8e68ee52e3b0",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "45389353c7b6781475276131cb9c05a6e9000084fb675b1d4caba4be8d047b0a",
+    "scripts/assistant-scenarios.ts": "872328a765f328375a4d07a08ae902b7bbf5508a48a36cf9dec6645bd79b4b4e",
     "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "4498b0b34d5f128d28d0564304507ed06cffbde7b46fd68015ea71551d49197d",
+  "suiteSha256": "892f6bc1d7dfa81f7e5d7b765776d8f997de680b7807062c812cb09498c5b5ed",
   "topics": [
     {
       "id": "credential-foundations",
@@ -5231,6 +5231,12 @@
             "devops.git_flavor",
             "devops.allowed_network_ranges"
           ],
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-10",
+              "git-100"
+            ]
+          },
           "expectedLanguage": "en",
           "assertions": [
             "valid_dialogue",
@@ -5247,6 +5253,12 @@
             "devops.git_flavor",
             "devops.allowed_network_ranges"
           ],
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-10",
+              "git-100"
+            ]
+          },
           "expectedLanguage": "de",
           "assertions": [
             "valid_dialogue",
@@ -5256,7 +5268,7 @@
         },
         {
           "id": "editor-devops-size-only",
-          "message": "Please add central Git, using git-10. I have not chosen the access networks yet.",
+          "message": "Please add central Git, using git-10. Ask me to choose access before proposing any changes.",
           "topic": "devops-git",
           "fixture": "baseline",
           "setupQuestionPaths": [
@@ -5297,6 +5309,11 @@
             "users": 80,
             "flavor": "git-100"
           },
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-100"
+            ]
+          },
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
@@ -5318,6 +5335,11 @@
           "gitCapacityRecommendation": {
             "users": 80,
             "flavor": "git-100"
+          },
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-100"
+            ]
           },
           "assertions": [
             "valid_dialogue",
@@ -5520,7 +5542,7 @@
           "fixture": "baseline",
           "expectedLanguage": "en",
           "history": [],
-          "message": "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+          "message": "Please add a central git instance to the config. First ask about the missing size and access requirements; do not propose changes yet.",
           "setupQuestionPaths": [
             "devops.git_flavor",
             "devops.allowed_network_ranges"
@@ -5546,7 +5568,7 @@
               "content": "Observability ist nur vorgeschlagen; noch nichts gespeichert."
             }
           ],
-          "message": "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+          "message": "Please add a central git instance to the config. First ask about the missing size and access requirements; do not propose changes yet.",
           "setupQuestionPaths": [
             "devops.git_flavor",
             "devops.allowed_network_ranges"
@@ -5607,6 +5629,11 @@
           "setupQuestionPaths": [
             "devops.allowed_network_ranges"
           ],
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-100"
+            ]
+          },
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

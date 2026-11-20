@@ -37,6 +37,11 @@ literal CIDR again or demand a second confirmation. Unknown company/VPN egress
 networks are not inferred from private SNA ranges or another service's topology.
 Unanswered questions alone do not authorize a public service.
 
+The Assistant may propose actual documented Accelerator defaults as labelled
+assumptions for unspecified fields. The proposal lists these defaults for review;
+they are not user decisions. Explicit access restrictions and requests to keep
+decisions open take precedence. Acceptance, saving and Plan/Apply remain separate.
+
 ## Shared catalogue selection
 
 `packages/contracts/src/cloud-catalogue-fields.ts` is the shared field-to-catalogue

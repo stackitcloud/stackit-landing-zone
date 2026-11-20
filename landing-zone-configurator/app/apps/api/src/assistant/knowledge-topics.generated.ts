@@ -43,7 +43,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
           sha256:
-            "4f6a73c5d8dc7b8162f31e9a76ee201a123a2ee175bf7f3a9660872241a066cd",
+            "cd1c5d72edd2c41c25dc840e8bda22d1654f26c3a811e3e4514af06ef83ec9f2",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/service.ts",
@@ -53,7 +53,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -78,7 +83,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -108,7 +113,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -146,14 +151,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [
@@ -222,7 +227,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -247,7 +257,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -277,7 +287,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -315,14 +325,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [
@@ -409,7 +419,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -434,7 +449,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -464,7 +479,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -502,14 +517,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -574,7 +589,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -599,7 +619,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -629,7 +649,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -667,14 +687,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -774,7 +794,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -799,7 +824,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -829,7 +854,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -867,14 +892,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -945,7 +970,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -970,7 +1000,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1000,7 +1030,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1038,14 +1068,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [
@@ -1144,7 +1174,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1169,7 +1204,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1199,7 +1234,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1237,14 +1272,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -1265,9 +1300,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/audit-logs.md",
-      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nAudit routing.\n\n## Accelerator Contract\n\naudit_logs=null skips routing/retention, not archive bucket.\nSinks: S3 + ONE query store. With observability: OTLP to its built-in Grafana Audit Logs Dashboard.\nTechnical credential for data; users log in with SSO; no admin; no separate Logs instance/tokens/destination.\nWithout Observability: Logs. Needs logs-capable plan, not\nMonitoring/Frontend/MetricsEndpoint. Observability has own retention/cost;\nretention_days controls S3 and, only in fallback, Logs.\nDev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability\ntarget/credential. S3/Router/links/projects stay. No order upgrade for linked\nprojects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are metadata. acl controls Logs clients, observability.acl Observability.\nRouter ranges join the selected store's ACL, preserving clients.\nrouter_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4\nlist narrows. Authentication required; empty feed fails.\nObject Lock defaults true, including nested null; retention 180. Explicit false\nopts out before creation. With lock: 1..365 days, GOVERNANCE; not reversible\nor compliance certification.\nOrganization links capture ONLY organization events, no inheritance.\nmanaged_resources=false by default; true links managed folders/projects and new\norders via platform contract. Existing unlinked orders need approved platform\nupgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.\nManaged scopes same-region; others need reviewed routers. link_scopes supports\norganization/folder/project. External links need reviewed import.\n\n## Dependencies\n\nCentral identity, same-region router/link. Default workload identities cannot\nread central ingestion secrets.\n\n## Dialogue\n\nEditor: ask retention/ACL/Lock/coverage. Only Audit USER answers authorize\ndays/CIDRs/Lock; no defaults/other components. Managed: managed_resources=true,\nno invented IDs.\n\n## Examples\n\nMissing ACL → ask; no borrowed Firewall net.\n\n## Limits\n\nFuture events only. Default rights exclude audit mutation; Owner/inherited grants\ncan alter routing: no deny guarantee. Verify query/S3/dashboard delivery/access.\nRecovery preserves links; lost secrets need exact approved revocation + fresh\nPlan/Apply, never fabricated keys.\n\n## Credentials\n\nNo tokens, S3 keys, State or audit contents in chat/public contracts.\nProtected execution only.\n\n## Sources\n\nManifest binds sources; configuration proves no delivery/compliance.\n",
+      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nAudit routing.\n\n## Accelerator Contract\n\naudit_logs=null skips routing/retention, not archive bucket.\nSinks: S3 + ONE query store. With observability: OTLP to its built-in Grafana Audit Logs Dashboard.\nTechnical credential for data; users log in with SSO; no admin; no separate Logs instance/tokens/destination.\nWithout Observability: Logs. Needs logs-capable plan, not\nMonitoring/Frontend/MetricsEndpoint. Observability has own retention/cost;\nretention_days controls S3 and, only in fallback, Logs.\nDev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability\ntarget/credential. S3/Router/links/projects stay. No order upgrade for linked\nprojects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are metadata. acl controls Logs clients, observability.acl Observability.\nRouter ranges join the selected store's ACL, preserving clients.\nrouter_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4\nlist narrows. Authentication required; empty feed fails.\nObject Lock defaults true, including nested null; retention 180. Explicit false\nopts out before creation. With lock: 1..365 days, GOVERNANCE; not reversible\nor compliance certification.\nOrganization links capture ONLY organization events, no inheritance.\nmanaged_resources=false by default; true links managed folders/projects and new\norders via platform contract. Existing unlinked orders need approved platform\nupgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.\nManaged scopes same-region; others need reviewed routers. link_scopes supports\norganization/folder/project. External links need reviewed import.\n\n## Dependencies\n\nCentral identity, same-region router/link. Default workload identities cannot\nread central ingestion secrets.\n\n## Dialogue\n\nEditor: propose actual native defaults as labelled assumptions for unspecified\nretention/ACL/Lock; explain locking consequences. Explicit USER restrictions win;\nno guessed values or other components. Managed: managed_resources=true,\nno invented IDs.\n\n## Examples\n\nMissing ACL → labelled native default or question; no borrowed Firewall net.\n\n## Limits\n\nFuture events only. Default rights exclude audit mutation; Owner/inherited grants\ncan alter routing: no deny guarantee. Verify query/S3/dashboard delivery/access.\nRecovery preserves links; lost secrets need exact approved revocation + fresh\nPlan/Apply, never fabricated keys.\n\n## Credentials\n\nNo tokens, S3 keys, State or audit contents in chat/public contracts.\nProtected execution only.\n\n## Sources\n\nManifest binds sources; configuration proves no delivery/compliance.\n",
       sha256:
-        "227cf46e02771f260ab57380bf4e666f4944132f68256abe21fcc6cf764bc46c",
+        "325c074101bca6bb38caba8ccd60dc4a084c395678b678a35eb28aaca64c8755",
     },
     {
       id: "federated-identities",
@@ -1303,7 +1338,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1328,7 +1368,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1358,7 +1398,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1396,14 +1436,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -1469,7 +1509,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1494,7 +1539,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1524,7 +1569,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1562,14 +1607,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [
@@ -1655,7 +1700,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1680,7 +1730,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1710,7 +1760,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1748,14 +1798,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -1860,7 +1910,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -1885,7 +1940,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1915,7 +1970,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -1953,14 +2008,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -2137,7 +2192,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2162,7 +2222,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2192,7 +2252,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -2230,14 +2290,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -2363,7 +2423,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2388,7 +2453,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2418,7 +2483,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -2456,14 +2521,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -2534,7 +2599,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/TemplateAdvice.tsx",
@@ -2554,7 +2619,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2579,7 +2649,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2609,7 +2679,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -2647,9 +2717,9 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
       ],
       externalSources: [
@@ -2665,9 +2735,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/devops-git.md",
-      text: '# DevOps Git Service\n\n## Purpose\n\nManaged Git.\n\n## Accelerator Contract\n\nRoot sets project/owner/name; devops=null or git_flavor=null skips Git even with ACLs. Fields:git_flavor,allowed_network_ranges. Native ACL default:["0.0.0.0/0"].\nApplication Git(enabled/flavor/acl):default off, separate instance.\nRoot devops: one instance; clarify central/project-template scope.\n\n## Dependencies\n\nManagement/state, identity/rights, networks; live availability/prices.\n\n## Dialogue\n\nGit100:shared repos/CI, max100 users; Git10:pilots, max10. Per-instance ceilings; storage growth never raises user limits. Above100,\nseparate team/project instances or narrower scope, never invented larger plans,\nfederation/distribution. Project Git supplies separate instances; Corporate/SNA\ndoes NOT make managed endpoints private. Keep confirmed user scope.\nProject or labelled documented plans are not entitlements.\nCompany-standard requests delegate recommendations. Retain choices; reuse selected narrow ACLs or ask company/VPN egress.\nCompany/SNA/examples do not prove public source IPs. "Use default" adopts the native ACL: disclose public reachability, never reask. Silence is not consent. Retain company/Hub-and-Spoke decisions. UI language wins.\n\n## Examples\n\nReview Editor drafts; never silently change both scopes.\n\n## Limits\n\nProvider0.114 flavor AND ACL changes REPLACE Git; review data migration.\nNo guaranteed uninterrupted resize/data preservation, backup/restore, SSO or CI.\nAcceptance creates no resources/rights.\n\n## Credentials\n\nProvisioning!=user access. No secrets/hidden IDs in chat.\n\n## Sources\n\nNative inputs, pinned provider, official sizing.\n',
+      text: '# DevOps Git Service\n\n## Purpose\n\nManaged Git.\n\n## Accelerator Contract\n\nRoot sets project/owner/name; devops=null or git_flavor=null skips Git even with ACLs. Fields:git_flavor,allowed_network_ranges. Native ACL default:["0.0.0.0/0"].\nApplication Git(enabled/flavor/acl):default off, separate instance.\nRoot devops: one instance; clarify central/project-template scope.\n\n## Dependencies\n\nManagement/state, identity/rights, networks; live availability/prices.\n\n## Dialogue\n\nGit100:shared repos/CI, max100 users; Git10:pilots, max10. Per-instance ceilings; storage growth never raises user limits. Above100,\nseparate team/project instances or narrower scope, never invented larger plans,\nfederation/distribution. Project Git supplies separate instances; Corporate/SNA\ndoes NOT make managed endpoints private. Keep confirmed user scope.\nProject or labelled documented plans are not entitlements.\nCompany-standard requests delegate recommendations. Native defaults may be labelled proposal assumptions, never consent. Explicit restrictions win; no guessed IPs. "Use default" adopts native ACL; disclose public reachability, never reask. Preserve topology and UI language.\n\n## Examples\n\nReview Editor drafts; never silently change both scopes.\n\n## Limits\n\nProvider0.114 flavor AND ACL changes REPLACE Git; review data migration.\nNo guaranteed uninterrupted resize/data preservation, backup/restore, SSO or CI.\nAcceptance creates no resources/rights.\n\n## Credentials\n\nProvisioning!=user access. No secrets/hidden IDs in chat.\n\n## Sources\n\nNative inputs, pinned provider, official sizing.\n',
       sha256:
-        "1977309e744be17ad6848157e70b53a27b1b4e94909175f7f95e91099328b1e2",
+        "8b66d65a0bbc566af83c5ab082b9e52c509b4397c341fff01b4cbf390bef5dc7",
     },
     {
       id: "platform-kubernetes",
@@ -2716,7 +2786,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2741,7 +2816,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2771,7 +2846,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -2809,14 +2884,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -2973,7 +3048,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -2998,7 +3078,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3028,7 +3108,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -3066,14 +3146,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [
@@ -3159,7 +3239,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -3184,7 +3269,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3214,7 +3299,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -3252,14 +3337,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -3317,7 +3402,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -3342,7 +3432,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3372,7 +3462,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/editor.ts",
@@ -3410,14 +3500,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],
@@ -3488,12 +3578,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/dialogue.ts",
           sha256:
-            "4f6a73c5d8dc7b8162f31e9a76ee201a123a2ee175bf7f3a9660872241a066cd",
+            "cd1c5d72edd2c41c25dc840e8bda22d1654f26c3a811e3e4514af06ef83ec9f2",
         },
         {
           path: "landing-zone-configurator/app/packages/contracts/src/assistant.ts",
           sha256:
-            "9e89106e99b0f8c351e63de791dbcde357b250c625375607dc82c3a0f6684373",
+            "6e2eb15270f169794061e54937d89b32079a2da4c5a770785e434065e6339154",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/model-serving.ts",
@@ -3538,7 +3628,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
           sha256:
-            "84845e0c42d585dfe4e53c3266b3729ac10a62c4d6acc521e37812ae1b7c2004",
+            "f99c2c8035a9214e78a0123fc4a6ab4114ee0a07bc0e85fafd2db3610b2dacfe",
+        },
+        {
+          path: "landing-zone-configurator/app/apps/api/src/assistant/native-default-proposals.ts",
+          sha256:
+            "4e35a52858c27105ea1593ca76d184ad8f7c5c1c79167bada636b2825ddd0acc",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/knowledge-search.ts",
@@ -3563,7 +3658,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "7ea1bda29ca2b4b0382b14eaed929630b1c304963dfdde79c2c7a8fdc2052aed",
+            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3626,14 +3721,14 @@ export const assistantKnowledgeTopics = {
             "c7bdd0ac068edf3e41e18c41b808e7b1e550d8e72d6fc9be86a3cd7fe18ac30a",
         },
         {
-          path: "landing-zone-configurator/app/apps/web/src/components/AssistantAccessDefaults.tsx",
+          path: "landing-zone-configurator/app/apps/web/src/components/AssistantDefaults.tsx",
           sha256:
-            "15e3156997906f2196214b3010fb1e34605da91d7067f01ce4a0560cc96ba978",
+            "4ef32ba76d9420831d199b428cd6904f9ead324af1dbc7dc7ab26a628a2c7549",
         },
         {
           path: "landing-zone-configurator/app/apps/web/src/components/AssistantChat.tsx",
           sha256:
-            "a3532f2cfab27c0743402cd310744672736e559c53b245ee694fd5fb5481d374",
+            "983cc2004b0ef430fb139f2808e2bfdce690cd1f9e996fd477765b57d60a071e",
         },
       ],
       externalSources: [],

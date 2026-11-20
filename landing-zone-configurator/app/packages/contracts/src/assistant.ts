@@ -2,16 +2,13 @@ import { z } from "zod";
 
 export const assistantLanguageSchema = z.enum(["de", "en"]);
 export type AssistantLanguage = z.infer<typeof assistantLanguageSchema>;
-export const assistantAccessDefaultNoticeSchema = z.strictObject({
+export const assistantDefaultNoticeSchema = z.strictObject({
   path: z.string().min(1).max(300),
-  sources: z
-    .array(z.union([z.cidrv4(), z.cidrv6()]))
-    .min(1)
-    .max(64),
+  value: z.json(),
   source: z.literal("accelerator"),
 });
-export type AssistantAccessDefaultNotice = z.infer<
-  typeof assistantAccessDefaultNoticeSchema
+export type AssistantDefaultNotice = z.infer<
+  typeof assistantDefaultNoticeSchema
 >;
 export const assistantRecommendationSchema = z.strictObject({
   path: z.string().min(1).max(300),

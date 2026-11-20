@@ -374,7 +374,7 @@ it("extends only a validated local proposal and retains both principals across s
       changes: [addition("server-backup", "requester")],
     }),
     (body) => {
-      expect(lastResult(body).validation.ok).toBe(true);
+      expect(lastResult(body).validation).toMatchObject({ ok: true });
       base = lastResult(body).validation.proposal;
       return {
         action: "validate_proposal",
@@ -587,10 +587,10 @@ it("finishes the complete Hub-and-Spoke/80-developer/default-access dialogue wit
   expect(result.changes).toEqual(changes);
   expect(result.explanation).toContain("80 developers");
   expect(result.explanation).toContain("Accelerator default 0.0.0.0/0");
-  expect(result.accessDefaults).toEqual([
+  expect(result.defaults).toEqual([
     {
       path: "devops.allowed_network_ranges",
-      sources: ["0.0.0.0/0"],
+      value: ["0.0.0.0/0"],
       source: "accelerator",
     },
   ]);
@@ -929,7 +929,7 @@ it("repairs an invalid tool envelope within the bounded protocol instead of fail
     (await client.converse(selection, {}, [], "Explain the workflow.")).changes,
   ).toEqual([]);
 });
-it("does not treat an omitted access decision as a complete new component", async () => {
+it("materializes omitted access from its source and exposes it for proposal review", async () => {
   const { client } = model([
     () => ({
       action: "inspect",
@@ -947,29 +947,33 @@ it("does not treat an omitted access decision as a complete new component", asyn
       basis: [],
     }),
     (body) => {
-      expect(lastResult(body).validation.ok).toBe(false);
+      expect(lastResult(body).validation).toMatchObject({ ok: true });
       return final({
-        kind: "clarification",
+        kind: "proposal",
+        proposal: lastResult(body).validation.proposal,
         references: ["devops-git"],
-        questions: [
-          {
-            path: "devops.allowed_network_ranges",
-            text: "Which access policy?",
-            answerType: "requirements",
-            options: [
-              "Use Accelerator default (0.0.0.0/0)",
-              "Provide company/VPN public egress IPs or CIDRs",
-            ],
-          },
-        ],
+        explanation:
+          "Git100 with the Accelerator default permitting any IPv4 address, proposed for review. Nothing saved.",
       });
     },
   ]);
-  expect(
-    (await client.converse(selection, {}, [], "Add Git for 80 developers."))
-      .changes,
-  ).toEqual([]);
+  const answer = await client.converse(
+    selection,
+    {},
+    [],
+    "Add Git for 80 developers.",
+  );
+  expect(answer.changes[0]?.value).toEqual({
+    git_flavor: "git-100",
+    allowed_network_ranges: ["0.0.0.0/0"],
+  });
+  expect(answer.defaults).toContainEqual({
+    path: "devops.allowed_network_ranges",
+    value: ["0.0.0.0/0"],
+    source: "accelerator",
+  });
 });
+
 it("does not retry an HTTP response rejection or publish conversational state on failure", async () => {
   const request = vi.fn<typeof fetch>(async () =>
     Response.json({ error: { code: "test" } }, { status: 400 }),
@@ -1026,7 +1030,7 @@ it("uses native default facts supplied by shared knowledge without a redundant l
       };
     },
     (body) => {
-      expect(lastResult(body).validation.ok).toBe(true);
+      expect(lastResult(body).validation).toMatchObject({ ok: true });
       return final({
         kind: "proposal",
         proposal: lastResult(body).validation.proposal,
@@ -1055,7 +1059,7 @@ it("distinguishes an optional omitted service default from an invented concrete 
   ).toMatchObject({ found: true, value: 3600 });
 });
 
-it("does not turn another component's public default into consent for a new component", async () => {
+it("proposes an authoritative native default with visible provenance, without calling it user consent", async () => {
   const { client } = model([
     () => ({
       action: "inspect",
@@ -1077,25 +1081,15 @@ it("does not turn another component's public default into consent for a new comp
     }),
     (body) => {
       expect(lastResult(body).validation).toMatchObject({
-        ok: false,
-        code: "assistant_default_choice_required",
-        path: "devops.allowed_network_ranges",
+        ok: true,
       });
       return final({
-        kind: "clarification",
+        kind: "proposal",
+        proposal: lastResult(body).validation.proposal,
         references: ["devops-git"],
         activeTopics: ["devops-git"],
-        questions: [
-          {
-            path: "devops.allowed_network_ranges",
-            text: "Which access should Git use?",
-            answerType: "requirements",
-            options: [
-              "Use Accelerator default (0.0.0.0/0)",
-              "Provide company/VPN public egress IPs or CIDRs",
-            ],
-          },
-        ],
+        explanation:
+          "Git100 is proposed with the Accelerator access default: any IPv4 address. Review before accepting; nothing saved or deployed.",
       });
     },
   ]);
@@ -1103,10 +1097,22 @@ it("does not turn another component's public default into consent for a new comp
     selection,
     { devops: null, observability: { acl: ["0.0.0.0/0"] } },
     [],
-    "Add Git100; access is not decided yet.",
+    "Add Git100 using a reasonable starting configuration.",
   );
-  expect(answer.changes).toEqual([]);
-  expect(answer.questions).toHaveLength(1);
+  expect(answer.changes).toMatchObject([
+    {
+      path: "devops",
+      value: { git_flavor: "git-100", allowed_network_ranges: ["0.0.0.0/0"] },
+    },
+  ]);
+  expect(answer.defaults).toEqual([
+    {
+      path: "devops.allowed_network_ranges",
+      value: ["0.0.0.0/0"],
+      source: "accelerator",
+    },
+  ]);
+  expect(answer.questions).toHaveLength(0);
 });
 
 it("discovers and compiles an actual template permission union through shared tools", async () => {
@@ -1156,7 +1162,7 @@ it("discovers and compiles an actual template permission union through shared to
       };
     },
     (body) => {
-      expect(lastResult(body).validation.ok).toBe(true);
+      expect(lastResult(body).validation).toMatchObject({ ok: true });
       return final({
         kind: "proposal",
         proposal: lastResult(body).validation.proposal,

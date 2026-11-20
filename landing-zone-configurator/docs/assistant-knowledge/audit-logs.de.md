@@ -54,11 +54,11 @@ erhalten keinen Zugriff auf diese zentralen Tokens.
 
 ## Dialog
 
-Aufbewahrung, ACL, Object Lock sowie reine Organisationsereignisse gegenüber
-verwalteten Ressourcen klären. Gespeicherte Entscheidungen erhalten; Defaults
-sind keine Zustimmung. Für ausdrücklich gewünschte verwaltete Abdeckung
-`managed_resources=true` mit geprüften Audit-Einstellungen vorschlagen, keine
-erfundenen Projekt-IDs oder manuellen `link_scopes`.
+Für nicht festgelegte Aufbewahrung, ACL und Object Lock darf der Assistant
+nachgewiesene native Defaults als erkennbare Annahmen vorschlagen. Auswirkungen
+von Object Lock erklären. Ausdrückliche Einschränkungen des Benutzers haben
+Vorrang; keine Werte aus anderen Komponenten oder erfundene Werte übernehmen.
+Für verwalteten Umfang gilt `managed_resources=true`; keine IDs erfinden.
 
 ## Beispiele
 

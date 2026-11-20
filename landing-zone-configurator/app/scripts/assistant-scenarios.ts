@@ -180,6 +180,7 @@ export type AssistantScenario = {
   editorExpected?: { path: string; value: JsonValue };
   auditQuestionPaths?: readonly string[];
   setupQuestionPaths?: readonly string[];
+  setupDefaultProposal?: { allowedFlavors: readonly string[] };
   gitCapacityRecommendation?: { users: number; flavor: "git-10" | "git-100" };
   nativeDefaultExpected?: { path: string; value: JsonValue };
   nativeDefaultResetPath?: string;
@@ -762,7 +763,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     {
       id: "editor-devops-size-only",
       message:
-        "Please add central Git, using git-10. I have not chosen the access networks yet.",
+        "Please add central Git, using git-10. Ask me to choose access before proposing any changes.",
       paths: ["devops.allowed_network_ranges"],
     },
     {
@@ -777,6 +778,9 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     topic: "devops-git",
     fixture: "baseline" as const,
     setupQuestionPaths: paths,
+    ...(id === "editor-devops-setup-en" || id === "editor-devops-setup-de"
+      ? { setupDefaultProposal: { allowedFlavors: ["git-10", "git-100"] } }
+      : {}),
     expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
   })),
   ...[
@@ -800,6 +804,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     expectedLanguage: language,
     setupQuestionPaths: ["devops.allowed_network_ranges"],
     gitCapacityRecommendation: { users: 80, flavor: "git-100" as const },
+    setupDefaultProposal: { allowedFlavors: ["git-100"] },
   })),
   {
     id: "editor-devops-sized-80-followup",
@@ -1047,7 +1052,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     expectedLanguage: "en" as const,
     history: entry.history,
     message:
-      "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+      "Please add a central git instance to the config. First ask about the missing size and access requirements; do not propose changes yet.",
     setupQuestionPaths: ["devops.git_flavor", "devops.allowed_network_ranges"],
   })),
   {
@@ -1094,6 +1099,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       },
     ],
     setupQuestionPaths: ["devops.allowed_network_ranges"],
+    setupDefaultProposal: { allowedFlavors: ["git-100"] },
   },
   {
     id: "editor-devops-company-complete",
@@ -2896,6 +2902,35 @@ export function validateAssistantScenario(
       failures.push("git_confirmed_size_reasked");
   }
   if (scenario.setupQuestionPaths) {
+    if (dialogue.changes.length && scenario.setupDefaultProposal) {
+      const before = compileCommonConfiguration(fixture.draft);
+      const after = compileCommonConfiguration(
+        applyAssistantChanges(fixture.draft, dialogue.changes),
+      );
+      const git = objectValue(after.devops);
+      if (
+        !scenario.setupDefaultProposal.allowedFlavors.includes(
+          String(git.git_flavor),
+        ) ||
+        !isDeepStrictEqual(git.allowed_network_ranges, ["0.0.0.0/0"]) ||
+        dialogue.questions.length ||
+        !dialogue.defaults?.some(
+          (item) =>
+            item.path === "devops.allowed_network_ranges" &&
+            item.source === "accelerator" &&
+            isDeepStrictEqual(item.value, ["0.0.0.0/0"]),
+        )
+      )
+        failures.push("setup_default_proposal_unverified");
+      const withoutGit = (value: Record<string, JsonValue>) => {
+        const copy = structuredClone(value);
+        delete copy.devops;
+        return copy;
+      };
+      if (!isDeepStrictEqual(withoutGit(before), withoutGit(after)))
+        failures.push("setup_default_proposal_changed_other_components");
+      return { dialogue, failures };
+    }
     if (
       dialogue.changes.length ||
       !dialogue.questions.length ||

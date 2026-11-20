@@ -1809,3 +1809,53 @@ it("accepts a draft that can be saved later while rejecting a claim it is alread
     ),
   ).toBe(true);
 });
+
+it("accepts a native-default proposal only with visible provenance and preserves question-only requests", () => {
+  const setup = assistantScenarios.find(
+    (item) => item.id === "editor-devops-setup-en",
+  )!;
+  const proposal = {
+    explanation:
+      "Git100 is a starting recommendation. The Accelerator default allows any IPv4 address. Review this proposal; nothing has been saved or deployed.",
+    changes: [
+      {
+        path: "devops",
+        operation: "merge" as const,
+        value: { git_flavor: "git-100", allowed_network_ranges: ["0.0.0.0/0"] },
+      },
+    ],
+    questions: [],
+    references: ["devops-git"],
+    defaults: [
+      {
+        path: "devops.allowed_network_ranges",
+        value: ["0.0.0.0/0"],
+        source: "accelerator" as const,
+      },
+    ],
+  };
+  expect(validateAssistantScenario(setup, proposal).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(setup, { ...proposal, defaults: [] }).failures,
+  ).toContain("setup_default_proposal_unverified");
+  expect(
+    validateAssistantScenario(setup, {
+      ...proposal,
+      changes: [
+        {
+          ...proposal.changes[0]!,
+          value: {
+            git_flavor: "git-100",
+            allowed_network_ranges: ["198.51.100.0/24"],
+          },
+        },
+      ],
+    }).failures,
+  ).toContain("setup_default_proposal_unverified");
+  const reserved = assistantScenarios.find(
+    (item) => item.id === "editor-devops-size-only",
+  )!;
+  expect(validateAssistantScenario(reserved, proposal).failures).toContain(
+    "setup_must_ask_missing_choices_without_changes",
+  );
+});
