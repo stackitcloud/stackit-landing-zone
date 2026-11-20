@@ -1357,6 +1357,10 @@ export const englishMessages: Record<string, string> = {
     "The bootstrap or S3 state could not be read as a valid state. Migration remains blocked.",
   "Die Ressourcen im Bootstrap-Checkpoint konnten nicht sicher ausgewertet werden.":
     "The resources in the bootstrap checkpoint could not be safely inspected.",
+  "Der Runner ist noch nicht nachweislich beendet. Warte kurz und prüfe erneut.":
+    "The runner has not been confirmed stopped. Wait briefly and check again.",
+  "Ich habe den S3-State geprüft und bestätige die erneute Planung mit diesem State. Bestehende Ressourcen bleiben erhalten.":
+    "I have reviewed the S3 state and confirm replanning with this state. Existing resources remain in place.",
   "Für diesen Apply ist kein prüfbarer Bootstrap-Checkpoint verfügbar. Aktualisiere den Ausführungsstatus.":
     "No inspectable bootstrap checkpoint is available for this Apply. Refresh execution status.",
   "Die Checkpoint-Prüfung ist in dieser Umgebung nicht verfügbar.":

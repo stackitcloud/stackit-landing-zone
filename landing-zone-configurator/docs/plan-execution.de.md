@@ -426,6 +426,26 @@ States bleiben gesperrt und benoetigen einen gesonderten operativen Abgleich.
 Es gibt keine automatische Entsperrung, State-Loeschung, Import- oder
 Destroy-Aktion. Die Migration muss vor Nutzung der neuen API aktiviert sein.
 
+### Erneute Planung nach einem fehlgeschlagenen Apply mit S3
+
+Bei einem bestehenden S3-Backend prüft die Recovery den registrierten Remote-State
+anstelle eines Bootstrap-Checkpoints. Nur der Eigentümer eines mit `apply_failed`
+beendeten Laufs darf die erneute Planung bestätigen. Genau dieser Runner muss
+beendet oder bereits bereinigt sein; lokale Locks, offene Migrationen und separate
+Recovery-States verhindern den Abgleich. Der S3-Lock wird vor und nach jedem Lesen
+geprüft. Die Antwort enthält nur Ressourcenanzahlen, Serial, State-Version,
+Inhaltshash und Remote-Objektidentität.
+
+Die Bestätigung prüft Version, Hash und Objektidentität mit einem zweiten Lesen
+ohne S3-Lock erneut. Ein geändertes Objekt macht die Bestätigung ungültig. Die
+Transaktion speichert unveränderliche Nachweise, aktualisiert bei Bedarf lokale
+Remote-Identität und Version und setzt den Lauf auf fehlgeschlagen. Sie verändert
+S3 nicht, stellt keinen State wieder her, entfernt keine Locks, startet keinen
+Runner und wiederholt keinen Apply. Ein neuer Plan gegen dieselbe Konfiguration
+und denselben State ist erforderlich. Unklare Unterbrechungen bleiben gesperrt.
+Unabhängige externe Schreiber liegen weiterhin außerhalb der Serialisierung durch
+die Anwendung.
+
 ### Weltweit eindeutige Bucket-Namen
 
 Object-Storage-Bucket-Namen gelten STACKIT-weit. `bucket_naming = "project-id"`

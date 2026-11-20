@@ -192,6 +192,23 @@ Migration `034_platform_reconciliation.sql` adds explicit, audited UI reconcilia
 
 The user can then save the corrected configuration, choose a new preparation and start a new Plan against the same existing state. Apply again requires separate review and approval of the new saved plan. The old plan remains consumed. If the checkpoint has changed meanwhile, a new check is required. Ambiguous Runner aborts, unverifiable migrations and separate recovery states remain blocked and need separate operational reconciliation. No automatic unblocking, state deletion, import or Destroy action. The migration must be enabled before using the new API.
 
+### Replanning after a failed Apply using S3
+
+For an existing S3 backend, recovery inspects the registered remote State rather
+than a bootstrap checkpoint. Only the owner of a reported `apply_failed` run may
+confirm replanning. The exact Runner must be stopped or already cleaned; local
+locks, pending migrations and separate recovery states prevent reconciliation.
+The S3 lock is checked before and after each read. The response contains only
+resource counts, serial, State version, content hash and remote object identity.
+
+Confirmation rechecks the version, hash and object identity with a second unlocked
+read. A changed object invalidates confirmation. The transaction records immutable
+evidence, updates the local remote identity and version when necessary, and marks
+the run failed. It does not modify S3, restore State, unlock anything, start a Runner
+or repeat Apply. A fresh Plan against the same configuration and State is required.
+Ambiguous interruptions remain blocked. Independent external writers remain outside
+the application's serialization boundary.
+
 ### Globally unique bucket names
 
 Object Storage bucket names are STACKIT-wide. `bucket_naming = "project-id"` is
