@@ -8,6 +8,7 @@ const notes={
    "Retain recommendations through access-setting replies; resolve Accelerator defaults directly into reviewable proposals.",
    "Use shared read-only knowledge, native-default and catalogue tools across services, with compiler feedback and source-bound conversation context.",
    "Share saved configurations between Platform Engineers in the same workspace, with revision conflict protection.",
+   "Allow reviewed replanning after a reported S3 Apply failure while retaining existing State and resources.",
   ],
  },
  "v2.2.0": {
@@ -66,5 +67,5 @@ const notes={
 const selected=notes[tag];
 if(!selected)throw new Error("Curated release notes required for this version");
 const limitations=["skip","accepted-assistant-limitations"].includes(process.env.LZC_RELEASE_MODE);
-const qualificationNote=process.env.LZC_RELEASE_MODE==="skip"?"Assistant live qualification was skipped for this release; known intermittent model-service HTTP 400 errors remain tracked in #225.":limitations?"Known limitation: the enabled Assistant is not fully qualified; intermittent model-service HTTP 400 errors remain under investigation in #225.":"Assistant qualification is recorded in the attached source-bound release manifest.";
+const qualificationNote=process.env.LZC_RELEASE_MODE==="skip"?"Assistant live qualification was skipped. Intermittent model-service errors (#225), dialogue timeouts and incomplete multi-topic qualification (#275) remain known limitations.":limitations?"Known limitation: the enabled Assistant is not fully qualified; intermittent model-service HTTP 400 errors remain under investigation in #225.":"Assistant qualification is recorded in the attached source-bound release manifest.";
 console.log(`${selected.introduction}\n\n${selected.changes.map(change=>`- ${change}`).join("\n")}\n\n${qualificationNote}\n\nOperator setup, credential rotation and recovery: [production runbook](https://github.com/stackitcloud/stackit-landing-zone/blob/${tag}/landing-zone-configurator/docs/production.md).`);
