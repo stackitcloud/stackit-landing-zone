@@ -2,6 +2,45 @@ import { z } from "zod";
 
 export const assistantLanguageSchema = z.enum(["de", "en"]);
 export type AssistantLanguage = z.infer<typeof assistantLanguageSchema>;
+export const assistantDefaultNoticeSchema = z.strictObject({
+  path: z.string().min(1).max(300),
+  value: z.json(),
+  source: z.literal("accelerator"),
+});
+export type AssistantDefaultNotice = z.infer<
+  typeof assistantDefaultNoticeSchema
+>;
+export const assistantRecommendationSchema = z.strictObject({
+  path: z.string().min(1).max(300),
+  value: z.string().min(1).max(300),
+  label: z.string().min(1).max(300),
+  description: z.string().max(1000),
+  requirements: z
+    .array(
+      z.strictObject({
+        metric: z.string().min(1).max(80),
+        minimum: z.number().finite().positive(),
+      }),
+    )
+    .max(8),
+  facts: z
+    .array(
+      z.strictObject({
+        metric: z.string().min(1).max(80),
+        value: z.number().finite().nonnegative(),
+      }),
+    )
+    .max(8),
+  source: z.strictObject({
+    kind: z.literal("project-catalogue"),
+    region: z.enum(["eu01", "eu02"]),
+    fetchedAt: z.string().nullable(),
+  }),
+});
+export type AssistantRecommendation = z.infer<
+  typeof assistantRecommendationSchema
+>;
+
 export const assistantQuestionAnswerTypeSchema = z.enum([
   "requirements",
   "catalogue",
@@ -422,3 +461,5 @@ export const assistantCataloguePickerSchema = z.strictObject({
 export type AssistantCataloguePicker = z.infer<
   typeof assistantCataloguePickerSchema
 >;
+/** Shared bounded text budget for generated Assistant replies. */
+export const assistantAnswerTextMaxLength = 16384;

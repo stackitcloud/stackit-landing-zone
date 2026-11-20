@@ -20,168 +20,48 @@ ohne kuratierte Prompt-Quellen zu aendern.
 
 ## Architekturvertrag
 
-Freigegebene Architektur vom 2026-10-10: kuratiertes Markdown je Domaene/Service,
-striktes Manifest und generiertes Backend-Bundle.
-Das urspruengliche SNA-/Zugangsdaten-Paar wird zum vollstaendigen
-Themenkatalog unten erweitert.
-Kein automatisches Einlesen beliebiger Dokumentation, Websites, Kundendateien,
-States, Plaene oder Secrets.
-Markdown erklaert Faehigkeiten; Accelerator-Eingabeschemas, Patch-Validierung
-und gemeinsamer Compiler entscheiden, was konfigurierbar ist.
-Wissen erteilt niemals Berechtigungen oder neue Features.
+Kuratiertes Markdown je Service, ein striktes Manifest und ein generiertes
+Backend-Bundle bilden die Wissensgrundlage. Beliebige Webseiten, Kundendateien,
+States, Pläne und Secrets werden nicht automatisch eingelesen. Wissen erteilt
+keine Berechtigungen. Native Schemas, Vorschlagsvalidierung und Compiler bestimmen,
+was konfigurierbar ist.
 
-Massgebliche Quellen:
+Maßgebliche Quellen sind `manifest.json` mit Themen, Versionen, Feldbindung und
+Quellpfaden; Themen-Markdown mit geprüften Fakten; die generierte
+`knowledge-topics.generated.ts` mit SHA-256 und Engine-Revision sowie `knowledge.ts`
+mit globalen Regeln, Feldmetadaten, Template-Metadaten und Bundle-Hash.
 
-- `manifest.json`: stabile Themen-ID, Markdown-Datei, Themenversion,
-  Pruefdatum, lokale Qualifikation, Feature-Gruppen, Pflichtkennzeichen,
-  abgedeckte Root-Eingaben, Abhaengigkeiten, lokale massgebliche Quellpfade,
-  externe Referenzen und A01-A24-Szenario-IDs.
-- Themen-Markdown: kuratierte Servicefakten, Dialoganforderungen und Beispiele.
-- Generierte `knowledge-topics.generated.ts`: deploybarer Snapshot mit
-  Themen-/lokalen Quell-SHA-256-Hashes, Engine-Revision und Inhalt.
-  Nicht manuell bearbeiten.
-- `knowledge.ts`: deterministische Auswahl, globale Regeln, generierte
-  Feldmetadaten, Template-Metadaten und vollstaendiger Bundle-Hash.
+Der aktuelle Editor-Chat folgt dem [gemeinsamen modellgesteuerten Beratungsablauf](../assistant-consultation.de.md).
+Das Modell liest gezielt kuratiertes Wissen, native Felder und Defaults sowie
+Projektkataloge und erhält Rückmeldungen des Vorschlagsvalidators. Eine gemeinsame
+inhaltliche Schlussprüfung verwendet den tatsächlichen Compiler-Diff. Separate
+Service-Intent-Klassifizierer und feste Produktdialoge werden dort nicht verwendet.
+Pflichtwissen und Abhängigkeiten bleiben maßgeblich. Alle 19 Themen stehen im
+Rahmen der gewählten Feature-Gruppen bereit. Pflichtregeln und der aktive Gesprächsstand
+starten die Beratung; native Werkzeuge lesen Servicewissen, Feldmetadaten, aktuelle
+öffentliche Werte und Katalogdaten. Bereits gelieferte Regeln werden referenziert. Konfigurationspfade wie `rm_folders[*].name` begrenzen Daten,
+ohne Ordner-IAM-Metadaten zu übertragen. Die API enthält den kompilierten Snapshot
+und kann keine beliebigen Laufzeitdateien, URLs oder Secrets lesen.
 
-Editor-Dialog verwendet gewaehlte Feature-Gruppen und deren
-Themenabhaengigkeiten.
-Zugangsdaten-Grundlagen und Konfigurationslebenszyklus sind immer enthalten.
-Template-Beratung erhaelt die begrenzte vollstaendige Themenmenge.
-Aktuelle Editor-Anfragen waehlen alle Feature-Gruppen, daher stehen alle
-19 Themen bereit; dies ist kein semantisches Retrieval je Nachricht.
-Abhaengigkeiten waehlen Wissen aus, aktivieren keine Services.
-Es gibt keine Vektordatenbank, modellgesteuertes Retrieval oder
-Laufzeit-Dateisystemzugriffe auf Dokumentation.
-Das kompilierte API-Artefakt enthaelt den generierten Snapshot.
-Thementext wird einmal als vertrauenswuerdige kuratierte Regeln geliefert;
-Provenienz bleibt getrennt.
-Kundeneingaben/-historie und PIM-Labels bleiben nicht vertrauenswuerdige
-Daten, keine Anweisungen.
+Quellgebundener Gesprächskontext behält bestätigte Anforderungen und offene Fragen.
+Die Browser-Sprache steuert Antworten. Ein gemeinsamer Auswerter vergleicht
+numerische Anforderungen mit Angeboten und geprüften Grenzen. Eine eindeutig
+passende Empfehlung bleibt sichtbar und verlangt keine zusätzliche Bestätigung.
+Default-Wünsche werden mit echten nativen Werten einschließlich null/Weglassen
+vorgeschlagen. Tatsächliche native Defaults dürfen auch als sichtbare Annahmen in
+einem nicht angewendeten Vorschlag erscheinen. Ausdrückliche Einschränkungen und
+offenzuhaltende Entscheidungen haben Vorrang; offene Fragen sind keine Zustimmung.
+Der Vorschlag zeigt die verwendeten Defaults zur Prüfung.
 
-### Vorschläge für Ordnernamen
+Ordnernamen ändern keine stabilen Schlüssel, Elternbindungen, Rechte oder
+Identitäten. Quellprüfung, geschützte Felder, Compiler, Mandant, Revision und
+getrenntes Save/Plan/Apply bleiben maßgeblich. Das Modell erklärt Git-Erreichbarkeit,
+Nutzergrenzen und State-Koordination anhand gelieferter Fakten statt Formulartexten.
 
-Kombinierte Anfragen zu Firmenpräfix und Ordnernamen sowie reine Namens-Folgefragen
-verwenden den begrenzten Grundlagenvertrag, auch wenn die Themenzuordnung den
-allgemeinen Editor-Pfad auswählt. Eine ausdrückliche Namensanfrage verlangt
-konkrete Anzeigenamen für die vorhandenen Schlüssel. Der Server wendet ein ausdrücklich vorgeschlagenes Präfix an, wenn das Modell
-noch den bisherigen Anzeigenamen liefert. Die Antwort nennt die resultierenden
-Namen in der Sprache des Benutzers statt nur `rm_folders` zu bestätigen.
-Eine Folgefrage kann das im Gespräch vorgeschlagene Präfix bereits vor der
-Übernahme wiederverwenden. Unveränderte Namen werden ausgefiltert; native
-Ordnerschlüssel, Elternbindungen und Owner-/Reader-Metadaten bleiben erhalten.
-Die Feldübernahme ändert den Entwurf; Speichern und Cloud-Ausführung bleiben
-separate Schritte. Die synthetische Qualifikation prüft die kombinierte englische
-Anfrage und ihre Präfix-Folgefrage unabhängig voneinander.
-
-<a id="topic-delivery-contract"></a>
-
-### Vertrag zur Themenauslieferung
-
-Der generische Editor-Vorschlagspfad uebergab zuvor Themen-/Feldmetadaten
-ohne kuratierte Regeltexte.
-Das betraf alle 14 Themen mit nativen Editor-Vorschlaegen, nicht nur DNS.
-Editor-Vorschlaege und Gespraechsberatung teilen jetzt dieselbe Themenabgrenzung:
-aktuelles Thema, transitive Abhaengigkeiten, Pflichtthemen und alle globalen
-Regeln.
-Themenuebergreifende Editor-Vorschlaege enthalten auch die zustaendigen Themen
-jedes exponierten Felds.
-Nicht betroffene Thementexte bleiben ausserhalb des Antwortkontexts.
-Fehlende Abhaengigkeiten fuehren explizit zum Fehler; eine eingeschraenkte
-Feature-Gruppenauswahl bleibt erhalten.
-
-Absichtsklassifikation erhaelt bewusst Themenzusammenfassungen, nicht das
-vollstaendige Beratungswissen.
-Firewall-Evidenzklassifikation erhaelt ausschliesslich Nutzeraussagen.
-Deterministische Felduebersichten und die Policy-Grenze verwenden gepruefte
-lokale Vertraege ohne zweiten Modellaufruf.
-Starttemplate-Beratung und synthetische Qualifikation behalten ihre
-vollstaendigen ausgewaehlten Regeltexte.
-
-Regressionstests pruefen die tatsaechlich ausgehenden Modellanfragen fuer
-alle 19 Beratungsthemen und alle 14 Editor-Themen, einschliesslich exakter
-Volltexte, indirekter Abhaengigkeiten, Pflicht-/globaler Regeln,
-Ausschluss nicht betroffener Themen und themenuebergreifender Vorschlaege.
-Diese Tests mit simuliertem Transport beweisen Wissensauslieferung,
-nicht faktische Qualitaet einer echten Modellantwort oder
-Ausfuehrungsqualifikation.
-DNS-Hinweise unterscheiden Primary-/Secondary-Rollen von Sichtbarkeit,
-erklaeren beide als autoritativ und benennen das unvollstaendige native
-Secondary-Server-Setup.
-
-<a id="real-model-qualification"></a>
-
-Das Serving-Schema ist eine Transportprojektion. Leere Beratungslisten enthalten
-keine unerreichbaren Vorschlagsgrammatiken; Kombinationen aus Muster-/Format- und
-String-Längengrenzen verwenden begrenzte Strings im Transport. Ursprüngliche
-Zod-Verträge, native Validierung, Rechtekataloge und Vorschlagsgrenzen bleiben
-verbindlich. Dadurch wird der xgrammar-/guidance-Wechsel ohne Modellwechsel oder
-Wiederholung abgelehnter Anfragen vermieden. Siehe die
-[Backend-Kompatibilitätsprüfung](https://github.com/vllm-project/vllm/blob/main/vllm/v1/structured_output/backend_xgrammar.py).
-Der Lifecycle-Intent unterscheidet technische Quellenkompatibilität/Recovery,
-veröffentlichte Template-Version, Plattformvertrag und Platform-Owner-Prüfung der
-Auswirkungen eines gespeicherten Plattformplans. Eine erwähnte Template-
-Herkunft beim Vergleich von gewünschter/zuletzt angewendeter Ausführung bedeutet
-kein Template-Upgrade. Die aktuelle Frage hat Vorrang vor früheren Aufgaben. Eine geschlossene aktuelle
-Workflow-Beratungsaufgabe wählt ihre geprüfte Lifecycle-Antwort auch bei einem
-widersprüchlichen verwandten Komponententhema. Unverwandte Themen und historische
-Aufgaben bleiben ausgeschlossen. Entwurfs-/Aktionsaufträge gelangen nicht in
-diesen rein beratenden Pfad.
-
-Die Klassifikation enthält kein ungenutztes Freitext-Assessment mehr und fordert
-kompaktes JSON. Ungültige, übergroße oder unvollständige Antworten bleiben
-abgewiesen; Grenzen werden nicht erhöht und Teil-JSON wird nicht übernommen.
-Die geschlossenen aktuellen Upgrade-Beratungsarten werden vor der Auswahl der geprüften
-Anleitung mit einem kleinen geschlossenen Themenschema gegen die aktuelle Frage
-geprüft. Diese Prüfung erhält weder Entwurf, Plan noch historische Aufgaben.
-Die Audit-Anleitung belässt das native Organisationsrouting bei
-`link_scopes=null`, solange keine manuellen Scopes verlangt sind. Explizite
-manuelle Scopes und eine ausdrücklich leere Liste behalten ihre native Bedeutung.
-Neue Entwürfe lassen nur eine redundante Kopie des Organisationsstandards ohne
-ausdrücklich vorgegebene ID oder natives Scope-Feld weg. Bestehende und
-abweichende Scopes bleiben erhalten.
-
-### Einrichtungsdialog und offene Entscheidungen
-
-Ein ausdrücklicher Einrichtungswunsch führt zu einer gezielten Rückfrage oder
-einer belegten, prüfbaren Empfehlung. Enthält ein nativer Editor-Vorschlag ein
-unbestätigtes Produkt, eine Adresse oder einen Kontakt, wird er vollständig
-verworfen und durch eine Rückfrage zum betroffenen Feld ersetzt. Die
-Quellenprüfung verhindert weiterhin die Übernahme. Andere Schema-, Geltungsbereichs-,
-Zugangsdaten- und Berechtigungsfehler bleiben Fehler. Kataloggestützte Empfehlungen
-sind Vorschläge, kein Berechtigungsnachweis und keine Ausführungsfreigabe.
-
-Der Browser sendet seine gewählte `language` (`de`/`en`) bei Chat- und
-Startvorlagenberatung mit. Die API validiert sie und übergibt sie als vertrauenswürdige
-Antwort-Metadaten, getrennt von Entwurfsfeldern und zitiertem Verlauf. Modell-
-Sprachkennzeichen überschreiben diese explizite Einstellung nicht. Ältere Clients
-können sie auslassen; gespeicherter Verlauf wird weder umgeschrieben noch übersetzt.
-
-Neue Git-Vorschläge benötigen Größe und Zugriff zusammen. Ein begrenzter
-Entscheidungsklassifikator wählt nur tatsächliche Nutzerquellen und angebotene
-Tarif-/Zugangsoptionen. Feste Programmregeln liefern die dokumentierte Git100-
-Empfehlung für unternehmensweites Git, Git10-Alternativen, aktuelle Projekttarife,
-die optionale Übernahme gespeicherter enger ACLs und die Ersetzungsgrenze des
-gepinnten Providers. Nutzer müssen keine nativen Flavor-IDs recherchieren.
-Ein Wunsch nach einem sinnvollen unternehmensweiten Standard beantwortet die
-Größenwahl; sie bleibt in Zugangs-Folgefragen erhalten. Nur wirklich unbekannte
-Firmen-Ausgangs-CIDRs benötigen Freitext. Offene Fragen erlauben keinen öffentlichen
-Zugriff; öffentliche CIDRs benötigen ausdrücklich positive Nutzerevidenz. Der zentrale synthetische Korpus enthält kurze deutsche und
-englische Einrichtungswünsche, teilweise beantwortete Fragen und Folgeantworten,
-zusätzlich zu vollständig spezifizierten Änderungen und Beratung. Die durchgängige
-Journey beginnt Git mit einer Einrichtungsfrage vor der Auswahl. Simulierte
-Transport- und Schutztests ergänzen diese Fälle; Feldinventar und Wissenszustellung
-allein belegen keine Qualität natürlicher Dialoge. Eine übersprungene Release-
-Qualifikation ist ausdrücklich kein neuer Live-Testnachweis.
-
-Editor-Services mit Policy prüfen eine Informationsklassifikation gegen die aktuelle Anfrage. Ausdrückliche Einrichtungswünsche behalten bei fehlenden Angaben ihren typisierten Rückfrageablauf. Die Prüfung erhält nur Komponente und aktuelle Nachricht und verlangt vor der Entwurfsvorbereitung ein exaktes aktuelles Nutzerzitat. Dieselbe Absichtsprüfung kann eine durch exakte Nutzerevidenz belegte Root-Planprüfung erkennen. Dieser bestätigte Workflow hat Vorrang vor dem erwähnten Service und wird nicht durch die spätere Komponententhemen-Klassifikation überschrieben. Andere Audit-Beratung prüft separat das aktuelle Thema. Bei bekannten Appliances ohne angeforderte HA ist der typisierte Vorschlag verpflichtend, sofern die technischen Voraussetzungen vorliegen; reine Beratungsrunden bleiben Rückfragen ohne Änderungen.
-
-Generierte Modellfragen müssen im Wire-Vertrag ausdrücklich zwischen fachlicher Anforderung und Katalogauswahl wählen; gespeicherte ältere Fragen bleiben lesbar. Quellnetzfragen nutzen serviceübergreifend dieselbe geprüfte zweisprachige Darstellung. Audit-Folgeantworten erkennen aktuelle und frühere Server-Frageformulierungen.
-
-Ein vollständiger neuer Appliance-Vorschlag, dessen geänderte Werte wörtlich im aktuellen ausdrücklichen Auftrag stehen, öffnet nicht erneut die allgemeine Einrichtung. Diese Verfeinerung greift erst nach der normalen Vorschlags-/Quellenprüfung; gespeicherte oder abgeleitete Werte genügen nicht. Bestehende breite Einrichtungs- und reine Beratungsdialoge behalten ihre offenen fachlichen Entscheidungen.
-
-### Geprüfte Architekturgrenzen
-
-Bei dokumentierten festen Grenzen und Ausführungsgarantien wählt das Modell eine geschlossene Faktenkennung und ein exaktes Zitat aus der aktuellen Nutzerfrage. Die Anwendung stellt die geprüfte deutsche/englische Antwort dar, ohne dass das Modell diese Grenze umformuliert. Die ersten Fakten behandeln Git-Instanzkapazität und -Topologie, Erreichbarkeit von Application-Git sowie S3-/Datenbankkoordination. Sie erlauben weder Entwurfsänderungen noch Ausführung und benötigen das passende ausgewählte Wissensthema. Andere Beratung und Konfigurationsvorschläge nutzen ihre bisherigen Abläufe. Erweiterungen benötigen Quellbindungen, beide Sprachen und positive/negative Faktentests.
+Der frühere Controller bleibt vorübergehend als `LegacyAssistantModelServing` für
+gekennzeichnete historische Vergleichstests und die separate Template-Beratung
+erhalten. Diese Tests qualifizieren den neuen Editor-Pfad nicht. Werkzeugvertrag,
+Fristen, privater Kontext und Übergangsnachweise stehen im Beratungsdokument.
 
 ### Qualifikation mit echtem Modell
 
@@ -227,104 +107,6 @@ Eine endgueltig gescheiterte Anfrage laesst ihre Iteration weiterhin fehlschlage
 Der Harness verwendet dieselbe produktive Wiederholungsregel, keinen
 CI-Sonderweg; diese Versuche ersetzen weder die geforderten unabhaengigen
 Wiederholungen noch loeschen sie fruehere fehlgeschlagene Nachweise.
-CI verwendet fuer Antwort- und Intent-Modell die Anwendungsdefaults,
-ohne CI-exklusiven Klassifikator-Override.
-Effektive Modell-IDs stehen in jedem Nachweis.
-Qualifikation eines alternativen Modells qualifiziert nicht das
-konfigurierte Anwendungsmodell.
-
-Aktive Firewall-Entwuerfe und mehrstufige Firewall-Dialoge verwenden immer
-den spezialisierten Klassifikator fuer Einrichtungsumfang und Belege.
-Ein allgemeiner Feldhinweis wie `ha` darf ihn nicht umgehen: Eine breite
-Einrichtungsfortsetzung mit HA behaelt die noch offenen Entscheidungen zu
-Verkehr, Kapazitaet und Unterbrechung bei. Eine ausdrueckliche gezielte native
-Aenderung bleibt auch nach einem frueheren breiten Einrichtungsdialog eine
-Feldaenderung und erzeugt keine fremden Einrichtungsfragen. Bei angeforderter HA fuer eine vorhandene Appliance mit bekannten technischen Voraussetzungen muss die Antwort den typisierten HA-Vorschlag enthalten, auch wenn fachliche Rueckfragen offen sind. Antwortschema und Servervalidierung erzwingen denselben Mindestumfang pro ausgewaehltem Bereich; native IP-Defaults bleiben ungesetzt.
-Gibt es keine begrenzten Nutzerbeleg-Fragmente, erlauben Belegfelder nur null
-statt einer leeren Aufzaehlung.
-
-Beschreibungen von Intent- und Evidenzschemas werden auch im Systemkontext
-des Klassifikators gesendet, nicht nur als Structured-Decoding-Beschraenkung.
-Antwortgenerierung erhaelt geprueftes Feld-/Themenwissen ohne zweiten
-vollstaendigen Schema-Dump.
-Fuer eine explizit benannte zusaetzliche DNS-Zone sind quellengebundene
-angeforderte Felder im Vorschlagsschema dieser Zone verpflichtend.
-Ein angeforderter Kontakt darf weder nur in der Erklaerung genannt noch
-still weggelassen werden; Felder fuer eine Zone sind nicht in anderen
-Zonen verpflichtend.
-Laufzeitpruefungen fuer Quelle, Umfang und native Konfiguration bleiben
-bestehen.
-
-DNS-Faelle pruefen Rollenbedeutung, autoritative Antworten,
-Trennung von Sichtbarkeit, Primary-Empfehlung, unvollstaendiges natives
-Secondary-Setup, Korrektur frueherer Falschaussagen und Erhalt beim
-Hinzufuegen einer Zone.
-Semantische Pruefungen lehnen irrefuehrende Antworten und reine
-Schlagwortantworten ab, bleiben aber begrenzte Regressionskriterien
-statt Beweis universeller faktischer Korrektheit.
-Die kontinuierliche themenuebergreifende Reise prueft auch die
-DNS-Erklaerung nach frueheren Konfigurationsschritten und dass Beratung
-den Entwurf nicht veraendert.
-
-Standardmaessige `qualified`-Release-Builds haengen vom wiederverwendbaren Live-Workflow ab:
-Alle Themen laufen zweimal, danach folgt der kontinuierliche Dialog,
-auch wenn einzelne Modellfaelle scheitern.
-Rohe synthetische Nachweise bleiben CI-Artefakte.
-Promotion benoetigt erfolgreiche Live-Qualifikation und Build-Job des
-Original-Builds; aeltere Builds ohne diesen Nachweis koennen Qualifikation
-nicht umgehen.
-Fehlendes Token, nicht verfuegbares Modell oder fehlgeschlagenes Kriterium
-blockieren Qualifikation, kein stilles Ueberspringen.
-Allgemeine Beratung beendet ihren zusammengefuehrten vertrauenswuerdigen
-Systemkontext mit einer expliziten Anweisung zur Antwortvollstaendigkeit:
-Die Erklaerung muss die tatsaechlich angeforderten Fakten, nativen Defaults,
-Grenzen und Ausschluesse enthalten, nicht nur eine fehlende Liste
-ankuendigen oder auf Vertragsmetadaten verweisen.
-Rueckfragen ersetzen keine faktische Antwort.
-Kompakte Stichpunkte je Feldfamilie zielen auf hoechstens 2400 Zeichen
-innerhalb des unveraenderten 3000-Zeichen-Antwortschemas.
-Gleichwertige regionale Formen gruppieren, statt sie bis zum Abschneiden
-zu wiederholen.
-Reine Informationsuebersichten zu Feldern/Defaults/Grenzen benoetigen keine
-Konfigurationsentscheidungen und liefern keine Rueckfragen;
-andere Beratung erfragt weiterhin nur fehlende fachliche Entscheidungen,
-niemals geschuetzte Eingaben.
-Der begrenzte Firewall-Anforderungsdialog behaelt seinen eigenen
-Kurzantwortvertrag.
-Transporttests pruefen Auslieferung dieser Anweisung; faktische Kriterien
-am echten Modell entscheiden weiter ueber Qualifikation der Antworten.
-
-Fuer native Felduebersichten waehlt semantische Absichtsklassifikation
-die bestehende Antwort aus geprueften Metadaten, sofern verfuegbar,
-statt denselben statischen Vertrag erneut generieren zu lassen.
-VPN, DevOps Git und DNS-Feld-/Rollensemantik verwenden diesen Pfad mit
-getesteter 2400-Zeichen-Grenze, ohne Fragen oder Entwurfsaenderungen,
-mit nativen Routing-/Plan-Defaults und getrennter geschuetzter PSK-Bindung.
-Das faktische Orakel fordert diese Details und lehnt erfundene
-`static`-/`dynamic`-Routing-Typen ab.
-DevOps verlangt native Felder und die Grenze `git_flavor=null`
-(keine Instanz), ohne einen aktivierten Default zu suggerieren.
-Dies ersetzt weder aktuelle Verfuegbarkeitspruefungen noch autorisiert es
-Konfiguration; nicht unterstuetzte Uebersichtsthemen behalten den
-Beratungspfad.
-DNS-Rollenerklaerungen behalten die bestehenden Kriterien zu
-Primary/Secondary, autoritativer Rolle, Sichtbarkeit und nativer
-Secondary-Konfigurationsgrenze bei, einschliesslich Korrektur frueherer
-irrefuehrender Beratung.
-Tatsaechliches DNS-Setup erfolgt weiter ueber den bestehenden pruefbaren
-Vorschlagsablauf.
-
-CI benoetigt `LZC_MODEL_SERVING_TOKEN` in der geschuetzten Umgebung
-`assistant-tests`.
-Lokale Nachweise zertifizieren diese entfernte Umgebung nicht und
-autorisieren kein Deployment.
-CI-Qualifikationsjobs teilen eine nicht abbrechende Concurrency-Gruppe,
-um konkurrierende Modellanfragen manueller und Release-Laeufe zu vermeiden.
-Faktische Kriterien bei neuen Faehigkeiten pruefen/erweitern;
-offene oder mehrdeutige Antworten benoetigen weiter menschliche Pruefung.
-
-<a id="evidence-and-release-status"></a>
-
 ### Evidenz und Release-Status
 
 Laufspezifische Ergebnisse gehoeren in quellengebundene Nachweise,
@@ -513,177 +295,33 @@ ueber kuerzliches Abrufen einer externen Seite.
 
 ### Vorlaeufiges Antwort-Streaming
 
-Beide Chats fordern eine optionale `application/x-ndjson`-POST-Antwort an.
-Der Modellclient verarbeitet begrenzte SSE-Ereignisse mit
-`eventsource-parser` und unvollstaendiges JSON mit `partial-json`;
-nur vorlaeufiger `explanation`-Text wird weitergeleitet.
-Teiltext ist sichtbar ungeprueft, niemals ein gespeicherter/annehmbarer
-Vorschlag.
-Vollstaendig validiertes JSON durchlaeuft vor Speicherung und finalem
-UI-Ereignis weiterhin bestehende Modell-, Feld-, Umfangs-, native
-Compiler-, Autorisierungs-, Revisions- und Ablaufpruefungen.
-Unterbrochene, uebergrosse, fehlerhafte oder vom falschen Modell stammende
-Streams scheitern geschlossen.
-Verbindungsabbrueche brechen Modellanfragen ab und werden vor Speicherung
-geprueft.
-Bestehende JSON-Clients bleiben unterstuetzt; kein automatischer Retry
-oder Ausfuehrung.
-Beide Nachrichtencontainer scrollen bei Historienaenderungen und
-vorlaeufigen Textupdates ans Ende.
-
-Optionales `LZC_MODEL_SERVING_INTENT_MODEL` waehlt nur den Klassifikator;
-`LZC_MODEL_SERVING_MODEL` waehlt weiterhin Antworten.
-Lokale Testaktivierung am 2026-10-11 nutzt mit expliziter Nutzererlaubnis
-GPT-OSS-120B fuer Intent plus etabliertes Qwen-Antwortmodell.
-Dies ist keine Produktions- oder vollstaendige Dialogqualifikation.
-Streaming zeigt Text frueher, nicht vertrauenswuerdigeren Text.
-
-<a id="conversation-and-change-contracts"></a>
+Der Editor-Chat streamt nur die abschließend validierte Erklärung. Werkzeugschritte
+und ungeprüfte Vorschläge werden nicht als Beratung gestreamt. NDJSON- und JSON-
+Aufrufe bleiben unterstützt; Abbruch und Antwortgrenzen gelten weiterhin. Die
+separate historische Template-Beratung behält ihren begrenzten Vertrag.
+Kein Stream speichert Daten oder führt Cloud-Änderungen aus.
 
 ### Gespraechs- und Aenderungsvertraege
 
-Fragen exponieren begrenzte `text`, `options`, `multiple`:
-bis zu sechs verschiedene Auswahltexte mit 160 Zeichen,
-native Radio-/Checkbox-Auswahl und stets verfuegbare Freitextantwort.
-Neuer Inferenztransport verlangt strukturierte Fragen;
-gespeicherte Altfragen ohne Optionen bleiben gueltig.
-Optionen durchlaufen ebenfalls Pruefungen auf geschuetzte Fragen.
-Auswahl bereitet nur der Frage zugeordneten Nutzertext vor;
-sie sendet, akzeptiert oder veraendert niemals automatisch.
-Bestehender Compose-Text bleibt erhalten; die gemeinsame Grenze von
-4000 Zeichen wird vor Einfuegen geprueft.
-Auswahl erscheint nur aus vollstaendiger validierter Antwort,
-nicht aus vorlaeufigem Streaming-Text.
+Fragen enthalten begrenzte `text`, `options` und `multiple`, bis zu sechs
+unterschiedliche 160-Zeichen-Auswahlen und Freitext. Eine Auswahl bereitet
+fragebezogenen Benutzertext vor und sendet oder ändert nichts automatisch. Die
+Nachrichtengrenze gilt weiter. Empfehlungskarten zeigen belegten Bedarf und Fakten,
+bleiben beim Neuladen erhalten und verlangen keine weitere Bestätigung.
 
-Diff-Checkboxen bereiten eine Anfrage fuer einen neuen Vorschlag mit
-gewaehlten Pfaden/Werten vor.
-Es gibt weder direkten Teilannahme-Endpoint noch Mutation ausgewaehlter Felder.
-Gesamtannahme ist deaktiviert, solange eine Teilmenge ausgewaehlt ist.
-Das neue Ergebnis wird normal validiert/geprueft; Nutzer muessen seinen
-gesamten Diff pruefen und explizit annehmen.
-Zusammengehoerige native Aenderungen bleiben atomar;
-ein Komponenten-Map-Eintrag wird nicht in einzelne verschachtelte Felder
-zerlegt. Keine Ausfuehrungserlaubnis.
+Eine Diff-Auswahl fordert einen neuen prüfbaren Vorschlag an. Der endgültige Diff
+wird ausdrücklich übernommen; Save, Plan und Apply bleiben getrennt. Geschützte
+Felder, Identitätsquellen, native Typen, Vollständigkeit neuer Komponenten,
+Mandanten- und Revisionsprüfung bleiben maßgeblich. Defaults kommen aus dem nativen
+Vertrag. Anzeigenamen verändern keine Ordnerschlüssel oder Zugriffsmetadaten.
 
-Konfigurationsdialog hat zwei begrenzte Modellaufrufe:
-zuerst Thema/Modus anhand gespeicherter Nutzer-/Assistant-Historie
-klassifizieren, danach unter backend-eigenen Faehigkeiten antworten.
-Der Klassifikator kann keine Berechtigungen erteilen.
-Folgefragen muessen kein Themenschlagwort wiederholen;
-explizite Themenwechsel uebersteuern Historie.
-Die vollstaendige gespeicherte Nutzerhistorie begleitet auch Beratung,
-damit fruehere Anforderungen nach dem Fenster letzter Beitraege nicht
-verschwinden.
-Assistant-Vorschlaege und Template-Defaults sind keine Zustimmung.
-Firewall-Planung erfasst exakte Nutzerzitate fuer Traffic, Kapazitaet
-und Betrieb.
-Backend lehnt Zitate ab, die nicht in Nutzernachrichten vorkommen,
-und waehlt die naechste offene Entscheidung/den Pfad deterministisch.
-Zitatkategorisierung bleibt Modellinterpretation, kein Nachweis der
-Deployment-Eignung.
-Beratungsanfragen erhalten nur relevante Themen/Abhaengigkeiten plus
-Pflichtwissen, nicht alle Services;
-Firewall-Dimensionierung ist von Managed-VPN-Produktplaenen getrennt.
+Der private Gesprächskontext liegt serverseitig an der bestehenden Nachricht.
+Bestätigte Entscheidungen zitieren echte Benutzerbeiträge; unbelegte Angaben werden
+verworfen. Ein neuer Wissenshash verwirft den Kontext, nicht den Verlauf. Verwerfen
+schließt offene Vorschlagskontexte. Neue Antworten behalten den ursprünglichen
+Ablaufzeitpunkt und ersetzen Vorschlag und Wissenshash atomar. Veraltete Vorschläge
+werden nicht still übernommen. Eine Datenbankmigration ist nicht nötig.
 
-Feldvertraege unterscheiden Nutzerentscheidungen von betreiberverwalteten
-Zugangsdetails.
-Nur explizit aufgefuehrte skalare Vorschlaege fuer Firmenname/-code/Region,
-reine Namensupdates bestehender `rm_folders` und native SNA-Vorschlaege
-sind unterstuetzt; keine pauschale Skalar-/Strukturerlaubnis.
-Identitaetswerte benoetigen woertliche Nutzerevidenz, sofern der Nutzer
-Firmenname/-code oder Ordnernamen nicht explizit zur Auswahl delegiert.
-Solche Delegation referenziert eine originale Nutzernachricht ueber
-eine vom Backend aufgezaehlte Quell-ID, niemals ein modellumgeschriebenes
-Zitat oder einen Assistant-Beitrag.
-Nicht leere delegierte Pfade benoetigen eine bestehende Nutzerquelle.
-Diese begrenzte semantische Klassifikation ist weder allgemeine Zustimmung
-noch Deployment-Autorisierung.
-Ordnernamen haben 1-40 Zeichen; Schluessel, Owner, Reader, Beschreibungen
-und Identitaeten bleiben erhalten.
-Implizite native Ordnerdefaults werden nur als Namen projiziert;
-explizit leere Maps werden nicht ersetzt.
-Neue Ordner, Cloud-IDs, Regionsauswahl, IAM und Betreiberzugangseinstellungen
-sind nicht delegiert.
-Admin-Account, API-Secret-Version und Bootstrap sind von Chatfragen/
--aenderungen ausgeschlossen, auch bei Annahme aelterer Vorschlaege.
-Bootstrap bedeutet Einrichtung initialen Management-Zugangs,
-nicht Firewall-HA-Aktivierung oder Deployment-Autorisierung.
-
-Firewall-Beratung uebersetzt Traffic-Umfang, Kapazitaet und
-Ausfall/Betrieb in menschliche Entscheidungen.
-Die modellgenerierte Erklaerung ist auf 800 Zeichen und hoechstens eine
-native Entscheidungsfrage begrenzt.
-Kein fester Antwortersatz.
-Andere Komponententhemen bleiben beratend, sofern das Backend keinen
-expliziten Translator hat.
-Dies ist ein Firewall-Dialogpilot, kein vollstaendiger semantischer
-Konfigurationscompiler oder produktionsqualifizierter
-Gespraechszustandsautomat.
-Zwei Inferenzaufrufe erhoehen Latenz; persistierte Absichtszusammenfassungen
-und vollstaendige Lastqualifikation bleiben offen.
-
-Bundle-Hash umfasst kuratierten Inhalt, Manifest-Metadaten, Engine-Revision
-und lokale Quellfingerprints.
-Eine Quellaenderung macht den generierten Snapshot veraltet;
-die verpflichtende Pruefung scheitert.
-Neugenerierung muss auf Quellpruefung folgen, nicht veraenderte Quellen
-still massgeblich machen.
-Kein automatisches Update bei Build/Start.
-Wissensaenderungen benoetigen kein neues Gespraech.
-Jede neue Nachricht verwendet das aktuelle Bundle und erhaelt Historie,
-Identitaet und urspruenglichen Ablaufzeitpunkt.
-Die neue Antwort ersetzt Vorschlag und Wissenshash atomar.
-Alte Vorschlaege bleiben veraltet und koennen vor Neugenerierung mit
-aktuellem Wissen nicht angenommen werden.
-Keine Loeschung, Ablaufverlaengerung oder stille Vorschlagsannahme.
-
-Alle Themen bleiben `local-draft-not-reviewed-release`.
-Quellen sind explizit zugelassene lokale Terraform-, kuratierte Markdown-
-und Domaenen-/API-TypeScript-Dateien;
-nur Fingerprints, keine Quelldateiinhalte, werden als Provenienz gesendet.
-Keine Umgebungs-, Zugangsdaten- oder State-Dateien sind Quelleingaben.
-Vollstaendiges externes Quellen-Retrieval, gepruefte historische
-Wissensreleases, automatische Promotion und vollstaendige
-A01-A24-Gespraechsqualifikation sind mit dieser Architektur nicht implementiert.
-Kuenftige Themenpartitionierung soll vor Einfuehrung von RAG explizit
-und testbar sein.
-
-### DNS-Kontext bei der Intent-Einstufung
-
-Die DNS-Einstufung erhält zusätzlich stabile gespeicherte Zonenschlüssel und
-validierte Angaben dazu, ob Domain, Anzeigename, Beschreibung und Kontakt vorhanden
-sind, sowie zur Verfügbarkeit bestätigter Owner-/Benutzerkontakte. Tatsächliche
-Domain-/Kontaktwerte, unbekannte Felder und Zugangsdaten sind aus diesem zusätzlichen
-Klassifikationskontext ausgeschlossen. Der Serving-Vertrag verlangt eine explizite
-DNS-Aufgabenentscheidung statt des bisherigen Parser-Standardwerts. Eine
-semantische Entscheidung `remaining-settings` verwendet den Entwurfsmodus, auch wenn
-der Klassifikator widersprüchlich Advice gemeldet hat. Vorhandene Domains und
-Metadaten sind keine offenen Setup-Entscheidungen. Informationsfragen und ausdrücklich
-änderungsfreie Fragen bleiben Advice. Kontaktquelle, Erhalt bestehender Werte,
-Vorschlagsvalidierung und ausdrückliche Übernahme werden weiterhin geprüft.
-
-Firewall-Zugangs-/Bootstrap-Übersichten nutzen nach semantischer Absichtserkennung ebenfalls geprüfte native Feldmetadaten und begrenzte Zugangs-/Phasenfakten. Dadurch entfällt für diese feste Übersicht ein zweiter generativer Aufruf. Admin-Anmeldung, API-Zugangsdaten und geschützte Operator-Bindungen bleiben getrennt; die Übersicht aktiviert keinen Bootstrap, liest keine Secrets und startet keine Ausführung. Andere Beratung bleibt im bisherigen themengebundenen Generierungspfad.
-
-Beratung zu Template-Version, Plattformvertrag und Ausführungsquelle verwendet drei abgeschlossene semantische Aufgaben. Nur aktuelle Informationsfragen im Thema configuration-lifecycle wählen die geprüften, begrenzten Ablaufbeschreibungen; historische Absichten, Vorschlagsaufträge und andere Themen tun dies nicht. Diese Antworten erklären erhaltene Identitäten, ausdrückliche Bindung, frischen Plan und separaten Apply sowie die unterschiedlichen Grenzen gemeinsamer Plattform und Recovery ohne zweiten generativen Aufruf. Sie lesen oder verändern keine Bestellung. Andere Beratung behält die themengebundene Antwortgenerierung.
-
-SNA-Feld-/Default-Beratung verwendet denselben geprüften Übersichtspfad: native Einzel-/Map-/Regionalformen, IPv4-Pools und Transfernetze, geordnete Subnetzpräfixe, Resolver-Defaults und regionale Corporate-Bezüge. Die Antwort enthält weder Einrichtungsfragebogen noch Entwurfsänderungen oder Kapazitäts-/Verfügbarkeitszusagen. SNA-Einrichtung und kombinierte Firewall-Aufträge behalten ihre bestehenden Vorschlags- und Umfangsprüfungen. Der echte Modellfall verlangt die nativen Felder und weist Einrichtungsrückfragen ab; eine Diagnoseantwort ist kein Qualifikationsnachweis.
-
-Öffentliche Owner-Auswahlen werden als gebundene Identitätsmetadaten geprüft, nicht als Zugangsdatenfragen. Nur exakt erzeugte deutsche/englische Owner-Auswahllabel mit einer vorbereiteten, an den aktuellen Schlüssel gebundenen Plattform-Service-Account-Adresse oder der verifiziert angemeldeten E-Mail-Adresse werden von den Schlüsselwortprüfungen für Fragen ausgenommen. Fragetext, unbekannte/veränderte Optionen, Prüfungen auf geschützte Werte und alle gewöhnlichen Aufrufer behalten die bestehenden Schranken. Senden, Vorschau/Rebase und Übernahme lesen den gebundenen Identitätskontext erneut; ein gewechselter Schlüssel oder fremdes Profil kann eine gespeicherte Auswahl nicht bestätigen. Synthetische Fälle für gemischte Templates prüfen auch Plattformkonten mit Bootstrap im Namen.
-
-Template-Rechteprofile werden pro Template als vollständige Einheit geprüft und ausgewählt: Schemaversion, Modus, initialer Owner und beide Rechtelisten bleiben zusammen. So bleiben Pflichtangaben in Vorschau und Übernahme erhalten und gleichzeitige Profiländerungen werden erkannt; andere Templates und Einstellungen bleiben separat auswählbar.
-
-Neue Audit-Entwürfe benötigen ausdrückliche Benutzerentscheidungen zu Aufbewahrung,
-Zugriffsnetzen und Object Lock. Native Defaults, Netze anderer Komponenten und
-frühere Assistant-Vorschläge ersetzen diese Entscheidungen nicht. Wörtliche
-Antworten auf den exakt noch offenen Fragensatz setzen den Dialog ohne erneute
-Themenklassifikation fort; nur unbeantwortete Fragen bleiben offen. Bestätigte Antworten begrenzen zusätzlich das Modellausgabeschema, auch ein
-ausdrückliches Object Lock false. Vollständige Vorschläge durchlaufen weiterhin
-natives Editor-Schema und Quellenprüfung.
-Übernahme, Speichern und Ausführung bleiben getrennt.
-
-Audit-Quellennachweise verwenden Audit-bezogene Benutzerbeiträge: Eine Organisations-
-UUID aus den Grundlagen legt kein manuelles Audit-Linkziel fest. Automatische
-Abdeckung verwalteter Ressourcen braucht eine tatsächliche Benutzerentscheidung;
-sonst bleibt der native Default false erhalten. Feldübersichten zur Föderation
-verwenden geprüfte native Felder und grenzen Betriebsidentitäten von Benutzer-SSO
-ab. Entwurfsvorschläge behalten ihren typisierten Ablauf.
+Der Bundle-Hash umfasst kuratierte Inhalte, Manifest, Engine-Revision und lokale
+Quellfingerabdrücke. Quelländerungen verlangen geprüfte Neugenerierung; Build und
+Start genehmigen kein Wissen automatisch.

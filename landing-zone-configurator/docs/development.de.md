@@ -3,6 +3,9 @@
 
 [English](development.md) | [Deutsch](development.de.md)
 
+[Gemeinsame Beratung, Werkzeuge und Gesprächsstand](assistant-consultation.de.md)
+
+
 Beginne mit [CONTRIBUTING](../../CONTRIBUTING.de.md) und der
 [lokalen Anwendungseinrichtung](../app/README.de.md). Diese Seite verzeichnet technische
 Referenzen; das [Benutzerhandbuch](user-guide.de.md) beschreibt die Produktnutzung.

@@ -3,8 +3,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   applicationProjectPermissionNames,
+  applicationServiceAccountKeyPermissions,
+  defaultApplicationAccessProfile,
   featureFieldCatalogue,
   type JsonValue,
+  objectValue,
 } from "@lzc/domain";
 import { expect, it } from "vitest";
 import { buildMultiTemplatePermissionDialogue } from "../apps/api/src/assistant/application-permission-dialogue.js";
@@ -19,8 +22,10 @@ import {
   assistantDnsRoleFailures,
   assistantFirewallBootstrapFailures,
   assistantPlatformImpactReviewFailures,
+  assistantPrematurePersistenceClaim,
   assistantScenarioFixture,
   assistantScenarios,
+  assistantUnsavedNotice,
   buildAssistantScenarioInventory,
   syntheticOrganizationId,
   validateAssistantScenario,
@@ -273,11 +278,33 @@ it.each(assistantScenarios)(
       ).toContain("git_over_capacity_must_clarify_topology_before_flavor");
       return;
     }
+    if (scenario.nativeDefaultResetPath) {
+      const result = {
+        explanation:
+          "Reset the requested native override in the local draft. Nothing has been saved.",
+        questions: [],
+        changes: [
+          {
+            path: scenario.nativeDefaultResetPath,
+            operation: "default" as const,
+            value: null,
+          },
+        ],
+        references: [scenario.topic],
+      };
+      expect(validateAssistantScenario(scenario, result).failures).toEqual([]);
+      expect(
+        validateAssistantScenario(scenario, { ...result, changes: [] })
+          .failures,
+      ).toContain("native_default_not_completed");
+      return;
+    }
     if (scenario.setupQuestionPaths) {
       expect(
         validateAssistantScenario(scenario, {
-          explanation:
-            scenario.id === "editor-devops-company-standard"
+          explanation: scenario.gitCapacityRecommendation
+            ? "I recommend Git100 for 80 users. Git10 supports at most 10 users; Git100 supports at most 100 users. Nothing changed."
+            : scenario.id === "editor-devops-company-standard"
               ? "Starting size selected: Git100. Nothing changed."
               : "Nothing changed.",
           changes: [],
@@ -296,8 +323,9 @@ it.each(assistantScenarios)(
       ).toEqual([]);
       expect(
         validateAssistantScenario(scenario, {
-          explanation:
-            scenario.id === "editor-devops-company-standard"
+          explanation: scenario.gitCapacityRecommendation
+            ? "I recommend Git100 for 80 users. Git10 supports at most 10 users; Git100 supports at most 100 users. Nothing changed."
+            : scenario.id === "editor-devops-company-standard"
               ? "Starting size selected: Git100. Nothing changed."
               : "Nothing changed.",
           changes: [],
@@ -351,10 +379,15 @@ it.each(assistantScenarios)(
             "editor-devops-company-complete",
             "editor-devops-reuse-allowlist",
             "editor-devops-capacity-narrowed",
+            "editor-devops-sized-80-followup",
+            "consultation-company-git-default-en",
+            "consultation-company-git-default-de",
           ].includes(scenario.id)
             ? "git-100"
             : "git-10",
-          allowed_network_ranges: ["203.0.113.0/24"],
+          allowed_network_ranges: scenario.nativeDefaultExpected
+            ? ["0.0.0.0/0"]
+            : ["203.0.113.0/24"],
         },
         federated_identity_providers: [
           {
@@ -372,7 +405,9 @@ it.each(assistantScenarios)(
       };
       expect(
         validateAssistantScenario(scenario, {
-          explanation: "Reviewable local draft only.",
+          explanation: scenario.gitCapacityRecommendation
+            ? "I recommend Git100 for 80 users. Git10 supports at most 10 users; Git100 supports at most 100 users. Reviewable draft only."
+            : "Reviewable local draft only.",
           questions: [],
           changes: [{ path: root, value: values[root], operation: "merge" }],
           references: [scenario.topic],
@@ -817,6 +852,11 @@ it("checks exact SNA values and rejects missing or unrelated settings", () => {
 });
 
 it("requires factual Automatic/DNS advice and rejects fixed-size or DNS-removal claims", () => {
+  expect(
+    assistantCorporateIpv4Failures(
+      "Automatisch = natives null. Bei Corporate-Projekten löst der Accelerator die default_prefix_length der regionalen SNA (hier /28) vor dem Plan auf und behält die DNS-Server bei. Der ältere Provider akzeptierte null mit DNS nicht; numerische Overrides gewinnen Vorrang. Ein /24 ist nicht zwingend und DNS muss nicht deaktiviert werden. Freie Adressen sind nicht garantiert.",
+    ),
+  ).toEqual([]);
   const correct =
     "Automatisch übernimmt das Standardpräfix /28 der SNA. Der Provider benötigt bei gesetztem DNS ein explizites Präfix; das native Modul liest es im Plan aus der SNA und übergibt es explizit. DNS bleibt erhalten. Freie Kapazität ist nicht garantiert.";
   expect(assistantCorporateIpv4Failures(correct)).toEqual([]);
@@ -1211,6 +1251,25 @@ it("uses only the fixture's trusted owner identities when qualifying mixed-templ
     english: false,
   });
   expect(validateAssistantScenario(scenario, dialogue).failures).toEqual([]);
+  const equivalent = structuredClone(dialogue);
+  equivalent.questions[0]!.text =
+    "Welche E-Mail soll der gemeinsame initiale Projekt-Owner beider Vorlagen sein?";
+  equivalent.questions[1]!.text =
+    "Soll central auf das Workload-Profil umgestellt und die bisherige Rollensteuerung ersetzt werden?";
+  expect(validateAssistantScenario(scenario, equivalent).failures).toEqual([]);
+  for (const index of [0, 1]) {
+    const missing = structuredClone(equivalent);
+    missing.questions.splice(index, 1);
+    expect(validateAssistantScenario(scenario, missing).failures).toContain(
+      "application_access_mixed_shared_owner_or_confirmation_missing",
+    );
+  }
+  const unrelated = structuredClone(equivalent);
+  unrelated.questions[1]!.text = "Welche Kubernetes-Version möchten Sie?";
+  unrelated.questions[1]!.options = [];
+  expect(validateAssistantScenario(scenario, unrelated).failures).toContain(
+    "application_access_mixed_shared_owner_or_confirmation_missing",
+  );
   const foreign = structuredClone(dialogue);
   foreign.questions[0]!.options = [
     "Plattform-Service-Account (bootstrap-foreign@sa.stackit.cloud)",
@@ -1328,7 +1387,7 @@ it("rejects omitted or changed manually requested audit scopes", () => {
 });
 
 it.each(assistantScenarios.filter((s) => s.auditQuestionPaths))(
-  "requires the actual remaining audit decisions: $id",
+  "preserves audit decisions and requires provenance for proposed defaults: $id",
   (scenario) => {
     const answer = {
       explanation: "Noch nichts gespeichert.",
@@ -1341,6 +1400,30 @@ it.each(assistantScenarios.filter((s) => s.auditQuestionPaths))(
       })),
     };
     expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+    if (scenario.auditDefaultProposal) {
+      const value = {
+        retention_days: 90,
+        acl: [...scenario.auditDefaultProposal.acl],
+        s3_object_lock: true,
+      };
+      const proposed = {
+        ...answer,
+        questions: [],
+        changes: [{ path: "audit_logs", operation: "replace" as const, value }],
+        defaults: scenario.auditQuestionPaths!.map((path) => ({
+          path,
+          value: value[path.split(".")[1]! as keyof typeof value],
+          source: "accelerator" as const,
+        })),
+      };
+      expect(validateAssistantScenario(scenario, proposed).failures).toEqual(
+        [],
+      );
+      expect(
+        validateAssistantScenario(scenario, { ...proposed, defaults: [] })
+          .failures,
+      ).toContain("audit_unanswered_decisions_not_preserved");
+    }
     expect(
       validateAssistantScenario(scenario, { ...answer, questions: [] })
         .failures,
@@ -1405,4 +1488,416 @@ it("rejects managed Git private attachment and display-label flavor inventions",
         explanation: `${sourceGuidanceExamples["project-git"]} ${suffix}`,
       }).failures,
     ).toContain(error);
+});
+
+it("rejects an unhelpful or undersized final answer even when an access question exists", async () => {
+  const { assistantGitCapacityRecommendationFailures: check } = await import(
+    "../scripts/assistant-scenarios.js"
+  );
+  expect(
+    check(
+      "I recommend Git100 for 80 users: Git10 supports at most 10 users and Git100 supports at most 100 users.",
+      80,
+      "git-100",
+    ),
+  ).toEqual([]);
+  expect(
+    check(
+      "Für 80 Nutzer empfehle ich Git100: Git10 unterstützt höchstens 10 Nutzer, Git100 höchstens 100 Nutzer.",
+      80,
+      "git-100",
+    ),
+  ).toEqual([]);
+  expect(
+    check(
+      "Choose a starting option below. Nothing has been saved.",
+      80,
+      "git-100",
+    ),
+  ).toContain("git_capacity_missing_recommendation");
+  expect(
+    check(
+      "I recommend Git10 for 80 users. Git10 supports at most 10 users; Git100 supports at most 100 users.",
+      80,
+      "git-100",
+    ),
+  ).toContain("git_capacity_missing_recommendation");
+  expect(
+    check(
+      "I recommend Git100. Git10 supports 10 users and Git100 supports 100 users.",
+      80,
+      "git-100",
+    ),
+  ).toContain("git_capacity_missing_count");
+});
+
+it("compares permission sets semantically while still rejecting extra rights for the wrong principal", async () => {
+  const { materializeConsultationChanges } = await import(
+    "../apps/api/src/assistant/proposal-operations.js"
+  );
+  const scenario = assistantScenarios.find(
+    (entry) =>
+      entry.id === "application-service-account-key-management-proposal",
+  )!;
+  const fixture = assistantScenarioFixture(scenario);
+  const changes = materializeConsultationChanges(
+    [
+      {
+        path: "projectTemplates",
+        operation: "add_permissions",
+        value: {
+          templateKeys: ["central"],
+          principals: ["requester"],
+          source: { kind: "permission_set", id: "service-account-keys" },
+        },
+      },
+    ],
+    fixture.values,
+  );
+  const profile = objectValue(
+    objectValue(objectValue(changes[0]!.value).central).accessProfile,
+  );
+  (profile.permissions as string[]).reverse();
+  const response = {
+    explanation:
+      "Vorschlag zur Prüfung; noch nichts gespeichert oder ausgeführt.",
+    questions: [],
+    changes,
+    references: ["project-templates"],
+  };
+  expect(validateAssistantScenario(scenario, response).failures).toEqual([]);
+  (profile.automationPermissions as string[]).push(
+    "iam.service-account-key.create",
+  );
+  expect(validateAssistantScenario(scenario, response).failures).toContain(
+    "application_access_proposal_incorrect_or_unrelated_change",
+  );
+});
+
+it("keeps an exact permission list exact even when a broader reviewed workflow bundle exists", async () => {
+  const { materializeConsultationChanges } = await import(
+    "../apps/api/src/assistant/proposal-operations.js"
+  );
+  const scenario = assistantScenarios.find(
+    (entry) =>
+      entry.id ===
+      "application-service-account-key-management-exact-identifiers",
+  )!;
+  const fixture = assistantScenarioFixture(scenario);
+  const build = (ids: string[]) => ({
+    explanation: "Review proposal only. Nothing has been saved or executed.",
+    questions: [],
+    references: ["project-templates"],
+    changes: materializeConsultationChanges(
+      [
+        {
+          path: "projectTemplates",
+          operation: "add_permissions",
+          value: {
+            templateKeys: ["central"],
+            principals: ["requester"],
+            source: { kind: "permissions", ids },
+          },
+        },
+      ],
+      fixture.values,
+    ),
+  });
+  expect(
+    validateAssistantScenario(
+      scenario,
+      build(
+        applicationServiceAccountKeyPermissions.filter(
+          (name) => name !== "iam.service-account.list",
+        ),
+      ),
+    ).failures,
+  ).toEqual([]);
+  expect(
+    validateAssistantScenario(
+      scenario,
+      build([...applicationServiceAccountKeyPermissions]),
+    ).failures,
+  ).toContain("application_access_proposal_incorrect_or_unrelated_change");
+});
+
+it("retains an already recommended Git100 on a native-default follow-up without demanding another recommendation sentence", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "consultation-company-git-default-en",
+  )!;
+  const response = {
+    explanation:
+      "Git100 is retained. The chosen Accelerator ACL default 0.0.0.0/0 permits public IPv4 access. Nothing has been saved.",
+    questions: [],
+    changes: [
+      {
+        path: "devops",
+        operation: "merge",
+        value: { git_flavor: "git-100", allowed_network_ranges: ["0.0.0.0/0"] },
+      },
+    ],
+    references: ["devops-git"],
+  };
+  expect(validateAssistantScenario(scenario, response).failures).toEqual([]);
+  response.changes[0]!.value.git_flavor = "git-10";
+  expect(validateAssistantScenario(scenario, response).failures).toContain(
+    "editor_expected_value_not_applied",
+  );
+});
+
+it("accepts actual VM-preset counts in VM advice and rejects invented count pairs", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "application-access-profile-advice",
+  )!;
+  const profile = defaultApplicationAccessProfile("", "vm");
+  const explanation = `Das granulare VM-Profil application-vm-v1 hat ${profile.permissions.length} Besteller-Rechte inklusive Schlüsselverwaltung und ${profile.automationPermissions.length} Automation-Rechte. Schlüsselverwaltung gilt projektweit für alle Service Accounts und deren volle Rechte auch außerhalb des Projekts. Privilegierte Platform Accounts gehören außerhalb. Ein separater initialer Owner bleibt erhalten; volle Owner-Rechte sind Kundenwahl. Granulare Rechte heben geerbte Owner-Rechte nicht auf.`;
+  const answer = {
+    explanation,
+    questions: [],
+    changes: [],
+    references: ["project-templates"],
+  };
+  expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      explanation: explanation.replace(
+        String(profile.automationPermissions.length),
+        "9999",
+      ),
+    }).failures,
+  ).toContain("application_access_missing_actual_preset_counts");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      explanation: explanation.replace("projektweit", "lokal"),
+    }).failures,
+  ).toContain("application_access_missing_project-key-scope");
+});
+
+it("recognizes DNS roles across Markdown paragraphs while rejecting reversed roles", () => {
+  const text =
+    "Beide Zonentypen primary und secondary sind autoritativ; public/private ist keine Typauswahl.\n\n**Primary-Zone:**\nHier werden die originalen DNS-Einträge verwaltet. Empfohlen für eine neue Firmenzone.\n\n**Secondary-Zone:**\nSie repliziert eine externe Primärzone. Der native Accelerator bildet die Secondary-Transferkonfiguration nicht vollständig ab.";
+  expect(assistantDnsRoleFailures(text, "roles")).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text.replace(
+        "Sie repliziert eine externe Primärzone.",
+        "Sie erzeugt unabhängige Daten.",
+      ),
+      "roles",
+    ),
+  ).toContain("dns_secondary_role_missing");
+  expect(
+    assistantDnsRoleFailures(
+      text + "\nSecondary ist nicht autoritativ.",
+      "roles",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+});
+it("associates a recommendation heading with its immediate Primary answer, not another role elsewhere", () => {
+  const roles =
+    "Primary verwaltet die originalen Records bei STACKIT. Secondary repliziert eine externe Primary. Beide sind autoritativ; public/private ist keine Typauswahl. Der native Accelerator bildet die Secondary-Konfiguration nicht vollständig ab.";
+  expect(assistantDnsRoleFailures(roles, "roles")).toContain(
+    "dns_primary_recommendation_missing",
+  );
+  expect(
+    assistantDnsRoleFailures(
+      roles +
+        "\n\n**Empfehlung für eine bei STACKIT verwaltete Firmenzone**\nFür die von euch gepflegte Zone ist primary der passende Typ.",
+      "roles",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      roles +
+        "\n\n**Empfehlung für die Firmenzone**\nSecondary ist der passende Typ. Primary bleibt eine andere Möglichkeit.",
+      "roles",
+    ),
+  ).toContain("dns_primary_recommendation_missing");
+  expect(
+    assistantDnsRoleFailures(
+      roles +
+        "\n\n**Empfehlung für die Firmenzone**\n→ **primary**. STACKIT verwaltet die Records.",
+      "roles",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      roles +
+        "\n\n**Empfehlung für die Firmenzone**\n→ **secondary**. Primary bleibt eine andere Möglichkeit.",
+      "roles",
+    ),
+  ).toContain("dns_primary_recommendation_missing");
+});
+it("accepts authority expressed by denying non-authoritative forwarding but rejects actual denial", () => {
+  const text =
+    "Secondary repliziert eine externe Primary-Zone. Der native Accelerator bildet die Secondary-Konfiguration nicht vollständig ab. Secondary ist kein rein nicht-autoritatives Forwarding, sondern eine autoritative Kopie.";
+  expect(assistantDnsRoleFailures(text, "secondary")).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text + " Secondary ist nicht Primary, aber autoritativ.",
+      "secondary",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text.replace("nicht-autoritatives", "nicht‑autoritatives"),
+      "secondary",
+    ),
+  ).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text.replace(
+        "kein rein nicht-autoritatives Forwarding, sondern eine autoritative Kopie",
+        "nicht autoritativ",
+      ),
+      "secondary",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+  expect(
+    assistantDnsRoleFailures(
+      text + " Secondary ist dennoch nicht autoritativ.",
+      "secondary",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+});
+it("accepts coordinated unsaved statements without accepting affirmative or contrastive storage claims", () => {
+  for (const text of [
+    "Es wurde nichts geändert, gespeichert oder ausgeführt.",
+    "Es wurde daher **keine Änderung** vorbereitet, gespeichert oder ausgeführt.",
+    "Noch nichts gespeichert.",
+    "Nothing has been saved.",
+    "Reviewable draft prepared (nothing saved or deployed).",
+    "The draft is not yet saved.",
+  ])
+    expect(assistantUnsavedNotice(text)).toBe(true);
+  for (const text of [
+    "Es wurde nichts geändert, aber gespeichert.",
+    "Es wurde keine Änderung vorbereitet. Die Konfiguration ist gespeichert.",
+    "Alles gespeichert.",
+  ])
+    expect(assistantUnsavedNotice(text)).toBe(false);
+});
+it("distinguishes explicit no-save statements from affirmative persistence claims", () => {
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Der Vorschlag ist validiert – nichts wurde gespeichert, veröffentlicht oder ausgeführt.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim("Keine Änderungen wurden gespeichert."),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Nichts wurde gespeichert, aber die Konfiguration ist jetzt gespeichert.",
+    ),
+  ).toBe(true);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Keine Änderungen wurden gespeichert; danach wurde die Konfiguration gespeichert.",
+    ),
+  ).toBe(true);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Es wurden keine Änderungen ausgeführt oder gespeichert.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Es wurde nichts gespeichert, veröffentlicht oder ausgeführt.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim("Die Konfiguration ist gespeichert."),
+  ).toBe(true);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Es wurde nichts gespeichert. Die Konfiguration ist jetzt gespeichert.",
+    ),
+  ).toBe(true);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Es wurde nicht nur gespeichert, sondern auch bereitgestellt.",
+    ),
+  ).toBe(true);
+});
+
+it("accepts a draft that can be saved later while rejecting a claim it is already saved", () => {
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Der Entwurf ist lokal validiert und kann bei Bedarf akzeptiert, gespeichert oder weiter bearbeitet werden.",
+    ),
+  ).toBe(false);
+  expect(
+    assistantPrematurePersistenceClaim(
+      "Der Entwurf ist gespeichert und kann weiter bearbeitet werden.",
+    ),
+  ).toBe(true);
+});
+
+it("accepts a native-default proposal only with visible provenance and preserves question-only requests", () => {
+  const setup = assistantScenarios.find(
+    (item) => item.id === "editor-devops-setup-en",
+  )!;
+  const proposal = {
+    explanation:
+      "Git100 is a starting recommendation. The Accelerator default allows any IPv4 address. Review this proposal; nothing has been saved or deployed.",
+    changes: [
+      {
+        path: "devops",
+        operation: "merge" as const,
+        value: { git_flavor: "git-100", allowed_network_ranges: ["0.0.0.0/0"] },
+      },
+    ],
+    questions: [],
+    references: ["devops-git"],
+    defaults: [
+      {
+        path: "devops.allowed_network_ranges",
+        value: ["0.0.0.0/0"],
+        source: "accelerator" as const,
+      },
+    ],
+  };
+  expect(validateAssistantScenario(setup, proposal).failures).toEqual([]);
+  const refine = {
+    path: "devops.allowed_network_ranges",
+    text: "Would you like to narrow the proposed default?",
+    answerType: "requirements" as const,
+    options: ["Keep proposed default", "Specify networks"],
+  };
+  expect(
+    validateAssistantScenario(setup, { ...proposal, questions: [refine] })
+      .failures,
+  ).toEqual([]);
+  expect(
+    validateAssistantScenario(setup, {
+      ...proposal,
+      questions: [{ ...refine, path: "company_name" }],
+    }).failures,
+  ).toContain("setup_default_proposal_unverified");
+  expect(
+    validateAssistantScenario(setup, { ...proposal, defaults: [] }).failures,
+  ).toContain("setup_default_proposal_unverified");
+  expect(
+    validateAssistantScenario(setup, {
+      ...proposal,
+      changes: [
+        {
+          ...proposal.changes[0]!,
+          value: {
+            git_flavor: "git-100",
+            allowed_network_ranges: ["198.51.100.0/24"],
+          },
+        },
+      ],
+    }).failures,
+  ).toContain("setup_default_proposal_unverified");
+  const reserved = assistantScenarios.find(
+    (item) => item.id === "editor-devops-size-only",
+  )!;
+  expect(validateAssistantScenario(reserved, proposal).failures).toContain(
+    "setup_must_ask_missing_choices_without_changes",
+  );
 });

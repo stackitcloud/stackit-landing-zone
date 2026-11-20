@@ -4,6 +4,8 @@
 
 [English](architecture.md) | [Deutsch](architecture.de.md)
 
+Der Editor-Chat verwendet den [gemeinsamen Beratungsablauf](assistant-consultation.de.md) mit lesenden Werkzeugen und Vorschlagsvalidierung. Die frühere separate Intent-Erkennung wird dort nicht mehr verwendet.
+
 Das vorgeschlagene [Repository-Trennungskonzept](../../docs/repository-separation-concept.de.md) priorisiert einen schlanken nativen Accelerator. Der Configurator würde native Releases als geprüfte versionierte Abhängigkeit konsumieren; der Umzug ist nicht umgesetzt.
 
 Die vorgeschlagene [Kundeninstallation als Software](customer-installation-concept.de.md) beschreibt Bootstrap, lokale Passkeys/optionales Firmen-SSO und delegierte Cloud-Ausführung getrennt von der heutigen gehosteten Betriebsart. Sie ist noch nicht implementiert.

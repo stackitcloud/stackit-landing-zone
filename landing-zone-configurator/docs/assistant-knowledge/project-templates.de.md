@@ -180,7 +180,7 @@ Das ist keine Unterstützung für Projekte ohne initialen Owner (#69).
 
 ## Erweiterbare Projektberechtigungen
 
-Die 191 Rechte für den Besteller und 184 Rechte für die Automation sind die Vorauswahl, keine Obergrenze. Alle offiziellen Projektberechtigungen aus dem vollständigen statischen Katalog und verfügbaren Live-Daten können ergänzt werden, einschließlich bewusst gewählter IAM-/Projektverwaltung. Beim Ergänzen von Dienstrechten bleiben zentraler Owner und bestehende Rechte erhalten; die Katalogrechte des angefragten Diensts werden nur den gewünschten Listen hinzugefügt (ohne Unterscheidung beiden). Kubernetes/SKE verwendet den Dienstpräfix `ske`; keine IAM-Rechte oder andere Dienste ungefragt ergänzen. Volle Owner-Rechte enthalten die Dienstverwaltung bereits. Projekt-IAM für SKE ist von Kubernetes-RBAC innerhalb des Clusters zu unterscheiden. IAM-Rollen- und Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und gehört nicht zum Standard. Keine Kennungen erfinden; Veröffentlichung und Ausführung bleiben separat.
+Die 191 Rechte für den Besteller und 184 Rechte für die Automation sind die Vorauswahl, keine Obergrenze. Alle offiziellen Projektberechtigungen aus dem vollständigen statischen Katalog und verfügbaren Live-Daten können ergänzt werden, einschließlich bewusst gewählter IAM-/Projektverwaltung. Beim Ergänzen von Dienstrechten bleiben zentraler Owner und bestehende Rechte erhalten; die Katalogrechte des angefragten Diensts werden nur den gewünschten Empfängern hinzugefügt. Menschen, die bei der Bestellung Rechte erhalten sollen, sind Besteller. Automation wird nur bei entsprechender Anfrage oder ausdrücklich gewähltem vollständigem Profil einbezogen; unklare Empfänger werden geklärt. Kubernetes/SKE verwendet den Dienstpräfix `ske`; keine IAM-Rechte oder andere Dienste ungefragt ergänzen. Volle Owner-Rechte enthalten die Dienstverwaltung bereits. Projekt-IAM für SKE ist von Kubernetes-RBAC innerhalb des Clusters zu unterscheiden. IAM-Rollen- und Mitgliederverwaltung kann Rechteerweiterungen ermöglichen und gehört nicht zum Standard. Keine Kennungen erfinden; Veröffentlichung und Ausführung bleiben separat.
 
 Das Ergänzen von Dienstrechten in einem bestehenden granularen Entwurf bleibt auch
 bei noch leerem initialen Owner möglich. Der Assistant erhält dieses Feld unverändert
@@ -204,12 +204,18 @@ Der Besteller erhält `iam.service-account.get`, `iam.service-account.list` und
 `iam.service-account-key.create`, `.delete`, `.edit`, `.get`, `.list`.
 `resource-manager.project.get` gehört bereits zu den Workload-Rechten. Auch das
 engere VM-Preset ergänzt die sieben Schlüsselrechte nur für den Besteller.
-Die Rechte gelten projektweit für alle Service Accounts: Wer einen Schlüssel
+Die Rechte gelten projektweit für alle Service Accounts und sind nicht auf den Application-Service-Account begrenzbar: Wer einen Schlüssel
 erstellt, kann sämtliche Rechte dieses Accounts nutzen, auch außerhalb des
 Projekts. Privilegierte Plattform-Service-Accounts bleiben deshalb zentral
 außerhalb der Application-Projekte. Es gibt keine Einschränkung auf einen Account.
 
-Bei einer ausdrücklichen Bitte um Schlüsselverwaltung ergänzt der Assistant
+Service-Account-Lesen und -Auflisten decken die Kontoanzeige und Kontosuche ab,
+nicht das Anlegen von Accounts. Eine fachliche Anfrage verwendet das geprüfte
+Paket einschließlich dieser Abhängigkeiten. Eine ausdrücklich exakte Liste von
+Berechtigungskennungen bleibt dagegen exakt; ein Client mit bereits bekannter
+Account-Kennung kann die Kontosuche bewusst auslassen.
+
+Bei einer fachlichen Bitte um Schlüsselverwaltung ohne exakte Kennungsliste ergänzt der Assistant
 genau diese sieben Rechte, standardmäßig nur für den Besteller; nie pauschal
 alle IAM-Rechte. Bestehender Owner, Kubernetes-Rechte, andere Einstellungen und
 die Automation bleiben erhalten. Allgemeine Informationsfragen ändern nichts.
@@ -218,3 +224,5 @@ Entwürfe können die Rechte gezielt ergänzen; veröffentlichte Versionen und
 Bestellungen benötigen weiterhin Veröffentlichung und geprüften Upgrade-Pfad.
 
 Der neue Standard umfasst Server-Sicherungen mit Zeitplänen, Wiederherstellung, Server-Updates mit Zeitplänen, Server Agent/Run Command sowie Volume-Backups und Snapshots. Der Agent muss auf dem Server installiert sein; IAM-Rechte allein installieren ihn nicht. Run Command erlaubt Befehlsausführung auf dem Server. Bereits veröffentlichte Versionen und explizite Rechteprofile werden nicht automatisch erweitert. Neue Rechte werden über eine neue Template-Version und einen freigegebenen Upgrade-Pfad übernommen.
+
+Kubernetes-, Git-, Datenbank- und administrative IAM-Rechte sind wählbare Erweiterungen und nicht Bestandteil der Standardprofile. Die tatsächlichen Rechtezahlen der unterschiedlichen VM-/Workload-Profile liefert die Anwendung direkt aus den registrierten Profilen.

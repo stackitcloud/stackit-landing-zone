@@ -214,8 +214,8 @@
     {
       "id": "audit-logs",
       "file": "audit-logs.md",
-      "version": 6,
-      "checkedOn": "2026-11-09",
+      "version": 7,
+      "checkedOn": "2026-11-20",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "management"
@@ -456,8 +456,8 @@
     {
       "id": "devops-git",
       "file": "devops-git.md",
-      "version": 4,
-      "checkedOn": "2026-11-18",
+      "version": 6,
+      "checkedOn": "2026-11-20",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "platform"
@@ -530,8 +530,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 9,
-      "checkedOn": "2026-11-18",
+      "version": 12,
+      "checkedOn": "2026-11-20",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"

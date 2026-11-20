@@ -1,3 +1,5 @@
+// Historical controller parity tests. Live runtime coverage: assistant-consultation.test.ts
+// and the source-bound real-model suite; production has no legacy fallback.
 import {
   assistantProposalBaselineAvailable,
   assistantProposalConflicts,
@@ -56,7 +58,7 @@ import {
 } from "../apps/api/src/assistant/knowledge.js";
 import {
   AssistantInferenceError,
-  AssistantModelServing,
+  LegacyAssistantModelServing as AssistantModelServing,
 } from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 

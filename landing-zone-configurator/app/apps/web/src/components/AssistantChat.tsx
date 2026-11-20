@@ -1,5 +1,7 @@
 import {
+  type AssistantDefaultNotice,
   type AssistantMergeConflict,
+  type AssistantRecommendation,
   assistantAdditiveField,
   assistantMergeConfirmationSchema,
   assistantProposalFields,
@@ -20,10 +22,12 @@ import { AssistantFailureError } from "../assistant-errors";
 import { readAssistantResponse } from "../assistant-stream";
 import { currentLanguage, t } from "../i18n";
 import type { Session } from "./Account";
+import { AssistantDefaults } from "./AssistantDefaults";
 import {
   type AssistantQuestion,
   AssistantQuestions,
 } from "./AssistantQuestions";
+import { AssistantRecommendations } from "./AssistantRecommendations";
 import type { ConfigurationBinding } from "./Configurations";
 import { labelFor } from "./feature-labels";
 
@@ -38,8 +42,10 @@ type Conversation = {
     role: "user" | "assistant";
     content: string;
     proposalDiscarded?: boolean;
+    recommendations?: AssistantRecommendation[];
   }[];
   proposal: {
+    defaults?: AssistantDefaultNotice[];
     explanation: string;
     references: string[];
     questions?: (AssistantQuestion & { path: string })[];
@@ -463,6 +469,9 @@ export function AssistantChat({
               <div className={`assistant-message ${entry.role}`} key={entry.id}>
                 <strong>{t(entry.role === "user" ? "Du" : "Assistent")}</strong>
                 <p>{entry.content}</p>
+                {entry.role === "assistant" && entry.recommendations && (
+                  <AssistantRecommendations items={entry.recommendations} />
+                )}
                 {entry.proposalDiscarded && (
                   <small>{t("Vorschlag verworfen.")}</small>
                 )}
@@ -507,6 +516,16 @@ export function AssistantChat({
           {conversation?.proposal && fields.length > 0 && (
             <div className="assistant-proposal">
               <h2>{t("Änderungsvorschlag")}</h2>
+              <AssistantDefaults
+                items={(conversation.proposal.defaults ?? []).filter((item) =>
+                  fields.some(
+                    (field) =>
+                      field.path === item.path &&
+                      (field.operation === "default" ||
+                        assistantValuesEqual(field.value, item.value)),
+                  ),
+                )}
+              />
               <div className="assistant-diff">
                 <table>
                   <thead>

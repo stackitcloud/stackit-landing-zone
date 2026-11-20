@@ -1,4 +1,16 @@
 export const englishMessages: Record<string, string> = {
+  "Vorgeschlagene Standardwerte": "Proposed defaults",
+  "Prüfe diese Standardwerte, bevor du den Vorschlag übernimmst.":
+    "Review these defaults before accepting the proposal.",
+  "Alle IPv4-Adressen": "Any IPv4 address",
+  "Alle IPv6-Adressen": "Any IPv6 address",
+  "Erlaubte Quelle": "Allowed source",
+  "Standard des Accelerators": "Accelerator default",
+  "Passende Empfehlungen": "Matching recommendations",
+  "Geplanter Bedarf": "Planned requirements",
+  Tarifmerkmale: "Plan characteristics",
+  Nutzer: "Users",
+  "Bandbreite (Mbit/s)": "Bandwidth (Mbps)",
   "Über den Configurator koordiniert": "Coordinated by the Configurator",
   "Der Configurator koordiniert seine Ausführungen auf diesem State. Starte dafür keine parallelen CLI- oder Pipeline-Läufe.":
     "The Configurator coordinates its executions against this state. Do not run CLI or pipeline operations against it in parallel.",

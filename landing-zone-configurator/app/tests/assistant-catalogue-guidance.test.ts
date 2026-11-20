@@ -377,7 +377,8 @@ it("supplies one explicit unsaved notice for questions and proposals across serv
 });
 
 it("bounds the real model request separately from picker data and withholds ungrounded provisional prose", async () => {
-  const { AssistantModelServing } = await import(
+  // Historical controller comparison; the shared runtime is qualified in assistant-consultation.test.ts.
+  const { LegacyAssistantModelServing: AssistantModelServing } = await import(
     "../apps/api/src/assistant/model-serving.js"
   );
   const { createCommonConfiguration } = await import("@lzc/domain");

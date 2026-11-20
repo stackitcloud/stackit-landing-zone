@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import {
   type AssistantLanguage,
   type AssistantMergeConflict,
   type AssistantProposalChange,
+  type AssistantRecommendation,
   assistantDiscardRequestSchema,
   assistantProposalBaselineAvailable,
   assistantProposalConflicts,
@@ -71,11 +73,17 @@ export class AssistantError extends Error {
   }
 }
 
+import type { ConsultationState } from "./consultation.js";
+import { consultationProposalDiff } from "./proposal-diff.js";
+import { assistantTemplateQuestionPaths } from "./template-paths.js";
+
 type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
   proposalDiscarded?: boolean;
+  consultationState?: ConsultationState;
+  recommendations?: AssistantRecommendation[];
 };
 type Conversation = {
   id: string;
@@ -197,7 +205,9 @@ function response(row: Conversation, configuration: Configuration) {
     revision: row.revision,
     baseRevision: row.base_revision,
     expiresAt: row.expires_at.toISOString(),
-    messages: row.messages,
+    messages: row.messages.map(
+      ({ consultationState: _state, ...message }) => message,
+    ),
     proposal: row.proposal
       ? {
           ...row.proposal,
@@ -528,7 +538,9 @@ export class AssistantConversations {
             id: row.id,
             revision: row.revision,
             expiresAt: row.expires_at.toISOString(),
-            messages: row.messages,
+            messages: row.messages.map(
+              ({ consultationState: _state, ...message }) => message,
+            ),
             recommendation: row.recommendation,
             stale:
               !!row.recommendation &&
@@ -795,6 +807,46 @@ export class AssistantConversations {
         session,
         configuredCatalogueRegions(base.values),
       );
+      let consultationState: ConsultationState | undefined;
+      const latestAssistant = base.row.messages.findLast(
+        (entry) => entry.role === "assistant",
+      );
+      let pendingProposal: unknown;
+      if (
+        !latestAssistant?.proposalDiscarded &&
+        base.row.base_revision === revision &&
+        base.row.knowledge_hash === knowledge.sha256 &&
+        base.row.expires_at > new Date() &&
+        base.row.proposal &&
+        base.row.proposal_baseline &&
+        base.row.proposal.changes.every(
+          (change) =>
+            assistantProposalBaselineAvailable(
+              base.row.proposal_baseline,
+              change.path,
+            ) &&
+            isDeepStrictEqual(
+              assistantProposalValue(base.row.proposal_baseline, change.path) ??
+                null,
+              assistantProposalValue(base.values, change.path) ?? null,
+            ),
+        )
+      ) {
+        try {
+          pendingProposal = {
+            status: "unaccepted",
+            delta: consultationProposalDiff(
+              base.values,
+              assistantPublicValues(
+                applyAssistantChanges(base.document, base.row.proposal.changes),
+              ),
+            ),
+          };
+        } catch {
+          // A stale/unusable proposal is not context for a fresh turn. Acceptance
+          // retains its independent compiler, authorization and revision checks.
+        }
+      }
       const validatedProposal = validateDialogue(
         await this.model.converse(
           {
@@ -808,12 +860,36 @@ export class AssistantConversations {
             content:
               entry.role === "assistant" && entry.proposalDiscarded === true
                 ? "The user explicitly discarded the preceding proposal. This turn is closed: no proposal, selection question or setup request remains pending. Do not resume or reissue that proposal without a new explicit user request."
-                : entry.content,
+                : entry.content +
+                  (entry.recommendations?.length
+                    ? "\nReviewed recommendations: " +
+                      JSON.stringify(entry.recommendations)
+                    : ""),
           })),
           message,
           catalogues,
           base.context?.messages ?? [],
           stream,
+          {
+            pendingProposal,
+            state: latestAssistant?.proposalDiscarded
+              ? undefined
+              : latestAssistant?.consultationState,
+            onState: (state) => {
+              consultationState = state;
+            },
+            validateChanges: (changes) => {
+              const draft = readEditorDraft(base.document);
+              if (!isCommonDraft(draft))
+                throw new AssistantError(
+                  409,
+                  "assistant_common_configuration_required",
+                );
+              return assistantPublicValues(
+                applyAssistantChanges(draft, changes),
+              );
+            },
+          },
         ),
         knowledge.rules.map((rule) => rule.id),
         {
@@ -822,6 +898,7 @@ export class AssistantConversations {
             ? identity.identity?.email
             : undefined,
         },
+        assistantTemplateQuestionPaths(modelValues),
       );
       const proposal = enrichCatalogueQuestions(
         validatedProposal,
@@ -870,6 +947,10 @@ export class AssistantConversations {
           {
             id: randomUUID(),
             role: "assistant",
+            ...(consultationState ? { consultationState } : {}),
+            ...(proposal.recommendations?.length
+              ? { recommendations: proposal.recommendations }
+              : {}),
             content:
               proposal.explanation +
               "\n" +

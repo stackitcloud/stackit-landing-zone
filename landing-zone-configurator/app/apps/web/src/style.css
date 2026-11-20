@@ -2506,3 +2506,37 @@ button.template-node:hover {
 .assistant-catalogue-expand input[type="checkbox"] {
   width: auto;
 }
+
+.assistant-recommendations {
+  margin-block: 12px;
+}
+.assistant-recommendations h4 {
+  margin-block: 8px;
+}
+.assistant-recommendation {
+  border: 1px solid #b8c8d1;
+  border-left: 3px solid #007a95;
+  border-radius: 6px;
+  padding: 12px;
+  margin-block: 8px;
+  background: #f5f9fb;
+}
+.assistant-recommendation p {
+  margin-block: 8px;
+}
+.assistant-recommendation dl {
+  display: grid;
+  gap: 6px;
+  margin-block: 8px;
+}
+.assistant-recommendation dl div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.assistant-recommendation dt {
+  font-weight: 600;
+}
+.assistant-recommendation dd {
+  margin: 0;
+}

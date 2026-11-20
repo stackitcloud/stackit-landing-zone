@@ -2,12 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "92bc9dac3cb4c1ccac2a835f0405d6be330363cec8164e3bb4fe569f706ce232",
+  "knowledgeSha256": "ac8ef349e8a260e10a3fa63b2d5d29eb5840692ef33e2033ceab0f67403210fb",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "dbe1d363233c9cd78e0c78afbb3c0352a44b84f0d1c8880e5325880cfd4c8f72",
-    "scripts/assistant-tests.ts": "5e19b1c74da1ffa996f2d76876cc8dc639da698d0b6f9b7e1fc6637863833a8d"
+    "scripts/assistant-scenarios.ts": "e8a36a6b4201040ad97952aa4da661a5d275dd6b3ca3388efdd02fe2c1623f09",
+    "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
+    "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "ceea8b581f812d39324e5f8479f29e9504e0a05ddcd26e2bffddf902d86659eb",
+  "suiteSha256": "daad945181ed1c7def28bbb158e9ec68e7c4af5536aae66fa6bde2cf74856b18",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1152,6 +1153,22 @@
           ]
         },
         {
+          "id": "consultation-observability-native-reset",
+          "topic": "observability",
+          "fixture": "git-saved-access",
+          "expectedLanguage": "en",
+          "message": "Please reset only the central Observability metrics retention to the Accelerator default. Keep its plan, access list, logs/traces settings and every other service unchanged. Prepare the draft; do not deploy.",
+          "nativeDefaultResetPath": "observability.metrics_retention_days",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "actual_native_default_completed_without_reasking_preserving_context",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
           "id": "catalogue-observability-plan-choice",
           "topic": "observability",
           "fixture": "service-catalogues",
@@ -1424,6 +1441,11 @@
             "audit_logs.acl",
             "audit_logs.s3_object_lock"
           ],
+          "auditDefaultProposal": {
+            "acl": [
+              "0.0.0.0/0"
+            ]
+          },
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
@@ -1456,6 +1478,11 @@
           "auditQuestionPaths": [
             "audit_logs.s3_object_lock"
           ],
+          "auditDefaultProposal": {
+            "acl": [
+              "203.0.113.0/24"
+            ]
+          },
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
@@ -5214,6 +5241,12 @@
             "devops.git_flavor",
             "devops.allowed_network_ranges"
           ],
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-10",
+              "git-100"
+            ]
+          },
           "expectedLanguage": "en",
           "assertions": [
             "valid_dialogue",
@@ -5230,6 +5263,12 @@
             "devops.git_flavor",
             "devops.allowed_network_ranges"
           ],
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-10",
+              "git-100"
+            ]
+          },
           "expectedLanguage": "de",
           "assertions": [
             "valid_dialogue",
@@ -5239,7 +5278,7 @@
         },
         {
           "id": "editor-devops-size-only",
-          "message": "Please add central Git, using git-10. I have not chosen the access networks yet.",
+          "message": "Please add central Git, using git-10. Ask me to choose access before proposing any changes.",
           "topic": "devops-git",
           "fixture": "baseline",
           "setupQuestionPaths": [
@@ -5265,6 +5304,189 @@
             "valid_dialogue",
             "reviewed_topic_reference",
             "no_changes"
+          ]
+        },
+        {
+          "id": "editor-devops-sized-80-en",
+          "message": "Please add a central git instance for round about 80 developers to the config",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "setupQuestionPaths": [
+            "devops.allowed_network_ranges"
+          ],
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-100"
+            ]
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "editor-devops-sized-80-de",
+          "message": "Bitte eine zentrale Git-Instanz für ca. 80 Entwickler in die Konfiguration aufnehmen.",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "de",
+          "setupQuestionPaths": [
+            "devops.allowed_network_ranges"
+          ],
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-100"
+            ]
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "editor-devops-sized-80-followup",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "message": "Allow only 203.0.113.0/24.",
+          "history": [
+            {
+              "role": "user",
+              "content": "Please add a central git instance for round about 80 developers to the config"
+            },
+            {
+              "role": "assistant",
+              "content": "Git100 fits your expected user count. Which source networks should have access?"
+            }
+          ],
+          "editorExpected": {
+            "path": "devops.git_flavor",
+            "value": "git-100"
+          },
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "consultation-company-git-default-en",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "en",
+          "message": "My answer: please use the default",
+          "history": [
+            {
+              "role": "user",
+              "content": "We use a Hub-and-Spoke landing zone and need a central company Git for round about 80 developers."
+            },
+            {
+              "role": "assistant",
+              "content": "Git100 fits 80 developers; Git10 supports only 10. Who should be able to reach Git?"
+            },
+            {
+              "role": "user",
+              "content": "Company/VPN public egress networks only (recommended)"
+            },
+            {
+              "role": "assistant",
+              "content": "Which actual client source IP addresses or CIDRs should be allowed?"
+            }
+          ],
+          "editorExpected": {
+            "path": "devops.git_flavor",
+            "value": "git-100"
+          },
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "nativeDefaultExpected": {
+            "path": "devops.allowed_network_ranges",
+            "value": [
+              "0.0.0.0/0"
+            ]
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "actual_native_default_completed_without_reasking_preserving_context",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "consultation-company-git-default-de",
+          "topic": "devops-git",
+          "fixture": "service-catalogues",
+          "expectedLanguage": "de",
+          "message": "Meine Antwort: Bitte den Default des Accelerators verwenden.",
+          "history": [
+            {
+              "role": "user",
+              "content": "We use a Hub-and-Spoke landing zone and need a central company Git for round about 80 developers."
+            },
+            {
+              "role": "assistant",
+              "content": "Git100 fits 80 developers; Git10 supports only 10. Who should be able to reach Git?"
+            },
+            {
+              "role": "user",
+              "content": "Company/VPN public egress networks only (recommended)"
+            },
+            {
+              "role": "assistant",
+              "content": "Which actual client source IP addresses or CIDRs should be allowed?"
+            }
+          ],
+          "editorExpected": {
+            "path": "devops.git_flavor",
+            "value": "git-100"
+          },
+          "gitCapacityRecommendation": {
+            "users": 80,
+            "flavor": "git-100"
+          },
+          "nativeDefaultExpected": {
+            "path": "devops.allowed_network_ranges",
+            "value": [
+              "0.0.0.0/0"
+            ]
+          },
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "actual_native_default_completed_without_reasking_preserving_context",
+            "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
           ]
         },
         {
@@ -5330,7 +5552,7 @@
           "fixture": "baseline",
           "expectedLanguage": "en",
           "history": [],
-          "message": "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+          "message": "Please add a central git instance to the config. First ask about the missing size and access requirements; do not propose changes yet.",
           "setupQuestionPaths": [
             "devops.git_flavor",
             "devops.allowed_network_ranges"
@@ -5356,7 +5578,7 @@
               "content": "Observability ist nur vorgeschlagen; noch nichts gespeichert."
             }
           ],
-          "message": "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+          "message": "Please add a central git instance to the config. First ask about the missing size and access requirements; do not propose changes yet.",
           "setupQuestionPaths": [
             "devops.git_flavor",
             "devops.allowed_network_ranges"
@@ -5417,6 +5639,11 @@
           "setupQuestionPaths": [
             "devops.allowed_network_ranges"
           ],
+          "setupDefaultProposal": {
+            "allowedFlavors": [
+              "git-100"
+            ]
+          },
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
@@ -6724,6 +6951,21 @@
           ]
         },
         {
+          "id": "application-service-account-key-management-exact-identifiers",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "literal-key-management",
+          "expectedLanguage": "en",
+          "message": "For template central, append exactly these permission identifiers to requester permissions: iam.service-account.get, iam.service-account-key.create, iam.service-account-key.list, iam.service-account-key.get, iam.service-account-key.edit, iam.service-account-key.delete. This exact list intentionally excludes iam.service-account.list because our client already knows the account identifier. Do not substitute the workflow bundle or add other rights. Retain existing requester rights, the owner and automation unchanged. Prepare a reviewable draft only; do not save or execute.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
           "id": "application-access-workload-default-proposal",
           "topic": "project-templates",
           "fixture": "corporate-ipv4",
@@ -6954,11 +7196,25 @@
           ]
         },
         {
+          "id": "application-access-owner-already-covered",
+          "topic": "project-templates",
+          "fixture": "corporate-ipv4",
+          "applicationAccess": "owner-covered",
+          "message": "Besteller und Application-Service-Account sollen im bestehenden Template central Kubernetes nutzen können. Prüfe die vorhandenen Rechte und ergänze nur fehlende Rechte; bestehende Rechte erhalten.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "compiler_accepts_proposal",
+            "explicit_unsaved_notice",
+            "no_premature_saved_claim"
+          ]
+        },
+        {
           "id": "application-access-both-kubernetes-mixed-legacy",
           "topic": "project-templates",
           "fixture": "corporate-ipv4",
           "applicationAccess": "both-kubernetes-mixed-legacy",
-          "message": "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate",
+          "message": "Ich möchte den Legacy-Owner-Zugriff von central durch ein granulares Workload-Profil ersetzen und Kubernetes-Rechte für Besteller sowie Application-Service-Account in Public und Corporate verwenden. Bereite die Umstellung vor; bevor ich die Umstellung ausdrücklich bestätige, noch keine Profil- oder Rechteänderungen vorschlagen. Bestehende granulare Rechte erhalten.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

@@ -5,6 +5,7 @@ import { catalogueField } from "@lzc/contracts";
 import {
   applicationProjectPermissionNames,
   applicationServiceAccountKeyPermissions,
+  type CommonConfiguration,
   catalogue,
   commonConfigurationFromValues,
   compileCommonConfiguration,
@@ -27,6 +28,7 @@ import {
 import { enrichCatalogueQuestions } from "../apps/api/src/assistant/catalogue-guidance.js";
 import {
   applyAssistantChanges,
+  type Dialogue,
   proposeAssistantAccess,
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
@@ -34,6 +36,7 @@ import { assistantAuditCreationQuestions } from "../apps/api/src/assistant/edito
 import { buildAssistantKnowledge } from "../apps/api/src/assistant/knowledge.js";
 import type { AssistantCatalogueContext } from "../apps/api/src/assistant/model-serving.js";
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
+import { assistantTemplateQuestionPaths } from "../apps/api/src/assistant/template-paths.js";
 
 export const syntheticOrganizationId = "00000000-0000-4000-8000-000000000001";
 const questions: Record<string, string> = {
@@ -176,7 +179,12 @@ export type AssistantScenario = {
   requiredOverviewFields?: readonly string[];
   editorExpected?: { path: string; value: JsonValue };
   auditQuestionPaths?: readonly string[];
+  auditDefaultProposal?: { acl: readonly string[] };
   setupQuestionPaths?: readonly string[];
+  setupDefaultProposal?: { allowedFlavors: readonly string[] };
+  gitCapacityRecommendation?: { users: number; flavor: "git-10" | "git-100" };
+  nativeDefaultExpected?: { path: string; value: JsonValue };
+  nativeDefaultResetPath?: string;
   catalogueQuestion?: { path: string; field: string };
   answeredCatalogueChoice?: { path: string; value: string };
   requirementsQuestion?: string;
@@ -189,6 +197,7 @@ export type AssistantScenario = {
     | "owner"
     | "granular"
     | "literal-append"
+    | "literal-key-management"
     | "vm-default"
     | "workload-default"
     | "server-operations"
@@ -205,7 +214,8 @@ export type AssistantScenario = {
     | "both-kubernetes-followup"
     | "both-kubernetes-mixed-legacy"
     | "both-kubernetes-mixed-owner"
-    | "both-kubernetes-mixed-confirm";
+    | "both-kubernetes-mixed-confirm"
+    | "owner-covered";
   corporateIpv4?: "advice" | "automatic" | "explicit";
   executionLifecycle?: boolean;
   platformImpactReview?: boolean;
@@ -265,6 +275,9 @@ const firewallDialogueHistory = [
 ] satisfies NonNullable<AssistantScenario["history"]>;
 const firewallDeferredCapacity =
   "Das kann ich heute noch nicht sagen, wir sollten mit genügend Puffer arbeiten, so dass wir nicht zu schnell an Limits laufen. Ich kann heute den Traffic aber noch nicht beziffern. Die meisten Projekte müssen ins Internet zugreifen, um Downloads und Updates zu tätigen.";
+
+const mixedMigrationRequest =
+  "Ich möchte den Legacy-Owner-Zugriff von central durch ein granulares Workload-Profil ersetzen und Kubernetes-Rechte für Besteller sowie Application-Service-Account in Public und Corporate verwenden. Bereite die Umstellung vor; bevor ich die Umstellung ausdrücklich bestätige, noch keine Profil- oder Rechteänderungen vorschlagen. Bestehende granulare Rechte erhalten.";
 
 export const assistantScenarios: readonly AssistantScenario[] = [
   {
@@ -368,6 +381,15 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     applicationAccess: "key-management",
     message:
       "Im Template central soll der Besteller die Schlüssel des vorhandenen Application-Service-Accounts für Pipelines verwalten können. Ergänze die nötigen Rechte zum Erstellen, Lesen, Auflisten, Ändern und Löschen der Schlüssel und zum Sehen des Accounts. Vorhandene Kubernetes-Rechte und den zentralen Owner erhalten. Nur als Entwurf vorschlagen, nichts ausführen.",
+  },
+  {
+    id: "application-service-account-key-management-exact-identifiers",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "literal-key-management",
+    expectedLanguage: "en",
+    message:
+      "For template central, append exactly these permission identifiers to requester permissions: iam.service-account.get, iam.service-account-key.create, iam.service-account-key.list, iam.service-account-key.get, iam.service-account-key.edit, iam.service-account-key.delete. This exact list intentionally excludes iam.service-account.list because our client already knows the account identifier. Do not substitute the workflow bundle or add other rights. Retain existing requester rights, the owner and automation unchanged. Prepare a reviewable draft only; do not save or execute.",
   },
   {
     id: "application-access-workload-default-proposal",
@@ -491,6 +513,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       },
     ],
   },
+  {
+    id: "application-access-owner-already-covered",
+    topic: "project-templates",
+    fixture: "corporate-ipv4",
+    applicationAccess: "owner-covered",
+    message:
+      "Besteller und Application-Service-Account sollen im bestehenden Template central Kubernetes nutzen können. Prüfe die vorhandenen Rechte und ergänze nur fehlende Rechte; bestehende Rechte erhalten.",
+  },
   ...(["mixed-legacy", "mixed-owner", "mixed-confirm"] as const).map(
     (stage) => ({
       id: `application-access-both-kubernetes-${stage}`,
@@ -499,7 +529,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       applicationAccess: `both-kubernetes-${stage}` as const,
       message:
         stage === "mixed-legacy"
-          ? "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate"
+          ? mixedMigrationRequest
           : stage === "mixed-owner"
             ? "Der Platform Service Account"
             : "Workload-Umstellung für central bestätigen",
@@ -609,6 +639,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     history: sparseAuditHistory,
     message: "90 Tage",
     auditQuestionPaths: ["audit_logs.acl", "audit_logs.s3_object_lock"],
+    auditDefaultProposal: { acl: ["0.0.0.0/0"] },
   },
   {
     id: "editor-audit-partial-acl",
@@ -621,6 +652,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     ],
     message: "203.0.113.0/24",
     auditQuestionPaths: ["audit_logs.s3_object_lock"],
+    auditDefaultProposal: { acl: ["203.0.113.0/24"] },
   },
   {
     id: "editor-audit-partial-lock",
@@ -734,7 +766,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     {
       id: "editor-devops-size-only",
       message:
-        "Please add central Git, using git-10. I have not chosen the access networks yet.",
+        "Please add central Git, using git-10. Ask me to choose access before proposing any changes.",
       paths: ["devops.allowed_network_ranges"],
     },
     {
@@ -749,8 +781,109 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     topic: "devops-git",
     fixture: "baseline" as const,
     setupQuestionPaths: paths,
+    ...(id === "editor-devops-setup-en" || id === "editor-devops-setup-de"
+      ? { setupDefaultProposal: { allowedFlavors: ["git-10", "git-100"] } }
+      : {}),
     expectedLanguage: id.endsWith("-de") ? ("de" as const) : ("en" as const),
   })),
+  ...[
+    {
+      id: "editor-devops-sized-80-en",
+      language: "en" as const,
+      message:
+        "Please add a central git instance for round about 80 developers to the config",
+    },
+    {
+      id: "editor-devops-sized-80-de",
+      language: "de" as const,
+      message:
+        "Bitte eine zentrale Git-Instanz für ca. 80 Entwickler in die Konfiguration aufnehmen.",
+    },
+  ].map(({ id, language, message }) => ({
+    id,
+    message,
+    topic: "devops-git",
+    fixture: "service-catalogues" as const,
+    expectedLanguage: language,
+    setupQuestionPaths: ["devops.allowed_network_ranges"],
+    gitCapacityRecommendation: { users: 80, flavor: "git-100" as const },
+    setupDefaultProposal: { allowedFlavors: ["git-100"] },
+  })),
+  {
+    id: "editor-devops-sized-80-followup",
+    topic: "devops-git",
+    fixture: "service-catalogues",
+    expectedLanguage: "en",
+    message: "Allow only 203.0.113.0/24.",
+    history: [
+      {
+        role: "user",
+        content:
+          "Please add a central git instance for round about 80 developers to the config",
+      },
+      {
+        role: "assistant",
+        content:
+          "Git100 fits your expected user count. Which source networks should have access?",
+      },
+    ],
+    editorExpected: { path: "devops.git_flavor", value: "git-100" },
+    gitCapacityRecommendation: { users: 80, flavor: "git-100" },
+  },
+  ...[
+    {
+      id: "consultation-company-git-default-en",
+      language: "en" as const,
+      message: "My answer: please use the default",
+    },
+    {
+      id: "consultation-company-git-default-de",
+      language: "de" as const,
+      message: "Meine Antwort: Bitte den Default des Accelerators verwenden.",
+    },
+  ].map(({ id, language, message }) => ({
+    id,
+    topic: "devops-git",
+    fixture: "service-catalogues" as const,
+    expectedLanguage: language,
+    message,
+    history: [
+      {
+        role: "user" as const,
+        content:
+          "We use a Hub-and-Spoke landing zone and need a central company Git for round about 80 developers.",
+      },
+      {
+        role: "assistant" as const,
+        content:
+          "Git100 fits 80 developers; Git10 supports only 10. Who should be able to reach Git?",
+      },
+      {
+        role: "user" as const,
+        content: "Company/VPN public egress networks only (recommended)",
+      },
+      {
+        role: "assistant" as const,
+        content:
+          "Which actual client source IP addresses or CIDRs should be allowed?",
+      },
+    ],
+    editorExpected: { path: "devops.git_flavor", value: "git-100" },
+    gitCapacityRecommendation: { users: 80, flavor: "git-100" as const },
+    nativeDefaultExpected: {
+      path: "devops.allowed_network_ranges",
+      value: ["0.0.0.0/0"],
+    },
+  })),
+  {
+    id: "consultation-observability-native-reset",
+    topic: "observability",
+    fixture: "git-saved-access",
+    expectedLanguage: "en",
+    message:
+      "Please reset only the central Observability metrics retention to the Accelerator default. Keep its plan, access list, logs/traces settings and every other service unchanged. Prepare the draft; do not deploy.",
+    nativeDefaultResetPath: "observability.metrics_retention_days",
+  },
   {
     id: "catalogue-firewall-business-en",
     topic: "firewall-infrastructure",
@@ -922,7 +1055,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     expectedLanguage: "en" as const,
     history: entry.history,
     message:
-      "Please add a central git instance to the config. I have not selected its size or access networks yet.",
+      "Please add a central git instance to the config. First ask about the missing size and access requirements; do not propose changes yet.",
     setupQuestionPaths: ["devops.git_flavor", "devops.allowed_network_ranges"],
   })),
   {
@@ -969,6 +1102,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       },
     ],
     setupQuestionPaths: ["devops.allowed_network_ranges"],
+    setupDefaultProposal: { allowedFlavors: ["git-100"] },
   },
   {
     id: "editor-devops-company-complete",
@@ -1702,6 +1836,7 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
   }
   if (
     scenario.applicationAccess === "key-management" ||
+    scenario.applicationAccess === "literal-key-management" ||
     scenario.applicationAccess === "server-operations"
   ) {
     draft.projectTemplates![0]!.accessProfile = {
@@ -1911,8 +2046,11 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
     values["assistant.platform_service_account_emails"] = [
       "bootstrap-platform@sa.stackit.cloud",
     ];
-    const request =
-      "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate";
+    const request = scenario.applicationAccess?.startsWith(
+      "both-kubernetes-mixed-",
+    )
+      ? mixedMigrationRequest
+      : "Ich will dass sowohl der Service Account als auch der Besteller auch mit Kubernetes arbeiten können und das im Template Public und Corporate";
     const context: MultiTemplatePermissionContext = {
       templates: objectValue(values.projectTemplates as JsonValue),
       originalRequest: request,
@@ -1972,6 +2110,18 @@ export function assistantScenarioFixture(scenario: AssistantScenario) {
   }
   if (scenario.fixture === "folder-naming")
     values["assistant.user_email"] = "login@example.test";
+  if (scenario.gitCapacityRecommendation) {
+    catalogues.regions[0]!.products.gitFlavors = {
+      status: "available",
+      totalOptions: 2,
+      truncated: false,
+      options: [
+        { value: "git-10", label: "Git10" },
+        { value: "git-100", label: "Git100" },
+      ],
+    };
+  }
+
   return { draft, values, history, catalogues };
 }
 
@@ -2079,6 +2229,22 @@ export function assistantExecutionLifecycleFailures(text: string) {
   return failures;
 }
 
+function sameApplicationAccessConfiguration(
+  left: CommonConfiguration,
+  right: CommonConfiguration,
+) {
+  const canonical = (draft: CommonConfiguration) => {
+    const copy = structuredClone(draft);
+    for (const template of copy.projectTemplates ?? []) {
+      if (template.accessProfile?.mode !== "granular") continue;
+      template.accessProfile.permissions.sort();
+      template.accessProfile.automationPermissions.sort();
+    }
+    return copy;
+  };
+  return isDeepStrictEqual(canonical(left), canonical(right));
+}
+
 export function validateAssistantScenario(
   scenario: AssistantScenario,
   input: unknown,
@@ -2101,6 +2267,7 @@ export function validateAssistantScenario(
         ? { verifiedUserEmail: userEmail }
         : {}),
     },
+    assistantTemplateQuestionPaths(fixture.values),
   );
   const failures: string[] = [];
   if (scenario.id === "firewall-access-bootstrap-advice") {
@@ -2139,17 +2306,43 @@ export function validateAssistantScenario(
       ["inherited", /geerbt|inherited|vererb/],
       ["automation", /automation|service.account/],
       ["vm-boundary", /vm|virtuelle|virtual machine/],
-      ["requester-key-management", /191/],
-      ["automation-workload-default", /184/],
       ["project-key-scope", /projektweit|project.wide/],
       ["key-management", /schlüssel|key.management/],
     ] as const)
       if (!pattern.test(text))
         failures.push(`application_access_missing_${name}`);
+    // This case asks for the VM profile. A correct explanation may compare it
+    // with the workload profile, but must not pretend both presets have the
+    // same rights. Check a real preset pair rather than requiring workload
+    // counts in every VM answer.
+    const presetCounts = (["workload", "vm"] as const).map((preset) => {
+      const profile = defaultApplicationAccessProfile("", preset);
+      return [profile.permissions.length, profile.automationPermissions.length];
+    });
+    if (
+      !presetCounts.some((counts) =>
+        counts.every((count) => new RegExp(`\\b${count}\\b`).test(text)),
+      )
+    )
+      failures.push("application_access_missing_actual_preset_counts");
     if (/compute\.(?:instances|servers)|central\.initialowneremail/.test(text))
       failures.push("application_access_invented_contract");
     if (dialogue.changes.length)
       failures.push("application_access_advice_mutated");
+  } else if (scenario.applicationAccess === "owner-covered") {
+    if (dialogue.changes.length || dialogue.questions.length)
+      failures.push(
+        "application_access_existing_owner_unnecessary_changes_or_questions",
+      );
+    const text = dialogue.explanation;
+    for (const [name, pattern] of [
+      ["owner", /owner/i],
+      ["service", /kubernetes|ske/i],
+      ["requester", /besteller|requester/i],
+      ["automation", /automation|service.account/i],
+    ] as const)
+      if (!pattern.test(text))
+        failures.push(`application_access_existing_owner_missing_${name}`);
   } else if (scenario.applicationAccess?.startsWith("both-kubernetes-mixed-")) {
     if (scenario.applicationAccess === "both-kubernetes-mixed-confirm") {
       const expected = structuredClone(fixture.draft);
@@ -2180,7 +2373,7 @@ export function validateAssistantScenario(
         if (
           !dialogue.changes.length ||
           dialogue.questions.length ||
-          !isDeepStrictEqual(
+          !sameApplicationAccessConfiguration(
             applyAssistantChanges(fixture.draft, dialogue.changes),
             expected,
           )
@@ -2192,11 +2385,18 @@ export function validateAssistantScenario(
     } else {
       if (dialogue.changes.length)
         failures.push("application_access_legacy_unconfirmed_change");
-      const owners = dialogue.questions.filter((q) =>
-        /gemeinsamen zentralen initialen Owner/.test(q.text),
-      );
-      const legacy = dialogue.questions.filter((q) =>
-        /Workload-Profil ersetzen/.test(q.text),
+      const legacy = dialogue.questions.filter((q) => {
+        const text = [q.text, ...(q.options ?? [])].join(" ");
+        return (
+          /workload/i.test(text) &&
+          /umstell|erset|wechsel|migrier|bestätig|bestaetig|confirm|replace|transition|migrat|verwenden|nutzen|\buse\b/i.test(
+            text,
+          )
+        );
+      });
+      const owners = dialogue.questions.filter(
+        (q) =>
+          !legacy.includes(q) && /owner|eigentümer|eigentuemer/i.test(q.text),
       );
       if (
         owners.length !==
@@ -2210,8 +2410,8 @@ export function validateAssistantScenario(
           "application_access_mixed_shared_owner_or_confirmation_missing",
         );
       if (
-        !/Owner/.test(dialogue.explanation) ||
-        !/Workload/.test(dialogue.explanation) ||
+        !/owner|eigentümer|eigentuemer/i.test(dialogue.explanation) ||
+        !/workload/i.test(dialogue.explanation) ||
         /Welches Projekt-Rechteprofil/.test(
           dialogue.questions.map((q) => q.text).join(" "),
         )
@@ -2250,7 +2450,7 @@ export function validateAssistantScenario(
       try {
         if (
           !dialogue.changes.length ||
-          !isDeepStrictEqual(
+          !sameApplicationAccessConfiguration(
             applyAssistantChanges(fixture.draft, dialogue.changes),
             expected,
           )
@@ -2316,7 +2516,10 @@ export function validateAssistantScenario(
         ],
       };
     }
-    if (scenario.applicationAccess === "key-management") {
+    if (
+      scenario.applicationAccess === "key-management" ||
+      scenario.applicationAccess === "literal-key-management"
+    ) {
       const before = fixture.draft.projectTemplates?.find(
         (t) => t.key === "central",
       )?.accessProfile;
@@ -2327,8 +2530,11 @@ export function validateAssistantScenario(
         permissions: [
           ...new Set([
             ...before.permissions,
-            ...applicationProjectPermissionNames.filter((name) =>
-              applicationServiceAccountKeyPermissions.includes(name),
+            ...applicationProjectPermissionNames.filter(
+              (name) =>
+                applicationServiceAccountKeyPermissions.includes(name) &&
+                (scenario.applicationAccess !== "literal-key-management" ||
+                  name !== "iam.service-account.list"),
             ),
           ]),
         ],
@@ -2388,7 +2594,7 @@ export function validateAssistantScenario(
       if (
         !dialogue.changes.length ||
         dialogue.questions.length ||
-        !isDeepStrictEqual(candidate, expected)
+        !sameApplicationAccessConfiguration(candidate, expected)
       )
         failures.push(
           "application_access_proposal_incorrect_or_unrelated_change",
@@ -2637,7 +2843,99 @@ export function validateAssistantScenario(
     )
       failures.push("git_over_capacity_must_clarify_topology_before_flavor");
   }
+  if (scenario.nativeDefaultExpected || scenario.nativeDefaultResetPath) {
+    const before = compileCommonConfiguration(fixture.draft);
+    const after = compileCommonConfiguration(
+      applyAssistantChanges(fixture.draft, dialogue.changes),
+    );
+    const at = (value: JsonValue | undefined, path: string) =>
+      path
+        .split(".")
+        .reduce<JsonValue | undefined>(
+          (value, key) => objectValue(value)[key],
+          value,
+        );
+    if (!dialogue.changes.length || dialogue.questions.length)
+      failures.push("native_default_not_completed");
+    if (
+      scenario.nativeDefaultExpected &&
+      !isDeepStrictEqual(
+        at(after, scenario.nativeDefaultExpected.path),
+        scenario.nativeDefaultExpected.value,
+      )
+    )
+      failures.push("actual_native_default_not_proposed");
+    if (scenario.nativeDefaultResetPath) {
+      if (at(after, scenario.nativeDefaultResetPath) != null)
+        failures.push("native_override_not_reset");
+      const omit = (value: Record<string, JsonValue>) => {
+        const copy = structuredClone(value);
+        const keys = scenario.nativeDefaultResetPath!.split(".");
+        const last = keys.pop()!;
+        const parent = keys.reduce<JsonValue | undefined>(
+          (value, key) => objectValue(value)[key],
+          copy,
+        );
+        delete objectValue(parent)[last];
+        return copy;
+      };
+      if (!isDeepStrictEqual(omit(before), omit(after)))
+        failures.push("native_reset_changed_unrelated_values");
+    }
+    if (scenario.nativeDefaultExpected) {
+      const omit = (value: Record<string, JsonValue>) => {
+        const copy = structuredClone(value);
+        delete copy.devops;
+        return copy;
+      };
+      if (!isDeepStrictEqual(omit(before), omit(after)))
+        failures.push("git_default_changed_platform_context");
+    }
+  }
+  if (scenario.gitCapacityRecommendation && !scenario.nativeDefaultExpected) {
+    failures.push(
+      ...assistantGitCapacityRecommendationFailures(
+        dialogue.explanation,
+        scenario.gitCapacityRecommendation.users,
+        scenario.gitCapacityRecommendation.flavor,
+        dialogue.recommendations,
+      ),
+    );
+    if (dialogue.questions.some((q) => q.path === "devops.git_flavor"))
+      failures.push("git_confirmed_size_reasked");
+  }
   if (scenario.setupQuestionPaths) {
+    if (dialogue.changes.length && scenario.setupDefaultProposal) {
+      const before = compileCommonConfiguration(fixture.draft);
+      const after = compileCommonConfiguration(
+        applyAssistantChanges(fixture.draft, dialogue.changes),
+      );
+      const git = objectValue(after.devops);
+      if (
+        !scenario.setupDefaultProposal.allowedFlavors.includes(
+          String(git.git_flavor),
+        ) ||
+        !isDeepStrictEqual(git.allowed_network_ranges, ["0.0.0.0/0"]) ||
+        dialogue.questions.some(
+          (question) => !scenario.setupQuestionPaths!.includes(question.path),
+        ) ||
+        !dialogue.defaults?.some(
+          (item) =>
+            item.path === "devops.allowed_network_ranges" &&
+            item.source === "accelerator" &&
+            isDeepStrictEqual(item.value, ["0.0.0.0/0"]),
+        )
+      )
+        failures.push("setup_default_proposal_unverified");
+      const withoutGit = (value: Record<string, JsonValue>) => {
+        const copy = structuredClone(value);
+        delete copy.devops;
+        return copy;
+      };
+      if (!isDeepStrictEqual(withoutGit(before), withoutGit(after)))
+        failures.push("setup_default_proposal_changed_other_components");
+      return { dialogue, failures };
+    }
     if (
       dialogue.changes.length ||
       !dialogue.questions.length ||
@@ -2664,6 +2962,39 @@ export function validateAssistantScenario(
     return { dialogue, failures };
   }
   if (scenario.auditQuestionPaths) {
+    if (dialogue.changes.length && scenario.auditDefaultProposal) {
+      const before = compileCommonConfiguration(fixture.draft);
+      const after = compileCommonConfiguration(
+        applyAssistantChanges(fixture.draft, dialogue.changes),
+      );
+      const audit = objectValue(after.audit_logs);
+      if (
+        audit.retention_days !== 90 ||
+        audit.s3_object_lock !== true ||
+        !isDeepStrictEqual(audit.acl, scenario.auditDefaultProposal.acl) ||
+        dialogue.questions.some(
+          (question) => !scenario.auditQuestionPaths!.includes(question.path),
+        ) ||
+        scenario.auditQuestionPaths.some(
+          (path) =>
+            !dialogue.defaults?.some(
+              (item) =>
+                item.path === path &&
+                item.source === "accelerator" &&
+                isDeepStrictEqual(item.value, audit[path.split(".")[1]!]),
+            ),
+        )
+      )
+        failures.push("audit_unanswered_decisions_not_preserved");
+      const withoutAudit = (value: Record<string, JsonValue>) => {
+        const copy = structuredClone(value);
+        delete copy.audit_logs;
+        return copy;
+      };
+      if (!isDeepStrictEqual(withoutAudit(before), withoutAudit(after)))
+        failures.push("audit_default_changed_other_components");
+      return { dialogue, failures };
+    }
     if (
       dialogue.changes.length ||
       !isDeepStrictEqual(
@@ -3213,17 +3544,11 @@ export function validateAssistantScenario(
       failures.push("sna_scope_or_repeated_question");
   }
   if (scenario.fixture !== "baseline") {
-    if (
-      !/noch (?:nichts|nicht) gespeichert|no(?:thing| changes?) (?:has|have) been saved|then save the configuration/i.test(
-        dialogue.explanation,
-      )
-    )
+    if (!assistantUnsavedNotice(dialogue.explanation))
       failures.push("missing_unsaved_notice");
     if (
       scenario.id !== "firewall-ha-already-saved" &&
-      /\b(?:wurde|wurden|ist|sind)\b[^.!?\n]{0,100}\b(?:konfiguriert|gespeichert|eingetragen|bereitgestellt)\b/i.test(
-        dialogue.explanation,
-      )
+      assistantPrematurePersistenceClaim(dialogue.explanation)
     )
       failures.push("premature_saved_claim");
     const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
@@ -3264,6 +3589,34 @@ export function validateAssistantScenario(
   return { dialogue, failures };
 }
 
+export function assistantUnsavedNotice(explanation: string) {
+  const text = explanation.replace(/\*\*/g, "");
+  return /noch (?:nichts|nicht) gespeichert|no(?:thing| changes?) (?:has|have) been saved|\bnothing saved\b|\bnot yet saved\b|then save the configuration|\b(?:nichts|keine Änderung(?:en)?)\s+(?:(?:geändert|vorbereitet)\s*,\s*)?gespeichert\b/i.test(
+    text,
+  );
+}
+
+export function assistantPrematurePersistenceClaim(explanation: string) {
+  const claims = explanation.matchAll(
+    /\b(?:wurde|wurden|ist|sind)\b((?:(?!\b(?:wurde|wurden|ist|sind)\b)[^.!?\n]){0,100})\b(?:konfiguriert|gespeichert|eingetragen|bereitgestellt)\b/gi,
+  );
+  return [...claims].some(
+    (claim) =>
+      !/\b(?:nichts|kein(?:e|en|er|es|em)?(?:\s+(?!(?:aber|doch|jedoch|sondern|und)\b)[\p{L}-]+){0,3})\s*$/iu.test(
+        explanation
+          .slice(0, claim.index)
+          .split(/[.!?;\n]/)
+          .at(-1) ?? "",
+      ) &&
+      !/\b(?:kein\w*|nicht|nichts|weder)\b/i.test(
+        claim[1]!.replace(/\bnicht\s+nur\b/gi, ""),
+      ) &&
+      !/\b(?:kann|konnen|können|könnte|könnten|würde|würden|werden|wird|soll|sollen|darf|dürfen)\b/i.test(
+        claim[1]!,
+      ),
+  );
+}
+
 export function assistantDevOpsDefaultFailures(explanation: string) {
   const sentences = explanation.toLowerCase().split(/\n+|(?<=[.!?])\s+/);
   const failures: string[] = [];
@@ -3292,25 +3645,44 @@ export function assistantDnsRoleFailures(
   explanation: string,
   mode: "roles" | "secondary",
 ) {
-  const sentences = explanation
+  const normalized = explanation
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .split(/\n+|(?<=[.!?])\s+/);
+    .toLowerCase();
+  const sentences = normalized.split(/\n+|(?<=[.!?])\s+/);
+  const roleDescriptions = (role: "primary" | "secondary") => [
+    ...sentences,
+    ...normalized.split(/\n\s*\n/).filter((block) => {
+      const heading = block.split("\n")[0] ?? "";
+      return (
+        new RegExp(`\\b${role}\\b`).test(heading) &&
+        !new RegExp(
+          `\\b${role === "primary" ? "secondary" : "primary"}\\b`,
+        ).test(heading)
+      );
+    }),
+  ];
   const authority = /autoritat|authoritat/;
   const failures: string[] = [];
   if (
-    sentences.some(
-      (sentence) =>
+    sentences.some((sentence) => {
+      const assertion = sentence
+        .replace(/[*`_]/g, "")
+        .replace(
+          /\b(?:kein\w*|nicht|no|not)\s+(?:(?:rein\w*|purely|merely|just|only)\s+)?(?:nicht[\s\p{Dash_Punctuation}]*autoritat\w*|non[\s\p{Dash_Punctuation}]*authoritat\w*)/gu,
+          "",
+        );
+      return (
         /secondary/.test(sentence) &&
-        /(?:nicht|kein|not|non)[^.!?]{0,30}(?:autoritat|authoritat)/.test(
-          sentence,
-        ),
-    )
+        /\b(?:nicht|kein\w*|not|non)[\s\p{Dash_Punctuation}]*(?:(?:vollstandig|fully|completely|really|selbst|selber|wirklich|at\s+all)\s+){0,2}(?:autoritat|authoritat)/u.test(
+          assertion,
+        )
+      );
+    })
   )
     failures.push("dns_secondary_authority_denied");
   if (
-    !sentences.some(
+    !roleDescriptions("secondary").some(
       (sentence) =>
         /secondary/.test(sentence) &&
         /repli[zk]|kopie|copy|replic|ubernehm|ubernimm/.test(sentence),
@@ -3328,7 +3700,7 @@ export function assistantDnsRoleFailures(
     failures.push("dns_secondary_limit_missing");
   if (mode === "secondary") return failures;
   if (
-    !sentences.some(
+    !roleDescriptions("primary").some(
       (sentence) =>
         /primary/.test(sentence) &&
         /fuhrend|verwal|pfleg|original|bearbeit|manage|edit/.test(sentence),
@@ -3359,8 +3731,18 @@ export function assistantDnsRoleFailures(
     !sentences.some(
       (sentence) =>
         /primary/.test(sentence) &&
-        /empfehl|geeignet|wahl|recommend|neue|new /.test(sentence),
-    )
+        /empfehl|geeignet|passend|wahl|recommend|appropriate|suitable|neue|new /.test(
+          sentence,
+        ),
+    ) &&
+    !normalized.split(/\n\s*\n/).some((block) => {
+      const [heading, ...body] = block.split("\n");
+      const answer = body.join("\n").replace(/[*`_]/g, "").trim();
+      return (
+        /empfehl|recommend|wahl/.test(heading ?? "") &&
+        /^(?:[→•-]\s*)?primary\b/.test(answer)
+      );
+    })
   )
     failures.push("dns_primary_recommendation_missing");
   return failures;
@@ -3382,7 +3764,11 @@ export function buildAssistantScenarioInventory() {
   )
     throw new Error("assistant_scenario_topic_coverage_invalid");
   const sourceDigests = Object.fromEntries(
-    ["assistant-scenarios.ts", "assistant-tests.ts"].map((file) => [
+    [
+      "assistant-scenarios.ts",
+      "assistant-tests.ts",
+      "assistant-test-model.ts",
+    ].map((file) => [
       `scripts/${file}`,
       createHash("sha256")
         .update(readFileSync(new URL(file, import.meta.url)))
@@ -3433,6 +3819,17 @@ export function buildAssistantScenarioInventory() {
                     "shared_effect_dependency_gate_before_apply_actual_contract_after_apply",
                   ]
                 : []),
+            ...(scenario.nativeDefaultExpected ||
+            scenario.nativeDefaultResetPath
+              ? [
+                  "actual_native_default_completed_without_reasking_preserving_context",
+                ]
+              : []),
+            ...(scenario.gitCapacityRecommendation
+              ? [
+                  "reviewed_git_plan_fits_confirmed_user_count_without_reasking_size",
+                ]
+              : []),
             ...(scenario.platformImpactReview
               ? [
                   "root_platform_owner_impact_decision_artifact_state_dependencies_fresh_plan_separate_apply",
@@ -3537,7 +3934,9 @@ export function assistantCorporateIpv4Failures(explanation: string): string[] {
     !/sna|network area/.test(text) ||
     !/standard|default/.test(text) ||
     !/28/.test(text) ||
-    !/übern|uebern|erbt|inherit|lies|liest|read|abfrag/.test(text)
+    !/übern|uebern|erbt|inherit|lies|liest|read|abfrag|(?:löst|loest)[^.!?\n]{0,100}(?:präfix|praefix|prefix)[^.!?\n]{0,100}\bauf\b|resolv[^.!?\n]{0,100}(?:prefix|default)/.test(
+      text,
+    )
   )
     failures.push("corporate_ipv4_automatic_inheritance_missing");
   if (
@@ -3755,4 +4154,43 @@ export function assistantPlatformImpactReviewFailures(text: string): string[] {
   return checks
     .filter(([, pattern]) => !pattern.test(text))
     .map(([name]) => `platform_impact_missing_${name}`);
+}
+
+/** Check the final visible recommendation independently of classifier/picker success. */
+export function assistantGitCapacityRecommendationFailures(
+  text: string,
+  users: number,
+  flavor: "git-10" | "git-100",
+  recommendations: Dialogue["recommendations"] = [],
+): string[] {
+  if (
+    recommendations.some(
+      (item) =>
+        item.path === "devops.git_flavor" &&
+        item.value === flavor &&
+        item.requirements.some(
+          (requirement) =>
+            requirement.metric === "users" && requirement.minimum === users,
+        ) &&
+        item.facts.some(
+          (fact) => fact.metric === "users" && fact.value >= users,
+        ),
+    )
+  )
+    return [];
+  const limit = flavor === "git-100" ? "100" : "10";
+  const label = `Git[- ]?${limit}`;
+  const checks: [string, RegExp][] = [
+    ["count", new RegExp(`\\b${users}\\b`)],
+    [
+      "recommendation",
+      new RegExp(
+        `(?:recommend\\w*|empfehl\\w*|selected|gewählt)[^.!?\\n]{0,80}${label}\\b|${label}[^.!?\\n]{0,100}(?:recommend\\w*|empfohl\\w*|appropriate|suitable|passend|geeignet|eignet sich|fits)`,
+        "i",
+      ),
+    ],
+  ];
+  return checks
+    .filter(([, pattern]) => !pattern.test(text))
+    .map(([name]) => `git_capacity_missing_${name}`);
 }

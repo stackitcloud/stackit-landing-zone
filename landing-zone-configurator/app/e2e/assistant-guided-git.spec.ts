@@ -1,17 +1,11 @@
-import {
-  compileCommonConfiguration,
-  createEditorConfiguration,
-  editCommonInput,
-} from "@lzc/domain";
-import {
-  gitDialogueInputs,
-  gitSetupDialogue,
-} from "../apps/api/src/assistant/git-dialogue";
+import type { AssistantRecommendation } from "@lzc/contracts";
+import { createEditorConfiguration, editCommonInput } from "@lzc/domain";
+import type { Dialogue } from "../apps/api/src/assistant/dialogue";
 import { mockEmptyApplicationLists } from "./editor-navigation";
 import { expect, test } from "./fixtures";
 
 test.use({ locale: "en-US" });
-test("English UI guides a company-wide Git recommendation after German quoted history", async ({
+test("English UI retains a capacity recommendation and offers the actual native default", async ({
   page,
 }, info) => {
   const id = "33333333-3333-4333-8333-333333333333";
@@ -29,7 +23,7 @@ test("English UI guides a company-wide Git recommendation after German quoted hi
     },
   );
   draft.name = "Guided Git fixture";
-  const current = compileCommonConfiguration(draft);
+
   let posts = 0;
   let writes = 0;
   let conversation = {
@@ -42,10 +36,11 @@ test("English UI guides a company-wide Git recommendation after German quoted hi
       {
         id: "legacy",
         role: "assistant",
-        content: "Welche Git-Größe soll der Entwurf verwenden?",
+        content: "Which Git size should we use?",
+        recommendations: [] as AssistantRecommendation[],
       },
     ],
-    proposal: null as ReturnType<typeof gitSetupDialogue> | null,
+    proposal: null as Dialogue | null,
   };
   await mockEmptyApplicationLists(page);
   await page.route("**/auth/status", (r) =>
@@ -94,34 +89,86 @@ test("English UI guides a company-wide Git recommendation after German quoted hi
       expect(body.language).toBe("en");
       expect(body.revision).toBe(1);
       posts++;
-      const inputs = gitDialogueInputs(
-        current,
-        conversation.messages.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-        body.message,
-        { regions: [] },
-      );
-      const decision = {
-        setupSource: posts === 1 ? "current" : "history-1",
-        planChoice: posts === 1 ? null : ("recommend" as const),
-        planSource: posts === 1 ? null : posts === 2 ? "current" : "history-3",
-        networkChoice: posts === 3 ? "observability" : null,
-        networkSource: posts === 3 ? "current" : null,
-        networkEvidence: null,
+      const recommendations: AssistantRecommendation[] = [
+        {
+          path: "devops.git_flavor",
+          value: "git-100",
+          label: "Git100",
+          description: "Up to 100 users",
+          requirements: [{ metric: "users", minimum: 80 }],
+          facts: [{ metric: "users", value: 100 }],
+          source: {
+            kind: "project-catalogue",
+            region: "eu01",
+            fetchedAt: new Date().toISOString(),
+          },
+        },
+      ];
+      const proposal: Dialogue = {
+        ...(posts >= 3
+          ? {
+              defaults: [
+                {
+                  path: "devops.allowed_network_ranges",
+                  value: ["0.0.0.0/0"],
+                  source: "accelerator" as const,
+                },
+              ],
+            }
+          : {}),
+        explanation:
+          posts < 3
+            ? "Git100 fits your 80 developers. Choose access for the central company Git. Nothing saved."
+            : "Git100 uses the Accelerator default 0.0.0.0/0, allowing public IPv4 access. Nothing saved or deployed.",
+        recommendations,
+        questions:
+          posts < 3
+            ? [
+                {
+                  path: "devops.allowed_network_ranges",
+                  answerType: "requirements",
+                  text: "Which access should Git use?",
+                  options:
+                    posts === 1
+                      ? ["Company/VPN public egress networks only"]
+                      : [
+                          "Use Accelerator default (0.0.0.0/0)",
+                          "Provide company/VPN public egress IPs or CIDRs",
+                        ],
+                },
+              ]
+            : [],
+        changes:
+          posts < 3
+            ? []
+            : [
+                {
+                  path: "devops",
+                  operation: "merge",
+                  value: {
+                    git_flavor: "git-100",
+                    allowed_network_ranges: ["0.0.0.0/0"],
+                  },
+                },
+              ],
+        references: ["devops-git"],
       };
-      const proposal = gitSetupDialogue(inputs, decision, "en");
       conversation = {
         ...conversation,
         revision: conversation.revision + 1,
         messages: [
           ...conversation.messages,
-          { id: `user-${posts}`, role: "user", content: body.message },
+          {
+            id: `user-${posts}`,
+            role: "user",
+            content: body.message,
+            recommendations: [],
+          },
           {
             id: `assistant-${posts}`,
             role: "assistant",
             content: proposal.explanation,
+            recommendations,
           },
         ],
         proposal,
@@ -148,43 +195,70 @@ test("English UI guides a company-wide Git recommendation after German quoted hi
     name: "Follow-up questions",
     exact: true,
   });
-  await expect(
-    questions.getByRole("radio", { name: /Git100.*recommended/ }),
-  ).toBeVisible();
-  await expect(
-    questions.getByRole("radio", { name: /Git10.*pilot/ }),
-  ).toBeVisible();
-  await expect(questions).not.toContainText("Welche");
-  await questions.screenshot({ path: info.outputPath("git-plans.png") });
-  await questions
-    .getByRole("group", {
-      name: "Which starting size would you like to use?",
-      exact: true,
-    })
-    .getByRole("textbox", { name: "Your own answer", exact: true })
-    .fill(
-      "just use a standard git flavor, which is usefull for a company wide git.",
-    );
-  await questions
-    .getByRole("button", { name: "Send answer", exact: true })
-    .click();
-  await expect(questions.getByRole("group")).toHaveCount(1);
+  const recommendations = chat.getByRole("region", {
+    name: "Matching recommendations",
+    exact: true,
+  });
+  await expect(recommendations.first()).toContainText("Git100");
+  await expect(recommendations.first()).toContainText("80");
+  await expect(recommendations.first()).toContainText("100");
   await expect(questions).not.toContainText("Which starting size");
-  await expect(chat.getByRole("log")).toContainText(
-    "Starting size selected: Git100",
-  );
-  await expect(
-    questions.getByRole("radio", { name: /saved Observability allowlist/ }),
-  ).toBeVisible();
   await questions.screenshot({ path: info.outputPath("git-access.png") });
   await questions
-    .getByRole("radio", { name: /saved Observability allowlist/ })
+    .getByRole("radio", {
+      name: "Company/VPN public egress networks only",
+      exact: true,
+    })
     .check();
   await questions
     .getByRole("button", { name: "Send answer", exact: true })
     .click();
-  await expect(questions).toHaveCount(0);
-  await expect(chat.locator(".assistant-proposal")).toContainText("git-100");
+  await expect(
+    questions.getByRole("radio", {
+      name: "Use Accelerator default (0.0.0.0/0)",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.reload();
+  const reloadedChat = page.getByRole("region", {
+    name: "Configuration chat",
+    exact: true,
+  });
+  await expect(
+    reloadedChat
+      .getByRole("region", { name: "Matching recommendations", exact: true })
+      .last(),
+  ).toContainText("Git100");
+  await reloadedChat
+    .getByRole("radio", {
+      name: "Use Accelerator default (0.0.0.0/0)",
+      exact: true,
+    })
+    .check();
+  await reloadedChat
+    .getByRole("button", { name: "Send answer", exact: true })
+    .click();
+  await expect(
+    reloadedChat.getByRole("region", {
+      name: "Follow-up questions",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(reloadedChat.locator(".assistant-proposal")).toContainText(
+    "git-100",
+  );
+  await expect(reloadedChat.locator(".assistant-proposal")).toContainText(
+    "0.0.0.0/0",
+  );
+  const defaults = reloadedChat.getByRole("region", {
+    name: "Proposed defaults",
+    exact: true,
+  });
+  await expect(defaults).toContainText("Any IPv4 address");
+  await expect(defaults).toContainText("0.0.0.0/0");
+  await reloadedChat.screenshot({
+    path: info.outputPath("git-default-proposal.png"),
+  });
   expect(posts).toBe(3);
   expect(writes).toBe(0);
 });

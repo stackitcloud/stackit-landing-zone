@@ -33,128 +33,42 @@ Source of truth:
 - knowledge.ts: deterministic selection, global rules, generated field metadata,
   template metadata and complete bundle hash.
 
-Editor dialogue uses selected feature groups and their topic dependencies.
-Credential foundations and configuration lifecycle are always included.
-Template advice receives the bounded complete topic set. Current editor requests
-select all feature groups, so all 19 topics are available; this is not semantic
-retrieval by message. Dependencies select knowledge, not service activation.
-There is no vector database, model-controlled retrieval or runtime filesystem
-access to docs. The compiled API artifact contains the generated snapshot.
-Topic text is supplied once as trusted curated rules; provenance is separate.
-Customer input/history and PIM labels remain untrusted data, not instructions.
+Editor chat now uses the [shared model-led consultation](../assistant-consultation.md).
+The model chooses scoped knowledge, native-field/default and catalogue reads and
+submits typed draft proposals for compiler validation. The server returns useful
+validation feedback and a compiler-produced delta for the shared semantic final
+review before the answer is presented. There is no per-service intent
+classifier or scripted product dialogue in this runtime.
 
-### Folder naming proposals
+Mandatory knowledge and dependencies remain authoritative. All 19 topics are
+available within selected feature groups. Mandatory rules and the active brief start
+the consultation; native tools retrieve service facts, field metadata, current public
+values and catalogue data. Already delivered rules are referenced rather than repeated. Configuration reads can select individual
+paths such as `rm_folders[*].name`, preserving stable keys without exposing folder
+IAM metadata. The API contains the compiled snapshot; it cannot read arbitrary
+runtime documentation, URLs, State, secrets or customer files.
 
-Combined company-prefix and folder-name requests and naming-only follow-ups use
-the bounded foundation contract, including when intent classification selects
-the generic Editor path. Explicit folder naming requires a concrete display-name
-proposal for the existing keys. The server applies an explicitly proposed prefix
-when the model still returns the previous display name. The response lists the resulting names in the user's
-language; it does not substitute a root-only `rm_folders` acknowledgement.
-A follow-up may reuse the prefix proposed in the conversation before acceptance.
-Unchanged names are filtered out, and native folder keys, parent bindings and
-owner/reader metadata remain intact. Field acceptance changes the draft; saving
-and cloud execution remain separate. Synthetic qualification covers the combined
-English request and its prefix follow-up independently.
+The stored source-bound brief retains confirmed requirements and open decisions.
+The browser's explicit language controls replies. Numeric requirements are compared
+with scoped offerings and reviewed ceilings using one shared evaluator. A uniquely
+fitting recommendation remains visible while another decision is open; it is not
+another required confirmation. Native-default selections resolve to actual native
+values, including omission/null semantics, and remain reviewable draft changes.
+Actual native defaults may also be labelled assumptions in an unapplied proposal.
+Explicit restrictions and decisions the user reserves take precedence; an unanswered
+question is not consent. The proposal displays default provenance for review.
 
-### Topic delivery contract
+Folder display-name changes preserve stable keys, parent bindings, permissions and
+identities. Actual source checks, protected fields, the compiler, tenant ownership,
+revision-bound acceptance and separate Save/Plan/Apply remain authoritative.
+The model explains reviewed boundaries such as managed Git reachability, Git user
+limits and State coordination using supplied facts rather than generic form copy.
 
-The generic Editor proposal path previously passed topic/field metadata without
-the curated rule texts. This affected all 14 topics with native Editor proposals,
-not just DNS. Editor proposals and conversational advice now share topic scoping:
-the current topic, transitive dependencies, mandatory topics and all global rules.
-Cross-topic Editor proposals also include the owners of every exposed field.
-Unrelated topic texts stay out of the scoped answer context. Missing dependencies
-fail explicitly; a restricted feature-group selection is preserved.
-
-Intent classification deliberately receives topic summaries, not the full
-advisory knowledge. DNS classification also receives the stable saved-zone keys and validated presence flags for domain, display name,
-description and contact, plus confirmed owner/human contact availability. Actual
-domain/contact values, unknown fields and credentials are excluded from this
-additional classification context. The serving contract requires an explicit
-DNS-task decision rather than suggesting the parser's legacy default. An explicit semantic
-`remaining-settings` decision uses draft mode even if the classifier emitted a
-contradictory advice mode. Existing domains and metadata are not missing setup
-choices. Informational/no-change questions remain advice; completion still passes
-all proposal, contact-source, preservation and explicit-acceptance guards. Firewall evidence classification receives user statements
-only. Deterministic field overviews and the policy boundary use reviewed local
-contracts without a second model call. Starting-template advice and synthetic
-qualification retain their complete selected rule texts.
-
-Regression tests inspect the actual outgoing model requests for all 19 advice
-topics and all 14 Editor topics, including exact full texts, indirect dependencies,
-mandatory/global rules, unrelated-topic exclusion and cross-topic proposals.
-These mocked transport tests prove knowledge delivery, not the factual quality
-of a live model answer or execution qualification. DNS guidance distinguishes
-primary/secondary roles from visibility, explains that both are authoritative,
-and states the native module's incomplete secondary-server setup.
-
-The serving schema is a wire projection. Empty advice arrays omit unreachable
-proposal grammars; pattern/format intersections with string-length bounds use
-bounded strings on the wire. The original Zod contracts, native validation,
-permission catalogues and proposal-scope checks remain authoritative. This avoids
-vLLM's xgrammar-to-guidance fallback without changing the selected models or
-retrying rejected requests. See the [backend compatibility checks](https://github.com/vllm-project/vllm/blob/main/vllm/v1/structured_output/backend_xgrammar.py).
-Lifecycle intent distinguishes execution-source compatibility/recovery, a
-published template version, a platform contract and Platform Owner impact review
-of a saved root-platform Plan. Mentioning template
-origin while comparing desired/lastApplied execution does not imply a template
-upgrade; the latest request takes precedence over historical tasks. A closed
-current-turn workflow advice task selects its reviewed lifecycle answer even if
-the model also supplies an inconsistent related component label. Unrelated
-topics and historical tasks remain excluded. Draft/action requests
-do not enter this read-only path.
-
-Classification omits unused free-text assessment output and requests compact JSON.
-Malformed, oversized or incomplete responses remain rejected; limits are not raised
-and partial JSON is never applied. Closed current workflow-advice labels are
-checked against the latest question in a small closed subject schema before a
-reviewed guide is selected. That check receives no draft, Plan or historical task.
-Audit constructor guidance keeps native organization routing as `link_scopes=null`
-unless manual scopes are explicitly requested; supplied manual scopes and an
-explicit empty list retain their native meaning. New drafts omit a redundant copy
-of the current organization default only when no user source pins its ID or the
-native scope field; existing and nondefault scopes are preserved.
-
-### Setup dialogue and missing choices
-
-An explicit setup request must lead to a targeted question or a grounded,
-reviewable recommendation. A native Editor proposal containing an unconfirmed
-product, address or contact is discarded in full and becomes a scoped question;
-source validation still prevents its acceptance. Other schema, scope, credential
-and authorization failures remain errors. Catalogue-grounded recommendations
-remain proposals, not proof of entitlement or execution approval.
-
-The browser sends its selected `language` (`de`/`en`) on chat and starting-template
-advice requests. The API validates it and passes it as trusted response metadata,
-separate from draft fields and quoted history. Model language labels do not
-override this explicit preference; legacy callers can omit it. Stored history is
-not rewritten or translated.
-
-New Git proposals require size and access settings together. A bounded Git decision
-classifier selects only actual user-source references and offered plan/access
-choices. Deterministic policy supplies documented company-wide Git100 guidance,
-Git10 alternatives, available project plans, optional reuse of saved narrow ACLs
-and the pinned provider's replacement limitation. It does not ask an end user to
-research native flavor IDs. A standard/company-wide recommendation request
-resolves sizing and retains that decision on access follow-ups. Only genuinely
-unknown company egress CIDRs need free text. Unanswered access never authorizes
-public reachability; public CIDRs require explicit positive user evidence. The central synthetic corpus covers short English/German setup
-requests, partially supplied choices and follow-ups, alongside fully specified
-changes and advice. The continuous journey includes Git setup before selection.
-Mocked request/guard tests complement these cases; field inventory and knowledge
-delivery coverage alone do not prove natural dialogue quality. Skipped release
-qualification is explicitly not a fresh live-test result.
-
-Policy-backed Editor services verify an informational label against the current request. Explicit setup requests keep their typed follow-up flow when choices are missing. The verifier receives only component/current message and requires an exact current-user quote before draft preparation. The same purpose check can select an exact-evidence-backed root Plan review. That verified workflow takes precedence over the mentioned service and cannot be overwritten by the later component-subject classifier. Other Audit advice separately checks the current subject. Known existing appliances missing requested HA require the typed patch when technical prerequisites are available; consultation-only turns remain questions without changes.
-
-Generated model questions must explicitly select business requirements or a catalogue choice in the wire grammar; stored legacy questions remain readable. Source-network questions use the same reviewed bilingual renderer across services. Audit continuations recognize both current and previous server question wording.
-
-A complete new appliance patch whose changed values are all literal in the current explicit request does not reopen a general setup questionnaire. This refinement runs only after normal proposal/source validation; saved or inferred values cannot satisfy it. Existing broad setup and consultation-only turns keep their remaining business decisions.
-
-### Reviewed architecture boundaries
-
-For documented hard limits and execution guarantees, the model selects a closed fact identifier and an exact quote from the current user question. The application renders the reviewed English/German answer without letting the model rewrite that boundary. The initial facts cover Git instance capacity/topology, Application Git reachability and S3/database coordination. They authorize no draft change or execution and require the corresponding selected knowledge topic. Ordinary advice and configuration proposals keep their existing flows. Add source bindings, both locales and positive/negative factual tests when extending this registry.
+The former controller remains temporarily available only as
+`LegacyAssistantModelServing` for labelled historical comparison tests and the
+separate template-advice implementation. Those comparison tests do not qualify
+the new Editor runtime. See the consultation reference for transport, deadlines,
+private memory and transition evidence requirements.
 
 ### Real-model qualification
 
@@ -191,79 +105,13 @@ tokens or request content. An exhausted request still fails its iteration.
 The harness uses the same production retry policy, not a CI-only recovery path;
 these attempts do not replace the required independent repetitions or erase
 earlier failed receipts.
-CI uses the application configuration defaults for both answer and intent models,
-without a CI-only classifier override. The effective model IDs are recorded in
-every receipt. Qualification of an alternative model does not qualify the
-application's configured model.
-
-Active Firewall drafts and multi-turn Firewall conversations always use the
-dedicated setup-scope/evidence classifier. A general field hint such as `ha`
-must not bypass it: continuing broad setup with HA retains the remaining
-traffic, capacity and interruption decisions. An explicit narrow native update
-remains a field update, even after an earlier broad setup conversation, and does
-not add unrelated setup questions. When HA is requested for an existing appliance and technical prerequisites are known, the response must include its typed HA patch even while business follow-ups remain open. The same minimum and per-area requirements are enforced in the response schema and server validation; existing native IP defaults remain omitted. If no bounded user-evidence fragments exist,
-evidence fields permit only null rather than an empty enumeration.
-
-Intent and evidence schema descriptions are also sent in the classifier's system
-context, not only as a structured-decoding constraint. Answer generation receives
-the reviewed field and topic knowledge, without a second full schema dump.
-For an explicitly named additional
-DNS zone, source-grounded requested fields are required in that zone's proposal
-schema. A requested contact cannot be mentioned only in the explanation or
-silently omitted; fields requested for one zone are not required in other zones.
-Runtime source, scope and native-configuration checks remain in place.
-
-DNS cases check role meanings, authoritative answers, visibility separation,
-the Primary recommendation, the incomplete native Secondary setup, correction
-of earlier false advice and preservation when adding a zone. Their semantic
-checks reject misleading answers and keyword-only replies, but remain bounded
-regression criteria rather than a proof of universal factual correctness.
-The continuous multi-topic journey also checks the DNS explanation after earlier
-configuration steps and verifies that advice does not mutate the draft.
-
-Default `qualified` release builds depend on the reusable live workflow: all topics run twice,
-followed by the continuous dialogue even if individual model cases fail.
-Raw synthetic receipts are retained as CI artifacts. Promotion requires the
-original build's successful live-qualification job as well as its build job;
-older builds without that proof cannot bypass qualification. A missing token,
-unavailable model or failed criterion blocks qualification, not a silent skip.
-General advice ends its merged trusted system context with an explicit
-answer-completeness instruction: the explanation must contain the actual requested facts, native
-defaults, limits and exclusions, not just introduce a missing list or refer to
-contract metadata. Follow-up questions cannot replace the factual answer.
-Compact field-family bullets target at most 2400 characters within the unchanged
-3000-character response schema. Equivalent regional forms should be grouped,
-not repeated until the answer is cut off. Pure informational field/default/limit
-overviews need no configuration decisions and return no follow-up questions;
-other advice still asks only missing business decisions, never protected inputs.
-The bounded firewall requirements dialogue retains its separate short-answer
-contract. Transport tests check this instruction's delivery; real-model factual
-criteria still decide whether the resulting answers qualify.
-Firewall access/bootstrap workflow overviews also use reviewed native-field metadata and bounded access/phase facts after semantic intent classification. This avoids a second generative request for a static overview. Admin login, API credentials and secure operator bindings remain separate; the overview never activates bootstrap, reads secrets or starts execution. Other advice retains the normal scoped generation path.
-
-SNA field/default advice uses the same reviewed overview path: native single/map/regional forms, IPv4 pools and transfer networks, ordered subnet prefixes, resolver defaults and same-region Corporate references. It returns no setup questionnaire, draft changes or capacity/availability promise. Actual SNA setup and combined firewall requests keep their existing proposal and scope guards. The real-model case requires the native fields and rejects follow-up setup questions; a diagnostic response is never qualification evidence.
-
-Template-version, platform-contract and execution-source upgrade advice use three closed semantic tasks. Only current-turn configuration-lifecycle advice selects their reviewed, bounded workflow descriptions; historical intent, proposals and other topics do not. These responses explain retained identity, explicit binding, fresh Plan and separate Apply, plus the distinct shared-platform and recovery boundaries, without a second generative call. They never inspect or change an order. Other advice keeps scoped answer generation.
-
-For native field overviews, semantic intent classification selects the existing
-reviewed-metadata response when available, rather than generating the same static
-contract again. VPN, DevOps Git and DNS field/role semantics use this path with a
-tested 2400-character bound, no questions
-or draft changes, native routing/plan defaults and the separate protected PSK
-binding. Its factual oracle requires these details and rejects invented
-static/dynamic routing types. DevOps requires its native fields and the
-`git_flavor=null` no-instance boundary, without implying an enabled default.
-This does not replace live availability checks or
-authorize configuration; unsupported overview topics retain the advice path.
-DNS role explanations retain the existing primary/secondary, authoritative-role,
-visibility and native Secondary-configuration-limit criteria, including correction
-of earlier misleading advice. Actual DNS setup continues through the existing
-reviewable proposal flow.
-CI needs `LZC_MODEL_SERVING_TOKEN` available to the protected `assistant-tests`
-environment. Local receipts do not certify that remote environment or authorize
-deployment. CI qualification jobs share a non-cancelling concurrency group to
-avoid competing model requests from manual and release runs. Review and extend the factual criteria whenever new capabilities
-are added; unresolved or ambiguous answers still need human review.
+CI uses the application's configured response model, without a test-only intent
+classifier. Qualification of another model does not qualify this runtime. The
+complete repeated suite and continuous journey are required for shared changes.
+DNS cases retain authoritative-role, visibility, contact and preservation checks.
+Firewall cases retain setup/advice separation, requested HA, credential boundaries
+and unrelated-field preservation. Lifecycle cases distinguish templates, platform
+contracts, execution source and saved Plan review. None grants execution rights.
 
 ### Evidence and release status
 
@@ -415,111 +263,33 @@ not an assertion that an external page was fetched recently.
 
 ### Provisional Response Streaming
 
-Both chats request an optional `application/x-ndjson` POST response. The model
-client parses bounded SSE events using `eventsource-parser` and incomplete JSON
-using `partial-json`; only provisional `explanation` text is forwarded. Partial
-text is visibly unreviewed, never a stored/acceptable proposal. The validated
-complete JSON still goes through existing model, field, scope, native compiler,
-authorization, revision and expiry checks before persistence and the final UI
-event. Interrupted, oversized, malformed or wrong-model streams fail closed.
-Disconnects cancel model requests and are checked before saving. Existing JSON
-clients are supported; no automatic retry or execution. Both message containers
-scroll to their end on history changes and provisional text updates.
-
-The optional `LZC_MODEL_SERVING_INTENT_MODEL` selects only the classifier;
-`LZC_MODEL_SERVING_MODEL` still selects answers. Local test activation on
-2026-10-11 uses GPT-OSS-120B intent plus the established Qwen answer model with
-explicit user permission. This is not a production or full dialogue-quality
-qualification. Streaming exposes text earlier, not more trustworthy text.
+Editor chat streams only the final validated explanation. Read/tool steps and
+unvalidated proposals are not streamed as advice. Existing NDJSON and JSON clients
+remain supported; cancellation and response limits still apply. The separate
+legacy template-advice API retains its bounded contract. No stream grants
+persistence or cloud execution.
 
 ### Conversation and Change Contracts
 
-Questions expose bounded `text`, `options` and `multiple`: up to six distinct
-160-character choices, native radio/checkbox selection and an always-available
-free-text answer. New inference transport requires structured questions; stored
-legacy questions without options remain valid. Options undergo protected-question
-checks too. Selection only prepares question-associated user text; it never
-sends, accepts or mutates automatically. Existing compose text is retained and
-the combined 4000-character limit is checked before insertion. Choices appear
-only from the completed validated response, not provisional streaming text.
+Questions expose bounded `text`, `options` and `multiple`, with up to six distinct
+160-character choices and free text. Selection prepares question-associated user
+text; it does not send, accept or mutate automatically. The combined message limit
+still applies. Recommendation cards show source-bound requirements and facts and
+persist with the scoped message; they are not another confirmation.
 
-Diff checkboxes prepare a request for a new proposal containing the selected
-paths/values. No direct partial-acceptance endpoint or selected-field mutation
-exists. Whole acceptance is disabled while a subset is selected. The new result
-is validated and reviewed normally; the user must inspect its entire diff and
-explicitly accept it. Related native changes remain atomic; a component-map
-entry is not split into individual nested fields. No execution permission.
+Diff selection requests a new reviewable proposal. The final diff is checked and
+accepted explicitly; Save, Plan and Apply remain separate. Protected fields,
+identity sources, native types, root completeness, tenant and revision guards
+remain authoritative. Field defaults are read from the native contract, not a
+parallel list. Display-name updates preserve folder keys and access metadata.
 
-Configuration dialogue has two bounded model calls: first classify topic/mode
-from saved user/assistant history, then answer under backend-owned capabilities.
-The classifier cannot grant permissions. Follow-ups need not repeat a topic
-keyword; explicit topic changes override history. The full saved user history
-also accompanies advice so earlier requirements do not disappear after the
-recent-turn window. Assistant suggestions and template defaults are not consent.
-Firewall planning records exact user quotes for traffic, capacity and operations.
-The backend rejects quotes not present in user messages and selects the next
-unresolved decision/path deterministically. Quote categorization remains model
-interpretation, not proof of deployment suitability. The advisory request gets
-only relevant topics/dependencies plus mandatory knowledge, not all services;
-firewall sizing is separated from managed VPN product plans.
+The consultation brief is private server state attached to the existing
+conversation message. Confirmed decisions cite actual user turns; unsupported
+memory is discarded. Knowledge hash changes invalidate the brief, not the original
+history. Discarding closes pending context. New responses preserve the original
+expiry and atomically replace the proposal and knowledge hash. Stale proposals
+cannot be silently accepted. No database migration is required.
 
-Field contracts distinguish user decisions from operator-managed access details.
-Only explicitly listed company name/code/region scalar proposals, name-only
-updates to existing `rm_folders`, and native SNA proposals are supported; no
-blanket scalar or structure permission. Identity values need literal user
-evidence unless the user explicitly delegates choosing company names/codes or
-folder names. Such delegation references an original user message through a
-backend-enumerated source ID, never a model-rewritten quote or assistant turn.
-Nonempty delegated paths require an existing user source. This bounded semantic
-classification is not general consent or deployment authorization. Folder
-names are 1-40 characters; keys, owners, readers, descriptions and identities
-are preserved. Implicit native folder defaults are projected as names only;
-explicit empty maps are not replaced. New folders, Cloud IDs, region choices,
-IAM and operator access settings are not delegated. Admin account,
-API-secret version and bootstrap are excluded from chat questions/changes,
-including when accepting older proposals. Bootstrap means initial management
-access setup, not firewall HA enablement or deployment authorization.
-
-Firewall advice translates traffic scope, capacity and failure/operations into
-human decisions. Its model-generated explanation is bounded to 800 characters
-and at most one native decision question. No fixed answer replacement. Other
-component topics remain advisory unless the backend has an explicit translator.
-This is a firewall dialogue pilot, not a complete semantic configuration compiler
-or production-qualified conversational state machine. Two inference calls add
-latency; persisted intent summaries and full load qualification remain open.
-
-Bundle hash includes curated content, manifest metadata, engine revision and
-local source fingerprints. A source edit makes the generated snapshot stale;
-the required check fails. Regeneration must follow source review, not silently
-make changed sources authoritative. No automatic update during build/start.
-Knowledge changes do not require a new conversation. Each new message uses the
-current bundle and preserves history, identity and the original expiry. The
-new response atomically replaces the proposal and its knowledge hash. Old
-proposals remain stale and cannot be accepted before regeneration with current
-knowledge. No deletion, expiry extension or silent proposal acceptance.
-
-All topics remain local-draft-not-reviewed-release. Sources are allowlisted local
-Terraform, curated Markdown and domain/API TypeScript; only fingerprints, not
-source-file contents, are sent with provenance. No environment, credential or
-state files are source inputs. Complete external source
-retrieval, reviewed historical knowledge releases, automatic promotion and full
-A01-A24 conversational qualification are not implemented by this architecture.
-Future topic partitioning should be explicit and testable before adding RAG.
-
-Public owner choices are validated as scoped identity metadata, not credential requests. Only exact German/English server owner-choice labels containing a prepared, current-key-bound platform service-account email or the verified signed-in email are excluded from question keyword checks. Question text, unknown/modified options, protected-value checks and all ordinary callers keep the existing guards. Send, preview/rebase and acceptance re-read the scoped identity context; a rotated key or unrelated profile cannot validate a stored choice. Synthetic mixed-template cases also cover bootstrap-named platform accounts.
-
-Template access profiles are reviewed and selected atomically per template: schema version, mode, initial owner and both permission lists stay together. This preserves required fields during preview/acceptance and detects concurrent profile edits; unrelated templates and settings remain separately selectable.
-
-New Audit drafts require explicit user decisions for retention, access networks
-and Object Lock. Native defaults, another component's networks and previous
-assistant suggestions do not supply those decisions. An exact pending question
-set can resume literal answers without reclassifying the topic; only unanswered
-questions remain. Confirmed choices also narrow the model output schema, including an explicit
-Object Lock false. A complete proposal still passes the native Editor schema and
-source validation. Acceptance, saving and execution remain separate.
-
-Audit provenance uses Audit-related user turns: a foundation organization UUID
-does not pin a manual Audit link. Automatic managed-resource coverage requires
-an actual user decision and otherwise retains the native false default.
-Federation field-overview advice uses reviewed native fields and the explicit
-workload-federation/user-SSO boundary; draft proposals retain their typed flow.
+The bundle hash includes curated content, manifest metadata, engine revision and
+local source fingerprints. Source edits make generated knowledge stale and require
+reviewed regeneration. Build/start do not automatically approve new knowledge.

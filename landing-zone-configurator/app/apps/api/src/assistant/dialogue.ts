@@ -1,5 +1,8 @@
 import {
+  assistantAnswerTextMaxLength,
+  assistantDefaultNoticeSchema,
   assistantQuestionAnswerTypeSchema,
+  assistantRecommendationSchema,
   catalogueField,
 } from "@lzc/contracts";
 import {
@@ -159,7 +162,9 @@ export const assistantQuestionOptionsSchema = z
   .optional();
 
 export const dialogueSchema = z.strictObject({
-  explanation: z.string().min(1).max(3000),
+  defaults: z.array(assistantDefaultNoticeSchema).max(128).optional(),
+  recommendations: z.array(assistantRecommendationSchema).max(8).optional(),
+  explanation: z.string().min(1).max(assistantAnswerTextMaxLength),
   questions: z
     .array(
       z.strictObject({
@@ -198,6 +203,24 @@ export const dialogueSchema = z.strictObject({
 });
 
 export type Dialogue = z.infer<typeof dialogueSchema>;
+/** The model writes the contextual question; registered source-owned choices
+ * come from the application, just like catalogue selectors. No choice is adopted. */
+export function enrichSourceChoiceQuestions(
+  questions: Dialogue["questions"],
+  choices: ReadonlyMap<string, readonly string[]>,
+): Dialogue["questions"] {
+  return questions.map((question) => {
+    const options = choices.get(question.path);
+    return options
+      ? {
+          ...question,
+          options: [...options],
+          answerType: "requirements",
+          multiple: false,
+        }
+      : question;
+  });
+}
 export function assistantPublicDnsZone(input: unknown) {
   const zone = objectValue(input as Parameters<typeof objectValue>[0]);
   return {
@@ -323,15 +346,32 @@ export type AssistantOwnerIdentityContext = {
   verifiedUserEmail?: string | undefined;
 };
 
+/** Scoped display choices, not a grant or proof supplied by the model. */
+export function assistantOwnerChoices(
+  context: AssistantOwnerIdentityContext,
+  language: "de" | "en",
+) {
+  return [
+    ...context.serviceAccountEmails.map(
+      (email) =>
+        `${language === "de" ? "Plattform-Service-Account" : "Platform service account"} (${email})`,
+    ),
+    ...(context.verifiedUserEmail
+      ? [
+          `${language === "de" ? "Verifiziert angemeldeter Benutzer" : "Verified signed-in user"} (${context.verifiedUserEmail})`,
+        ]
+      : []),
+  ];
+}
+
+const ownerIdentityChoice =
+  /^(Plattform-Service-Account|Platform service account|Verifiziert angemeldeter Benutzer|Verified signed-in user) \(([^()\r\n]+)\)$/;
 function trustedOwnerChoice(
   option: string,
   context: AssistantOwnerIdentityContext | undefined,
 ) {
   if (!context) return false;
-  const match =
-    /^(Plattform-Service-Account|Platform service account|Verifiziert angemeldeter Benutzer|Verified signed-in user) \(([^()\r\n]+)\)$/.exec(
-      option,
-    );
+  const match = ownerIdentityChoice.exec(option);
   if (!match || !z.email().safeParse(match[2]).success) return false;
   return match[1] === "Plattform-Service-Account" ||
     match[1] === "Platform service account"
@@ -344,6 +384,7 @@ export function validateDialogue(
   input: unknown,
   ruleIds: readonly string[],
   ownerIdentities?: AssistantOwnerIdentityContext,
+  additionalQuestionPaths: readonly string[] = [],
 ): Dialogue {
   assertAssistantEditorValue(input);
   const result = dialogueSchema.parse(input);
@@ -356,8 +397,13 @@ export function validateDialogue(
       question.text,
       ...(question.options ?? []).filter(
         (option) =>
-          question.path !== "projectTemplates" ||
-          !trustedOwnerChoice(option, ownerIdentities),
+          !(
+            question.path === "projectTemplates" ||
+            (additionalQuestionPaths.includes(question.path) &&
+              /^projectTemplates\.[^.]+\.accessProfile\.initialOwnerEmail$/.test(
+                question.path,
+              ))
+          ) || !trustedOwnerChoice(option, ownerIdentities),
       ),
     ].join("\n");
   for (const change of result.changes)
@@ -381,9 +427,15 @@ export function validateDialogue(
   if (
     result.questions.some(
       (question) =>
+        (question.options ?? []).some(
+          (option) =>
+            ownerIdentityChoice.test(option) &&
+            !trustedOwnerChoice(option, ownerIdentities),
+        ) ||
         (question.answerType === "catalogue" &&
           catalogueField(question.path) === null) ||
         (question.path !== "projectTemplates" &&
+          !additionalQuestionPaths.includes(question.path) &&
           !editable.some((field) => field.path === question.path)) ||
         /\b(?:plan|project|projekt|organization|organisation|gateway|tenant)[\s_-]*id\b|\buuid\b|interne[\s]+kennung/i.test(
           questionContent(question),

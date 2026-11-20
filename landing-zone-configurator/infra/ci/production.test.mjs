@@ -115,6 +115,7 @@ test("patch release notes describe their changes and unknown versions require cu
  const feature=run("v2.1.0","skip");assert.equal(feature.status,0,feature.stderr);assert.match(feature.stdout,/notification inbox/);assert.match(feature.stdout,/Build once/);assert.match(feature.stdout,/#225/);assert.ok(feature.stdout.split(/\s+/).length<180);
  assert.doesNotMatch(run("v2.1.0","qualified").stdout,/not fully qualified/);
  const services=run("v2.2.0","qualified");assert.equal(services.status,0,services.stderr);assert.match(services.stdout,/dedicated managed Git/);assert.match(services.stdout,/PostgreSQL/);assert.doesNotMatch(services.stdout,/#225|not fully qualified/);assert.ok(services.stdout.split(/\s+/).length<180);
+ const capacity=run("v2.2.1","qualified");assert.equal(capacity.status,0,capacity.stderr);assert.match(capacity.stdout,/Git100.*80 developers/);assert.match(capacity.stdout,/access-setting replies/);assert.ok(capacity.stdout.split(/\s+/).length<160);
  const future=run("v2.0.2");assert.notEqual(future.status,0);assert.match(future.stderr,/Curated release notes required/);
 });
 

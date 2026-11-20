@@ -24,8 +24,27 @@ anfänglichen Umfang. Getrennte Instanzen bedeuten keine Föderation, automatisc
 Lastverteilung oder garantierte Gesamtkapazität. Der zentrale `devops`-Input
 konfiguriert eine Instanz; weitere Instanzen benötigen separat geprüfte Konfiguration.
 
-Wörtlich bestätigte Nutzerzahlen bleiben unabhängig von der Flavor-Klassifikation erhalten. Eine spätere unpassende Tarifauswahl kann sie nicht verwerfen; ein ausdrücklich kleinerer Umfang kann sie ersetzen. Diese erste geprüfte Regel für numerische Grenzen deckt Git ab und erfindet keine Grenzen anderer Produkte.
+Der [gemeinsame Beratungsablauf](assistant-consultation.de.md) behält durch
+Benutzerzitate belegte Anforderungen und vergleicht sie mit tatsächlichen
+Angeboten und geprüften Grenzen. Beispielsweise schließen etwa 80 Git-Entwickler
+Git10 aus und sprechen für Git100, sofern dieser Tarif angeboten wird. Die
+Empfehlung bleibt während der Zugriffsklärung sichtbar. Eine ausdrückliche Änderung
+des Umfangs kann die Anforderung ersetzen. Das prüft eine Nutzergrenze, keine
+Workload-Leistung; unbekannte Eigenschaften bleiben unbekannt.
 
+Der Wunsch nach dem Accelerator-Default löst das offene Feld auf seinen echten
+nativen Wert auf, einschließlich null/Weglassen. Für Git-Netzwerkzugriff ist dies
+`0.0.0.0/0`; die öffentliche Erreichbarkeit wird erklärt. Der Assistant verlangt
+weder erneut den wörtlichen CIDR noch eine weitere Bestätigung. Unbekannte
+Firmen-/VPN-Egress-Netze werden nicht aus privaten SNA-Netzen oder der Topologie
+anderer Services abgeleitet. Eine unbeantwortete Frage allein erlaubt keinen
+öffentlichen Service.
+
+Der Assistant darf tatsächliche dokumentierte Accelerator-Defaults als erkennbare
+Annahmen für nicht festgelegte Felder vorschlagen. Der Vorschlag zeigt diese Werte
+zur Prüfung; sie sind keine Benutzerentscheidungen. Ausdrückliche
+Zugriffsbeschränkungen und offenzuhaltende Entscheidungen haben Vorrang.
+Übernahme, Speichern und Plan/Apply bleiben getrennte Schritte.
 
 ## Gemeinsame Katalogauswahl
 
@@ -73,82 +92,43 @@ bis zu dieser Prüfung zurückgehalten. Bestehende Vorschläge und andere Beratu
 behalten ihre eigenen Quellen- und Validierungsverträge; dies ist keine
 universelle Faktenprüfung beliebiger Prosa.
 
-## Belege und Grenzen
+## Nachweise und Grenzen
 
-Öffentliche PIM-Merkmale dürfen eine angebotene Option nur bei passendem Produkt,
-passender Region und passender Flavor-/Tarifreferenz beschreiben. Abgekündigte
-Einträge, widersprüchliche Merkmale und unbekannte RAM-Einheiten werden nicht
-zu Kapazitätsangaben. Öffentliche PIM-Artikel bestätigen keine Bestellbarkeit:
-Die auswählbare Option stammt weiterhin aus dem Projektkatalog. Geprüfte
-Git-Tarifbeschreibungen sind von der aktuellen Verfügbarkeit getrennt.
+Öffentliche PIM-Fakten beschreiben ein Angebot nur bei passendem Produkt, Region
+und Tarifverweis. Veraltete Einträge, widersprüchliche Fakten oder unbekannte
+RAM-Einheiten werden nicht als Kapazitätszusagen angezeigt. Bestellbare Angebote
+stammen weiterhin aus dem Projektkatalog. Git-Nutzergrenzen werden separat geprüft.
 
-Die Katalogabfragen berücksichtigen die Plattform-Standardregion und konfigurierte
-Service-Regionen. Ein nicht verfügbarer Katalog unterscheidet sich von einer verfügbaren leeren
-Liste. Begrenzte Ausschnitte werden gekennzeichnet und belegen nicht, dass ein
-fehlendes Angebot nicht verfügbar ist. Das Modell erhält einen begrenzten
-Ausschnitt; die Auswahldarstellung hat eigene Mengen- und Bytegrenzen und behält
-die Hinweise auf Unvollständigkeit. Bei regional mehrdeutigen Wildcard-Fragen
-muss die Zielregion geklärt werden. Eine Auswahl eines öffentlichen Tarifs
-benötigt keine Frage nach privaten Projekt-UUIDs oder Zugangsdaten.
+Nicht verfügbare und verfügbare leere Kataloge sind verschiedene Zustände.
+Gekürzte Listen behalten ihre Kennzeichnung und beweisen keine Nichtverfügbarkeit.
+Mehrdeutige Regionen benötigen eine Rückfrage statt fremder Angebote. Auswahlfelder
+zeigen geprüfte Werte und Beschreibungen; Empfehlungskarten zeigen belegten Bedarf
+und Tarifmerkmale. Das Modell behält seine kontextbezogene Erklärung. Erst die
+abschließend validierte Antwort wird gestreamt.
 
-Darstellungsdaten werden für erneutes Öffnen mit dem berechtigten Gespräch
-gespeichert. Vor der Prüfung eines gespeicherten Vorschlags zur Übernahme werden
-sie entfernt; daraus können keine Konfigurationsänderung oder Zustimmung
-entstehen. Revision, Mandant, Identität, Veröffentlichung und Plan/Apply bleiben
-separate Prüfungen. Eine spätere Konfigurationsänderung kann Ressourcen ersetzen;
-das Service-Wissen muss das tatsächliche Verhalten des gepinnten Providers
-beschreiben und darf keine beliebige Änderung im laufenden Betrieb versprechen.
+Darstellungsmetadaten bleiben beim Neuladen erhalten, werden aber keine
+Konfigurationsänderung oder Zustimmung. Revision, Mandant, Identität,
+Veröffentlichung und Plan/Apply bleiben separat geprüft. Spätere Änderungen können
+laut fest gepinntem Provider einen Ressourcenaustausch erfordern.
 
 ## Pflege und Prüfung
 
-Service-Fakten gehören ins geprüfte Wissen, Feldzuordnungen in die gemeinsame
-Zuordnung und Darstellung in die gemeinsame Rückfragenkomponente. Die englische
-UI-Sprache wird ausdrücklich übergeben; englische technische Übersichten nutzen
-die gepflegten englischen Service-Texte statt deutscher Ersatztexte. Alte
-Kundennachrichten und Ressourcennamen werden nicht übersetzt. Ältere Anfragen ohne
-UI-Sprache verwenden die letzte natürlichsprachliche Nutzerantwort, auch bei
-kurzen Folgeantworten. Firewall- und SNA-Rückfragen folgen demselben Sprachvertrag.
+Servicefakten bleiben im geprüften Wissen, Feldzuordnungen im gemeinsamen Register
+und die Darstellung in gemeinsamen Komponenten. Die vom Browser gewählte Sprache
+steuert die Antwort. Historische Kundentexte und Ressourcennamen werden nicht
+übersetzt. Aufrufe ohne Sprachangabe verwenden die bisherige Spracherkennung.
 
-Bei einem bestätigten Entwurfswunsch wird eine leere Modellantwort ohne Änderungen
-und Rückfragen einmal mit gleichem Kontext und Schema zur Konkretisierung
-aufgefordert: tatsächlicher typisierter Entwurf oder wirklich fehlende Rückfrage.
-Bei Firewall-Einrichtung bleibt der ausdrückliche Wunsch nach reiner
-Anforderungsklärung ohne Änderungsvorschlag erhalten. Beratung und Entwurf nutzen
-dieselben zweisprachigen fachlichen Antwortoptionen.
-Alle Quellen-, Umfangs- und Übernahmeprüfungen gelten weiter; daraus entsteht keine
-Ausführungsberechtigung.
+Der gemeinsame Werkzeugvertrag erlaubt lesende Wissens-, Konfigurations-, Default-
+und Katalogabfragen sowie lokale Vorschlagsvalidierung. Validierungsrückmeldungen
+gehen vor der finalen Antwort an das Modell zurück. Kein Werkzeug speichert,
+führt Cloud-Änderungen aus oder erteilt Rechte. Der Gesprächskontext bleibt privat
+in der bestehenden benutzergebundenen Unterhaltung und fehlt in Browserantworten.
 
-`npm run assistant:generate` ausführen, generierte Ausgabe formatieren und
-`npm run check` ausführen. Die Tests prüfen jede zugeordnete Service-Familie,
-Quellen-/Regionsabgleich, Widersprüche, fehlende/leere/begrenzte Kataloge,
-Bytegrenzen und die Ablehnung vom Modell erfundener Auswahldaten.
-Desktop-/Mobiltests prüfen Filter, Beschreibungen, kombinierte Auswahlen und
-Senden ohne Speichern. Echte PostgreSQL-Tests prüfen erneutes Öffnen,
-Mandantentrennung und Vorschlagsübernahme mit Darstellungsdaten.
-
-Live-Modellfälle für Kubernetes, VPN und Observability verlangen tatsächliche
-offene Katalogfelder und keine Änderungen vor der Auswahl. Ihre synthetischen
-Kataloge enthalten keine Leistungszahlen; erfundene Hardware-Angaben führen daher
-zum Fehler. Wie bei anderen gemeinsamen Assistant-Vertragsänderungen die gesamte
-Suite unabhängig wiederholen und den zusammenhängenden Dialog prüfen, bevor ein
-Qualifikationsnachweis gemeldet wird. Fehlerhafte Nachweise bleiben erhalten;
-Feldinventar oder übersprungene Qualifikation belegen keine Dialogqualität.
-
-## Lesende Beratung und Fragen zum Freigabeablauf
-
-Die Serviceberatung verwendet dieselben typisierten Fragen und eingegrenzten
-Katalogfelder wie Konfigurationsvorschläge. Änderungen sind im Inferenzschema und
-in der Servervalidierung gesperrt. Eine Frage zu einem Angebot aktiviert keinen
-Service. Reine Übersichten nativer Felder behalten ihren geprüften Informationspfad.
-Unpassende Netzwerkmerkmale dürfen eine aktuelle Servicefrage nicht in die
-Firewall-Einrichtung umlenken.
-
-Eine ausdrückliche aktuelle Frage zur Auswirkungsprüfung des Plattform-Plans erhält
-direkt die geprüfte Lifecycle-Anleitung. Dadurch wird der gemeinsame Planablauf
-nicht mit einem darin erwähnten Service verwechselt. Zitierte Werte und Antworten
-auf frühere Fragen aktivieren diese Zuordnung nicht. Beide Sprachen erhalten die
-Entscheidung des Platform Owners, Hinweise auf destruktive Auswirkungen, einen
-frischen Plan sowie die Bindung der Freigabe an Artefakt, State und Abhängigkeiten.
-Die Anleitung erteilt keine Freigabe und prüft oder startet keinen gespeicherten
-Plan. Auch die übrigen Lifecycle-Aufgaben verwenden ihre geprüften Anleitungen in
-der gewählten Anwendungssprache.
+`npm run assistant:generate`, Formatierung des generierten TypeScripts und
+`npm run check` prüfen die lokalen Verträge. Das Szenario-JSON behält die exakte
+Generatorausgabe. Datenbanktests prüfen privaten Kontext, Neuladen, Mandantentrennung,
+Verwerfen und Felderhalt. Desktop-/Mobiltests prüfen Empfehlungen, Auswahl und
+vollständige Vorschläge. Änderungen am gemeinsamen Laufzeitpfad benötigen die
+vollständige wiederholte Modelltestsuite und den durchgehenden themenübergreifenden
+Dialog. Fehlgeschlagene Nachweise bleiben erhalten; historische Controller-Tests
+und Feldinventar qualifizieren den neuen Pfad nicht.

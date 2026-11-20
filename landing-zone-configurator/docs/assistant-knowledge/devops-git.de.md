@@ -15,7 +15,7 @@ Managed Git, getrennt von GitHub-Anmeldung und Configurator-CI.
 Root leitet Projekt, Verantwortlichen und Namen ab. `devops=null` überspringt
 die Bereitstellung; `git_flavor=null` erstellt auch mit ACLs keine Instanz.
 Eingaben sind `git_flavor` und `allowed_network_ranges`. Der native Allow-All-
-ACL-Default ist keine Zustimmung zu öffentlichem Zugriff.
+ACL-Default ist `["0.0.0.0/0"]`. Die ausdrückliche Auswahl des Accelerator-Defaults übernimmt diesen Wert im Vorschlag.
 
 <a id="dependencies"></a>
 ## Abhängigkeiten
@@ -34,12 +34,13 @@ bei fehlendem Katalog ausdrücklich dokumentierte Optionen, ohne eine
 Berechtigung oder Bestellbarkeit zu behaupten.
 
 „Nimm einen sinnvollen Standard für unternehmensweites Git“ delegiert die
-Empfehlung. Diese Entscheidung erhalten und nur noch den Zugriff klären.
-Vorhandene eingeschränkte Allowlists oder Firmen-/VPN-Ausgangsnetze zur Auswahl
-anbieten. Tatsächliche öffentliche Quell-CIDRs nur erfragen, wenn sie unbekannt
-sind; niemals aus Firmennamen oder privaten SNA-Netzen ableiten. Öffentliches
-`0.0.0.0/0` verlangt eine ausdrückliche Auswahl. Beispiele sind keine Zustimmung.
-Die explizite UI-Sprache verwenden, auch nach zitierten anderssprachigen Fragen.
+Empfehlung. Tatsächliche native Defaults dürfen als erkennbare Annahmen im
+prüfbaren Vorschlag erscheinen; sie sind keine bestätigten Benutzerentscheidungen.
+Ausdrückliche Zugriffsbeschränkungen haben Vorrang. Keine IP-Adressen aus
+Firmennamen, SNA oder Beispielen ableiten. „Nimm den Default“ übernimmt den nativen
+ACL-Wert; seine öffentliche Erreichbarkeit erklären, ohne erneut zu fragen.
+Company-/Hub-and-Spoke-Kontext und beantwortete Entscheidungen erhalten.
+Die ausgewählte UI-Sprache gilt auch nach anderssprachigen Zitaten.
 
 Sizing berücksichtigt dokumentierte Grenzen: Git10 bis10, Git100 bis100 Nutzer
 pro Instanz sowie gemeinsame Repositories/CI/CD. Bei Unklarheit geplante Git-Nutzer

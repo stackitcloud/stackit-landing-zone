@@ -187,13 +187,13 @@ LZC_MODEL_SERVING_INTENT_MODEL=openai/gpt-oss-120b \
   npm run test:assistant:live -- --local-credentials --repeat 2
 ```
 
-Ohne Modell-Overrides verwenden Anwendung und CI `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`
+Ohne Modell-Overrides verwenden Anwendung und CI `Qwen/Qwen3.8-27B`
 fuer beide Rollen. Fuer die Abnahme muessen Modell und Intent-Modell exakt zur
 laufenden Anwendung passen. Vergleichslaeufe mit anderen Overrides sind getrennt
 zu dokumentieren; ihre Ergebnisse qualifizieren keine andere Modellauswahl.
 Diese Umgebungsvariablen aendern nur den lokalen Testprozess, nicht die Anwendung.
 
-Der Journey-Test durchlaeuft zwoelf Schritte von Grundlagen und Rollen ueber
+Der Journey-Test durchlaeuft sechzehn Schritte von Grundlagen und Rollen ueber
 SNA/Firewall, den Policy-MVP-Hinweis und Audit-Rueckfragen bis Observability,
 DevOps, Kubernetes und Labels. Jeder Schritt nutzt denselben fortgeschriebenen
 Entwurf und die tatsaechliche Gespraechshistorie. Fachlich passende Vorschlaege

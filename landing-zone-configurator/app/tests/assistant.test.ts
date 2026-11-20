@@ -1,3 +1,5 @@
+// Historical controller parity tests. Live runtime coverage: assistant-consultation.test.ts
+// and the source-bound real-model suite; production has no legacy fallback.
 import { randomUUID } from "node:crypto";
 import {
   assistantProposalFields,
@@ -25,7 +27,7 @@ import {
 } from "../apps/api/src/assistant/dialogue.js";
 import {
   AssistantInferenceError,
-  AssistantModelServing,
+  LegacyAssistantModelServing as AssistantModelServing,
   type AssistantStream,
   catalogueFacts,
   modelServingConfiguration,
@@ -1794,10 +1796,15 @@ it("advises before configuration creation with known templates and bounded quest
     ),
   ).toMatchObject(advice);
   const payload = JSON.parse(String(request.mock.calls[0]?.[1]?.body));
-  for (const rule of buildAssistantKnowledge().rules)
+  for (const rule of assistantKnowledgeForTopics(buildAssistantKnowledge(), [
+    "stackit-network-components",
+    "project-templates",
+  ]).rules)
     expect(payload.messages[0].content, rule.id).toContain(
       JSON.stringify(rule.text),
     );
+  expect(payload.messages[0].content).not.toContain('"fields":');
+  expect(payload.messages[0].content).not.toContain('"fieldContracts":');
   expect(payload.response_format).toMatchObject({
     type: "json_schema",
     json_schema: { name: "template_advice", strict: true },
@@ -2992,11 +2999,27 @@ it("uses the existing operator binding and rejects missing tokens and foreign en
     }),
   ).toMatchObject({
     intentModel: "openai/gpt-oss-120b",
-    model: configuration.model,
+    model: "Qwen/Qwen3.8-27B",
   });
   expect(
     modelServingConfiguration({ LZC_MODEL_SERVING_TOKEN: configuration.token }),
-  ).toMatchObject({ token: configuration.token, model: configuration.model });
+  ).toMatchObject({
+    token: configuration.token,
+    model: "Qwen/Qwen3.8-27B",
+    timeoutMs: 120000,
+  });
+  expect(
+    modelServingConfiguration({
+      LZC_MODEL_SERVING_TOKEN: configuration.token,
+      LZC_MODEL_SERVING_MODEL: "other-model",
+    }),
+  ).toMatchObject({ timeoutMs: 60000 });
+  expect(
+    modelServingConfiguration({
+      LZC_MODEL_SERVING_TOKEN: configuration.token,
+      LZC_MODEL_SERVING_TIMEOUT_MS: "45000",
+    }),
+  ).toMatchObject({ timeoutMs: 45000 });
   for (const environment of [
     {},
     {
@@ -3011,6 +3034,60 @@ it("uses the existing operator binding and rejects missing tokens and foreign en
     expect(() => modelServingConfiguration(environment)).toThrow(
       "assistant_model_configuration_invalid",
     );
+});
+
+it.each([
+  { model: "Qwen/Qwen3.8-27B", expected: 16384 },
+  { model: "test-model", expected: 4096 },
+  { model: "Qwen/Qwen3.8-27B", maxCompletionTokens: 2048, expected: 2048 },
+])(
+  "budgets reasoning and final text without silently retrying a truncated response: %j",
+  async ({ expected, ...limits }) => {
+    const request = vi.fn<typeof fetch>(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      expect(body.temperature).toBe(
+        limits.model === "Qwen/Qwen3.8-27B" ? 1.0 : 0.1,
+      );
+      expect(body.top_p).toBe(
+        limits.model === "Qwen/Qwen3.8-27B" ? 0.95 : undefined,
+      );
+      expect(body.reasoning_effort).toBe(
+        limits.model === "Qwen/Qwen3.8-27B" ? "medium" : undefined,
+      );
+      expect(body.max_completion_tokens).toBe(expected);
+      return answer(
+        {
+          templateId: "standalone",
+          explanation: "A Public starting point.",
+          questions: [],
+          references: ["public-corporate"],
+        },
+        "length",
+      );
+    });
+    await expect(
+      new AssistantModelServing(
+        { ...configuration, ...limits },
+        request,
+      ).adviseTemplates([], "A Public standalone template"),
+    ).rejects.toMatchObject({ reason: "completion_truncated" });
+    expect(request).toHaveBeenCalledTimes(1);
+  },
+);
+it("validates the operator completion budget", () => {
+  expect(
+    modelServingConfiguration({
+      LZC_MODEL_SERVING_TOKEN: configuration.token,
+      LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS: "8192",
+    }),
+  ).toMatchObject({ maxCompletionTokens: 8192 });
+  for (const invalid of ["0", "16385", "NaN"])
+    expect(() =>
+      modelServingConfiguration({
+        LZC_MODEL_SERVING_TOKEN: configuration.token,
+        LZC_MODEL_SERVING_MAX_COMPLETION_TOKENS: invalid,
+      }),
+    ).toThrow("assistant_model_configuration_invalid");
 });
 
 it("performs one bounded synthetic call without transferring the token into context or results", async () => {
@@ -3120,6 +3197,7 @@ it("redacts transport/provider/JSON failures and bounds response size without re
 
 import {
   assistantKnowledgeContext,
+  assistantKnowledgeForTopics,
   buildAssistantKnowledge,
   selectAssistantKnowledgeTopics,
 } from "../apps/api/src/assistant/knowledge.js";
