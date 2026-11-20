@@ -7,6 +7,7 @@ const notes={
    "Recommend Git100 for approximately 80 developers using the documented user limits, instead of asking users to choose an undersized plan.",
    "Retain recommendations through access-setting replies; resolve Accelerator defaults directly into reviewable proposals.",
    "Use shared read-only knowledge, native-default and catalogue tools across services, with compiler feedback and source-bound conversation context.",
+   "Share saved configurations between Platform Engineers in the same workspace, with revision conflict protection.",
   ],
  },
  "v2.2.0": {

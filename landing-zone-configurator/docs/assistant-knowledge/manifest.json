@@ -530,8 +530,8 @@
     {
       "id": "project-templates",
       "file": "project-templates.md",
-      "version": 11,
-      "checkedOn": "2026-11-19",
+      "version": 12,
+      "checkedOn": "2026-11-20",
       "qualification": "local-draft-not-reviewed-release",
       "groups": [
         "projects"

@@ -78,12 +78,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -252,12 +252,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -444,12 +444,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -614,12 +614,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -819,12 +819,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -995,12 +995,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1199,12 +1199,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1363,12 +1363,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1534,12 +1534,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1725,12 +1725,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -1935,12 +1935,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2217,12 +2217,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2448,12 +2448,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2644,12 +2644,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2811,12 +2811,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -2973,8 +2973,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "project-templates",
       file: "project-templates.md",
-      version: 11,
-      checkedOn: "2026-11-19",
+      version: 12,
+      checkedOn: "2026-11-20",
       qualification: "local-draft-not-reviewed-release",
       groups: ["projects"],
       mandatory: false,
@@ -3033,7 +3033,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/application-access.ts",
           sha256:
-            "d7e549fa4ce8012e0fe0c93e03d71d9598dd32e51afe031073a4d0d2bc2664bc",
+            "337afe035ac56bc75824c5aea00cb3b37476dd51bf0347aadb1486e3fdbc0420",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/platform-owner-context.ts",
@@ -3073,12 +3073,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3201,9 +3201,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/project-templates.md",
-      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nProjects.\n\n## Accelerator Contract\n\nlanding_zones:corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies.\nAutomatic=null:Corporate resolves regional SNA default_prefix_length before Plan; numeric to Provider0.114; preserve DNS.\nProvider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win; Public provider sizing.\n\n## Dependencies\n\nVerified identity/governance; regional SNA. Public!=Corporate; Platform K8s namespaces.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Keep settings. Project count!=examples/quota; reserve Platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile!=order input: schemaVersion=1,mode=granular;\ninitialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs.\nPreset counts/services: runtime facts; VM narrower. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL SA rights, even elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.\nADD keys=seven incl.account lookup(get/list), requester default; preserve owner/SKE/automation. Exact permission IDs override bundles.\nDefaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.\nSKE/Git/databases/IAM-admin: optional, NOT preset defaults.\nADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.\nSKE IAM!=K8s RBAC; no default IAM role/member admin.\nOwner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.\nAtomic; no legacy roles.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email; ambiguity asks.\nWorkload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.\nPublish needs owner; grants add; no execution.\n\n\nProject Git: settings.git={enabled,flavor,acl}; disabled; one instance/project.\nPolicy: fixed/bounded input git.enabled/git.flavor/git.acl. Explicit nonempty source CIDRs.\nPublic endpoint, never SNA/firewall-private. Public source ACLs; Git-capable Runner; old orders unchanged.\ngit-10<=10, git-100<=100 users/instance; >100: separate instances.\nNo larger flavor/federation. Partition users by project/team; endpoints stay public. Provider0.114 flavor/ACL changes replace.\n\n## Examples\n\n/28:null.\n\n## Limits\n\nVersion/State bound; review migrations; never delete State. Match region/area/DNS. Empty roles/ACLs!=security; live acceptance.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs.\n\n## Sources\n\nIaC.\n',
+      text: '# Landing-Zone Projects and Application Templates\n\n## Purpose\n\nProjects.\n\n## Accelerator Contract\n\nlanding_zones:corporate/region/area,project_code/env/owner_email,network/roles/services.\nPublic:corporate=false; drafts:projectTemplates/policies.\nAutomatic=null:Corporate resolves regional SNA default_prefix_length before Plan; numeric to Provider0.114; preserve DNS.\nProvider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win; Public provider sizing.\n\n## Dependencies\n\nIdentity/governance; regional SNA; Platform K8s namespaces.\n\n## Dialogue\n\nNew:name/kind/region/settings; reuse keys.\nCentral=Corporate; Internet-only=Public; local network=true. Keep settings. Project count!=examples/quota; reserve Platform space.\n/26:network_prefix_length=26; Automatic=null, never mandatory /24 or disabled DNS.\nNew:granular; Owner optional.\nIDP!=Configurator roles!=project IAM.\nImmutable accessProfile!=order input: schemaVersion=1,mode=granular;\ninitialOwnerEmail=user/SA!=requester; permissions/automationPermissions=official IDs.\nPreset counts/services: runtime facts; VM narrower. Keys: iam.service-account.{get,list},\niam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL SA rights, even elsewhere; privileged Platform SAs outside. No SA create/delete/role/member admin.\nADD keys=seven incl.account lookup(get/list), requester default; preserve owner/SKE/automation. Exact permission IDs override bundles.\nDefaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.\nSKE/Git/databases/IAM-admin: optional, NOT preset defaults.\nADD services: requested actors only; ordering human=requester, never implicit automation. SKE=ske union; preserve others. Public+Corporate=both; clarify duplicates.\nSKE IAM!=K8s RBAC; no default IAM role/member admin.\nOwner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.\nAtomic; no legacy roles.\nPublic+Corporate: ONE common missing owner; preserve explicit owners.\n"Platform service account"=prepared config/org email; ambiguity asks.\nWorkload+services recommended. Legacy: confirm removed roles/context/native Owner defaults.\nPublish needs owner; grants add; no execution.\n\n\nProject Git: settings.git={enabled,flavor,acl}; off; one/project.\nPolicy: fixed/bounded git.enabled/flavor/acl; explicit nonempty public source CIDRs.\nPublic endpoint, not SNA/firewall-private. Git-capable Runner; old orders unchanged.\ngit-10<=10, git-100<=100 users/instance; >100: split by team/project, no larger flavor/federation. Provider0.114 flavor/ACL changes replace.\n\n## Examples\n\n/28:null.\n\n## Limits\n\nVersion/State bound; review migrations; never delete State. Match region/area/DNS. Empty roles/ACLs!=security; live acceptance.\n\n## Credentials\n\nSeparate grants; no secrets/profile IDs.\n\n## Sources\n\nIaC.\n',
       sha256:
-        "3790aa31bdcd9a9163924d26e55f77f1f5f25a675e7507c1edb8d1e47fcaf18b",
+        "ce5475d400772c837ec2285cfd4e5abda1f7eb3d56e7fc340f82dd30e6b79723",
     },
     {
       id: "sandbox-projects",
@@ -3264,12 +3264,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3427,12 +3427,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",
@@ -3653,12 +3653,12 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/native-consultation.ts",
           sha256:
-            "2048ec3ef9bdeff5d6dbf903f1c0268c71b53d8fa4a3ecb13c2f190194891f67",
+            "ff95fb3f849cd8871c88b9e054decd1510c8b13a7d704d0d4aebb50f0eed5693",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/answer-review.ts",
           sha256:
-            "04a1f246824ea0abe81ff3f2b327afc5a6ea8ef96fcd9352e25620a499307899",
+            "5285149aa67423e9cb6e79881a175ba97cfa067c9bc45be01d8f7645a506b602",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/proposal-diff.ts",

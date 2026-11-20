@@ -302,7 +302,7 @@ export function nativeConsultationTools(
     function: {
       name: "propose_template_permissions",
       description:
-        "Propose ADDING official service groups, key-management sets or exact permissions to existing Application landing-zone templates. Select template keys and requester/automation principals. Their existing separate rights and initial owner are preserved. This sets template project IAM; accounts bind during ordering. Use this for requested Kubernetes/SKE or other service rights within Public/Corporate/Sandbox templates. All changes remain a LOCAL reviewable proposal.",
+        "Propose ADDING official service groups, key-management sets or exact permissions to existing Application landing-zone templates. Select template keys and requested requester/automation principals. A person receiving rights when ordering is requester; automation is separate and must not be added by default. Ask if the recipient is genuinely unclear. Their existing separate rights and initial owner are preserved. This sets template project IAM; accounts bind during ordering. Use this for requested Kubernetes/SKE or other service rights within Public/Corporate/Sandbox templates. All changes remain a LOCAL reviewable proposal.",
       parameters: {
         ...object(object(addition.properties).value),
         ...(schema.$defs ? { $defs: schema.$defs } : {}),

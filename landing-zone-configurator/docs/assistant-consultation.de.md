@@ -322,6 +322,10 @@ Projekt-IAM-Rechte können in Public-, Corporate- und Sandbox-Vorlagen ergänzt
 werden. Dafür werden weder Cluster noch SNA, Node-Pools oder Cluster-Namen
 benötigt. Der Besteller, der Rechte bei einer Bestellung erhalten soll, ist bereits
 als Empfänger bestimmt; Automation und zentraler initialer Owner sind eigene Rollen.
+Dienstrechte werden nur den angefragten Empfängern hinzugefügt. Eine fehlende
+ausdrückliche Einschränkung wählt Automation nicht automatisch aus. Bei unklaren
+Empfängern wird nachgefragt. Dokumentierte Einstellungsdefaults sind keine
+Erlaubnis, zusätzliche IAM-Empfänger einzubeziehen.
 Passen mehrere Vorlagen zur gewünschten einzelnen Art, wird eine Auswahl mit den
 tatsächlichen Schlüsseln angeboten. Kompakte Bereitschaftsinformationen zeigen
 fehlende Veröffentlichungsvoraussetzungen ohne unveränderte Owner-Adressen.

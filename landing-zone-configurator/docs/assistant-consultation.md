@@ -262,8 +262,12 @@ This changes question associations, not mutation paths or tenant authorization.
 Project-IAM permission edits apply to Public, Corporate and Sandbox templates;
 they do not provision a cluster or depend on an SNA, node pools or cluster names.
 The person receiving rights when ordering identifies the requester; automation
-and the central initial owner are separate roles. Multiple templates of a requested
-singular kind require a choice of actual keys, rather than an implicit edit of all.
+and the central initial owner are separate roles.
+Service additions target only the requested recipients; lack of an explicit
+prohibition does not select automation. Ambiguous recipients need a question.
+Documented setting defaults never authorize additional IAM recipients.
+Multiple templates of a requested singular kind require a choice of actual keys,
+rather than an implicit edit of all.
 Compact readiness metadata exposes missing publication prerequisites without
 copying unchanged owner addresses into review. A missing initial owner is asked
 once across affected granular templates; independent local rights additions can

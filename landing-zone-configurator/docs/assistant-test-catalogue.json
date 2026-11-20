@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "b5944ff64817ada0dd41ce78d9e5b0dc48a4918388dafcfc6bf25bdf1997d7de",
+  "knowledgeSha256": "ac8ef349e8a260e10a3fa63b2d5d29eb5840692ef33e2033ceab0f67403210fb",
   "sourceDigests": {
     "scripts/assistant-scenarios.ts": "e8a36a6b4201040ad97952aa4da661a5d275dd6b3ca3388efdd02fe2c1623f09",
     "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",

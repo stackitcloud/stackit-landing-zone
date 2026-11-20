@@ -13,7 +13,7 @@ Provider0.114: null prefix+DNS(even []) invalid; native resolves, overrides win;
 
 ## Dependencies
 
-Verified identity/governance; regional SNA. Public!=Corporate; Platform K8s namespaces.
+Identity/governance; regional SNA; Platform K8s namespaces.
 
 ## Dialogue
 
@@ -29,7 +29,7 @@ iam.service-account-key.{create,delete,edit,get,list}. Project-wide keys use ALL
 ADD keys=seven incl.account lookup(get/list), requester default; preserve owner/SKE/automation. Exact permission IDs override bundles.
 Defaults: server-backup/server-update/run-command (schedules/restore/OS updates/commands), IaaS backups/snapshots writes. Install agent separately; old profiles unchanged; new version+upgrade.
 SKE/Git/databases/IAM-admin: optional, NOT preset defaults.
-ADD SKE=catalogue ske union (both unless specified). Preserve rights. Public+Corporate=both; clarify duplicates.
+ADD services: requested actors only; ordering human=requester, never implicit automation. SKE=ske union; preserve others. Public+Corporate=both; clarify duplicates.
 SKE IAM!=K8s RBAC; no default IAM role/member admin.
 Owner={schemaVersion:1,mode:owner}: all project rights for both, incl.IAM/project; no immutable audit/routing claim.
 Atomic; no legacy roles.
@@ -39,11 +39,10 @@ Workload+services recommended. Legacy: confirm removed roles/context/native Owne
 Publish needs owner; grants add; no execution.
 
 
-Project Git: settings.git={enabled,flavor,acl}; disabled; one instance/project.
-Policy: fixed/bounded input git.enabled/git.flavor/git.acl. Explicit nonempty source CIDRs.
-Public endpoint, never SNA/firewall-private. Public source ACLs; Git-capable Runner; old orders unchanged.
-git-10<=10, git-100<=100 users/instance; >100: separate instances.
-No larger flavor/federation. Partition users by project/team; endpoints stay public. Provider0.114 flavor/ACL changes replace.
+Project Git: settings.git={enabled,flavor,acl}; off; one/project.
+Policy: fixed/bounded git.enabled/flavor/acl; explicit nonempty public source CIDRs.
+Public endpoint, not SNA/firewall-private. Git-capable Runner; old orders unchanged.
+git-10<=10, git-100<=100 users/instance; >100: split by team/project, no larger flavor/federation. Provider0.114 flavor/ACL changes replace.
 
 ## Examples
 
