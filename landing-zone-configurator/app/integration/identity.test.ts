@@ -2430,6 +2430,23 @@ describe("real PostgreSQL session and tenant boundaries", () => {
                 content: JSON.stringify({
                   ready: true,
                   findings: [],
+                  boundaryChecks: Object.values(
+                    JSON.parse(
+                      payload.messages.find(
+                        (entry: { role: string }) => entry.role === "user",
+                      ).content,
+                    ).relevantServiceFacts,
+                  ).flatMap((fact) =>
+                    (
+                      (fact as { criticalBoundaries?: { id: string }[] })
+                        .criticalBoundaries ?? []
+                    ).map(({ id }) => ({
+                      id,
+                      applicable: false,
+                      covered: false,
+                      paragraphs: [],
+                    })),
+                  ),
                   requestChecks: [
                     {
                       userTurn: JSON.parse(

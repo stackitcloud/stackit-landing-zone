@@ -73,6 +73,53 @@ export function evaluateCatalogueRequirements(
  * numeric VM/VPN facts through the same scoped catalogue interface.
  */
 export const reviewedServiceFacts: Record<string, unknown> = {
+  "credential-foundations": {
+    criticalBoundaries: [
+      {
+        id: "credential-secret-storage-state",
+        appliesWhen:
+          "Explaining where provisioned credentials or secrets are stored, including comparisons of Secrets Manager, configuration and Terraform/OpenTofu state. Not required for unrelated configuration edits.",
+        mustExplain: true,
+        scope:
+          "Declarative tfvars and public chat exclude credentials. Native provider-created secrets and vault secret data may still be in Terraform/OpenTofu state. Secrets Manager stores/distributes runtime secrets; it does not remove provider values from state.",
+        consequence:
+          "Protect state and backend access as sensitive data. Never promise secrets are absent from state because Secrets Manager is used, or request secret/state contents in chat.",
+        boundaryIsInformationNotAnotherApproval: true,
+      },
+    ],
+  },
+  "audit-logs": {
+    criticalBoundaries: [
+      {
+        id: "audit-query-authentication",
+        appliesWhen:
+          "Explaining audit query stores, dashboards, or authentication/access to audit data. Not required for a retention-only edit or unrelated topic.",
+        mustExplain: true,
+        scope:
+          "With central Observability, reuse its built-in Grafana Audit Logs Dashboard: human Grafana SSO is separate from technical ingestion/query credentials; no fallback Logs instance or its tokens. Without Observability, native provisioning creates a separate STACKIT Logs instance and read/write API tokens, with query URL and credentials in Secrets Manager. A logs-capable plan is required only by observability.plan_name; audit_logs and the native fallback Logs instance have no plan_name input.",
+        consequence:
+          "A fallback Logs API is not a promised SSO Logs console. Query through its API or a configured Grafana datasource. Never claim no technical credentials are managed, or request tokens in chat.",
+        boundaryIsInformationNotAnotherApproval: true,
+      },
+    ],
+  },
+  "firewall-policy": {
+    criticalBoundaries: [
+      {
+        id: "firewall-policy-manual-configuration",
+        appliesWhen:
+          "Explaining or requesting firewall filtering, outbound NAT, port forwards, aliases or routes in chat.",
+        mustExplain: true,
+        scope:
+          "The native Accelerator exposes firewall_config, but the chat Assistant cannot propose or configure its complex rule/NAT objects. Guided policy management remains unsupported (#101).",
+        consequence:
+          "No firewall rules or NAT have been configured by this conversation; an appliance, an empty policy map or HA does not prove filtering, isolation or policy synchronization.",
+        operatorGuidance:
+          "The firewall administrator configures policy manually in OPNsense after provisioning, with separate explicit HA policy synchronization where needed.",
+        boundaryIsInformationNotAnotherApproval: true,
+      },
+    ],
+  },
   "project-templates": {
     targetSelection: {
       rule: "A singular template kind identifies one template only when there is a unique candidate. With multiple matches, offer the actual stable keys and names in one structured question; do not assume all matches or a preferred key. Explicit all/both or a later selected key resolves scope. Keep other requested kinds in the same pending task.",

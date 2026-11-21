@@ -62,7 +62,7 @@ export const nativeCompletionSchema = z.object({
             .max(assistantAnswerTextMaxLength)
             .nullable()
             .optional(),
-          tool_calls: z.array(nativeToolCallSchema).max(6).optional(),
+          tool_calls: z.array(nativeToolCallSchema).max(6).nullish(),
           reasoning: z.string().max(131072).nullable().optional(),
           reasoning_content: z.string().max(131072).nullable().optional(),
         }),
@@ -302,7 +302,7 @@ export function nativeConsultationTools(
     function: {
       name: "propose_template_permissions",
       description:
-        "Propose ADDING official service groups, key-management sets or exact permissions to existing Application landing-zone templates. Select template keys and requested requester/automation principals. A person receiving rights when ordering is requester; automation is separate and must not be added by default. Ask if the recipient is genuinely unclear. Their existing separate rights and initial owner are preserved. This sets template project IAM; accounts bind during ordering. Use this for requested Kubernetes/SKE or other service rights within Public/Corporate/Sandbox templates. All changes remain a LOCAL reviewable proposal.",
+        "Propose ADDING official service groups, key-management sets or exact permissions to existing Application landing-zone templates. Select template keys and requested requester/automation principals. A person receiving rights when ordering is requester; automation is separate and must not be added by default. Ask if the recipient is genuinely unclear. Their existing separate rights and initial owner are preserved. Catalogue membership is not a service request: use actual user-named services/reviewed aliases or the requested registered workflow bundle. A motivation such as using keys in pipelines does not request another service's full administration rights. Ask if another service is actually needed. This sets template project IAM; accounts bind during ordering. Use this for requested Kubernetes/SKE or other service rights within Public/Corporate/Sandbox templates. All changes remain a LOCAL reviewable proposal.",
       parameters: {
         ...object(object(addition.properties).value),
         ...(schema.$defs ? { $defs: schema.$defs } : {}),
@@ -469,6 +469,18 @@ export class NativeConsultation {
         if (!updates.length)
           throw new AssistantInferenceError("native_tool_result_missing");
         this.remember(merged);
+        if (
+          this.proposal &&
+          (object(merged.answerReview).ready === false ||
+            merged.answerValidation)
+        ) {
+          merged.withheldProposal = {
+            id: this.proposal,
+            instruction:
+              "This candidate is no longer attached automatically because the final answer was rejected. If a decision is reserved or missing, ask the real question without a proposal. If only the explanation needed repair, explicitly select this validated handle with the corrected answer. To change its effects, validate a corrected candidate first. No saved setting or accepted draft has changed.",
+          };
+          this.proposal = null;
+        }
         if (!this.pending.length)
           this.messages.push({
             role: "system",

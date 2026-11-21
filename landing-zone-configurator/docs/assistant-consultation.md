@@ -171,6 +171,14 @@ reply can carry only the latest successfully validated local proposal; a rejecte
 replacement clears that handle. Neither text nor a function name can execute cloud
 changes. The final answer still passes the same semantic review before publication.
 
+A rejected final answer withholds the candidate's automatic attachment to later
+prose or questions. Schema/compiler validity alone does not establish a suitable
+answer. The model can ask a genuinely missing decision without that proposal,
+explicitly select the same validated handle after an explanation-only correction,
+or validate a changed candidate. Typed mutation tools can still explicitly extend
+the validated working batch, whose complete effects are reviewed again. This
+changes no accepted draft and grants no additional authority.
+
 Typed mutation tools extend the latest validated proposal in the current turn.
 The validator accepts only proposal handles it issued in that turn, replays the
 bounded operation batch from the original configuration and revalidates its full
@@ -187,12 +195,37 @@ steps, three bounded reviews and a three-minute deadline. Configured individual
 request limits remain enforced. HTTP failures do not trigger a hidden controller fallback or
 an unbounded inference retry.
 
+The total turn deadline is diagnosed separately as `consultation_timeout`, while
+an individual serving request retains `service_timeout`; both use the existing
+public timeout message. Server logs can include the failing inference phase and
+an allowlisted upstream category (grammar backend mismatch, unsupported schema,
+context limit, rate limit or unknown). Error bodies are bounded and classified
+only in memory. Provider text, prompts, reasoning and credentials are never copied
+into those diagnostics. HTTP rejections are not retried or converted to success.
+Synthetic receipts also bind a hash of the actual API, contracts, domain and test
+source bytes, and the journey records timed tool/review events. Its Git catalogue
+is explicitly synthetic; this is not a claim about customer entitlement.
+
+Explicit knowledge-topic requests take precedence over neighbouring search hits.
+Missing-knowledge feedback names the unread topics and explains whether to read them
+or remove irrelevant historical references; it never approves an unread source.
+The journey uses the canonical eight-question budget, restricts questions to the
+current task and rejects questions for an already resolved Git size. Independent
+audit decisions may require more than three questions. Audit query advice distinguishes
+Grafana SSO from native technical credentials and the separate Logs fallback.
+Mandatory credential boundaries also reach every final review without requiring
+a model citation: Secrets Manager does not remove provisioned secrets from
+Terraform/OpenTofu state, whose storage and access remain sensitive.
+
 The complete repeated CI qualification is serialized against the project quota
 and has a six-hour job limit. This does not extend any individual request/turn
 deadline, retry a failed repetition, or change the release acceptance criteria.
 
 A shared semantic review compares the request, follow-up decisions, reviewed facts
 and actual compiler-produced delta before the final answer is streamed or stored.
+Its response uses the existing projected JSON Schema on the serving wire, followed
+by validation against the original review schema. A generic JSON object alone is
+not the review contract. Invalid types or missing decisions cannot become approval.
 The delta separates added/removed rights by principal and product group; unchanged
 identities and IAM metadata are omitted. Review findings return to the same
 consultation for correction. This is an internal quality check, not another user
@@ -266,6 +299,15 @@ and the central initial owner are separate roles.
 Service additions target only the requested recipients; lack of an explicit
 prohibition does not select automation. Ambiguous recipients need a question.
 Documented setting defaults never authorize additional IAM recipients.
+Before issuing a handle, the server also checks newly added permission service
+groups against actual user statements and the existing reviewed service aliases.
+Catalogue membership is not a request for a service. Quoted question alternatives
+do not select their services. Registered native presets, the requested key-management
+workflow, literal permission identifiers and actual defaults for new templates
+retain their source semantics. This check applies to materialized whole-profile
+edits as well as typed unions, so changing the JSON operation cannot bypass it.
+It establishes a service source, not consent: current-turn semantic review still
+checks negation, purpose, recipients and exact requested scope.
 Multiple templates of a requested singular kind require a choice of actual keys,
 rather than an implicit edit of all.
 Compact readiness metadata exposes missing publication prerequisites without
@@ -290,6 +332,15 @@ Confirmed entries carry a quotation from an actual user turn. Unsupported memory
 claims are discarded; an otherwise valid answer does not fail merely because an
 advisory summary quoted a source incorrectly. Actual configuration values remain
 authoritative, and recommendations do not become confirmed user decisions.
+
+The server also retains the actual displayed questions (canonical field paths and
+source-authored choices) and recommendation cards in that source-bound private
+state. The next turn receives these alongside the brief, so a short answer can
+refer to a concrete pending decision without rebuilding it from prose. They are
+context, not consent; a topic switch can close them and a new answer replaces the
+pending question list. The final review must check the current user turn explicitly;
+passing checks for historical requests cannot qualify a new response or authorize
+replaying earlier changes.
 
 The previous unaccepted proposal is also supplied as a compiler delta only while
 its knowledge hash, revision, expiry and public baseline still match. This is advisory

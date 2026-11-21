@@ -5,6 +5,7 @@ import {
   NativeConsultation,
   type NativeMessage,
   type NativeToolCall,
+  nativeCompletionSchema,
   nativeConsultationTools,
 } from "../apps/api/src/assistant/native-consultation.js";
 
@@ -819,4 +820,114 @@ it("rejects mixed or malformed tool markup and never interprets arbitrary functi
   await expect(unknown.next(context, schema)).rejects.toMatchObject({
     reason: "unsupported_native_tool",
   });
+});
+
+it("withholds automatic proposal attachment after semantic rejection while retaining explicit repair choices", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [call("validate_proposal", { changes: [], basis: [] })],
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: "Git100 with public default access.",
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("ask_question", {
+          path: "devops.allowed_network_ranges",
+          text: "Which access choice should we use?",
+          explanation: "Git100 fits; access remains your choice.",
+          finish: true,
+        }),
+      ],
+    })
+    .mockResolvedValueOnce({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        call("send_answer", {
+          kind: "proposal",
+          proposal: "candidate",
+          explanation: "Explicitly selected repaired explanation.",
+        }),
+      ],
+    });
+  const native = new NativeConsultation(request);
+  const logical = [...context];
+  await native.next(logical, schema);
+  logical.push({
+    role: "user",
+    content: JSON.stringify({
+      validation: { ok: true, proposal: "candidate" },
+    }),
+  });
+  expect(await native.next(logical, schema)).toMatchObject({
+    proposal: "candidate",
+  });
+  logical.push({
+    role: "user",
+    content: JSON.stringify({
+      answerReview: {
+        ready: false,
+        findings: ["Access was explicitly reserved."],
+      },
+    }),
+  });
+  expect(await native.next(logical, schema)).toMatchObject({
+    kind: "clarification",
+    proposal: null,
+    questions: [{ path: "devops.allowed_network_ranges" }],
+  });
+  expect(JSON.stringify(request.mock.calls[2]![0])).toContain(
+    "withheldProposal",
+  );
+  logical.push({
+    role: "user",
+    content: JSON.stringify({
+      answerReview: { ready: false, findings: ["Repair explanation only."] },
+    }),
+  });
+  expect(await native.next(logical, schema)).toMatchObject({
+    proposal: "candidate",
+  });
+});
+
+it("accepts null optional tool_calls as no calls without inventing or executing an operation", async () => {
+  const parsed = nativeCompletionSchema.parse({
+    choices: [
+      {
+        finish_reason: "stop",
+        message: {
+          role: "assistant",
+          content: "Advice only.",
+          tool_calls: null,
+        },
+      },
+    ],
+  });
+  expect(parsed.choices[0]!.message.tool_calls).toBeNull();
+  const request = vi.fn().mockResolvedValue(parsed.choices[0]!.message);
+  expect(
+    await new NativeConsultation(request).next(context, schema),
+  ).toMatchObject({ action: "answer", kind: "advice", proposal: null });
+  expect(request).toHaveBeenCalledTimes(1);
+  expect(
+    nativeCompletionSchema.safeParse({
+      choices: [
+        {
+          finish_reason: "stop",
+          message: {
+            role: "assistant",
+            content: "Advice",
+            tool_calls: { name: "apply" },
+          },
+        },
+      ],
+    }).success,
+  ).toBe(false);
 });

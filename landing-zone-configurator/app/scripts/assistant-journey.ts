@@ -21,10 +21,13 @@ import {
 import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 import {
   assistantDnsRoleFailures,
+  assistantPolicyBoundaryFailures,
+  assistantQuestionScopeFailures,
   assistantScenarioFixture,
   assistantScenarios,
   syntheticOrganizationId,
 } from "./assistant-scenarios.js";
+import { assistantSourceSha256 } from "./assistant-source-receipt.js";
 import {
   assistantTestModel,
   assistantTestRequestIntervalMs,
@@ -37,7 +40,7 @@ type Step = {
   reference: string;
   roots: string[];
   expected?: Record<string, JsonValue>;
-  questionsOnly?: boolean;
+  questionPaths?: string[];
   boundary?: boolean;
   dnsRoles?: boolean;
 };
@@ -106,7 +109,7 @@ const steps: Step[] = [
       "Die Firewall-Regeln pflegt später der Firewall-Admin. Nun brauchen wir als nächstes eine zentrale Audit-Protokollierung mittels Telemetry Router. Bitte führe mich durch die noch fehlenden Entscheidungen.",
     reference: "audit-logs",
     roots: [],
-    questionsOnly: true,
+    questionPaths: ["audit_logs", "observability"],
   },
   {
     id: "audit-answer",
@@ -147,17 +150,17 @@ const steps: Step[] = [
   {
     id: "devops-setup",
     message:
-      "Please add a central company Git instance for around 80 developers in our Hub-and-Spoke landing zone. Recommend the suitable plan; access is not decided yet.",
+      "Please prepare a central company Git instance for around 80 developers in our Hub-and-Spoke landing zone. Recommend the suitable plan, but do not propose configuration changes until I choose access. Ask me the remaining access question now.",
     reference: "devops-git",
     roots: ["devops"],
-    questionsOnly: true,
+    questionPaths: ["devops.allowed_network_ranges"],
   },
   {
     id: "devops-company-access",
     message: "My answer: Company/VPN public egress networks only (recommended)",
     reference: "devops-git",
     roots: ["devops"],
-    questionsOnly: true,
+    questionPaths: ["devops.allowed_network_ranges"],
   },
   {
     id: "devops-native-default",
@@ -235,12 +238,24 @@ async function run() {
     .update(readFileSync(new URL(import.meta.url)))
     .digest("hex");
   const model = assistantTestModel(configuration);
+  const sourceSha256 = assistantSourceSha256();
   const knowledge = buildAssistantKnowledge();
   const scenario = assistantScenarios.find(
     (entry) => entry.id === "editor-audit-complete",
   );
   if (!scenario) throw new Error("assistant_fixture_missing");
   let draft = assistantScenarioFixture(scenario).draft;
+  const gitScenario = assistantScenarios.find(
+    (entry) => entry.id === "editor-devops-sized-80-en",
+  );
+  if (!gitScenario) throw new Error("assistant_fixture_missing");
+  const gitCatalogues = assistantScenarioFixture(gitScenario).catalogues;
+  const catalogues = {
+    regions: gitCatalogues.regions.map((region) => ({
+      ...region,
+      products: { gitFlavors: region.products.gitFlavors },
+    })),
+  };
   const history: { role: "user" | "assistant"; content: string }[] = [];
   let consultationState: ConsultationState | undefined;
   let failed = 0;
@@ -253,6 +268,8 @@ async function run() {
       total: steps.length,
       knowledgeSha256: knowledge.sha256,
       journeySha256,
+      sourceSha256,
+      catalogueContext: "synthetic-reviewed-git-options",
       engineRevision: knowledge.engineRevision,
       authorizesExecution: false,
     }),
@@ -261,6 +278,7 @@ async function run() {
     const started = Date.now();
     const before = compileCommonConfiguration(draft);
     const failures: string[] = [];
+    const consultationTrace: unknown[] = [];
     try {
       const dialogue = validateDialogue(
         await model.converse(
@@ -272,11 +290,25 @@ async function run() {
           assistantPublicValues(draft),
           history,
           step.message,
-          { regions: [] },
+          catalogues,
           [],
           undefined,
           {
             state: consultationState,
+            onEvent: (event) => {
+              const diagnostic = {
+                ...event,
+                elapsedMs: Date.now() - started,
+              };
+              consultationTrace.push(diagnostic);
+              console.log(
+                JSON.stringify({
+                  event: "consultation",
+                  step: step.id,
+                  ...diagnostic,
+                }),
+              );
+            },
             onState: (state) => {
               consultationState = state;
             },
@@ -295,19 +327,12 @@ async function run() {
         failures.push(
           ...assistantDnsRoleFailures(dialogue.explanation, "roles"),
         );
-      if (
-        step.questionsOnly &&
-        (dialogue.changes.length ||
-          !dialogue.questions.length ||
-          dialogue.questions.length > 3)
-      )
-        failures.push("missing_safe_questions_only");
-      if (
-        step.boundary &&
-        (dialogue.changes.length ||
-          !dialogue.explanation.includes("GitHub-Issue #101"))
-      )
-        failures.push("firewall_policy_boundary_missing");
+      if (step.questionPaths)
+        failures.push(
+          ...assistantQuestionScopeFailures(dialogue, step.questionPaths),
+        );
+      if (step.boundary)
+        failures.push(...assistantPolicyBoundaryFailures(dialogue));
       if (
         dialogue.changes.some(
           (change) => !step.roots.includes(change.path.split(".")[0] ?? ""),
@@ -352,6 +377,7 @@ async function run() {
           status: failures.length ? "failed" : "passed",
           elapsedMs: Date.now() - started,
           failures,
+          consultationTrace,
           accepted: failures.length === 0,
           result: dialogue,
         }),
@@ -364,6 +390,7 @@ async function run() {
           status: "failed",
           elapsedMs: Date.now() - started,
           accepted: false,
+          consultationTrace,
           reason:
             error instanceof AssistantInferenceError
               ? error.reason
@@ -373,6 +400,13 @@ async function run() {
                 : "journey_validation_failed",
           ...(error instanceof AssistantInferenceError && error.transportCode
             ? { transportCode: error.transportCode }
+            : {}),
+          ...(error instanceof AssistantInferenceError
+            ? {
+                phase: error.phase,
+                upstreamCause: error.upstreamCause,
+                validationIssues: error.validationIssues,
+              }
             : {}),
         }),
       );
@@ -389,6 +423,7 @@ async function run() {
       requestIntervalMs: assistantTestRequestIntervalMs,
       knowledgeSha256: knowledge.sha256,
       journeySha256,
+      sourceSha256,
       engineRevision: knowledge.engineRevision,
       total: steps.length,
       passed: steps.length - failed,

@@ -81,7 +81,10 @@ function model(
       ),
     ).toHaveLength(1);
     if (reviewRequest)
-      expect(raw.response_format).toEqual({ type: "json_object" });
+      expect(raw.response_format).toMatchObject({
+        type: "json_schema",
+        json_schema: { name: "assistant_consultation_review", strict: true },
+      });
     else {
       expect(raw.response_format).toBeUndefined();
       expect(raw.tools).toHaveLength(9);
@@ -96,6 +99,12 @@ function model(
       const result = reviewSteps[reviewIndex++]?.(body) ?? {
         ready: true,
         findings: [],
+      };
+      if (result instanceof Response) return result;
+      const reviewPayload = JSON.parse(
+        body.messages.find((message) => message.role === "user")!.content,
+      );
+      const reviewedResult = {
         boundaryChecks: Object.values(
           JSON.parse(
             body.messages.find((message) => message.role === "user")!.content,
@@ -111,15 +120,9 @@ function model(
             paragraphs: [],
           })),
         ),
-      };
-      if (result instanceof Response) return result;
-      const reviewPayload = JSON.parse(
-        body.messages.find((message) => message.role === "user")!.content,
-      );
-      const reviewedResult = {
         requestChecks: [
           {
-            userTurn: reviewPayload.turns.findIndex(
+            userTurn: reviewPayload.turns.findLastIndex(
               (turn: { role: string }) => turn.role === "user",
             ),
             requirement: "Requested scoped task",
@@ -1407,4 +1410,353 @@ it("retrieves actual State coordination facts even if the model selects a neighb
       )
     ).changes,
   ).toEqual([]);
+});
+
+it("retains the actual presented question paths and choices for short follow-up answers", async () => {
+  let state: ConsultationState | undefined;
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+    }),
+    () =>
+      final({
+        kind: "clarification",
+        activeTopics: ["devops-git"],
+        references: ["devops-git"],
+        questions: [
+          {
+            path: "devops.allowed_network_ranges",
+            text: "Who should reach Git?",
+            answerType: "requirements",
+            options: [
+              "Use Accelerator default (0.0.0.0/0)",
+              "Provide company/VPN public egress IPs or CIDRs",
+            ],
+          },
+        ],
+      }),
+  ]);
+  const message = "Prepare Git100; ask me about access first.";
+  const answer = await client.converse(
+    selection,
+    {},
+    [],
+    message,
+    undefined,
+    [],
+    undefined,
+    {
+      onState: (value) => {
+        state = value;
+      },
+    },
+  );
+  expect(state?.pendingQuestions).toEqual(answer.questions);
+  const followup = model([
+    (body) => {
+      const context = JSON.parse(
+        body.messages.find((message) => message.role === "user")!.content,
+      );
+      expect(context.pendingQuestions).toEqual(answer.questions);
+      expect(context.currentUserTurn).toBe(2);
+      return final({
+        references: ["devops-git"],
+        explanation: "The selected access default is 0.0.0.0/0. Nothing saved.",
+      });
+    },
+  ]);
+  await followup.client.converse(
+    selection,
+    {},
+    [
+      { role: "user", content: message },
+      { role: "assistant", content: answer.explanation },
+    ],
+    "Use the Accelerator default",
+    undefined,
+    [],
+    undefined,
+    { state },
+  );
+});
+
+it("classifies the total consultation deadline without publishing or retrying its cancelled request", async () => {
+  const controller = new AbortController();
+  const timeout = AbortSignal.timeout.bind(AbortSignal);
+  const spy = vi
+    .spyOn(AbortSignal, "timeout")
+    .mockImplementation((ms) =>
+      ms === 180000 ? controller.signal : timeout(ms),
+    );
+  const onState = vi.fn(),
+    onText = vi.fn();
+  const request = vi.fn<typeof fetch>(
+    async (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => reject(init.signal!.reason),
+          { once: true },
+        );
+      }),
+  );
+  try {
+    const pending = new AssistantModelServing(configuration, request).converse(
+      selection,
+      {},
+      [],
+      "Explain the current workflow.",
+      undefined,
+      [],
+      { onText },
+      { onState },
+    );
+    const assertion = expect(pending).rejects.toMatchObject({
+      reason: "consultation_timeout",
+    });
+    controller.abort(new DOMException("Timeout", "TimeoutError"));
+    await assertion;
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(onState).not.toHaveBeenCalled();
+    expect(onText).not.toHaveBeenCalled();
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+it("returns a genuine remaining question without a rejected default proposal attached", async () => {
+  const { client } = model(
+    [
+      () => ({
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+      }),
+      () => ({
+        action: "validate_proposal",
+        basis: [],
+        changes: [
+          {
+            path: "devops",
+            operation: "merge",
+            value: {
+              git_flavor: "git-100",
+              allowed_network_ranges: ["0.0.0.0/0"],
+            },
+          },
+        ],
+      }),
+      (body) =>
+        final({
+          kind: "proposal",
+          proposal: lastResult(body).validation.proposal,
+          references: ["devops-git"],
+          explanation: "Git100 using public default access.",
+        }),
+      () =>
+        final({
+          kind: "clarification",
+          proposal: undefined,
+          references: ["devops-git"],
+          explanation:
+            "Git100 is the intended plan; access remains your decision. Nothing saved.",
+          questions: [
+            {
+              path: "devops.allowed_network_ranges",
+              text: "Who should reach Git?",
+              answerType: "requirements",
+            },
+          ],
+        }),
+    ],
+    [
+      () => ({
+        ready: false,
+        findings: [
+          "The user explicitly reserved the access decision. Withhold the proposal and ask the remaining access question.",
+        ],
+      }),
+      () => ({ ready: true, findings: [] }),
+    ],
+  );
+  const answer = await client.converse(
+    selection,
+    { devops: null },
+    [],
+    "Use Git100, but ask me about access before proposing changes.",
+  );
+  expect(answer.changes).toEqual([]);
+  expect(answer.questions).toMatchObject([
+    { path: "devops.allowed_network_ranges" },
+  ]);
+});
+
+it("rejects unrequested service rights before a handle is issued and validates the corrected workflow", async () => {
+  const current = {
+    projectTemplates: {
+      central: {
+        accessProfile: {
+          schemaVersion: 1,
+          mode: "granular",
+          initialOwnerEmail: "owner@example.test",
+          permissions: ["iaas.server.get"],
+          automationPermissions: ["iaas.server.get"],
+        },
+      },
+    },
+  };
+  const keyOperation = {
+    path: "projectTemplates",
+    operation: "add_permissions",
+    value: {
+      templateKeys: ["central"],
+      principals: ["requester"],
+      source: { kind: "permission_set", id: "service-account-keys" },
+    },
+  };
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["project-templates"] }],
+    }),
+    () => ({
+      action: "validate_proposal",
+      basis: [],
+      changes: [
+        keyOperation,
+        {
+          ...keyOperation,
+          value: {
+            ...keyOperation.value,
+            source: { kind: "services", ids: ["git"] },
+          },
+        },
+      ],
+    }),
+    (body) => {
+      expect(lastResult(body).validation).toMatchObject({
+        ok: false,
+        code: "assistant_permission_service_unconfirmed",
+      });
+      return {
+        action: "validate_proposal",
+        basis: [],
+        changes: [keyOperation],
+      };
+    },
+    (body) =>
+      final({
+        kind: "proposal",
+        proposal: lastResult(body).validation.proposal,
+        references: ["project-templates"],
+        explanation:
+          "Key management is project-wide, can use all account rights including outside this project. Keep privileged platform accounts outside application projects. Nothing saved.",
+      }),
+  ]);
+  const answer = await client.converse(
+    selection,
+    current,
+    [],
+    "In template central add requester rights for managing keys of the existing service account, for pipelines. Keep automation unchanged.",
+  );
+  expect(JSON.stringify(answer.changes)).toContain(
+    "iam.service-account-key.create",
+  );
+  expect(JSON.stringify(answer.changes)).not.toContain("git.instance");
+});
+
+it("keeps every explicitly requested topic ahead of ranked neighbouring matches", async () => {
+  const requested = [
+    "identity-foundations",
+    "governance-folders",
+    "management-state",
+    "stackit-network-components",
+    "vpn",
+    "dns-zones",
+  ];
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: requested }],
+    }),
+    (body) => {
+      expect(lastResult(body).toolResults[0].result.selectedTopics).toEqual(
+        requested,
+      );
+      return final({ references: ["dns-zones"] });
+    },
+  ]);
+  await client.converse(
+    selection,
+    {},
+    [],
+    "Explain company Git sizing and access in a Hub-and-Spoke landing zone, and these six related foundations.",
+  );
+});
+
+it("names the unread topic in validation feedback and requires its actual inspection", async () => {
+  const { client } = model([
+    () => final({ references: ["devops-git"], activeTopics: ["devops-git"] }),
+    (body) => {
+      expect(lastResult(body).answerValidation).toMatchObject({
+        ok: false,
+        code: "assistant_knowledge_required",
+        path: "references/activeTopics",
+      });
+      expect(lastResult(body).answerValidation.instruction).toContain(
+        "devops-git",
+      );
+      return {
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+      };
+    },
+    () => final({ references: ["devops-git"], activeTopics: ["devops-git"] }),
+  ]);
+  const result = await client.converse(
+    selection,
+    {},
+    [],
+    "Explain the Git service; no edits.",
+  );
+  expect(result.references).toEqual(["devops-git"]);
+});
+
+it("includes mandatory credential boundaries in final review without requiring a model citation", async () => {
+  const { client } = model(
+    [() => final()],
+    [
+      (body) => {
+        const payload = JSON.parse(
+          body.messages.find((message) => message.role === "user")!.content,
+        );
+        expect(
+          payload.relevantServiceFacts["credential-foundations"]
+            .criticalBoundaries,
+        ).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: "credential-secret-storage-state" }),
+          ]),
+        );
+        return {
+          ready: true,
+          findings: [],
+          boundaryChecks: [
+            {
+              id: "credential-secret-storage-state",
+              applicable: false,
+              covered: false,
+              paragraphs: [],
+            },
+          ],
+        };
+      },
+    ],
+  );
+  await client.converse(
+    selection,
+    {},
+    [],
+    "Explain the configuration lifecycle; no edits.",
+  );
 });
