@@ -115,6 +115,10 @@ import {
   nativeCompletionSchema,
 } from "./native-consultation.js";
 import { assistantServingResponseSchema } from "./serving-schema.js";
+import {
+  type AssistantUpstreamCause,
+  assistantUpstreamCause,
+} from "./upstream-diagnostics.js";
 
 const lifecycleAdviceTopics: Record<
   keyof typeof assistantApplicationUpgradeAdvice,
@@ -587,9 +591,11 @@ export type AssistantTransportFailure = {
 };
 
 export class AssistantInferenceError extends Error {
+  phase?: string;
   constructor(
     readonly reason: string,
     readonly transportCode?: TransportCode,
+    readonly upstreamCause?: AssistantUpstreamCause,
   ) {
     super("assistant_inference_failed");
   }
@@ -606,7 +612,11 @@ async function streamedResponse(
   stream: AssistantStream,
 ) {
   if (!response.ok)
-    throw new AssistantInferenceError(`upstream_status_${response.status}`);
+    throw new AssistantInferenceError(
+      `upstream_status_${response.status}`,
+      undefined,
+      await assistantUpstreamCause(response),
+    );
   if (
     !response.body ||
     !response.headers.get("content-type")?.includes("text/event-stream")
@@ -711,7 +721,11 @@ async function streamedResponse(
 
 async function boundedResponse(response: Response) {
   if (!response.ok)
-    throw new AssistantInferenceError(`upstream_status_${response.status}`);
+    throw new AssistantInferenceError(
+      `upstream_status_${response.status}`,
+      undefined,
+      await assistantUpstreamCause(response),
+    );
   if (
     !response.ok ||
     !response.headers.get("content-type")?.includes("application/json") ||
@@ -777,10 +791,7 @@ export class LegacyAssistantModelServing {
       : undefined;
     // Some serving chat templates retain only the last system message.
     const systemContent = [
-      ...([
-        "assistant_consultation_step",
-        "assistant_consultation_review",
-      ].includes(schemaName)
+      ...(schemaName === "assistant_consultation_step"
         ? [
             `CONSULTATION_TOOL_PROTOCOL: Return one compact JSON object matching this response schema, without Markdown fences. The application validates its shape and source references.\n${JSON.stringify(servingSchema)}`,
           ]
@@ -851,9 +862,14 @@ export class LegacyAssistantModelServing {
         receivedResponse,
       });
     const transportFailure = (error: unknown): never => {
-      if (error instanceof AssistantInferenceError) throw error;
+      if (error instanceof AssistantInferenceError) {
+        error.phase = schemaName;
+        throw error;
+      }
       if (deadline.aborted && !signal?.aborted)
-        throw new AssistantInferenceError("service_timeout");
+        throw Object.assign(new AssistantInferenceError("service_timeout"), {
+          phase: schemaName,
+        });
       const code = transportCode(error);
       if (code) {
         reportTransportFailure(code, false);
@@ -894,10 +910,7 @@ export class LegacyAssistantModelServing {
                 : "auto",
             }
           : {}),
-        ...([
-          "assistant_consultation_step",
-          "assistant_consultation_review",
-        ].includes(schemaName)
+        ...(schemaName === "assistant_consultation_step"
           ? { response_format: { type: "json_object" } }
           : servingSchema
             ? {

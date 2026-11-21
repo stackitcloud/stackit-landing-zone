@@ -19,6 +19,7 @@ import {
   buildAssistantScenarioInventory,
   validateAssistantScenario,
 } from "./assistant-scenarios.js";
+import { assistantSourceSha256 } from "./assistant-source-receipt.js";
 import {
   assistantTestModel,
   assistantTestRequestIntervalMs,
@@ -126,6 +127,7 @@ async function run() {
     LZC_MODEL_SERVING_TOKEN: token,
   });
   const model = assistantTestModel(configuration);
+  const sourceSha256 = assistantSourceSha256();
   const knowledge = buildAssistantKnowledge();
   let failed = 0;
   console.log(
@@ -135,6 +137,7 @@ async function run() {
       intentModel: configuration.intentModel ?? configuration.model,
       knowledgeSha256: knowledge.sha256,
       suiteSha256: inventory.suiteSha256,
+      sourceSha256,
       repetitions,
       total: scenarios.length * repetitions,
       authorizesExecution: false,
@@ -220,6 +223,9 @@ async function run() {
             ...(error instanceof AssistantInferenceError && error.transportCode
               ? { transportCode: error.transportCode }
               : {}),
+            ...(error instanceof AssistantInferenceError
+              ? { phase: error.phase, upstreamCause: error.upstreamCause }
+              : {}),
           }),
         );
       }
@@ -229,6 +235,7 @@ async function run() {
     JSON.stringify({
       status: failed ? "failed" : "passed",
       qualification: "synthetic-smoke-and-regression-only",
+      sourceSha256,
       model: configuration.model,
       intentModel: configuration.intentModel ?? configuration.model,
       requestIntervalMs: assistantTestRequestIntervalMs,

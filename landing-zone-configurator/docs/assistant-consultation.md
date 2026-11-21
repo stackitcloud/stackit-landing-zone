@@ -187,12 +187,26 @@ steps, three bounded reviews and a three-minute deadline. Configured individual
 request limits remain enforced. HTTP failures do not trigger a hidden controller fallback or
 an unbounded inference retry.
 
+The total turn deadline is diagnosed separately as `consultation_timeout`, while
+an individual serving request retains `service_timeout`; both use the existing
+public timeout message. Server logs can include the failing inference phase and
+an allowlisted upstream category (grammar backend mismatch, unsupported schema,
+context limit, rate limit or unknown). Error bodies are bounded and classified
+only in memory. Provider text, prompts, reasoning and credentials are never copied
+into those diagnostics. HTTP rejections are not retried or converted to success.
+Synthetic receipts also bind a hash of the actual API, contracts, domain and test
+source bytes, and the journey records timed tool/review events. Its Git catalogue
+is explicitly synthetic; this is not a claim about customer entitlement.
+
 The complete repeated CI qualification is serialized against the project quota
 and has a six-hour job limit. This does not extend any individual request/turn
 deadline, retry a failed repetition, or change the release acceptance criteria.
 
 A shared semantic review compares the request, follow-up decisions, reviewed facts
 and actual compiler-produced delta before the final answer is streamed or stored.
+Its response uses the existing projected JSON Schema on the serving wire, followed
+by validation against the original review schema. A generic JSON object alone is
+not the review contract. Invalid types or missing decisions cannot become approval.
 The delta separates added/removed rights by principal and product group; unchanged
 identities and IAM metadata are omitted. Review findings return to the same
 consultation for correction. This is an internal quality check, not another user
@@ -290,6 +304,15 @@ Confirmed entries carry a quotation from an actual user turn. Unsupported memory
 claims are discarded; an otherwise valid answer does not fail merely because an
 advisory summary quoted a source incorrectly. Actual configuration values remain
 authoritative, and recommendations do not become confirmed user decisions.
+
+The server also retains the actual displayed questions (canonical field paths and
+source-authored choices) and recommendation cards in that source-bound private
+state. The next turn receives these alongside the brief, so a short answer can
+refer to a concrete pending decision without rebuilding it from prose. They are
+context, not consent; a topic switch can close them and a new answer replaces the
+pending question list. The final review must check the current user turn explicitly;
+passing checks for historical requests cannot qualify a new response or authorize
+replaying earlier changes.
 
 The previous unaccepted proposal is also supplied as a compiler delta only while
 its knowledge hash, revision, expiry and public baseline still match. This is advisory

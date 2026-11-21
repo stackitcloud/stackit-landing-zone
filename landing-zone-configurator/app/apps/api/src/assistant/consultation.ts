@@ -88,6 +88,8 @@ export const consultationStateSchema = z.strictObject({
   knowledgeHash: z.string().regex(/^[a-f0-9]{64}$/),
   topics: z.array(z.string().min(1).max(100)).max(20),
   memory: memorySchema,
+  pendingQuestions: dialogueSchema.shape.questions.optional(),
+  recommendations: z.array(assistantRecommendationSchema).max(8).optional(),
 });
 export type ConsultationState = z.infer<typeof consultationStateSchema>;
 export type ConsultationOptions = {
@@ -648,6 +650,9 @@ export async function runConsultation(input: {
           request: input.message,
           turns: turns.map((turn, index) => ({ ...turn, index })),
           previousBrief: previous?.memory ?? null,
+          pendingQuestions: previous?.pendingQuestions ?? [],
+          previousRecommendations: previous?.recommendations ?? [],
+          currentUserTurn: turns.length - 1,
           pendingProposal: input.options?.pendingProposal ?? null,
           templateHistory: input.templateHistory,
           availableKnowledge: context.topics.map((topic) => ({
@@ -972,9 +977,18 @@ export async function runConsultation(input: {
   const turnSignal = input.stream?.signal
     ? AbortSignal.any([input.stream.signal, turnDeadline])
     : turnDeadline;
+  const complete: ConsultationComplete = async (...args) => {
+    try {
+      return await input.complete(...args);
+    } catch (error) {
+      if (turnDeadline.aborted && !input.stream?.signal?.aborted)
+        throw new AssistantInferenceError("consultation_timeout");
+      throw error;
+    }
+  };
   for (let round = 0; round < 12; round++) {
     input.stream?.signal?.throwIfAborted();
-    const raw = await input.complete(
+    const raw = await complete(
       messages,
       toolProtocol,
       "assistant_consultation_step",
@@ -1626,13 +1640,14 @@ export async function runConsultation(input: {
         throw new AssistantInferenceError("consultation_review_failed");
       reviews++;
       const review = await reviewConsultationAnswer({
-        complete: input.complete,
+        complete,
         turns,
         language: input.language,
         rules: assistantKnowledgeForTopics(context, dialogue.references).rules,
         inspections,
         brief: verifiedMemory,
         pendingProposal: input.options?.pendingProposal,
+        pendingQuestions: previous?.pendingQuestions ?? [],
         nativeDefaultChoices: step.proposal
           ? (proposalDefaults.get(step.proposal) ?? [])
           : [],
@@ -1680,6 +1695,8 @@ export async function runConsultation(input: {
         version: 1,
         knowledgeHash: context.knowledgeSha256,
         topics: step.activeTopics,
+        pendingQuestions: dialogue.questions,
+        recommendations: dialogue.recommendations ?? [],
         memory: review.memory
           ? {
               ...review.memory,

@@ -39,6 +39,36 @@ import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 import { assistantTemplateQuestionPaths } from "../apps/api/src/assistant/template-paths.js";
 
 export const syntheticOrganizationId = "00000000-0000-4000-8000-000000000001";
+export function assistantPolicyBoundaryFailures(dialogue: Dialogue) {
+  const text = dialogue.explanation;
+  const failures: string[] = [];
+  if (
+    dialogue.changes.length ||
+    dialogue.questions.length ||
+    !dialogue.references.includes("firewall-policy")
+  )
+    failures.push("firewall_policy_scope_invalid");
+  if (
+    !/firewall_config/i.test(text) ||
+    !/(?:cannot|can't|unsupported|not supported|nicht[^.!?\n]{0,100}(?:unterstützt|übernehmen|vorschlagen|konfigurieren|definiert)|keine[^.!?\n]{0,80}(?:Regeln|rules))/i.test(
+      text,
+    )
+  )
+    failures.push("firewall_policy_chat_boundary_missing");
+  if (
+    !/manuell|manual/i.test(text) ||
+    !/OPNsense/i.test(text) ||
+    !/admin/i.test(text)
+  )
+    failures.push("firewall_policy_manual_path_missing");
+  if (
+    !/(?:keine|nicht|nothing|not|no)[^.!?\n]{0,100}(?:konfiguriert|geändert|gespeichert|configured|changed|saved|deployed)|kann[^.!?\n]{0,80}nicht[^.!?\n]{0,80}übernehmen/i.test(
+      text,
+    )
+  )
+    failures.push("firewall_policy_no_changes_notice_missing");
+  return failures;
+}
 const questions: Record<string, string> = {
   "credential-foundations":
     "Wie hinterlege ich Deployment-Zugaenge sicher, ohne Passwoerter, Tokens, VPN-Schluessel oder Kubeconfig in den Chat zu schreiben?",
@@ -3113,19 +3143,7 @@ export function validateAssistantScenario(
       "firewall-policy-definition",
     ].includes(scenario.id)
   ) {
-    if (
-      dialogue.changes.length ||
-      dialogue.questions.length ||
-      !dialogue.references.includes("firewall-policy") ||
-      !dialogue.explanation.includes("nativ über firewall_config") ||
-      !dialogue.explanation.includes("nicht das komplexe Regel-/NAT-Objekt") ||
-      !dialogue.explanation.includes("noch keine Regeln konfiguriert") ||
-      !dialogue.explanation.includes("kann aktuell keine Firewall-Regeln") ||
-      !dialogue.explanation.includes("wird derzeit nicht unterstützt") ||
-      !dialogue.explanation.includes("GitHub-Issue #101") ||
-      !dialogue.explanation.includes("Firewall-Admin")
-    )
-      failures.push("firewall_policy_capability_boundary_unclear");
+    failures.push(...assistantPolicyBoundaryFailures(dialogue));
     return { dialogue, failures };
   }
   if (scenario.fixture.startsWith("firewall")) {

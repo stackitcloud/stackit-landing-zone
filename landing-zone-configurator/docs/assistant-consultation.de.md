@@ -176,6 +176,18 @@ Ein Turn bleibt auf zwölf Beratungsschritte, drei Schlussprüfungen und drei Mi
 begrenzt. Konfigurierte Einzelaufruf-Limits gelten weiterhin. HTTP-Fehler verursachen
 weder einen versteckten Controller-Wechsel noch unbegrenzte Wiederholungen.
 
+Die gesamte Turn-Frist wird getrennt als `consultation_timeout` erfasst; für einen
+einzelnen Modellaufruf bleibt `service_timeout` bestehen. Beide verwenden die
+bisherige öffentliche Timeout-Meldung. Serverlogs können die betroffene Inferenzphase
+und eine fest begrenzte Fehlerkategorie enthalten: Grammar-Backend-Konflikt,
+nicht unterstütztes Schema, Kontextlimit, Ratenlimit oder unbekannt. Fehlerantworten
+werden begrenzt und nur im Speicher klassifiziert. Providertext, Prompts, interne
+Modellbegründungen und Zugangsdaten gelangen nicht in diese Diagnostik. HTTP-Ablehnungen
+werden weder wiederholt noch als Erfolg gewertet. Synthetische Belege binden zusätzlich
+einen Hash der tatsächlichen API-, Vertrags-, Domain- und Testquellen; der Dialogtest
+protokolliert Tool- und Review-Ereignisse mit Laufzeiten. Sein Git-Katalog ist ausdrücklich
+synthetisch und bestätigt keine Kundenberechtigung.
+
 Die vollständige wiederholte CI-Qualifikation läuft wegen der gemeinsamen
 Projektquote seriell und hat ein Job-Limit von sechs Stunden. Einzelaufrufe und
 Turns erhalten dadurch keine längeren Fristen; fehlgeschlagene Wiederholungen
@@ -198,6 +210,10 @@ explizit sichtbar; spätere Operationen werden nicht nur gegen ein Zwischenprofi
 
 Eine gemeinsame inhaltliche Schlussprüfung vergleicht Auftrag, Folgeantworten,
 geprüfte Fakten und den tatsächlichen Compiler-Diff vor Anzeige und Speicherung.
+Die Antwort verwendet das vorhandene projizierte JSON-Schema auf der Serving-
+Schnittstelle und wird anschließend gegen das ursprüngliche Review-Schema geprüft.
+Ein allgemeines JSON-Objekt allein erfüllt diesen Vertrag nicht. Falsche Typen oder
+fehlende Entscheidungen können nicht zur Freigabe werden.
 Der Diff trennt ergänzte/entzogene Rechte nach Prinzipal und Produktgruppe.
 Unveränderte Identitäten und IAM-Metadaten fehlen dort. Befunde gehen zur Korrektur
 in denselben Dialog zurück. Das ist eine interne Qualitätsprüfung, keine weitere
@@ -225,6 +241,16 @@ Fragen. Bestätigungen verweisen auf wörtliche Nutzerbelege. Unbelegte Gedächt
 werden verworfen; eine gültige Antwort scheitert nicht allein an einem ungenau zitierten
 Beratungsüberblick. Die tatsächliche Konfiguration bleibt maßgeblich. Empfehlungen
 werden nicht zu vermeintlichen Nutzerentscheidungen.
+
+Der Server erhält außerdem die tatsächlich angezeigten Fragen mit kanonischen
+Feldpfaden und quellbasierten Auswahlmöglichkeiten sowie die Empfehlungskarten im
+quellgebundenen privaten Stand. Der nächste Turn erhält sie neben dem Überblick;
+kurze Antworten beziehen sich dadurch auf eine konkrete offene Entscheidung statt
+auf eine Rekonstruktion aus Fließtext. Das ist Kontext, keine Zustimmung. Ein
+Themenwechsel kann Fragen schließen; jede neue Antwort ersetzt die offene Fragenliste.
+Die Schlussprüfung muss ausdrücklich den aktuellen Nutzer-Turn prüfen. Erfolgreiche
+Prüfungen früherer Aufträge qualifizieren keine neue Antwort und erlauben nicht,
+deren Änderungen erneut auszuführen.
 
 Der vorherige, noch nicht übernommene Vorschlag wird als Compiler-Diff weitergegeben,
 solange Wissenshash, Revision, Gültigkeit und öffentliche Ausgangswerte übereinstimmen.

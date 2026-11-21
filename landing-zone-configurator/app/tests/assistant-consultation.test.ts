@@ -81,7 +81,10 @@ function model(
       ),
     ).toHaveLength(1);
     if (reviewRequest)
-      expect(raw.response_format).toEqual({ type: "json_object" });
+      expect(raw.response_format).toMatchObject({
+        type: "json_schema",
+        json_schema: { name: "assistant_consultation_review", strict: true },
+      });
     else {
       expect(raw.response_format).toBeUndefined();
       expect(raw.tools).toHaveLength(9);
@@ -119,7 +122,7 @@ function model(
       const reviewedResult = {
         requestChecks: [
           {
-            userTurn: reviewPayload.turns.findIndex(
+            userTurn: reviewPayload.turns.findLastIndex(
               (turn: { role: string }) => turn.role === "user",
             ),
             requirement: "Requested scoped task",
@@ -1407,4 +1410,117 @@ it("retrieves actual State coordination facts even if the model selects a neighb
       )
     ).changes,
   ).toEqual([]);
+});
+
+it("retains the actual presented question paths and choices for short follow-up answers", async () => {
+  let state: ConsultationState | undefined;
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+    }),
+    () =>
+      final({
+        kind: "clarification",
+        activeTopics: ["devops-git"],
+        references: ["devops-git"],
+        questions: [
+          {
+            path: "devops.allowed_network_ranges",
+            text: "Who should reach Git?",
+            answerType: "requirements",
+            options: [
+              "Use Accelerator default (0.0.0.0/0)",
+              "Provide company/VPN public egress IPs or CIDRs",
+            ],
+          },
+        ],
+      }),
+  ]);
+  const message = "Prepare Git100; ask me about access first.";
+  const answer = await client.converse(
+    selection,
+    {},
+    [],
+    message,
+    undefined,
+    [],
+    undefined,
+    {
+      onState: (value) => {
+        state = value;
+      },
+    },
+  );
+  expect(state?.pendingQuestions).toEqual(answer.questions);
+  const followup = model([
+    (body) => {
+      const context = JSON.parse(
+        body.messages.find((message) => message.role === "user")!.content,
+      );
+      expect(context.pendingQuestions).toEqual(answer.questions);
+      expect(context.currentUserTurn).toBe(2);
+      return final({
+        references: ["devops-git"],
+        explanation: "The selected access default is 0.0.0.0/0. Nothing saved.",
+      });
+    },
+  ]);
+  await followup.client.converse(
+    selection,
+    {},
+    [
+      { role: "user", content: message },
+      { role: "assistant", content: answer.explanation },
+    ],
+    "Use the Accelerator default",
+    undefined,
+    [],
+    undefined,
+    { state },
+  );
+});
+
+it("classifies the total consultation deadline without publishing or retrying its cancelled request", async () => {
+  const controller = new AbortController();
+  const timeout = AbortSignal.timeout.bind(AbortSignal);
+  const spy = vi
+    .spyOn(AbortSignal, "timeout")
+    .mockImplementation((ms) =>
+      ms === 180000 ? controller.signal : timeout(ms),
+    );
+  const onState = vi.fn(),
+    onText = vi.fn();
+  const request = vi.fn<typeof fetch>(
+    async (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => reject(init.signal!.reason),
+          { once: true },
+        );
+      }),
+  );
+  try {
+    const pending = new AssistantModelServing(configuration, request).converse(
+      selection,
+      {},
+      [],
+      "Explain the current workflow.",
+      undefined,
+      [],
+      { onText },
+      { onState },
+    );
+    const assertion = expect(pending).rejects.toMatchObject({
+      reason: "consultation_timeout",
+    });
+    controller.abort(new DOMException("Timeout", "TimeoutError"));
+    await assertion;
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(onState).not.toHaveBeenCalled();
+    expect(onText).not.toHaveBeenCalled();
+  } finally {
+    spy.mockRestore();
+  }
 });

@@ -73,6 +73,23 @@ export function evaluateCatalogueRequirements(
  * numeric VM/VPN facts through the same scoped catalogue interface.
  */
 export const reviewedServiceFacts: Record<string, unknown> = {
+  "firewall-policy": {
+    criticalBoundaries: [
+      {
+        id: "firewall-policy-manual-configuration",
+        appliesWhen:
+          "Explaining or requesting firewall filtering, outbound NAT, port forwards, aliases or routes in chat.",
+        mustExplain: true,
+        scope:
+          "The native Accelerator exposes firewall_config, but the chat Assistant cannot propose or configure its complex rule/NAT objects. Guided policy management remains unsupported (#101).",
+        consequence:
+          "No firewall rules or NAT have been configured by this conversation; an appliance, an empty policy map or HA does not prove filtering, isolation or policy synchronization.",
+        operatorGuidance:
+          "The firewall administrator configures policy manually in OPNsense after provisioning, with separate explicit HA policy synchronization where needed.",
+        boundaryIsInformationNotAnotherApproval: true,
+      },
+    ],
+  },
   "project-templates": {
     targetSelection: {
       rule: "A singular template kind identifies one template only when there is a unique candidate. With multiple matches, offer the actual stable keys and names in one structured question; do not assume all matches or a preferred key. Explicit all/both or a later selected key resolves scope. Keep other requested kinds in the same pending task.",
