@@ -115,6 +115,7 @@ export async function reviewConsultationAnswer(input: {
   nativeDefaultChoices?: unknown[];
   brief?: unknown;
   pendingProposal?: unknown;
+  pendingQuestions?: Dialogue["questions"];
   serviceFacts: Record<string, unknown>;
   answer: Dialogue;
   delta: ProposalDelta[] | undefined;
@@ -170,6 +171,13 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
               "Return one boundaryChecks entry for every requiredId, even when inapplicable. applicable and covered are booleans, never null. paragraphs is an array of answer paragraph indices. For inapplicable boundaries use applicable=false, covered=false, paragraphs=[]. If applicable but omitted use applicable=true, covered=false, paragraphs=[].",
           },
           language: input.language,
+          currentRequest: {
+            userTurn: input.turns.findLastIndex((turn) => turn.role === "user"),
+            text: input.turns.findLast((turn) => turn.role === "user")?.content,
+            instruction:
+              "Review THIS request and the decisions it continues. Earlier requests supply context and confirmed constraints, not new work to replay. Include a requestChecks entry for this current userTurn. Interpret a short answer using the actual previously presented pendingQuestions; retain prior capacity and target requirements while applying a later explicit correction only to its field. Do not reapply completed earlier tasks or modify unrelated components.",
+          },
+          pendingQuestions: input.pendingQuestions ?? [],
           turns: input.turns.map((turn, index) => ({ ...turn, index })),
           priorBrief: input.brief ?? null,
           previousUnacceptedProposal: input.pendingProposal ?? null,
@@ -239,6 +247,17 @@ Critical boundaries with mustExplain=true must be stated when the answer describ
     memory: undefined,
   });
   if (memory.success) checked.memory = memory.data;
+  const currentUserTurn = input.turns.findLastIndex(
+    (turn) => turn.role === "user",
+  );
+  if (
+    !checked.requestChecks.some((check) => check.userTurn === currentUserTurn)
+  ) {
+    checked.ready = false;
+    checked.findings.push(
+      "Review the current USER turn explicitly. Passing checks for earlier requests cannot qualify this response or authorize replaying their changes.",
+    );
+  }
   for (const check of checked.requestChecks) {
     if (
       check.resolution === "clarification" &&

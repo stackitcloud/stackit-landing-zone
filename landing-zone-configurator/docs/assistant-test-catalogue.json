@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "dc9741e399a81eb01720cf94102783532cd51593062c1222f38d8cb9d879415d",
+  "knowledgeSha256": "4b10853319e0994b219c8f09c271dfd523fef30e1a03d20fcf34f267fea23b8d",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "da55cbc58b08e4a48efa27b12a3445c5d70ee903a35f51a476232a585b8deb17",
-    "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
+    "scripts/assistant-scenarios.ts": "41c7c937f106564c7dcc89cb5559669098199e889f0a4cc5bba0a8aa4043a0c1",
+    "scripts/assistant-tests.ts": "a715eb7a9e0ff21c1338c390dbaa6db283d9130dc5f9a155e7e6409b7207b7b8",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "b2e24410a717e47dca6a1550611e836fe58f48c93d981568db4512d0ad52d681",
+  "suiteSha256": "4b9f4f5836129c2cabf1b8d00f4d8958fd53d6003c6af4f9ae543210d2594f12",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1658,6 +1658,18 @@
           "topic": "audit-logs",
           "fixture": "baseline",
           "message": "Wenn ich Audit Logging mit audit_logs=null abschalte, wird weiterhin ein S3-Archiv-Bucket angelegt oder ein bestehender Bucket ungeschützt neu erstellt? Erkläre den korrigierten Rückbau, was mit Default- und Terraform-State-Bucket passiert und welche Einschränkung vorhandene Objektaufbewahrung beim Löschen bedeutet. Nur beraten, keine Konfiguration ändern und nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "audit-query-authentication-advice-en",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "message": "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Does Secrets Manager exclude provisioned secrets from Terraform/OpenTofu state, and what must be protected? Which path needs a logs-capable plan, and is plan_name a native input on audit_logs or on observability? Explain only, no changes or execution.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

@@ -464,3 +464,56 @@ it("never silently truncates a contextual answer when adding the draft notice", 
     ),
   ).toThrow();
 });
+
+it("requires the current follow-up to be reviewed instead of replaying an earlier completed request", async () => {
+  const turns = [
+    { role: "user" as const, content: "Set Audit retention to 120 days." },
+    { role: "assistant" as const, content: "Audit proposal accepted." },
+    { role: "user" as const, content: "For Git, use the Accelerator default." },
+  ];
+  const pendingQuestions = [
+    {
+      path: "devops.allowed_network_ranges",
+      text: "Who should reach Git?",
+      answerType: "requirements" as const,
+    },
+  ];
+  const complete = vi.fn().mockResolvedValue({
+    ready: true,
+    findings: [],
+    boundaryChecks: [],
+    requestChecks,
+  });
+  const checked = await reviewConsultationAnswer({
+    ...input,
+    turns,
+    serviceFacts: {},
+    pendingQuestions,
+    complete,
+  });
+  expect(checked.ready).toBe(false);
+  expect(checked.findings.join(" ")).toContain("current USER turn");
+  const payload = JSON.parse(complete.mock.calls[0]![0][1].content);
+  expect(payload.currentRequest).toMatchObject({
+    userTurn: 2,
+    text: turns[2]!.content,
+  });
+  expect(payload.pendingQuestions).toEqual(pendingQuestions);
+  complete.mockResolvedValue({
+    ready: true,
+    findings: [],
+    boundaryChecks: [],
+    requestChecks: [{ ...requestChecks[0], userTurn: 2 }],
+  });
+  expect(
+    (
+      await reviewConsultationAnswer({
+        ...input,
+        turns,
+        serviceFacts: {},
+        pendingQuestions,
+        complete,
+      })
+    ).ready,
+  ).toBe(true);
+});

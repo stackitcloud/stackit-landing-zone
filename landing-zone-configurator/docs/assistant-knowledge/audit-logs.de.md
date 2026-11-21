@@ -17,9 +17,14 @@ Objektschutz kann das Löschen verhindern. Bei aktiviertem Audit Logging sind di
 Ziele S3 und genau eine abfragbare Ablage. Mit zentraler Observability
 wird deren OTLP-Ziel verwendet und das vorhandene Grafana Audit Logs Dashboard
 befüllt. Eine separate Logs-Instanz samt Tokens und Ziel entfällt. Ohne Observability
-bleibt STACKIT Logs die abfragbare Ablage. Ein technischer Zugang genügt, kein
-Grafana-Admin. Der Tarif muss Logs unterstützen; Monitoring, Frontend und
-MetricsEndpoint reichen nicht. Die Router-Netze ergänzen die Observability-ACL;
+wird eine separate STACKIT-Logs-Instanz mit Lese- und Schreib-Tokens angelegt;
+Abfrage-URL und Tokens werden im Secrets Manager hinterlegt. Abfragen erfolgen
+über die API oder eine eingerichtete Grafana-Datenquelle; eine SSO-Logs-Konsole
+wird nicht zugesichert. Nur beim Observability-Dashboard melden sich Benutzer
+per Grafana-SSO an, ohne Grafana-Admin zu benötigen. Technische
+Observability-Zugangsdaten bleiben davon getrennt. Keine Geheimnisse im Chat anfordern. Nur `observability.plan_name` muss Logs unterstützen; Monitoring, Frontend und
+MetricsEndpoint reichen dafür nicht. `audit_logs` und die separate native
+Logs-Instanz besitzen kein `plan_name`-Eingabefeld. Die Router-Netze ergänzen die Observability-ACL;
 bestehende Client-Einträge bleiben erhalten. Observability hat eigene Aufbewahrung
 und Kosten; `retention_days` steuert S3 und nur ohne Observability zusätzlich Logs.
 `audit_logs.acl` gilt für den Logs-Fallback, `observability.acl` für Observability.
@@ -70,8 +75,7 @@ Nur ein Entwurf, kein Deployment.
 
 ## Grenzen
 
-Neue Configurator-Audit-Konfigurationen verlangen ausdrückliche Entscheidungen
-zu Aufbewahrung, ACL und Object Lock. Links erfassen zukünftige Ereignisse, keine
+Links erfassen zukünftige Ereignisse, keine
 rückwirkende Historie. Standardrechte enthalten keine Audit-Änderungsrechte;
 effektive Owner- oder geerbte Rechte können Routing trotzdem verändern. Kein
 Deny-Versprechen gegenüber diesen Identitäten. Echte Zustellung nach Logs/S3
@@ -91,8 +95,10 @@ Das Manifest bindet Root-, Management-, Application- und Recovery-Verträge.
 Vor Generierung erneut prüfen. Konfiguration belegt weder Zustellung noch
 rechtliche Compliance.
 
-Die Logs-ACL ergänzt vorhandene Client-Netze automatisch um die aktuellen öffentlichen STACKIT-Netze aus der nativen API-Abfrage. Diese Netze sind nicht exklusiv für Telemetry Router. Ein gültiges Token bleibt erforderlich. Optional kann `router_egress_cidrs` eine geprüfte, nicht leere IPv4-CIDR-Liste für eine engere Freigabe vorgeben. Ohne verfügbare Router-Quellnetze wird das Deployment abgewiesen.
+Die Logs-ACL ergänzt vorhandene Client-Netze automatisch um die aktuellen öffentlichen STACKIT-Netze aus der nativen API-Abfrage. Diese Netze sind nicht exklusiv für Telemetry Router. Ein gültiges Token bleibt erforderlich. Optional kann `router_egress_cidrs` eine geprüfte, nicht leere IPv4-CIDR-Liste für eine engere Ziel-ACL vorgeben. Dies ändert nicht die tatsächlichen Ausgangsnetze des Routers; eine leere Liste ist ungültig. Ohne verfügbare Router-Quellnetze wird das Deployment abgewiesen.
 
-Neue Audit-Entwürfe verwenden nur ausdrückliche Audit-Antworten zu Tagen,
-Zugriffsnetzen und Object Lock. Fehlende Angaben werden gezielt nachgefragt;
-Standardwerte, Assistant-Aussagen und frühere Firewall-Netze sind keine Zustimmung.
+Neue Audit-Entwürfe berücksichtigen ausdrückliche Audit-Antworten zu Tagen,
+Zugriffsnetzen und Object Lock. Fehlende Angaben dürfen als klar gekennzeichnete
+native Defaults vorgeschlagen oder gezielt nachgefragt werden. Defaults und
+Assistant-Aussagen sind keine bestätigten Benutzerentscheidungen; frühere
+Firewall-Netze dürfen nicht ungefragt als Audit-Freigabe übernommen werden.

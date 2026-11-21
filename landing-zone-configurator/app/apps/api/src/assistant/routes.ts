@@ -27,7 +27,8 @@ export function publicAssistantFailureReason(
     return "response_truncated";
   if (["stream_incomplete", "connection_interrupted"].includes(reason))
     return "response_interrupted";
-  if (reason === "service_timeout") return "service_timeout";
+  if (["service_timeout", "consultation_timeout"].includes(reason))
+    return "service_timeout";
   if (reason === "upstream_status_429") return "service_busy";
   if (["upstream_status_401", "upstream_status_403"].includes(reason))
     return "service_authentication";
@@ -44,6 +45,11 @@ function inferenceFailure(
     {
       event: "assistant_inference_failed",
       reason: error.reason,
+      ...(error.phase ? { phase: error.phase } : {}),
+      ...(error.upstreamCause ? { upstreamCause: error.upstreamCause } : {}),
+      ...(error.validationIssues
+        ? { validationIssues: error.validationIssues }
+        : {}),
       ...(error.transportCode ? { transportCode: error.transportCode } : {}),
     },
     "Assistant inference rejected",

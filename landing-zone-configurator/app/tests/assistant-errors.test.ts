@@ -39,6 +39,7 @@ it.each([
   ["stream_incomplete", "response_interrupted"],
   ["connection_interrupted", "response_interrupted"],
   ["service_timeout", "service_timeout"],
+  ["consultation_timeout", "service_timeout"],
   ["upstream_status_429", "service_busy"],
   ["upstream_status_401", "service_authentication"],
   ["upstream_status_403", "service_authentication"],

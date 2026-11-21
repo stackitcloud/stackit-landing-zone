@@ -59,6 +59,7 @@ import {
   type AssistantStream,
 } from "./model-serving.js";
 import { materializeNativeDefaultProposals } from "./native-default-proposals.js";
+import { validateConsultationPermissionSources } from "./permission-sources.js";
 import {
   type ConsultationCompilerEvidence,
   consultationCompilerEvidence,
@@ -88,6 +89,8 @@ export const consultationStateSchema = z.strictObject({
   knowledgeHash: z.string().regex(/^[a-f0-9]{64}$/),
   topics: z.array(z.string().min(1).max(100)).max(20),
   memory: memorySchema,
+  pendingQuestions: dialogueSchema.shape.questions.optional(),
+  recommendations: z.array(assistantRecommendationSchema).max(8).optional(),
 });
 export type ConsultationState = z.infer<typeof consultationStateSchema>;
 export type ConsultationOptions = {
@@ -648,6 +651,9 @@ export async function runConsultation(input: {
           request: input.message,
           turns: turns.map((turn, index) => ({ ...turn, index })),
           previousBrief: previous?.memory ?? null,
+          pendingQuestions: previous?.pendingQuestions ?? [],
+          previousRecommendations: previous?.recommendations ?? [],
+          currentUserTurn: turns.length - 1,
           pendingProposal: input.options?.pendingProposal ?? null,
           templateHistory: input.templateHistory,
           availableKnowledge: context.topics.map((topic) => ({
@@ -713,7 +719,7 @@ export async function runConsultation(input: {
         context.topics.some((topic) => topic.id === id),
       );
       const selected = [
-        ...new Set([...matches.map((hit) => hit.id), ...requested]),
+        ...new Set([...requested, ...matches.map((hit) => hit.id)]),
       ].slice(0, 6);
       return {
         ...scoped(selected.length ? selected : (previous?.topics ?? [])),
@@ -972,9 +978,18 @@ export async function runConsultation(input: {
   const turnSignal = input.stream?.signal
     ? AbortSignal.any([input.stream.signal, turnDeadline])
     : turnDeadline;
+  const complete: ConsultationComplete = async (...args) => {
+    try {
+      return await input.complete(...args);
+    } catch (error) {
+      if (turnDeadline.aborted && !input.stream?.signal?.aborted)
+        throw new AssistantInferenceError("consultation_timeout");
+      throw error;
+    }
+  };
   for (let round = 0; round < 12; round++) {
     input.stream?.signal?.throwIfAborted();
-    const raw = await input.complete(
+    const raw = await complete(
       messages,
       toolProtocol,
       "assistant_consultation_step",
@@ -1153,6 +1168,14 @@ export async function runConsultation(input: {
               assistantTemplateQuestionPaths(input.current).includes(path)),
         );
         const changes = nativeProposal.changes;
+        validateConsultationPermissionSources(
+          operations,
+          changes,
+          input.current,
+          turns
+            .filter((turn) => turn.role === "user")
+            .map((turn) => turn.content),
+        );
         for (const change of changes) {
           const root = change.path.split(".")[0]!;
           if (!editableRoot(root)) throw new Error("assistant_invalid_scope");
@@ -1237,7 +1260,11 @@ export async function runConsultation(input: {
             ),
           );
           if (owner.length && !owner.some((topic) => topics.has(topic.id)))
-            throw new Error("assistant_knowledge_required");
+            throw new ConsultationOperationError(
+              "assistant_knowledge_required",
+              change.path,
+              `Read knowledge for one owning topic before proposing this field: ${owner.map((topic) => topic.id).join(", ")}.`,
+            );
           const defaults = nativeProposal.defaults
             .filter(
               (entry) =>
@@ -1479,14 +1506,23 @@ export async function runConsultation(input: {
         ...proposedMemory,
         decisions: [...verifiedDecisions.values()],
       };
-      if (
-        step.references.some(
-          (reference) =>
-            !topics.has(reference) &&
-            !initialKnowledge.rules.some((rule) => rule.id === reference),
-        )
-      )
-        throw new Error("assistant_knowledge_required");
+      const missingReferences = step.references.filter(
+        (reference) =>
+          !topics.has(reference) &&
+          !initialKnowledge.rules.some((rule) => rule.id === reference),
+      );
+      const missingActiveTopics = step.activeTopics.filter(
+        (topic) => !topics.has(topic),
+      );
+      const missingKnowledge = [
+        ...new Set([...missingReferences, ...missingActiveTopics]),
+      ];
+      if (missingKnowledge.length)
+        throw new ConsultationOperationError(
+          "assistant_knowledge_required",
+          "references/activeTopics",
+          `These topics have not been inspected in this turn: ${missingKnowledge.join(", ")}. Read their knowledge before citing them, or omit irrelevant past topics from references and activeTopics. Do not reread an already inspected topic to repair a different missing reference.`,
+        );
       const activeTemplateQuestionPaths = [
         ...assistantTemplateQuestionPaths(input.current),
         ...(step.proposal
@@ -1626,20 +1662,21 @@ export async function runConsultation(input: {
         throw new AssistantInferenceError("consultation_review_failed");
       reviews++;
       const review = await reviewConsultationAnswer({
-        complete: input.complete,
+        complete,
         turns,
         language: input.language,
         rules: assistantKnowledgeForTopics(context, dialogue.references).rules,
         inspections,
         brief: verifiedMemory,
         pendingProposal: input.options?.pendingProposal,
+        pendingQuestions: previous?.pendingQuestions ?? [],
         nativeDefaultChoices: step.proposal
           ? (proposalDefaults.get(step.proposal) ?? [])
           : [],
         serviceFacts: Object.fromEntries(
-          dialogue.references
-            .filter((reference) => reviewedServiceFacts[reference])
-            .map((reference) => [reference, reviewedServiceFacts[reference]]),
+          assistantKnowledgeForTopics(context, dialogue.references)
+            .topics.filter((topic) => reviewedServiceFacts[topic.id])
+            .map((topic) => [topic.id, reviewedServiceFacts[topic.id]]),
         ),
         answer: dialogue,
         delta: step.proposal ? proposalDeltas.get(step.proposal) : [],
@@ -1674,12 +1711,12 @@ export async function runConsultation(input: {
         });
         continue;
       }
-      if (step.activeTopics.some((topic) => !topics.has(topic)))
-        throw new Error("assistant_knowledge_required");
       const state = consultationStateSchema.parse({
         version: 1,
         knowledgeHash: context.knowledgeSha256,
         topics: step.activeTopics,
+        pendingQuestions: dialogue.questions,
+        recommendations: dialogue.recommendations ?? [],
         memory: review.memory
           ? {
               ...review.memory,

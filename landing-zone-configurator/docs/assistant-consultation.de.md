@@ -176,6 +176,18 @@ Ein Turn bleibt auf zwölf Beratungsschritte, drei Schlussprüfungen und drei Mi
 begrenzt. Konfigurierte Einzelaufruf-Limits gelten weiterhin. HTTP-Fehler verursachen
 weder einen versteckten Controller-Wechsel noch unbegrenzte Wiederholungen.
 
+Die gesamte Turn-Frist wird getrennt als `consultation_timeout` erfasst; für einen
+einzelnen Modellaufruf bleibt `service_timeout` bestehen. Beide verwenden die
+bisherige öffentliche Timeout-Meldung. Serverlogs können die betroffene Inferenzphase
+und eine fest begrenzte Fehlerkategorie enthalten: Grammar-Backend-Konflikt,
+nicht unterstütztes Schema, Kontextlimit, Ratenlimit oder unbekannt. Fehlerantworten
+werden begrenzt und nur im Speicher klassifiziert. Providertext, Prompts, interne
+Modellbegründungen und Zugangsdaten gelangen nicht in diese Diagnostik. HTTP-Ablehnungen
+werden weder wiederholt noch als Erfolg gewertet. Synthetische Belege binden zusätzlich
+einen Hash der tatsächlichen API-, Vertrags-, Domain- und Testquellen; der Dialogtest
+protokolliert Tool- und Review-Ereignisse mit Laufzeiten. Sein Git-Katalog ist ausdrücklich
+synthetisch und bestätigt keine Kundenberechtigung.
+
 Die vollständige wiederholte CI-Qualifikation läuft wegen der gemeinsamen
 Projektquote seriell und hat ein Job-Limit von sechs Stunden. Einzelaufrufe und
 Turns erhalten dadurch keine längeren Fristen; fehlgeschlagene Wiederholungen
@@ -198,6 +210,10 @@ explizit sichtbar; spätere Operationen werden nicht nur gegen ein Zwischenprofi
 
 Eine gemeinsame inhaltliche Schlussprüfung vergleicht Auftrag, Folgeantworten,
 geprüfte Fakten und den tatsächlichen Compiler-Diff vor Anzeige und Speicherung.
+Die Antwort verwendet das vorhandene projizierte JSON-Schema auf der Serving-
+Schnittstelle und wird anschließend gegen das ursprüngliche Review-Schema geprüft.
+Ein allgemeines JSON-Objekt allein erfüllt diesen Vertrag nicht. Falsche Typen oder
+fehlende Entscheidungen können nicht zur Freigabe werden.
 Der Diff trennt ergänzte/entzogene Rechte nach Prinzipal und Produktgruppe.
 Unveränderte Identitäten und IAM-Metadaten fehlen dort. Befunde gehen zur Korrektur
 in denselben Dialog zurück. Das ist eine interne Qualitätsprüfung, keine weitere
@@ -220,11 +236,30 @@ benötigen weiterhin einen bestätigten initialen Owner.
 
 ## Kontext und Defaults
 
+Nach einer abgelehnten Schlussantwort wird ihr Kandidat nicht automatisch an
+spätere Texte oder Fragen angehängt. Schema- und Compiler-Gültigkeit allein belegen
+keine passende Antwort. Das Modell kann die tatsächlich fehlende Entscheidung ohne
+Vorschlag erfragen, nach einer reinen Erklärungskorrektur denselben validierten
+Handle ausdrücklich auswählen oder einen geänderten Kandidaten validieren.
+Typisierte Änderungstools können den validierten Arbeitsstand weiterhin ausdrücklich
+erweitern; der gesamte Effekt wird erneut geprüft. Übernommene Entwürfe und
+Berechtigungen ändern sich dadurch nicht.
+
 Der Gesprächsstand enthält Ziel, bestätigte Entscheidungen, Empfehlungen und offene
 Fragen. Bestätigungen verweisen auf wörtliche Nutzerbelege. Unbelegte Gedächtniseinträge
 werden verworfen; eine gültige Antwort scheitert nicht allein an einem ungenau zitierten
 Beratungsüberblick. Die tatsächliche Konfiguration bleibt maßgeblich. Empfehlungen
 werden nicht zu vermeintlichen Nutzerentscheidungen.
+
+Der Server erhält außerdem die tatsächlich angezeigten Fragen mit kanonischen
+Feldpfaden und quellbasierten Auswahlmöglichkeiten sowie die Empfehlungskarten im
+quellgebundenen privaten Stand. Der nächste Turn erhält sie neben dem Überblick;
+kurze Antworten beziehen sich dadurch auf eine konkrete offene Entscheidung statt
+auf eine Rekonstruktion aus Fließtext. Das ist Kontext, keine Zustimmung. Ein
+Themenwechsel kann Fragen schließen; jede neue Antwort ersetzt die offene Fragenliste.
+Die Schlussprüfung muss ausdrücklich den aktuellen Nutzer-Turn prüfen. Erfolgreiche
+Prüfungen früherer Aufträge qualifizieren keine neue Antwort und erlauben nicht,
+deren Änderungen erneut auszuführen.
 
 Der vorherige, noch nicht übernommene Vorschlag wird als Compiler-Diff weitergegeben,
 solange Wissenshash, Revision, Gültigkeit und öffentliche Ausgangswerte übereinstimmen.
@@ -326,6 +361,15 @@ Dienstrechte werden nur den angefragten Empfängern hinzugefügt. Eine fehlende
 ausdrückliche Einschränkung wählt Automation nicht automatisch aus. Bei unklaren
 Empfängern wird nachgefragt. Dokumentierte Einstellungsdefaults sind keine
 Erlaubnis, zusätzliche IAM-Empfänger einzubeziehen.
+Vor Ausgabe eines Vorschlags-Handles prüft der Server außerdem neu ergänzte
+Berechtigungsgruppen gegen tatsächliche Nutzeraussagen und die vorhandenen geprüften
+Service-Aliasse. Katalogzugehörigkeit fordert keinen Service an. Zitierte Frageoptionen
+wählen ihre Services nicht aus. Registrierte native Presets, der angeforderte
+Schlüsselverwaltungs-Workflow, wörtliche Berechtigungskennungen und tatsächliche
+Defaults neuer Templates behalten ihre Quellsemantik. Die Prüfung gilt auch für
+materialisierte vollständige Profile: Ein anderer JSON-Operationstyp umgeht sie nicht.
+Sie belegt eine Servicequelle, keine Zustimmung; die inhaltliche Schlussprüfung
+prüft weiterhin Verneinung, Zweck, Empfänger und den konkreten Änderungsumfang.
 Passen mehrere Vorlagen zur gewünschten einzelnen Art, wird eine Auswahl mit den
 tatsächlichen Schlüsseln angeboten. Kompakte Bereitschaftsinformationen zeigen
 fehlende Veröffentlichungsvoraussetzungen ohne unveränderte Owner-Adressen.
@@ -368,3 +412,16 @@ verwendet dasselbe Register. Owner-Auswahllabel kommen aus vorbereiteten Account
 und der verifizierten angemeldeten Identität. Modelltexte können keine andere
 Identität als verifiziert ausgeben. Das betrifft Fragezuordnungen, keine zusätzlichen
 Änderungspfade oder Tenant-Berechtigungen.
+
+Ausdrücklich angeforderte Wissensthemen haben Vorrang vor benachbarten Suchtreffern.
+Bei fehlendem Wissen nennt die Rückmeldung die ungelesenen Themen: Quelle abrufen
+oder irrelevanten historischen Verweis entfernen. Ungelesene Quellen werden nicht
+freigegeben. Der durchgehende Dialogtest verwendet das kanonische Limit von acht
+Fragen und prüft deren Aufgabenbezug; eine bereits geklärte Git-Größe darf nicht erneut
+abgefragt werden. Unabhängige Audit-Entscheidungen können mehr als drei Fragen
+benötigen. Audit-Abfrageberatung unterscheidet Grafana-SSO von technischen
+Zugangsdaten und dem separaten Logs-Fallback.
+
+Verbindliche Zugangsdaten-Grenzen erreichen jede Abschlussprüfung, auch ohne
+Quellenverweis des Modells: Secrets Manager entfernt erzeugte Geheimnisse nicht
+aus dem Terraform-/OpenTofu-State. Dessen Ablage und Zugriff bleiben sensibel.
