@@ -2,6 +2,17 @@
 
 [English](README.md) | [Deutsch](README.de.md)
 
+Audit storage follows `audit_logs`: `null` creates no archive bucket, router,
+query backend, tokens or retention policy. Disabling an existing audit deployment
+plans removal of its archive rather than recreating an unlocked bucket. Default
+and Terraform State buckets are unaffected. A declared State move preserves the
+identity of enabled legacy archives when the bucket becomes indexed.
+
+Deleting an archive can delete its history. Existing object versions and retention
+can prevent deletion; removing default retention does not remove existing object
+protection. Review archive contents and permissions separately; this module does
+not bypass GOVERNANCE retention or empty buckets automatically.
+
 The generated technical reference below documents this module.
 
 <!-- BEGIN_TF_DOCS -->
@@ -85,7 +96,7 @@ No modules.
 | Name | Description |
 | ---- | ----------- |
 | <a name="output_audit_grafana_url"></a> [audit\_grafana\_url](#output\_audit\_grafana\_url) | Management Grafana audit dashboard search. Null without audit logging or management Observability. |
-| <a name="output_audit_logs_bucket_name"></a> [audit\_logs\_bucket\_name](#output\_audit\_logs\_bucket\_name) | The name of the object storage bucket archiving audit logs. |
+| <a name="output_audit_logs_bucket_name"></a> [audit\_logs\_bucket\_name](#output\_audit\_logs\_bucket\_name) | The name of the audit archive bucket; null when audit logging is disabled. |
 | <a name="output_audit_logs_datasource_url"></a> [audit\_logs\_datasource\_url](#output\_audit\_logs\_datasource\_url) | URL of the active audit query backend (management Observability or dedicated Logs). |
 | <a name="output_audit_logs_instance_id"></a> [audit\_logs\_instance\_id](#output\_audit\_logs\_instance\_id) | The ID of the dedicated Logs fallback; null when management Observability handles audit queries. |
 | <a name="output_audit_telemetry_router_id"></a> [audit\_telemetry\_router\_id](#output\_audit\_telemetry\_router\_id) | The ID of the Telemetry Router collecting audit logs. |

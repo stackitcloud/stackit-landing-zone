@@ -524,15 +524,16 @@ run "management_project_unique_bucket_defaults" {
   }
 
   variables {
-    naming_pattern      = "a-very-long-but-valid-management-resource-name-prefix"
+    audit_logs          = {}
+    naming_pattern      = "management-prefix-xx"
     parent_container_id = "00000000-0000-0000-0000-000000000000"
   }
 
   assert {
     condition = alltrue([
-      for name in [stackit_objectstorage_bucket.default.name, stackit_objectstorage_bucket.tfstate.name, stackit_objectstorage_bucket.audit_logs.name] :
+      for name in [stackit_objectstorage_bucket.default.name, stackit_objectstorage_bucket.tfstate.name, stackit_objectstorage_bucket.audit_logs[0].name] :
       length(name) <= 63 && strcontains(name, stackit_resourcemanager_project.this.project_id)
-    ]) && length(toset([stackit_objectstorage_bucket.default.name, stackit_objectstorage_bucket.tfstate.name, stackit_objectstorage_bucket.audit_logs.name])) == 3
+    ]) && length(toset([stackit_objectstorage_bucket.default.name, stackit_objectstorage_bucket.tfstate.name, stackit_objectstorage_bucket.audit_logs[0].name])) == 3
     error_message = "All bucket defaults must contain the full project UUID, remain distinct and fit the S3 name limit."
   }
 }
@@ -545,13 +546,14 @@ run "management_legacy_bucket_names_require_explicit_choice" {
   }
 
   variables {
+    audit_logs          = {}
     naming_pattern      = "tst-pltfm-mgmt-prod"
     parent_container_id = "00000000-0000-0000-0000-000000000000"
     bucket_naming       = "legacy"
   }
 
   assert {
-    condition     = stackit_objectstorage_bucket.default.name == "tst-pltfm-mgmt-prod-default" && stackit_objectstorage_bucket.tfstate.name == "tst-pltfm-mgmt-prod-tfstate" && stackit_objectstorage_bucket.audit_logs.name == "tst-pltfm-mgmt-prod-audit-logs"
+    condition     = stackit_objectstorage_bucket.default.name == "tst-pltfm-mgmt-prod-default" && stackit_objectstorage_bucket.tfstate.name == "tst-pltfm-mgmt-prod-tfstate" && stackit_objectstorage_bucket.audit_logs[0].name == "tst-pltfm-mgmt-prod-audit-logs"
     error_message = "Explicit legacy mode must retain all existing bucket names exactly."
   }
 }
@@ -599,7 +601,7 @@ run "management_identical_prefix_distinct_project" {
   }
 
   variables {
-    naming_pattern      = "a-very-long-but-valid-management-resource-name-prefix"
+    naming_pattern      = "management-prefix-xx"
     parent_container_id = "00000000-0000-0000-0000-000000000000"
   }
 
@@ -667,8 +669,8 @@ run "audit_disabled" {
   }
 
   assert {
-    condition     = length(stackit_objectstorage_compliance_lock.this) == 0 && length(stackit_objectstorage_default_retention.audit_logs) == 0 && stackit_objectstorage_bucket.audit_logs.object_lock == false
-    error_message = "Audit disabled must preserve the project lock, bucket Object Lock and retention contract."
+    condition     = length(stackit_objectstorage_bucket.audit_logs) == 0 && length(stackit_objectstorage_compliance_lock.this) == 0 && length(stackit_objectstorage_default_retention.audit_logs) == 0 && output.audit_logs_bucket_name == null
+    error_message = "Disabled audit logging must create no archive bucket, project lock or retention policy and expose no archive output."
   }
 }
 
@@ -686,7 +688,7 @@ run "audit_omitted_object_lock" {
   }
 
   assert {
-    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs.object_lock == true
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs[0].object_lock == true
     error_message = "Audit omitted_object_lock must preserve the project lock, bucket Object Lock and retention contract."
   }
 
@@ -710,7 +712,7 @@ run "audit_null_object_lock" {
   }
 
   assert {
-    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs.object_lock == true
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs[0].object_lock == true
     error_message = "Audit null_object_lock must preserve the project lock, bucket Object Lock and retention contract."
   }
 
@@ -734,7 +736,7 @@ run "audit_explicit_object_lock" {
   }
 
   assert {
-    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs.object_lock == true
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 1 && length(stackit_objectstorage_default_retention.audit_logs) == 1 && stackit_objectstorage_bucket.audit_logs[0].object_lock == true
     error_message = "Audit explicit_object_lock must preserve the project lock, bucket Object Lock and retention contract."
   }
 
@@ -758,7 +760,7 @@ run "audit_explicit_opt_out" {
   }
 
   assert {
-    condition     = length(stackit_objectstorage_compliance_lock.this) == 0 && length(stackit_objectstorage_default_retention.audit_logs) == 0 && stackit_objectstorage_bucket.audit_logs.object_lock == false
+    condition     = length(stackit_objectstorage_compliance_lock.this) == 0 && length(stackit_objectstorage_default_retention.audit_logs) == 0 && stackit_objectstorage_bucket.audit_logs[0].object_lock == false
     error_message = "Audit explicit_opt_out must preserve the project lock, bucket Object Lock and retention contract."
   }
 }

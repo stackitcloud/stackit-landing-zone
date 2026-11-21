@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { platformUpgradeAcceleratorCommit } from "../packages/contracts/dist/index.js";
 
-const auditGrafanaRouting =
-  JSON.parse(readFileSync(`${process.argv[3]}/platform-source.json`, "utf8"))
-    .acceleratorCommit === platformUpgradeAcceleratorCommit;
+const executionSource = JSON.parse(
+  readFileSync(`${process.argv[3]}/platform-source.json`, "utf8"),
+).acceleratorCommit;
+const conditionalAuditArchive =
+  executionSource === platformUpgradeAcceleratorCommit;
+const auditGrafanaRouting = [
+  "2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a",
+  platformUpgradeAcceleratorCommit,
+].includes(executionSource);
 
 const events = readFileSync(process.argv[2], "utf8")
   .trim()
@@ -48,6 +54,13 @@ for (const event of plans) {
     name,
   );
   const audit = enabled("audit_logs") || name === "audit_defaults";
+  assert.equal(
+    resources("stackit_objectstorage_bucket").filter(
+      (resource) => resource.name === "audit_logs",
+    ).length,
+    conditionalAuditArchive ? (audit ? 1 : 0) : 1,
+    `${name}: archive bucket follows audit activation in the corrected source`,
+  );
   const usesDedicatedLogs =
     audit && !(auditGrafanaRouting && name === "combined");
   assert.equal(

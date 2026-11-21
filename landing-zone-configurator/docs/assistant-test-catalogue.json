@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "51ce3f79e3eae451212e22a23702a40c579ff53ba9b497f5b83fd3bb774a3592",
+  "knowledgeSha256": "dc9741e399a81eb01720cf94102783532cd51593062c1222f38d8cb9d879415d",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "340b60fe7a464d67b04509adde98af5055e7d30b3c225cd116d567b4028b9863",
+    "scripts/assistant-scenarios.ts": "da55cbc58b08e4a48efa27b12a3445c5d70ee903a35f51a476232a585b8deb17",
     "scripts/assistant-tests.ts": "e479f24ab2a517f0b4c5e63ab7791ad8562960f4363283be8a9c5b31628542c2",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "2951928e744a0daab0b779013e4002e7fdcd5b94df2bfb3ccbad41d446a7f075",
+  "suiteSha256": "b2e24410a717e47dca6a1550611e836fe58f48c93d981568db4512d0ad52d681",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1651,6 +1651,17 @@
             "compiler_accepts_proposal",
             "explicit_unsaved_notice",
             "no_premature_saved_claim"
+          ]
+        },
+        {
+          "id": "audit-disabled-archive-advice",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "message": "Wenn ich Audit Logging mit audit_logs=null abschalte, wird weiterhin ein S3-Archiv-Bucket angelegt oder ein bestehender Bucket ungeschützt neu erstellt? Erkläre den korrigierten Rückbau, was mit Default- und Terraform-State-Bucket passiert und welche Einschränkung vorhandene Objektaufbewahrung beim Löschen bedeutet. Nur beraten, keine Konfiguration ändern und nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
           ]
         },
         {

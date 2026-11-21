@@ -754,7 +754,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/3-object-storage.tf",
           sha256:
-            "3adda3f12df344f2b7db40a32f606c755ccd45ab84ed4d5cd6d59174c16c4f3b",
+            "6a3f95b77be1f3bbf82e9dcaeb608bd9b61d20f1a42585ebe573353c13fcc07e",
         },
         {
           path: "src/modules/management/4-service-account.tf",
@@ -774,7 +774,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "landing-zone-configurator/app/apps/api/src/deployments/preparations.ts",
           sha256:
-            "166cd0af1b8869e8356d343e155114b2620fb9ee638b819571a90456f325263c",
+            "178669b42f85549db9e2f09c32e9c657a6a801c012bbd4a317f473549eec8879",
         },
         {
           path: "landing-zone-configurator/app/packages/domain/src/initial-plan.ts",
@@ -1103,8 +1103,8 @@ export const assistantKnowledgeTopics = {
     {
       id: "audit-logs",
       file: "audit-logs.md",
-      version: 7,
-      checkedOn: "2026-11-20",
+      version: 8,
+      checkedOn: "2026-11-21",
       qualification: "local-draft-not-reviewed-release",
       groups: ["management"],
       mandatory: false,
@@ -1129,7 +1129,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/6-audit-logs.tf",
           sha256:
-            "6ac3743cab43e0c0149fd92267e3315b31f618e8893e09903d78d184fb339d43",
+            "e806f62c43ee451b16a38ae3ffa642d31410706f8120cb2808eb749834e9a054",
         },
         {
           path: "src/audit-coverage.tf",
@@ -1154,7 +1154,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/3-object-storage.tf",
           sha256:
-            "3adda3f12df344f2b7db40a32f606c755ccd45ab84ed4d5cd6d59174c16c4f3b",
+            "6a3f95b77be1f3bbf82e9dcaeb608bd9b61d20f1a42585ebe573353c13fcc07e",
         },
         {
           path: "landing-zone-configurator/app/packages/contracts/src/recovery/catalogue.ts",
@@ -1169,7 +1169,7 @@ export const assistantKnowledgeTopics = {
         {
           path: "src/modules/management/outputs.tf",
           sha256:
-            "9e0e181769e941a05d42f2db72b041e92eca9115e91909fb6f288fa991868a26",
+            "087b4a259eb819a11c9d7614c5100e1b020326fe7e155893190bebe9a7f0027c",
         },
         {
           path: "landing-zone-configurator/app/apps/api/src/assistant/consultation.ts",
@@ -1300,9 +1300,9 @@ export const assistantKnowledgeTopics = {
       ],
       source:
         "landing-zone-configurator/docs/assistant-knowledge/audit-logs.md",
-      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nAudit routing.\n\n## Accelerator Contract\n\naudit_logs=null skips routing/retention, not archive bucket.\nSinks: S3 + ONE query store. With observability: OTLP to its built-in Grafana Audit Logs Dashboard.\nTechnical credential for data; users log in with SSO; no admin; no separate Logs instance/tokens/destination.\nWithout Observability: Logs. Needs logs-capable plan, not\nMonitoring/Frontend/MetricsEndpoint. Observability has own retention/cost;\nretention_days controls S3 and, only in fallback, Logs.\nDev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability\ntarget/credential. S3/Router/links/projects stay. No order upgrade for linked\nprojects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are metadata. acl controls Logs clients, observability.acl Observability.\nRouter ranges join the selected store's ACL, preserving clients.\nrouter_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4\nlist narrows. Authentication required; empty feed fails.\nObject Lock defaults true, including nested null; retention 180. Explicit false\nopts out before creation. With lock: 1..365 days, GOVERNANCE; not reversible\nor compliance certification.\nOrganization links capture ONLY organization events, no inheritance.\nmanaged_resources=false by default; true links managed folders/projects and new\norders via platform contract. Existing unlinked orders need approved platform\nupgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.\nManaged scopes same-region; others need reviewed routers. link_scopes supports\norganization/folder/project. External links need reviewed import.\n\n## Dependencies\n\nCentral identity, same-region router/link. Default workload identities cannot\nread central ingestion secrets.\n\n## Dialogue\n\nEditor: propose actual native defaults as labelled assumptions for unspecified\nretention/ACL/Lock; explain locking consequences. Explicit USER restrictions win;\nno guessed values or other components. Managed: managed_resources=true,\nno invented IDs.\n\n## Examples\n\nMissing ACL → labelled native default or question; no borrowed Firewall net.\n\n## Limits\n\nFuture events only. Default rights exclude audit mutation; Owner/inherited grants\ncan alter routing: no deny guarantee. Verify query/S3/dashboard delivery/access.\nRecovery preserves links; lost secrets need exact approved revocation + fresh\nPlan/Apply, never fabricated keys.\n\n## Credentials\n\nNo tokens, S3 keys, State or audit contents in chat/public contracts.\nProtected execution only.\n\n## Sources\n\nManifest binds sources; configuration proves no delivery/compliance.\n",
+      text: "# Audit Routing and Archive Retention\n\n## Purpose\n\nAudit routing.\n\n## Accelerator Contract\n\naudit_logs=null removes routing/retention/archive; no replacement bucket.\nDefault/State buckets remain. Existing object retention can block deletion.\nSinks: S3 + ONE query store. With observability: OTLP to its built-in Grafana Audit Logs Dashboard.\nTechnical data credentials; users log in with SSO; no admin or separate Logs/tokens/destination.\nWithout Observability: Logs. Needs logs-capable plan, not\nMonitoring/Frontend/MetricsEndpoint. Observability has own retention/cost;\nretention_days: S3 + fallback Logs.\nDev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability\ntarget/credential. S3/Router/links/projects stay. No order upgrade for linked\nprojects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are metadata. acl controls Logs clients, observability.acl Observability.\nRouter ranges join the selected store's ACL, preserving clients.\nrouter_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4\nlist narrows. Authentication required; empty feed fails.\nLock: true (also nested null), 180 days; explicit false before creation;\nGOVERNANCE 1..365; no in-place unlock or compliance claim.\nOrganization links capture ONLY organization events, no inheritance.\nmanaged_resources=false by default; true links managed folders/projects and new\norders via platform contract. Existing unlinked orders need approved platform\nupgrade + fresh Plan/Apply. No explicit link_scopes with managed coverage.\nManaged scopes same-region; others need reviewed routers. link_scopes supports\norganization/folder/project. External links need reviewed import.\n\n## Dependencies\n\nCentral identity, same-region router/link. Default workload identities cannot\nread central ingestion secrets.\n\n## Dialogue\n\nEditor: propose actual native defaults as labelled assumptions for unspecified\nretention/ACL/Lock; explain locking consequences. Explicit USER restrictions win;\nno guessed values or other components. Managed: managed_resources=true,\nno invented IDs.\n\n## Examples\n\nMissing ACL → labelled native default or question; no borrowed Firewall net.\n\n## Limits\n\nFuture events only. Default rights exclude audit mutation; Owner/inherited grants\ncan alter routing: no deny guarantee. Verify query/S3/dashboard delivery/access.\nRecovery preserves links; lost secrets need exact approved revocation + fresh\nPlan/Apply, never fabricated keys.\n\n## Credentials\n\nNo tokens, S3 keys, State or audit contents in chat/public contracts.\nProtected execution only.\n\n## Sources\n\nManifest binds sources; configuration proves no delivery/compliance.\n",
       sha256:
-        "325c074101bca6bb38caba8ccd60dc4a084c395678b678a35eb28aaca64c8755",
+        "1f8917a99f0b8ea2d7839dd2dcf4dbb7d9c92b67e91a246fff466ff8f9c67220",
     },
     {
       id: "federated-identities",

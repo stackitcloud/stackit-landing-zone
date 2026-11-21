@@ -130,8 +130,8 @@ resource "stackit_telemetryrouter_destination" "audit_archive" {
   config = {
     config_type = "S3"
     s3 = {
-      bucket   = stackit_objectstorage_bucket.audit_logs.name
-      endpoint = trimsuffix(stackit_objectstorage_bucket.audit_logs.url_path_style, "/${stackit_objectstorage_bucket.audit_logs.name}")
+      bucket   = stackit_objectstorage_bucket.audit_logs[0].name
+      endpoint = trimsuffix(stackit_objectstorage_bucket.audit_logs[0].url_path_style, "/${stackit_objectstorage_bucket.audit_logs[0].name}")
       access_key = {
         id     = stackit_objectstorage_credential.this.access_key
         secret = stackit_objectstorage_credential.this.secret_access_key
@@ -192,8 +192,8 @@ resource "vault_kv_secret_v2" "audit_logs" {
       DATASOURCE_URL  = local.audit_uses_logs ? "https://${stackit_logs_instance.audit[0].datasource_url}" : stackit_observability_instance.this[0].logs_url
       ROUTER_TOKEN    = stackit_telemetryrouter_access_token.audit_link[0].access_token
 
-      ARCHIVE_BUCKET   = stackit_objectstorage_bucket.audit_logs.name
-      ARCHIVE_ENDPOINT = trimsuffix(stackit_objectstorage_bucket.audit_logs.url_path_style, "/${stackit_objectstorage_bucket.audit_logs.name}")
+      ARCHIVE_BUCKET   = stackit_objectstorage_bucket.audit_logs[0].name
+      ARCHIVE_ENDPOINT = trimsuffix(stackit_objectstorage_bucket.audit_logs[0].url_path_style, "/${stackit_objectstorage_bucket.audit_logs[0].name}")
     },
     local.audit_uses_logs ? {
       WRITE_TOKEN = stackit_logs_access_token.audit_write[0].access_token

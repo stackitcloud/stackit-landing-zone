@@ -38,7 +38,16 @@ resource "stackit_objectstorage_compliance_lock" "this" {
   ]
 }
 
+# Preserve existing archive identity when enabling conditional audit storage.
+# Retain this move for upgrades from releases with the unconditional bucket.
+moved {
+  from = stackit_objectstorage_bucket.audit_logs
+  to   = stackit_objectstorage_bucket.audit_logs[0]
+}
+
 resource "stackit_objectstorage_bucket" "audit_logs" {
+  count = var.audit_logs != null ? 1 : 0
+
   name       = local.bucket_names["audit-logs"]
   project_id = stackit_resourcemanager_project.this.project_id
 
@@ -54,7 +63,7 @@ resource "stackit_objectstorage_default_retention" "audit_logs" {
   count = try(var.audit_logs.s3_object_lock, false) ? 1 : 0
 
   project_id  = stackit_resourcemanager_project.this.project_id
-  bucket_name = stackit_objectstorage_bucket.audit_logs.name
+  bucket_name = stackit_objectstorage_bucket.audit_logs[0].name
   days        = var.audit_logs.retention_days
 
   # GOVERNANCE, not COMPLIANCE: objects can still be removed early by a holder of s3:BypassGovernanceRetention, which keeps the bucket and project destroyable.

@@ -6,21 +6,21 @@ Audit routing.
 
 ## Accelerator Contract
 
-audit_logs=null skips routing/retention, not archive bucket.
+audit_logs=null removes routing/retention/archive; no replacement bucket.
+Default/State buckets remain. Existing object retention can block deletion.
 Sinks: S3 + ONE query store. With observability: OTLP to its built-in Grafana Audit Logs Dashboard.
-Technical credential for data; users log in with SSO; no admin; no separate Logs instance/tokens/destination.
+Technical data credentials; users log in with SSO; no admin or separate Logs/tokens/destination.
 Without Observability: Logs. Needs logs-capable plan, not
 Monitoring/Frontend/MetricsEndpoint. Observability has own retention/cost;
-retention_days controls S3 and, only in fallback, Logs.
+retention_days: S3 + fallback Logs.
 Dev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability
 target/credential. S3/Router/links/projects stay. No order upgrade for linked
 projects, no historical replay. Dashboard: 24h/all filters; may lag. UUIDs are metadata. acl controls Logs clients, observability.acl Observability.
 Router ranges join the selected store's ACL, preserving clients.
 router_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4
 list narrows. Authentication required; empty feed fails.
-Object Lock defaults true, including nested null; retention 180. Explicit false
-opts out before creation. With lock: 1..365 days, GOVERNANCE; not reversible
-or compliance certification.
+Lock: true (also nested null), 180 days; explicit false before creation;
+GOVERNANCE 1..365; no in-place unlock or compliance claim.
 Organization links capture ONLY organization events, no inheritance.
 managed_resources=false by default; true links managed folders/projects and new
 orders via platform contract. Existing unlinked orders need approved platform

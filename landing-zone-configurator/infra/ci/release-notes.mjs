@@ -1,6 +1,14 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.2.4": {
+  introduction:"Correct Audit Logging removal without recreating its archive bucket.",
+  changes:[
+   "Create audit archive storage only while Audit Logging is enabled; disabling it plans removal without an unlocked replacement bucket.",
+   "Preserve existing enabled archive identity through a declared State move; keep default and Terraform State buckets unchanged.",
+   "Register the corrected Accelerator source for fresh reviewed platform Plans, with offline legacy-State regressions against the pinned provider.",
+  ],
+ },
  "v2.2.3": {
   introduction:"Collaborative configuration conversations, production email and S3 Apply recovery.",
   changes:[

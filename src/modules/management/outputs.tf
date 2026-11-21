@@ -54,8 +54,8 @@ output "audit_telemetry_router_id" {
 }
 
 output "audit_logs_bucket_name" {
-  description = "The name of the object storage bucket archiving audit logs."
-  value       = stackit_objectstorage_bucket.audit_logs.name
+  description = "The name of the audit archive bucket; null when audit logging is disabled."
+  value       = try(stackit_objectstorage_bucket.audit_logs[0].name, null)
 }
 
 output "audit_telemetry_router_token" {

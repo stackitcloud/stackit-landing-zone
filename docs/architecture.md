@@ -111,8 +111,12 @@ not establish these operational facts.
 
 #### Audit archive retention
 
-`audit_logs = null` (or omitting it) skips audit routing and retention resources.
-The management archive bucket itself still exists. Enabling audit with `{}`
+`audit_logs = null` (or omitting it) creates no audit routing, retention resources
+or archive bucket. Disabling an existing deployment plans deletion of its audit
+resources, including the archive bucket, without recreating an unlocked bucket.
+The default and Terraform State buckets remain independent. The declared State
+move from `audit_logs` to `audit_logs[0]` preserves an enabled legacy archive’s
+identity. Enabling audit with `{}`
 uses the existing native defaults: `s3_object_lock = true` and
 `retention_days = 180`. A null nested `s3_object_lock` also uses `true`.
 Set `s3_object_lock = false` explicitly **before creating the archive** to opt
@@ -121,7 +125,7 @@ silently accepting this native default.
 
 Object Lock creates the project compliance lock, enables bucket Object Lock and
 sets a GOVERNANCE default retention of 1–365 days. This preserves the historical
-behavior; no existing bucket is changed by this documentation correction.
+protection defaults while audit logging is enabled.
 Turning the setting off later is not a supported reversal of bucket protection.
 Review the real Plan and existing retention before changing an installed archive;
 GOVERNANCE bypass rights and retained object versions affect deletion separately.
