@@ -119,8 +119,13 @@ Offline-Plans und Configurator-Deployment belegen diese Betriebsnachweise nicht.
 
 #### Aufbewahrung des Audit-Archivs
 
-`audit_logs = null` (oder Weglassen) überspringt Audit-Routing und
-Aufbewahrungsressourcen. Der Management-Archiv-Bucket selbst existiert weiterhin.
+`audit_logs = null` (oder Weglassen) legt weder Audit-Routing und
+Aufbewahrungsressourcen noch einen Archiv-Bucket an. Das Ausschalten einer
+bestehenden Bereitstellung plant die Löschung der Audit-Ressourcen einschließlich
+des Archiv-Buckets, ohne einen ungeschützten Ersatz anzulegen. Default- und
+Terraform-State-Bucket bleiben unabhängig. Der deklarierte State-Move von
+`audit_logs` nach `audit_logs[0]` erhält die Identität eines weiterhin aktivierten
+Legacy-Archivs.
 Audit mit `{}` verwendet die bisherigen nativen Defaults:
 `s3_object_lock = true` und `retention_days = 180`. Auch ein verschachteltes
 `s3_object_lock = null` verwendet `true`. Zum Verzicht **vor der Erstellung des
@@ -130,8 +135,7 @@ nicht stillschweigend.
 
 Object Lock erstellt den Compliance Lock des Projekts, aktiviert Object Lock am
 Bucket und setzt eine GOVERNANCE-Standardaufbewahrung von 1–365 Tagen. Das
-bisherige Verhalten bleibt erhalten; diese Dokumentationskorrektur verändert
-keinen bestehenden Bucket. Späteres Ausschalten ist keine unterstützte Umkehr
+Schutzverhalten bleibt bei eingeschaltetem Audit Logging erhalten. Späteres Ausschalten ist keine unterstützte Umkehr
 des Bucket-Schutzes. Vor Änderungen an einem bestehenden Archiv den echten Plan
 und die aktuelle Aufbewahrung prüfen; GOVERNANCE-Bypass-Rechte und aufbewahrte
 Objektversionen beeinflussen das Löschen unabhängig davon. Weder dieser Modus
