@@ -43,7 +43,7 @@ fi
 cp ../deploy/runner/run-plan.sh ../deploy/runner/runner.tfrc "$runner_dir/"
 platform_commit=a256f6896d11134fdc351786f1be5eba4e56b2e2
 if [[ "${LZC_PACKAGE_PLATFORM_UPGRADE_ROOT:-false}" == "true" ]]; then
-	platform_commit=2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a
+	platform_commit=$(node --input-type=module -e 'import {platformUpgradeAcceleratorCommit} from "./packages/contracts/dist/index.js"; process.stdout.write(platformUpgradeAcceleratorCommit)')
 else
 	git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$platform_commit"
 fi

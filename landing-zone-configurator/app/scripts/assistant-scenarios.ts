@@ -1535,6 +1535,13 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Mein Plattform-Plan stellt die zentrale Audit-Ablage von Logs auf die bereits bestehende Observability um: gleiche Projekte und gleicher Router, unverändertes S3-Archiv und Links, vier alte Logs-Ressourcen werden entfernt. Application-Bestellungen hängen daran. Wann ist diese konkrete Migration freigabefähig, woran ist meine Bestätigung gebunden, Wie entscheidet der Platform Owner bei anderen geplanten Löschungen und Ersetzungen, und lassen sich alte Pläne dadurch nachträglich entsperren? Nur beraten, nichts ändern oder ausführen.",
   },
   {
+    id: "audit-disabled-archive-advice",
+    topic: "audit-logs",
+    fixture: "baseline",
+    message:
+      "Wenn ich Audit Logging mit audit_logs=null abschalte, wird weiterhin ein S3-Archiv-Bucket angelegt oder ein bestehender Bucket ungeschützt neu erstellt? Erkläre den korrigierten Rückbau, was mit Default- und Terraform-State-Bucket passiert und welche Einschränkung vorhandene Objektaufbewahrung beim Löschen bedeutet. Nur beraten, keine Konfiguration ändern und nichts ausführen.",
+  },
+  {
     id: "audit-grafana-upgrade-advice",
     topic: "audit-logs",
     fixture: "baseline",
@@ -2277,6 +2284,20 @@ export function validateAssistantScenario(
     assistantTemplateQuestionPaths(fixture.values),
   );
   const failures: string[] = [];
+  if (scenario.id === "audit-disabled-archive-advice") {
+    const text = dialogue.explanation;
+    if (
+      !/Archiv|archive/i.test(text) ||
+      !/entfern|lösch|delet|remov|kein|no archive|no audit bucket/i.test(text)
+    )
+      failures.push("audit_archive_disabled_lifecycle_missing");
+    if (!/Default|Standard/i.test(text) || !/State/i.test(text))
+      failures.push("independent_management_buckets_missing");
+    if (!/retention|Aufbewahr|GOVERNANCE|Object.?Lock|Objektschutz/i.test(text))
+      failures.push("existing_object_protection_missing");
+    if (dialogue.changes.length || dialogue.questions.length)
+      failures.push("audit_disable_advice_unrequested_changes_or_questions");
+  }
   if (scenario.id === "configuration-shared-chat-advice") {
     const text = dialogue.explanation;
     if (!/gemeinsam|geteilt|shared/i.test(text))

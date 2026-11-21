@@ -11,8 +11,10 @@ Aufbewahrung erfassen.
 
 ## Accelerator-Vertrag
 
-`audit_logs=null` überspringt Routing und Aufbewahrung, nicht den bestehenden
-Archiv-Bucket. Die Ziele sind S3 und genau eine abfragbare Ablage. Mit zentraler Observability
+`audit_logs=null` entfernt Routing, Aufbewahrung und Archiv-Bucket; es entsteht
+kein Ersatz-Bucket. Default- und State-Bucket bleiben erhalten. Bestehender
+Objektschutz kann das Löschen verhindern. Bei aktiviertem Audit Logging sind die
+Ziele S3 und genau eine abfragbare Ablage. Mit zentraler Observability
 wird deren OTLP-Ziel verwendet und das vorhandene Grafana Audit Logs Dashboard
 befüllt. Eine separate Logs-Instanz samt Tokens und Ziel entfällt. Ohne Observability
 bleibt STACKIT Logs die abfragbare Ablage. Ein technischer Zugang genügt, kein

@@ -305,6 +305,15 @@ it("binds a preparation to the saved configuration, code revision, secret versio
       },
     }),
   ).toBe(preparationTfvars(upgraded));
+  expect(
+    preparationTfvars({
+      ...upgraded,
+      accelerator: {
+        ...upgraded.accelerator,
+        commit: "2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a",
+      },
+    }),
+  ).toBe(preparationTfvars(upgraded));
   expect(preparationTfvars(manifest)).toBe(snapshot.tfvars);
   expect(manifest.accelerator.commit).toBe(acceleratorCommit);
   expect(manifest.platformContractNamespace).toBeUndefined();

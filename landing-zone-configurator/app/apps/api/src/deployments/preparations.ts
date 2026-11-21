@@ -109,6 +109,7 @@ export function preparationTfvars(
   if (
     [
       platformUpgradeAcceleratorCommit,
+      "2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a",
       "6398834bf20a4f24ea81c1f7dd0627025b4a81ce",
     ].includes(manifest.accelerator.commit)
   ) {
@@ -367,6 +368,7 @@ export class Preparations {
           // explicit reconciliation. Never make a fresh/empty bootstrap here.
           const compatibleSources = [
             platformUpgradeAcceleratorCommit,
+            "2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a",
             "6398834bf20a4f24ea81c1f7dd0627025b4a81ce",
             "c83f3d910ab20131d1cba898023317c0e818843b",
             "c4b43c36af198985980b17626c48d357795e3fbd",
