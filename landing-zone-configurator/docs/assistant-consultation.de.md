@@ -361,6 +361,15 @@ Dienstrechte werden nur den angefragten Empfängern hinzugefügt. Eine fehlende
 ausdrückliche Einschränkung wählt Automation nicht automatisch aus. Bei unklaren
 Empfängern wird nachgefragt. Dokumentierte Einstellungsdefaults sind keine
 Erlaubnis, zusätzliche IAM-Empfänger einzubeziehen.
+Vor Ausgabe eines Vorschlags-Handles prüft der Server außerdem neu ergänzte
+Berechtigungsgruppen gegen tatsächliche Nutzeraussagen und die vorhandenen geprüften
+Service-Aliasse. Katalogzugehörigkeit fordert keinen Service an. Zitierte Frageoptionen
+wählen ihre Services nicht aus. Registrierte native Presets, der angeforderte
+Schlüsselverwaltungs-Workflow, wörtliche Berechtigungskennungen und tatsächliche
+Defaults neuer Templates behalten ihre Quellsemantik. Die Prüfung gilt auch für
+materialisierte vollständige Profile: Ein anderer JSON-Operationstyp umgeht sie nicht.
+Sie belegt eine Servicequelle, keine Zustimmung; die inhaltliche Schlussprüfung
+prüft weiterhin Verneinung, Zweck, Empfänger und den konkreten Änderungsumfang.
 Passen mehrere Vorlagen zur gewünschten einzelnen Art, wird eine Auswahl mit den
 tatsächlichen Schlüsseln angeboten. Kompakte Bereitschaftsinformationen zeigen
 fehlende Veröffentlichungsvoraussetzungen ohne unveränderte Owner-Adressen.

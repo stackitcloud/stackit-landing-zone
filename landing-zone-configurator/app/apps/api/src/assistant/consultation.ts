@@ -59,6 +59,7 @@ import {
   type AssistantStream,
 } from "./model-serving.js";
 import { materializeNativeDefaultProposals } from "./native-default-proposals.js";
+import { validateConsultationPermissionSources } from "./permission-sources.js";
 import {
   type ConsultationCompilerEvidence,
   consultationCompilerEvidence,
@@ -1167,6 +1168,14 @@ export async function runConsultation(input: {
               assistantTemplateQuestionPaths(input.current).includes(path)),
         );
         const changes = nativeProposal.changes;
+        validateConsultationPermissionSources(
+          operations,
+          changes,
+          input.current,
+          turns
+            .filter((turn) => turn.role === "user")
+            .map((turn) => turn.content),
+        );
         for (const change of changes) {
           const root = change.path.split(".")[0]!;
           if (!editableRoot(root)) throw new Error("assistant_invalid_scope");

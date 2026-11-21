@@ -1590,3 +1590,77 @@ it("returns a genuine remaining question without a rejected default proposal att
     { path: "devops.allowed_network_ranges" },
   ]);
 });
+
+it("rejects unrequested service rights before a handle is issued and validates the corrected workflow", async () => {
+  const current = {
+    projectTemplates: {
+      central: {
+        accessProfile: {
+          schemaVersion: 1,
+          mode: "granular",
+          initialOwnerEmail: "owner@example.test",
+          permissions: ["iaas.server.get"],
+          automationPermissions: ["iaas.server.get"],
+        },
+      },
+    },
+  };
+  const keyOperation = {
+    path: "projectTemplates",
+    operation: "add_permissions",
+    value: {
+      templateKeys: ["central"],
+      principals: ["requester"],
+      source: { kind: "permission_set", id: "service-account-keys" },
+    },
+  };
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["project-templates"] }],
+    }),
+    () => ({
+      action: "validate_proposal",
+      basis: [],
+      changes: [
+        keyOperation,
+        {
+          ...keyOperation,
+          value: {
+            ...keyOperation.value,
+            source: { kind: "services", ids: ["git"] },
+          },
+        },
+      ],
+    }),
+    (body) => {
+      expect(lastResult(body).validation).toMatchObject({
+        ok: false,
+        code: "assistant_permission_service_unconfirmed",
+      });
+      return {
+        action: "validate_proposal",
+        basis: [],
+        changes: [keyOperation],
+      };
+    },
+    (body) =>
+      final({
+        kind: "proposal",
+        proposal: lastResult(body).validation.proposal,
+        references: ["project-templates"],
+        explanation:
+          "Key management is project-wide, can use all account rights including outside this project. Keep privileged platform accounts outside application projects. Nothing saved.",
+      }),
+  ]);
+  const answer = await client.converse(
+    selection,
+    current,
+    [],
+    "In template central add requester rights for managing keys of the existing service account, for pipelines. Keep automation unchanged.",
+  );
+  expect(JSON.stringify(answer.changes)).toContain(
+    "iam.service-account-key.create",
+  );
+  expect(JSON.stringify(answer.changes)).not.toContain("git.instance");
+});

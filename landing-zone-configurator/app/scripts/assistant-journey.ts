@@ -149,7 +149,7 @@ const steps: Step[] = [
   {
     id: "devops-setup",
     message:
-      "Please add a central company Git instance for around 80 developers in our Hub-and-Spoke landing zone. Recommend the suitable plan; access is not decided yet.",
+      "Please prepare a central company Git instance for around 80 developers in our Hub-and-Spoke landing zone. Recommend the suitable plan, but do not propose configuration changes until I choose access. Ask me the remaining access question now.",
     reference: "devops-git",
     roots: ["devops"],
     questionsOnly: true,

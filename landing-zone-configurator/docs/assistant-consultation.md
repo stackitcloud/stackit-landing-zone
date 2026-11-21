@@ -288,6 +288,15 @@ and the central initial owner are separate roles.
 Service additions target only the requested recipients; lack of an explicit
 prohibition does not select automation. Ambiguous recipients need a question.
 Documented setting defaults never authorize additional IAM recipients.
+Before issuing a handle, the server also checks newly added permission service
+groups against actual user statements and the existing reviewed service aliases.
+Catalogue membership is not a request for a service. Quoted question alternatives
+do not select their services. Registered native presets, the requested key-management
+workflow, literal permission identifiers and actual defaults for new templates
+retain their source semantics. This check applies to materialized whole-profile
+edits as well as typed unions, so changing the JSON operation cannot bypass it.
+It establishes a service source, not consent: current-turn semantic review still
+checks negation, purpose, recipients and exact requested scope.
 Multiple templates of a requested singular kind require a choice of actual keys,
 rather than an implicit edit of all.
 Compact readiness metadata exposes missing publication prerequisites without
