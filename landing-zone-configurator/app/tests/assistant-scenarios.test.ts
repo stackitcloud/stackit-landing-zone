@@ -418,7 +418,7 @@ it.each(assistantScenarios)(
         validateAssistantScenario(scenario, {
           explanation:
             scenario.id === "audit-query-authentication-advice-en"
-              ? "With Observability, Grafana SSO is separate from technical data credentials. Without Observability, a separate Logs instance has read and write API tokens and a query URL in Secrets Manager. Query via API or a configured Grafana datasource. Native secrets may remain in Terraform state; protect sensitive state and backend access. Nothing changed."
+              ? "With Observability, Grafana SSO is separate from technical data credentials. Without Observability, a separate Logs instance has read and write API tokens and a query URL in Secrets Manager. Query via API or a configured Grafana datasource. Native secrets may remain in Terraform state; protect sensitive state and backend access. Only observability.plan_name needs a logs-capable plan; audit_logs has no plan_name input. Nothing changed."
               : scenario.id === "audit-disabled-archive-advice"
                 ? "Audit Logging aus: kein Archiv-Bucket wird neu angelegt. Das vorhandene Archiv wird gelöscht, ohne Ersatz. Default- und Terraform-State-Bucket bleiben erhalten. Bestehende Aufbewahrung und GOVERNANCE können die Löschung verhindern."
                 : scenario.id === "configuration-shared-chat-advice"
@@ -1342,6 +1342,8 @@ it("binds audit Grafana advice to native routing, retention and upgrade boundari
   expect(topic?.text).toContain("in Secrets Manager");
   expect(topic?.text).toContain("sink ACL only, not Router egress");
   expect(topic?.text).toContain("[]/empty feed fail");
+  expect(topic?.text).toContain("No plan_name in audit_logs");
+  expect(topic?.text).toContain("observability.plan_name needs Logs support");
   expect(topic?.text).toContain("own retention/cost");
   expect(topic?.text).toContain("No order upgrade");
   expect(topic?.text).toContain("historical replay");

@@ -22,8 +22,9 @@ Abfrage-URL und Tokens werden im Secrets Manager hinterlegt. Abfragen erfolgen
 über die API oder eine eingerichtete Grafana-Datenquelle; eine SSO-Logs-Konsole
 wird nicht zugesichert. Nur beim Observability-Dashboard melden sich Benutzer
 per Grafana-SSO an, ohne Grafana-Admin zu benötigen. Technische
-Observability-Zugangsdaten bleiben davon getrennt. Keine Geheimnisse im Chat anfordern. Der Tarif muss Logs unterstützen; Monitoring, Frontend und
-MetricsEndpoint reichen nicht. Die Router-Netze ergänzen die Observability-ACL;
+Observability-Zugangsdaten bleiben davon getrennt. Keine Geheimnisse im Chat anfordern. Nur `observability.plan_name` muss Logs unterstützen; Monitoring, Frontend und
+MetricsEndpoint reichen dafür nicht. `audit_logs` und die separate native
+Logs-Instanz besitzen kein `plan_name`-Eingabefeld. Die Router-Netze ergänzen die Observability-ACL;
 bestehende Client-Einträge bleiben erhalten. Observability hat eigene Aufbewahrung
 und Kosten; `retention_days` steuert S3 und nur ohne Observability zusätzlich Logs.
 `audit_logs.acl` gilt für den Logs-Fallback, `observability.acl` für Observability.

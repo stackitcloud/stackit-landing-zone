@@ -100,6 +100,14 @@ export function assistantAuditQueryAuthenticationFailures(dialogue: Dialogue) {
     )
   )
     failures.push("false_secret_free_state_claim");
+  if (
+    !/plan_name/i.test(text) ||
+    !/observability/i.test(text) ||
+    !/(?:no|not|without)[^.!?\n]{0,100}plan_name|plan_name[^.!?\n]{0,100}(?:not|absent|only)/i.test(
+      text,
+    )
+  )
+    failures.push("audit_query_plan_input_scope_missing");
   if (!/separate|distinct|different/i.test(text))
     failures.push("human_and_technical_authentication_distinction_missing");
   if (
@@ -1648,7 +1656,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     fixture: "baseline",
     expectedLanguage: "en",
     message:
-      "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Does Secrets Manager exclude provisioned secrets from Terraform/OpenTofu state, and what must be protected? Explain only, no changes or execution.",
+      "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Does Secrets Manager exclude provisioned secrets from Terraform/OpenTofu state, and what must be protected? Which path needs a logs-capable plan, and is plan_name a native input on audit_logs or on observability? Explain only, no changes or execution.",
   },
   {
     id: "audit-grafana-upgrade-advice",

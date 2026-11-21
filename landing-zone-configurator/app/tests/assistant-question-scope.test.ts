@@ -51,7 +51,7 @@ const authentication = {
   ...answer,
   questions: [],
   explanation:
-    "With Observability, use Grafana SSO for the dashboard. Technical data credentials are separate from human login. Without Observability, a separate Logs instance provides read and write API tokens and a query URL in Secrets Manager. Use its API or a configured Grafana datasource; not a promised Logs SSO console. Native secrets may remain in Terraform state; protect sensitive state and backend access. Do not put secrets in chat.",
+    "With Observability, use Grafana SSO for the dashboard. Technical data credentials are separate from human login. Without Observability, a separate Logs instance provides read and write API tokens and a query URL in Secrets Manager. Use its API or a configured Grafana datasource; not a promised Logs SSO console. Native secrets may remain in Terraform state; protect sensitive state and backend access. Only observability.plan_name needs a logs-capable plan; audit_logs has no plan_name input. Do not put secrets in chat.",
 };
 it("requires separate human dashboard login and fallback query credentials", () => {
   expect(assistantAuditQueryAuthenticationFailures(authentication)).toEqual([]);
@@ -87,4 +87,16 @@ it("rejects a false claim that Secrets Manager removes credentials from state", 
         " Secrets Manager keeps these tokens out of Terraform state.",
     }),
   ).toContain("false_secret_free_state_claim");
+});
+
+it("rejects advice omitting the actual native plan-input ownership", () => {
+  expect(
+    assistantAuditQueryAuthenticationFailures({
+      ...authentication,
+      explanation: authentication.explanation.replace(
+        "Only observability.plan_name needs a logs-capable plan; audit_logs has no plan_name input.",
+        "The fallback needs a logs-capable plan.",
+      ),
+    }),
+  ).toContain("audit_query_plan_input_scope_missing");
 });

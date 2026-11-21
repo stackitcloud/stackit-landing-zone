@@ -96,7 +96,7 @@ export const reviewedServiceFacts: Record<string, unknown> = {
           "Explaining audit query stores, dashboards, or authentication/access to audit data. Not required for a retention-only edit or unrelated topic.",
         mustExplain: true,
         scope:
-          "With central Observability, reuse its built-in Grafana Audit Logs Dashboard: human Grafana SSO is separate from technical ingestion/query credentials; no fallback Logs instance or its tokens. Without Observability, native provisioning creates a separate STACKIT Logs instance and read/write API tokens, with query URL and credentials in Secrets Manager.",
+          "With central Observability, reuse its built-in Grafana Audit Logs Dashboard: human Grafana SSO is separate from technical ingestion/query credentials; no fallback Logs instance or its tokens. Without Observability, native provisioning creates a separate STACKIT Logs instance and read/write API tokens, with query URL and credentials in Secrets Manager. A logs-capable plan is required only by observability.plan_name; audit_logs and the native fallback Logs instance have no plan_name input.",
         consequence:
           "A fallback Logs API is not a promised SSO Logs console. Query through its API or a configured Grafana datasource. Never claim no technical credentials are managed, or request tokens in chat.",
         boundaryIsInformationNotAnotherApproval: true,
