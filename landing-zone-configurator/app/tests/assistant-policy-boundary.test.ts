@@ -41,3 +41,15 @@ it.each([
     assistantPolicyBoundaryFailures({ ...answer, explanation }),
   ).not.toEqual([]);
 });
+
+it("recognizes the firewall administrator's equivalent German role name", () => {
+  expect(
+    assistantPolicyBoundaryFailures({
+      ...answer,
+      explanation: answer.explanation.replace(
+        "firewall administrator",
+        "Firewall-Verantwortliche",
+      ),
+    }),
+  ).toEqual([]);
+});

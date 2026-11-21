@@ -29,6 +29,7 @@ import { enrichCatalogueQuestions } from "../apps/api/src/assistant/catalogue-gu
 import {
   applyAssistantChanges,
   type Dialogue,
+  dialogueSchema,
   proposeAssistantAccess,
   validateDialogue,
 } from "../apps/api/src/assistant/dialogue.js";
@@ -39,6 +40,60 @@ import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 import { assistantTemplateQuestionPaths } from "../apps/api/src/assistant/template-paths.js";
 
 export const syntheticOrganizationId = "00000000-0000-4000-8000-000000000001";
+/** Use the public dialogue budget, while restricting questions to the actual task. */
+export function assistantQuestionScopeFailures(
+  dialogue: Dialogue,
+  allowedPaths: readonly string[],
+) {
+  const failures: string[] = [];
+  if (
+    dialogue.changes.length ||
+    !dialogue.questions.length ||
+    !dialogueSchema.shape.questions.safeParse(dialogue.questions).success
+  )
+    failures.push("missing_safe_questions_only");
+  if (
+    dialogue.questions.some(
+      (question) =>
+        !allowedPaths.some(
+          (path) =>
+            question.path === path || question.path.startsWith(`${path}.`),
+        ),
+    )
+  )
+    failures.push("unrelated_or_resolved_question");
+  return failures;
+}
+
+export function assistantAuditQueryAuthenticationFailures(dialogue: Dialogue) {
+  const text = dialogue.explanation;
+  const failures: string[] = [];
+  if (dialogue.changes.length || dialogue.questions.length)
+    failures.push("audit_query_advice_unrequested_edits_or_questions");
+  if (
+    !/Observability/i.test(text) ||
+    !/Grafana/i.test(text) ||
+    !/SSO/i.test(text)
+  )
+    failures.push("observability_dashboard_authentication_missing");
+  if (
+    !/read/i.test(text) ||
+    !/write/i.test(text) ||
+    !/token/i.test(text) ||
+    !/Secrets Manager/i.test(text) ||
+    !/query|datasource/i.test(text)
+  )
+    failures.push("fallback_logs_query_credentials_missing");
+  if (!/separate|distinct|different/i.test(text))
+    failures.push("human_and_technical_authentication_distinction_missing");
+  if (
+    /Logs (?:SSO )?console/i.test(text) &&
+    !/(?:no|not|never)[^.!?\n]{0,90}Logs (?:SSO )?console/i.test(text)
+  )
+    failures.push("unsupported_logs_console_promise");
+  return failures;
+}
+
 export function assistantPolicyBoundaryFailures(dialogue: Dialogue) {
   const text = dialogue.explanation;
   const failures: string[] = [];
@@ -58,7 +113,7 @@ export function assistantPolicyBoundaryFailures(dialogue: Dialogue) {
   if (
     !/manuell|manual/i.test(text) ||
     !/OPNsense/i.test(text) ||
-    !/admin/i.test(text)
+    !/(?:admin|Firewall[- ]?Verantwortlich)/i.test(text)
   )
     failures.push("firewall_policy_manual_path_missing");
   if (
@@ -1572,6 +1627,14 @@ export const assistantScenarios: readonly AssistantScenario[] = [
       "Wenn ich Audit Logging mit audit_logs=null abschalte, wird weiterhin ein S3-Archiv-Bucket angelegt oder ein bestehender Bucket ungeschützt neu erstellt? Erkläre den korrigierten Rückbau, was mit Default- und Terraform-State-Bucket passiert und welche Einschränkung vorhandene Objektaufbewahrung beim Löschen bedeutet. Nur beraten, keine Konfiguration ändern und nichts ausführen.",
   },
   {
+    id: "audit-query-authentication-advice-en",
+    topic: "audit-logs",
+    fixture: "baseline",
+    expectedLanguage: "en",
+    message:
+      "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Explain only, no changes or execution.",
+  },
+  {
     id: "audit-grafana-upgrade-advice",
     topic: "audit-logs",
     fixture: "baseline",
@@ -2314,6 +2377,8 @@ export function validateAssistantScenario(
     assistantTemplateQuestionPaths(fixture.values),
   );
   const failures: string[] = [];
+  if (scenario.id === "audit-query-authentication-advice-en")
+    failures.push(...assistantAuditQueryAuthenticationFailures(dialogue));
   if (scenario.id === "audit-disabled-archive-advice") {
     const text = dialogue.explanation;
     if (
@@ -3122,9 +3187,8 @@ export function validateAssistantScenario(
   }
   if (scenario.id === "firewall-to-audit-draft") {
     if (
-      dialogue.changes.length ||
-      dialogue.questions.length < 1 ||
-      dialogue.questions.length > 3 ||
+      assistantQuestionScopeFailures(dialogue, ["audit_logs", "observability"])
+        .length ||
       !dialogue.references.includes("audit-logs") ||
       /noch keinen übernehmbaren|nicht unterstützt/.test(
         dialogue.explanation,

@@ -22,6 +22,7 @@ import { assistantPublicValues } from "../apps/api/src/assistant/service.js";
 import {
   assistantDnsRoleFailures,
   assistantPolicyBoundaryFailures,
+  assistantQuestionScopeFailures,
   assistantScenarioFixture,
   assistantScenarios,
   syntheticOrganizationId,
@@ -39,7 +40,7 @@ type Step = {
   reference: string;
   roots: string[];
   expected?: Record<string, JsonValue>;
-  questionsOnly?: boolean;
+  questionPaths?: string[];
   boundary?: boolean;
   dnsRoles?: boolean;
 };
@@ -108,7 +109,7 @@ const steps: Step[] = [
       "Die Firewall-Regeln pflegt später der Firewall-Admin. Nun brauchen wir als nächstes eine zentrale Audit-Protokollierung mittels Telemetry Router. Bitte führe mich durch die noch fehlenden Entscheidungen.",
     reference: "audit-logs",
     roots: [],
-    questionsOnly: true,
+    questionPaths: ["audit_logs", "observability"],
   },
   {
     id: "audit-answer",
@@ -152,14 +153,14 @@ const steps: Step[] = [
       "Please prepare a central company Git instance for around 80 developers in our Hub-and-Spoke landing zone. Recommend the suitable plan, but do not propose configuration changes until I choose access. Ask me the remaining access question now.",
     reference: "devops-git",
     roots: ["devops"],
-    questionsOnly: true,
+    questionPaths: ["devops.allowed_network_ranges"],
   },
   {
     id: "devops-company-access",
     message: "My answer: Company/VPN public egress networks only (recommended)",
     reference: "devops-git",
     roots: ["devops"],
-    questionsOnly: true,
+    questionPaths: ["devops.allowed_network_ranges"],
   },
   {
     id: "devops-native-default",
@@ -326,13 +327,10 @@ async function run() {
         failures.push(
           ...assistantDnsRoleFailures(dialogue.explanation, "roles"),
         );
-      if (
-        step.questionsOnly &&
-        (dialogue.changes.length ||
-          !dialogue.questions.length ||
-          dialogue.questions.length > 3)
-      )
-        failures.push("missing_safe_questions_only");
+      if (step.questionPaths)
+        failures.push(
+          ...assistantQuestionScopeFailures(dialogue, step.questionPaths),
+        );
       if (step.boundary)
         failures.push(...assistantPolicyBoundaryFailures(dialogue));
       if (

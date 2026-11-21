@@ -719,7 +719,7 @@ export async function runConsultation(input: {
         context.topics.some((topic) => topic.id === id),
       );
       const selected = [
-        ...new Set([...matches.map((hit) => hit.id), ...requested]),
+        ...new Set([...requested, ...matches.map((hit) => hit.id)]),
       ].slice(0, 6);
       return {
         ...scoped(selected.length ? selected : (previous?.topics ?? [])),
@@ -1260,7 +1260,11 @@ export async function runConsultation(input: {
             ),
           );
           if (owner.length && !owner.some((topic) => topics.has(topic.id)))
-            throw new Error("assistant_knowledge_required");
+            throw new ConsultationOperationError(
+              "assistant_knowledge_required",
+              change.path,
+              `Read knowledge for one owning topic before proposing this field: ${owner.map((topic) => topic.id).join(", ")}.`,
+            );
           const defaults = nativeProposal.defaults
             .filter(
               (entry) =>
@@ -1502,14 +1506,23 @@ export async function runConsultation(input: {
         ...proposedMemory,
         decisions: [...verifiedDecisions.values()],
       };
-      if (
-        step.references.some(
-          (reference) =>
-            !topics.has(reference) &&
-            !initialKnowledge.rules.some((rule) => rule.id === reference),
-        )
-      )
-        throw new Error("assistant_knowledge_required");
+      const missingReferences = step.references.filter(
+        (reference) =>
+          !topics.has(reference) &&
+          !initialKnowledge.rules.some((rule) => rule.id === reference),
+      );
+      const missingActiveTopics = step.activeTopics.filter(
+        (topic) => !topics.has(topic),
+      );
+      const missingKnowledge = [
+        ...new Set([...missingReferences, ...missingActiveTopics]),
+      ];
+      if (missingKnowledge.length)
+        throw new ConsultationOperationError(
+          "assistant_knowledge_required",
+          "references/activeTopics",
+          `These topics have not been inspected in this turn: ${missingKnowledge.join(", ")}. Read their knowledge before citing them, or omit irrelevant past topics from references and activeTopics. Do not reread an already inspected topic to repair a different missing reference.`,
+        );
       const activeTemplateQuestionPaths = [
         ...assistantTemplateQuestionPaths(input.current),
         ...(step.proposal
@@ -1698,8 +1711,6 @@ export async function runConsultation(input: {
         });
         continue;
       }
-      if (step.activeTopics.some((topic) => !topics.has(topic)))
-        throw new Error("assistant_knowledge_required");
       const state = consultationStateSchema.parse({
         version: 1,
         knowledgeHash: context.knowledgeSha256,

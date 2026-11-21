@@ -206,6 +206,14 @@ Synthetic receipts also bind a hash of the actual API, contracts, domain and tes
 source bytes, and the journey records timed tool/review events. Its Git catalogue
 is explicitly synthetic; this is not a claim about customer entitlement.
 
+Explicit knowledge-topic requests take precedence over neighbouring search hits.
+Missing-knowledge feedback names the unread topics and explains whether to read them
+or remove irrelevant historical references; it never approves an unread source.
+The journey uses the canonical eight-question budget, restricts questions to the
+current task and rejects questions for an already resolved Git size. Independent
+audit decisions may require more than three questions. Audit query advice distinguishes
+Grafana SSO from native technical credentials and the separate Logs fallback.
+
 The complete repeated CI qualification is serialized against the project quota
 and has a six-hour job limit. This does not extend any individual request/turn
 deadline, retry a failed repetition, or change the release acceptance criteria.

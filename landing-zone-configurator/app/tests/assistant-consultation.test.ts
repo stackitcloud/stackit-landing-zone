@@ -1664,3 +1664,60 @@ it("rejects unrequested service rights before a handle is issued and validates t
   );
   expect(JSON.stringify(answer.changes)).not.toContain("git.instance");
 });
+
+it("keeps every explicitly requested topic ahead of ranked neighbouring matches", async () => {
+  const requested = [
+    "identity-foundations",
+    "governance-folders",
+    "management-state",
+    "stackit-network-components",
+    "vpn",
+    "dns-zones",
+  ];
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: requested }],
+    }),
+    (body) => {
+      expect(lastResult(body).toolResults[0].result.selectedTopics).toEqual(
+        requested,
+      );
+      return final({ references: ["dns-zones"] });
+    },
+  ]);
+  await client.converse(
+    selection,
+    {},
+    [],
+    "Explain company Git sizing and access in a Hub-and-Spoke landing zone, and these six related foundations.",
+  );
+});
+
+it("names the unread topic in validation feedback and requires its actual inspection", async () => {
+  const { client } = model([
+    () => final({ references: ["devops-git"], activeTopics: ["devops-git"] }),
+    (body) => {
+      expect(lastResult(body).answerValidation).toMatchObject({
+        ok: false,
+        code: "assistant_knowledge_required",
+        path: "references/activeTopics",
+      });
+      expect(lastResult(body).answerValidation.instruction).toContain(
+        "devops-git",
+      );
+      return {
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+      };
+    },
+    () => final({ references: ["devops-git"], activeTopics: ["devops-git"] }),
+  ]);
+  const result = await client.converse(
+    selection,
+    {},
+    [],
+    "Explain the Git service; no edits.",
+  );
+  expect(result.references).toEqual(["devops-git"]);
+});

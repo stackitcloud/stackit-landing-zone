@@ -17,8 +17,12 @@ Objektschutz kann das Löschen verhindern. Bei aktiviertem Audit Logging sind di
 Ziele S3 und genau eine abfragbare Ablage. Mit zentraler Observability
 wird deren OTLP-Ziel verwendet und das vorhandene Grafana Audit Logs Dashboard
 befüllt. Eine separate Logs-Instanz samt Tokens und Ziel entfällt. Ohne Observability
-bleibt STACKIT Logs die abfragbare Ablage. Ein technischer Zugang genügt, kein
-Grafana-Admin. Der Tarif muss Logs unterstützen; Monitoring, Frontend und
+wird eine separate STACKIT-Logs-Instanz mit Lese- und Schreib-Tokens angelegt;
+Abfrage-URL und Tokens werden im Secrets Manager hinterlegt. Abfragen erfolgen
+über die API oder eine eingerichtete Grafana-Datenquelle; eine SSO-Logs-Konsole
+wird nicht zugesichert. Nur beim Observability-Dashboard melden sich Benutzer
+per Grafana-SSO an, ohne Grafana-Admin zu benötigen. Technische
+Observability-Zugangsdaten bleiben davon getrennt. Keine Geheimnisse im Chat anfordern. Der Tarif muss Logs unterstützen; Monitoring, Frontend und
 MetricsEndpoint reichen nicht. Die Router-Netze ergänzen die Observability-ACL;
 bestehende Client-Einträge bleiben erhalten. Observability hat eigene Aufbewahrung
 und Kosten; `retention_days` steuert S3 und nur ohne Observability zusätzlich Logs.

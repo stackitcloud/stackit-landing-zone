@@ -412,3 +412,12 @@ verwendet dasselbe Register. Owner-Auswahllabel kommen aus vorbereiteten Account
 und der verifizierten angemeldeten Identität. Modelltexte können keine andere
 Identität als verifiziert ausgeben. Das betrifft Fragezuordnungen, keine zusätzlichen
 Änderungspfade oder Tenant-Berechtigungen.
+
+Ausdrücklich angeforderte Wissensthemen haben Vorrang vor benachbarten Suchtreffern.
+Bei fehlendem Wissen nennt die Rückmeldung die ungelesenen Themen: Quelle abrufen
+oder irrelevanten historischen Verweis entfernen. Ungelesene Quellen werden nicht
+freigegeben. Der durchgehende Dialogtest verwendet das kanonische Limit von acht
+Fragen und prüft deren Aufgabenbezug; eine bereits geklärte Git-Größe darf nicht erneut
+abgefragt werden. Unabhängige Audit-Entscheidungen können mehr als drei Fragen
+benötigen. Audit-Abfrageberatung unterscheidet Grafana-SSO von technischen
+Zugangsdaten und dem separaten Logs-Fallback.

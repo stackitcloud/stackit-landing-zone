@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "4a92952d7f7b915fed5419dcdd489c3ca3b1efcad13068bf66f98f5c1d435442",
+  "knowledgeSha256": "7a3eaff347035b45d917fef3dbfa6dba718cf0e9433ebf89f90e3dd79bafab2b",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "700cfacec7145b19a95424f5f66059d9e2d7d7c041231226a0ab4ec9a9242452",
+    "scripts/assistant-scenarios.ts": "a4a19892c25567034781d0aa41064649393a1064d7273d7e3766eac7d5818614",
     "scripts/assistant-tests.ts": "a715eb7a9e0ff21c1338c390dbaa6db283d9130dc5f9a155e7e6409b7207b7b8",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "9742b0c590dd1593ea64bef8b99775a40cdd5256fef4058162237d1cec93016c",
+  "suiteSha256": "2483f84914908c601aa82b2d1af7e45750df60528618d49431f603ebeb69ced8",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1658,6 +1658,18 @@
           "topic": "audit-logs",
           "fixture": "baseline",
           "message": "Wenn ich Audit Logging mit audit_logs=null abschalte, wird weiterhin ein S3-Archiv-Bucket angelegt oder ein bestehender Bucket ungeschützt neu erstellt? Erkläre den korrigierten Rückbau, was mit Default- und Terraform-State-Bucket passiert und welche Einschränkung vorhandene Objektaufbewahrung beim Löschen bedeutet. Nur beraten, keine Konfiguration ändern und nichts ausführen.",
+          "assertions": [
+            "valid_dialogue",
+            "reviewed_topic_reference",
+            "no_changes"
+          ]
+        },
+        {
+          "id": "audit-query-authentication-advice-en",
+          "topic": "audit-logs",
+          "fixture": "baseline",
+          "expectedLanguage": "en",
+          "message": "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Explain only, no changes or execution.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",
