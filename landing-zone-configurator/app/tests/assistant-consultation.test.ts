@@ -1524,3 +1524,69 @@ it("classifies the total consultation deadline without publishing or retrying it
     spy.mockRestore();
   }
 });
+
+it("returns a genuine remaining question without a rejected default proposal attached", async () => {
+  const { client } = model(
+    [
+      () => ({
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+      }),
+      () => ({
+        action: "validate_proposal",
+        basis: [],
+        changes: [
+          {
+            path: "devops",
+            operation: "merge",
+            value: {
+              git_flavor: "git-100",
+              allowed_network_ranges: ["0.0.0.0/0"],
+            },
+          },
+        ],
+      }),
+      (body) =>
+        final({
+          kind: "proposal",
+          proposal: lastResult(body).validation.proposal,
+          references: ["devops-git"],
+          explanation: "Git100 using public default access.",
+        }),
+      () =>
+        final({
+          kind: "clarification",
+          proposal: undefined,
+          references: ["devops-git"],
+          explanation:
+            "Git100 is the intended plan; access remains your decision. Nothing saved.",
+          questions: [
+            {
+              path: "devops.allowed_network_ranges",
+              text: "Who should reach Git?",
+              answerType: "requirements",
+            },
+          ],
+        }),
+    ],
+    [
+      () => ({
+        ready: false,
+        findings: [
+          "The user explicitly reserved the access decision. Withhold the proposal and ask the remaining access question.",
+        ],
+      }),
+      () => ({ ready: true, findings: [] }),
+    ],
+  );
+  const answer = await client.converse(
+    selection,
+    { devops: null },
+    [],
+    "Use Git100, but ask me about access before proposing changes.",
+  );
+  expect(answer.changes).toEqual([]);
+  expect(answer.questions).toMatchObject([
+    { path: "devops.allowed_network_ranges" },
+  ]);
+});

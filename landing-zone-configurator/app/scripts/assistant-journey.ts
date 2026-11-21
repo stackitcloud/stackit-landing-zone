@@ -404,7 +404,11 @@ async function run() {
             ? { transportCode: error.transportCode }
             : {}),
           ...(error instanceof AssistantInferenceError
-            ? { phase: error.phase, upstreamCause: error.upstreamCause }
+            ? {
+                phase: error.phase,
+                upstreamCause: error.upstreamCause,
+                validationIssues: error.validationIssues,
+              }
             : {}),
         }),
       );

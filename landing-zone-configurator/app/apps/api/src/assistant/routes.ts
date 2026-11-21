@@ -47,6 +47,9 @@ function inferenceFailure(
       reason: error.reason,
       ...(error.phase ? { phase: error.phase } : {}),
       ...(error.upstreamCause ? { upstreamCause: error.upstreamCause } : {}),
+      ...(error.validationIssues
+        ? { validationIssues: error.validationIssues }
+        : {}),
       ...(error.transportCode ? { transportCode: error.transportCode } : {}),
     },
     "Assistant inference rejected",

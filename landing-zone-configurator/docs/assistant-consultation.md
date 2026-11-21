@@ -171,6 +171,14 @@ reply can carry only the latest successfully validated local proposal; a rejecte
 replacement clears that handle. Neither text nor a function name can execute cloud
 changes. The final answer still passes the same semantic review before publication.
 
+A rejected final answer withholds the candidate's automatic attachment to later
+prose or questions. Schema/compiler validity alone does not establish a suitable
+answer. The model can ask a genuinely missing decision without that proposal,
+explicitly select the same validated handle after an explanation-only correction,
+or validate a changed candidate. Typed mutation tools can still explicitly extend
+the validated working batch, whose complete effects are reviewed again. This
+changes no accepted draft and grants no additional authority.
+
 Typed mutation tools extend the latest validated proposal in the current turn.
 The validator accepts only proposal handles it issued in that turn, replays the
 bounded operation batch from the original configuration and revalidates its full

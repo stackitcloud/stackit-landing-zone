@@ -62,7 +62,7 @@ export const nativeCompletionSchema = z.object({
             .max(assistantAnswerTextMaxLength)
             .nullable()
             .optional(),
-          tool_calls: z.array(nativeToolCallSchema).max(6).optional(),
+          tool_calls: z.array(nativeToolCallSchema).max(6).nullish(),
           reasoning: z.string().max(131072).nullable().optional(),
           reasoning_content: z.string().max(131072).nullable().optional(),
         }),
@@ -469,6 +469,18 @@ export class NativeConsultation {
         if (!updates.length)
           throw new AssistantInferenceError("native_tool_result_missing");
         this.remember(merged);
+        if (
+          this.proposal &&
+          (object(merged.answerReview).ready === false ||
+            merged.answerValidation)
+        ) {
+          merged.withheldProposal = {
+            id: this.proposal,
+            instruction:
+              "This candidate is no longer attached automatically because the final answer was rejected. If a decision is reserved or missing, ask the real question without a proposal. If only the explanation needed repair, explicitly select this validated handle with the corrected answer. To change its effects, validate a corrected candidate first. No saved setting or accepted draft has changed.",
+          };
+          this.proposal = null;
+        }
         if (!this.pending.length)
           this.messages.push({
             role: "system",

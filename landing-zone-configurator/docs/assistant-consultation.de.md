@@ -236,6 +236,15 @@ benötigen weiterhin einen bestätigten initialen Owner.
 
 ## Kontext und Defaults
 
+Nach einer abgelehnten Schlussantwort wird ihr Kandidat nicht automatisch an
+spätere Texte oder Fragen angehängt. Schema- und Compiler-Gültigkeit allein belegen
+keine passende Antwort. Das Modell kann die tatsächlich fehlende Entscheidung ohne
+Vorschlag erfragen, nach einer reinen Erklärungskorrektur denselben validierten
+Handle ausdrücklich auswählen oder einen geänderten Kandidaten validieren.
+Typisierte Änderungstools können den validierten Arbeitsstand weiterhin ausdrücklich
+erweitern; der gesamte Effekt wird erneut geprüft. Übernommene Entwürfe und
+Berechtigungen ändern sich dadurch nicht.
+
 Der Gesprächsstand enthält Ziel, bestätigte Entscheidungen, Empfehlungen und offene
 Fragen. Bestätigungen verweisen auf wörtliche Nutzerbelege. Unbelegte Gedächtniseinträge
 werden verworfen; eine gültige Antwort scheitert nicht allein an einem ungenau zitierten

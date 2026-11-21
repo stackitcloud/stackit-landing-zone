@@ -592,6 +592,7 @@ export type AssistantTransportFailure = {
 
 export class AssistantInferenceError extends Error {
   phase?: string;
+  validationIssues?: { path: string; code: string }[];
   constructor(
     readonly reason: string,
     readonly transportCode?: TransportCode,
@@ -974,7 +975,16 @@ export class LegacyAssistantModelServing {
     if (nativeTools) {
       const parsed = nativeCompletionSchema.safeParse(responseBody);
       if (!parsed.success)
-        throw new AssistantInferenceError("native_completion_schema");
+        throw Object.assign(
+          new AssistantInferenceError("native_completion_schema"),
+          {
+            phase: schemaName,
+            validationIssues: parsed.error.issues.slice(0, 8).map((issue) => ({
+              path: issue.path.join("."),
+              code: issue.code,
+            })),
+          },
+        );
       if (parsed.data.model && parsed.data.model !== model)
         throw new AssistantInferenceError("model_mismatch");
       return parsed.data.choices[0]!.message;
