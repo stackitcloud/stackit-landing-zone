@@ -86,7 +86,10 @@ DLP- oder Injection-Nachweis.
 
 ## Zugangsdaten
 
-Secrets bleiben im autorisierten serverseitigen Secret-Speicher und werden nur
+Vom Provider erzeugte Geheimnisse und Vault-Daten können weiterhin im
+Terraform-/OpenTofu-State stehen. Secrets Manager entfernt sie dort nicht;
+State und Backend-Zugriff müssen entsprechend geschützt werden.
+Laufzeit-Secrets bleiben im autorisierten serverseitigen Secret-Speicher und werden nur
 fuer den konkreten Vorgang aufgeloest. Keine Kunden-Zugangsdaten, Profilmetadaten,
 rohen Provider-Fehler, States oder Plaene an Model Serving geben.
 Zugangsdaten fuer eigenstaendige Accelerator-Ausfuehrung muessen ueber dessen

@@ -418,7 +418,7 @@ it.each(assistantScenarios)(
         validateAssistantScenario(scenario, {
           explanation:
             scenario.id === "audit-query-authentication-advice-en"
-              ? "With Observability, Grafana SSO is separate from technical data credentials. Without Observability, a separate Logs instance has read and write API tokens and a query URL in Secrets Manager. Query via API or a configured Grafana datasource. Nothing changed."
+              ? "With Observability, Grafana SSO is separate from technical data credentials. Without Observability, a separate Logs instance has read and write API tokens and a query URL in Secrets Manager. Query via API or a configured Grafana datasource. Native secrets may remain in Terraform state; protect sensitive state and backend access. Nothing changed."
               : scenario.id === "audit-disabled-archive-advice"
                 ? "Audit Logging aus: kein Archiv-Bucket wird neu angelegt. Das vorhandene Archiv wird gelöscht, ohne Ersatz. Default- und Terraform-State-Bucket bleiben erhalten. Bestehende Aufbewahrung und GOVERNANCE können die Löschung verhindern."
                 : scenario.id === "configuration-shared-chat-advice"

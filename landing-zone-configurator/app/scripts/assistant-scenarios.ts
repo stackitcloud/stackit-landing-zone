@@ -84,6 +84,22 @@ export function assistantAuditQueryAuthenticationFailures(dialogue: Dialogue) {
     !/query|datasource/i.test(text)
   )
     failures.push("fallback_logs_query_credentials_missing");
+  if (
+    !/(?:Terraform|OpenTofu)[^.!?\n]{0,80}state|state[^.!?\n]{0,80}(?:Terraform|OpenTofu)/i.test(
+      text,
+    ) ||
+    !/protect|sensitive|secure/i.test(text)
+  )
+    failures.push("provisioned_secret_state_boundary_missing");
+  if (
+    /keep(?:ing|s)?[^.!?\n]{0,65}(?:out of|outside)[^.!?\n]{0,20}(?:Terraform|OpenTofu)[^.!?\n]{0,15}state/i.test(
+      text,
+    ) ||
+    /(?:no|never)[^.!?\n]{0,25}(?:secret|credential|token)[^.!?\n]{0,45}(?:in|enter)[^.!?\n]{0,15}(?:Terraform|OpenTofu)[^.!?\n]{0,15}state/i.test(
+      text,
+    )
+  )
+    failures.push("false_secret_free_state_claim");
   if (!/separate|distinct|different/i.test(text))
     failures.push("human_and_technical_authentication_distinction_missing");
   if (
@@ -1632,7 +1648,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
     fixture: "baseline",
     expectedLanguage: "en",
     message:
-      "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Explain only, no changes or execution.",
+      "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Does Secrets Manager exclude provisioned secrets from Terraform/OpenTofu state, and what must be protected? Explain only, no changes or execution.",
   },
   {
     id: "audit-grafana-upgrade-advice",

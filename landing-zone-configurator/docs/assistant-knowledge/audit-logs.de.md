@@ -74,8 +74,7 @@ Nur ein Entwurf, kein Deployment.
 
 ## Grenzen
 
-Neue Configurator-Audit-Konfigurationen verlangen ausdrückliche Entscheidungen
-zu Aufbewahrung, ACL und Object Lock. Links erfassen zukünftige Ereignisse, keine
+Links erfassen zukünftige Ereignisse, keine
 rückwirkende Historie. Standardrechte enthalten keine Audit-Änderungsrechte;
 effektive Owner- oder geerbte Rechte können Routing trotzdem verändern. Kein
 Deny-Versprechen gegenüber diesen Identitäten. Echte Zustellung nach Logs/S3
@@ -97,6 +96,8 @@ rechtliche Compliance.
 
 Die Logs-ACL ergänzt vorhandene Client-Netze automatisch um die aktuellen öffentlichen STACKIT-Netze aus der nativen API-Abfrage. Diese Netze sind nicht exklusiv für Telemetry Router. Ein gültiges Token bleibt erforderlich. Optional kann `router_egress_cidrs` eine geprüfte, nicht leere IPv4-CIDR-Liste für eine engere Freigabe vorgeben. Ohne verfügbare Router-Quellnetze wird das Deployment abgewiesen.
 
-Neue Audit-Entwürfe verwenden nur ausdrückliche Audit-Antworten zu Tagen,
-Zugriffsnetzen und Object Lock. Fehlende Angaben werden gezielt nachgefragt;
-Standardwerte, Assistant-Aussagen und frühere Firewall-Netze sind keine Zustimmung.
+Neue Audit-Entwürfe berücksichtigen ausdrückliche Audit-Antworten zu Tagen,
+Zugriffsnetzen und Object Lock. Fehlende Angaben dürfen als klar gekennzeichnete
+native Defaults vorgeschlagen oder gezielt nachgefragt werden. Defaults und
+Assistant-Aussagen sind keine bestätigten Benutzerentscheidungen; frühere
+Firewall-Netze dürfen nicht ungefragt als Audit-Freigabe übernommen werden.

@@ -421,3 +421,7 @@ Fragen und prüft deren Aufgabenbezug; eine bereits geklärte Git-Größe darf n
 abgefragt werden. Unabhängige Audit-Entscheidungen können mehr als drei Fragen
 benötigen. Audit-Abfrageberatung unterscheidet Grafana-SSO von technischen
 Zugangsdaten und dem separaten Logs-Fallback.
+
+Verbindliche Zugangsdaten-Grenzen erreichen jede Abschlussprüfung, auch ohne
+Quellenverweis des Modells: Secrets Manager entfernt erzeugte Geheimnisse nicht
+aus dem Terraform-/OpenTofu-State. Dessen Ablage und Zugriff bleiben sensibel.

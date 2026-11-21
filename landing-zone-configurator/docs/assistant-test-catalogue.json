@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "7a3eaff347035b45d917fef3dbfa6dba718cf0e9433ebf89f90e3dd79bafab2b",
+  "knowledgeSha256": "3e920dc9b6f59044c22f6a059ebb4957403c8d0198370e4c78eac3a10153199e",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "a4a19892c25567034781d0aa41064649393a1064d7273d7e3766eac7d5818614",
+    "scripts/assistant-scenarios.ts": "0db3dff4d2512b755bf9bf448ba92d0b8974a95edb9c33a00d8db071c39b8ad2",
     "scripts/assistant-tests.ts": "a715eb7a9e0ff21c1338c390dbaa6db283d9130dc5f9a155e7e6409b7207b7b8",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "2483f84914908c601aa82b2d1af7e45750df60528618d49431f603ebeb69ced8",
+  "suiteSha256": "bd7c7340cdeef22e26c6adfdb1d4c4cf852289893f2f1a146e93e5abda2910a7",
   "topics": [
     {
       "id": "credential-foundations",
@@ -1669,7 +1669,7 @@
           "topic": "audit-logs",
           "fixture": "baseline",
           "expectedLanguage": "en",
-          "message": "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Explain only, no changes or execution.",
+          "message": "How can I query audit events with and without central Observability? Explain the actual access path in each case, where the technical credentials are managed, and whether users' dashboard login is the same as those credentials. Does Secrets Manager exclude provisioned secrets from Terraform/OpenTofu state, and what must be protected? Explain only, no changes or execution.",
           "assertions": [
             "valid_dialogue",
             "reviewed_topic_reference",

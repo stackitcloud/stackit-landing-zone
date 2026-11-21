@@ -73,6 +73,21 @@ export function evaluateCatalogueRequirements(
  * numeric VM/VPN facts through the same scoped catalogue interface.
  */
 export const reviewedServiceFacts: Record<string, unknown> = {
+  "credential-foundations": {
+    criticalBoundaries: [
+      {
+        id: "credential-secret-storage-state",
+        appliesWhen:
+          "Explaining where provisioned credentials or secrets are stored, including comparisons of Secrets Manager, configuration and Terraform/OpenTofu state. Not required for unrelated configuration edits.",
+        mustExplain: true,
+        scope:
+          "Declarative tfvars and public chat exclude credentials. Native provider-created secrets and vault secret data may still be in Terraform/OpenTofu state. Secrets Manager stores/distributes runtime secrets; it does not remove provider values from state.",
+        consequence:
+          "Protect state and backend access as sensitive data. Never promise secrets are absent from state because Secrets Manager is used, or request secret/state contents in chat.",
+        boundaryIsInformationNotAnotherApproval: true,
+      },
+    ],
+  },
   "audit-logs": {
     criticalBoundaries: [
       {

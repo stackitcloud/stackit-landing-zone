@@ -213,6 +213,9 @@ The journey uses the canonical eight-question budget, restricts questions to the
 current task and rejects questions for an already resolved Git size. Independent
 audit decisions may require more than three questions. Audit query advice distinguishes
 Grafana SSO from native technical credentials and the separate Logs fallback.
+Mandatory credential boundaries also reach every final review without requiring
+a model citation: Secrets Manager does not remove provisioned secrets from
+Terraform/OpenTofu state, whose storage and access remain sensitive.
 
 The complete repeated CI qualification is serialized against the project quota
 and has a six-hour job limit. This does not extend any individual request/turn

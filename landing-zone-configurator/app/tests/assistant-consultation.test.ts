@@ -99,6 +99,12 @@ function model(
       const result = reviewSteps[reviewIndex++]?.(body) ?? {
         ready: true,
         findings: [],
+      };
+      if (result instanceof Response) return result;
+      const reviewPayload = JSON.parse(
+        body.messages.find((message) => message.role === "user")!.content,
+      );
+      const reviewedResult = {
         boundaryChecks: Object.values(
           JSON.parse(
             body.messages.find((message) => message.role === "user")!.content,
@@ -114,12 +120,6 @@ function model(
             paragraphs: [],
           })),
         ),
-      };
-      if (result instanceof Response) return result;
-      const reviewPayload = JSON.parse(
-        body.messages.find((message) => message.role === "user")!.content,
-      );
-      const reviewedResult = {
         requestChecks: [
           {
             userTurn: reviewPayload.turns.findLastIndex(
@@ -1720,4 +1720,43 @@ it("names the unread topic in validation feedback and requires its actual inspec
     "Explain the Git service; no edits.",
   );
   expect(result.references).toEqual(["devops-git"]);
+});
+
+it("includes mandatory credential boundaries in final review without requiring a model citation", async () => {
+  const { client } = model(
+    [() => final()],
+    [
+      (body) => {
+        const payload = JSON.parse(
+          body.messages.find((message) => message.role === "user")!.content,
+        );
+        expect(
+          payload.relevantServiceFacts["credential-foundations"]
+            .criticalBoundaries,
+        ).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: "credential-secret-storage-state" }),
+          ]),
+        );
+        return {
+          ready: true,
+          findings: [],
+          boundaryChecks: [
+            {
+              id: "credential-secret-storage-state",
+              applicable: false,
+              covered: false,
+              paragraphs: [],
+            },
+          ],
+        };
+      },
+    ],
+  );
+  await client.converse(
+    selection,
+    {},
+    [],
+    "Explain the configuration lifecycle; no edits.",
+  );
 });

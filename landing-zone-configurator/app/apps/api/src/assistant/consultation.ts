@@ -1674,9 +1674,9 @@ export async function runConsultation(input: {
           ? (proposalDefaults.get(step.proposal) ?? [])
           : [],
         serviceFacts: Object.fromEntries(
-          dialogue.references
-            .filter((reference) => reviewedServiceFacts[reference])
-            .map((reference) => [reference, reviewedServiceFacts[reference]]),
+          assistantKnowledgeForTopics(context, dialogue.references)
+            .topics.filter((topic) => reviewedServiceFacts[topic.id])
+            .map((topic) => [topic.id, reviewedServiceFacts[topic.id]]),
         ),
         answer: dialogue,
         delta: step.proposal ? proposalDeltas.get(step.proposal) : [],

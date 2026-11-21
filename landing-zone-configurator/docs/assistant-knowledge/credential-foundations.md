@@ -56,12 +56,12 @@ Recognizable secret-input checks are not comprehensive DLP or injection proof.
 
 ## Credentials
 
-Secrets remain in authorized server-side secret storage and are resolved only
-for the specific operation. No customer credentials, profile metadata, raw
-provider errors, state or plans go to Model Serving. Credentials required for
-standalone Accelerator execution must be externally supplyable through its
-documented provider/input contract, not hidden Configurator state. Public PIM
-facts need no customer credential; authorized product availability is separate.
+No secrets in chat/tfvars. Native provider-created secrets and Vault data may
+still be in Terraform/OpenTofu state: Secrets Manager does not remove them.
+Protect state/backend access. Runtime secrets use authorized server-side storage.
+No credentials, profile metadata, raw provider errors, state or plans go to Model
+Serving. Standalone credentials use documented external provider/inputs, not
+hidden Configurator state. Public PIM facts do not prove product availability.
 
 ## Sources
 
