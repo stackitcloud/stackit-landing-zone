@@ -1,6 +1,15 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.2.5": {
+  introduction:"More reliable Assistant follow-ups and source-checked configuration proposals.",
+  changes:[
+   "Retain displayed choices and recommendations across follow-ups; keep rejected proposals out of subsequent answers.",
+   "Use typed final reviews, actionable knowledge feedback and user-source checks for additional service permissions.",
+   "Clarify audit query access, Observability plan requirements and the protection of provisioned secrets in Terraform/OpenTofu State.",
+  ],
+  limitations:"Assistant qualification remains incomplete. Remaining timeouts, service guidance, proposal preservation and test-oracle findings are tracked separately in #292, #293, #294 and #295. Intermittent serving errors remain under investigation in #225.",
+ },
  "v2.2.4": {
   introduction:"Correct Audit Logging removal without recreating its archive bucket.",
   changes:[
@@ -92,5 +101,5 @@ const notes={
 const selected=notes[tag];
 if(!selected)throw new Error("Curated release notes required for this version");
 const limitations=["skip","accepted-assistant-limitations"].includes(process.env.LZC_RELEASE_MODE);
-const qualificationNote=process.env.LZC_RELEASE_MODE==="skip"?"Assistant live qualification was skipped. Intermittent model-service errors (#225), dialogue timeouts and incomplete multi-topic qualification (#275) remain known limitations.":limitations?"Known limitation: the enabled Assistant is not fully qualified; intermittent model-service HTTP 400 errors remain under investigation in #225.":"Assistant qualification is recorded in the attached source-bound release manifest.";
+const qualificationNote=limitations&&selected.limitations?selected.limitations:process.env.LZC_RELEASE_MODE==="skip"?"Assistant live qualification was skipped. Intermittent model-service errors (#225), dialogue timeouts and incomplete multi-topic qualification (#275) remain known limitations.":limitations?"Known limitation: the enabled Assistant is not fully qualified; intermittent model-service HTTP 400 errors remain under investigation in #225.":"Assistant qualification is recorded in the attached source-bound release manifest.";
 console.log(`${selected.introduction}\n\n${selected.changes.map(change=>`- ${change}`).join("\n")}\n\n${qualificationNote}\n\nOperator setup, credential rotation and recovery: [production runbook](https://github.com/stackitcloud/stackit-landing-zone/blob/${tag}/landing-zone-configurator/docs/production.md).`);
