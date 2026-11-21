@@ -8,7 +8,7 @@ Audit routing.
 
 audit_logs=null removes routing/retention/archive; no replacement bucket.
 Default/State buckets remain. Object retention can block deletion.
-Sinks: S3 + ONE query store; Observability OTLP feeds its built-in Grafana Audit Logs Dashboard.
+S3 + ONE query store; Observability OTLP feeds its built-in Grafana Audit Logs Dashboard.
 Only with Observability: users log in to Grafana via SSO; no admin needed.
 Technical credentials are separate; no fallback Logs/tokens.
 Without Observability: separate Logs instance, read/write API tokens and query URL
@@ -20,8 +20,8 @@ Dev Plan/Apply removes dedicated Logs/history/tokens/target; adds Observability
 target/credential. S3/Router/links/projects stay. No order upgrade for linked
 projects, no historical replay. Dashboard: 24h/all filters; may lag; UUIDs are metadata. acl controls Logs clients, observability.acl Observability.
 Router ranges join store ACL, preserving clients.
-router_egress_cidrs=null uses public STACKIT feed (not Router-only); nonempty IPv4
-list narrows. Authentication required; empty feed fails.
+router_egress_cidrs=null: STACKIT feed (not Router-only).
+IPv4 CIDRs narrow sink ACL only, not Router egress; []/empty feed fail; auth required.
 Lock: true (also nested null), 180 days; explicit false before creation;
 GOVERNANCE 1..365; no in-place unlock or compliance claim.
 Organization links capture ONLY organization events, no inheritance.

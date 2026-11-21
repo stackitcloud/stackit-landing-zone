@@ -1340,6 +1340,8 @@ it("binds audit Grafana advice to native routing, retention and upgrade boundari
   expect(topic?.text).toContain("users log in to Grafana via SSO");
   expect(topic?.text).toContain("read/write API tokens and query URL");
   expect(topic?.text).toContain("in Secrets Manager");
+  expect(topic?.text).toContain("sink ACL only, not Router egress");
+  expect(topic?.text).toContain("[]/empty feed fail");
   expect(topic?.text).toContain("own retention/cost");
   expect(topic?.text).toContain("No order upgrade");
   expect(topic?.text).toContain("historical replay");
