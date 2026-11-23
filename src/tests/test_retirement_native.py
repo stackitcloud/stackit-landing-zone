@@ -58,7 +58,7 @@ class NativeRetirementTest(unittest.TestCase):
                     return self.respond(204, {})
                 if urlsplit(self.path).path in (f'/v2/folders/{FOLDER}', f'/v2/folders/{CONTAINER}'):
                     if not state['purged']:
-                        return self.respond(409, {'error':'Conflict','status':409,'message':f'Folder has children. Deletion not permitted for id: [{CONTAINER}]','path':f'/resource-management/v2/folders/{CONTAINER}','timeStamp':'2026-11-23T00:00:00Z'})
+                        return self.respond(409, {'error': 'Conflict', 'status': 409, 'message': f'[FOLDER] has children of type project. Forced deletion not permitted for containerId[{FOLDER}]', 'path': f'/v2/folders/{CONTAINER}', 'timeStamp': '2026-11-23T00:00:00Z'})
                     state['deleted_folder'] = True
                     return self.respond(204, {})
                 return self.respond(500, {})

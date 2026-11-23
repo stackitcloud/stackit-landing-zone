@@ -3170,7 +3170,7 @@ export class Applications {
     const state = z
       .object({
         version: z.literal(4),
-        lineage: z.uuid(),
+        lineage: z.guid(),
         serial: z.number().int().nonnegative(),
         resources: z.array(z.unknown()),
       })

@@ -17,7 +17,8 @@ const resourceSchema = z.strictObject({
 });
 export const retirementInventorySchema = z.strictObject({
   schemaVersion: z.literal(1),
-  lineage: z.uuid(),
+  // Native engine lineages have GUID layout but need not set RFC UUID variant bits.
+  lineage: z.guid(),
   serial: z.number().int().nonnegative().refine(Number.isSafeInteger),
   resources: z.array(resourceSchema).max(20000),
 });
@@ -110,7 +111,7 @@ export function retirementInventory(
   const state = z
     .object({
       version: z.literal(4),
-      lineage: z.uuid(),
+      lineage: z.guid(),
       serial: z.number().int().nonnegative().refine(Number.isSafeInteger),
       resources: z.array(object).max(20000).default([]),
     })
@@ -546,9 +547,32 @@ export function retirementFolderConflict(
           ].includes(String(error.summary)) &&
           typeof error.detail === "string" &&
           /Calling API: 409 Conflict/.test(error.detail) &&
-          /Folder has children\. Deletion not permitted/.test(error.detail) &&
+          retirementFolderChildrenDetail(error.detail) &&
           (error.address === undefined ||
             allowed.includes(String(error.address))),
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function retirementFolderChildrenDetail(detail: string) {
+  if (/Folder has children\. Deletion not permitted/.test(detail)) return true;
+  const prefix = "Calling API: 409 Conflict, status code 409, Body: ";
+  if (!detail.startsWith(prefix)) return false;
+  try {
+    const body = object.parse(
+      JSON.parse(
+        (detail.slice(prefix.length).split("\n\nTrace ID:")[0] ?? "").trim(),
+      ),
+    );
+    return (
+      body.status === 409 &&
+      body.error === "Conflict" &&
+      /^\/v2\/folders\/[A-Za-z0-9_-]+$/.test(String(body.path)) &&
+      /^\[FOLDER\] has children of type project\. Forced deletion not permitted for containerId\[[^\]\r\n]+\]$/.test(
+        String(body.message),
       )
     );
   } catch {

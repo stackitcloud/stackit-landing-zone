@@ -121,6 +121,7 @@ jobs:
       - name: Verify browser flow and package native runner in parallel
         run: |
           node ../infra/ci/run-parallel.mjs browser 'node ../infra/ci/install-browser.mjs && npm run test:e2e' native '
+          LZC_RETIREMENT_NATIVE_TOFU_BIN="$(command -v tofu)" npx vitest run tests/retirement-http-backend-native.test.ts
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npx vitest run tests/worker-recovery-hold.test.ts
           npm run test:common-contract
           LZC_TEST_TOFU_BIN="$(command -v tofu)" npm run test:export-native

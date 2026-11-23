@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { retirementHttpBackendHcl } from "../apps/worker/src/retirement.js";
+import { retirementInventory } from "../packages/contracts/src/recovery/retirement.js";
 
 const tofu = process.env.LZC_RETIREMENT_NATIVE_TOFU_BIN;
 
@@ -104,6 +105,7 @@ it.skipIf(!tofu)(
       await command("init", "-input=false", "-no-color");
       await command("apply", "-auto-approve", "-input=false", "-no-color");
       expect(state?.resources).toHaveLength(1);
+      expect(retirementInventory(state).resources).toHaveLength(1);
       await command("plan", "-destroy", "-input=false", "-out=saved.plan");
       const backend = JSON.parse(
         await readFile(join(directory, ".terraform/terraform.tfstate"), "utf8"),
