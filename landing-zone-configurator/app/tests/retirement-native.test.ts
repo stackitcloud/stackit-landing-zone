@@ -89,6 +89,15 @@ function plan(removeFolder = false, includeProject = true) {
 }
 const captured = retirementInventory(state());
 describe("source-bound native retirement checks", () => {
+  it("accepts native OpenTofu lineage identifiers without imposing RFC UUID version or variant bits", () => {
+    const raw = state();
+    raw.lineage = "11111111-1111-f111-3111-111111111111";
+    const captured = retirementInventory(raw);
+    expect(captured.lineage).toBe(raw.lineage);
+    expect(() =>
+      retirementInventory({ ...raw, lineage: "not-a-lineage" }),
+    ).toThrow();
+  });
   it("keeps only cloud identities and addresses, rejects deposed/private-provider States", () => {
     expect(JSON.stringify(captured)).not.toMatch(
       /never include|owner_secret|description/,
@@ -421,6 +430,34 @@ it("recognizes the pinned provider's unaddressed 409 only with matching native f
   expect(
     retirementFolderConflict(output([version, hook, diagnostic]), [folder]),
   ).toBe(true);
+  const body = {
+    timeStamp: "2026-11-23T15:00:00Z",
+    path: "/v2/folders/synthetic-folder-container",
+    status: 409,
+    error: "Conflict",
+    message:
+      "[FOLDER] has children of type project. Forced deletion not permitted for containerId[11111111-1111-4111-8111-111111111111]",
+  };
+  for (const [change, accepted] of [
+    [{}, true],
+    [{ status: 403 }, false],
+    [{ path: "/v2/projects/other" }, false],
+    [{ message: "A different conflict" }, false],
+  ] as const) {
+    const structured = {
+      ...diagnostic,
+      diagnostic: {
+        ...diagnostic.diagnostic,
+        detail: `Calling API: 409 Conflict, status code 409, Body: ${JSON.stringify({ ...body, ...change })}\n\nTrace ID: "synthetic-trace"`,
+      },
+    };
+    expect(
+      retirementFolderConflict(output([version, hook, structured]), [folder]),
+    ).toBe(accepted);
+    expect(
+      retirementFolderConflict(output([version, structured]), [folder]),
+    ).toBe(false);
+  }
   expect(
     retirementFolderConflict(output([version, diagnostic]), [folder]),
   ).toBe(false);

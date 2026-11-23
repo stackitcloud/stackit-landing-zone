@@ -9592,7 +9592,8 @@ describe("real PostgreSQL session and tenant boundaries", () => {
         const recoveryBytes = Buffer.from(
           JSON.stringify({
             version: 4,
-            lineage: randomUUID(),
+            // Engine lineages do not necessarily set RFC UUID version/variant bits.
+            lineage: "11111111-1111-f111-3111-111111111111",
             serial: 1,
             resources: [],
             outputs: { secret: "private-recovery-only" },

@@ -80,9 +80,12 @@ def check_plan(plan, captured, phase, current=None):
     require(captured.get('schemaVersion') == 1 and isinstance(captured.get('resources'), list), 'invalid_inventory')
     require(plan.get('errored', False) is False and plan.get('complete', True) is True,
             'incomplete_plan')
-    expected = {r['address']: r for r in (current or captured)['resources']}
+    baseline = {r['address']: r for r in captured['resources']}
+    remaining = (current or captured)['resources']
+    expected = {r['address']: r for r in remaining}
     seen = set()
-    require(len(expected) == len(captured['resources']), 'duplicate_inventory_address')
+    require(len(baseline) == len(captured['resources']) and len(expected) == len(remaining), 'duplicate_inventory_address')
+    require(all(baseline.get(address) == resource for address, resource in expected.items()), 'unreviewed_or_changed_state_resource')
     for drift in plan.get('resource_drift', []):
         require(not (drift.get('mode') == 'managed' and drift.get('address') in expected
                      and drift.get('change', {}).get('actions') == ['delete']),

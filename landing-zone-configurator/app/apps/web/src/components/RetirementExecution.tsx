@@ -23,7 +23,7 @@ const previewSchema = z.object({
 const recoverySchema = z.object({
   jobId: z.uuid(),
   sha256: z.string(),
-  lineage: z.uuid(),
+  lineage: z.guid(),
   serial: z.number(),
   remainingCount: z.number(),
   removed: z.array(

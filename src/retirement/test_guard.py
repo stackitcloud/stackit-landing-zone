@@ -133,6 +133,23 @@ class RetirementGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'plan_inventory_incomplete'):
             check_plan(self.plan, self.captured, 'remove_projects', self.captured)
 
+    def test_finalization_reviews_remaining_state_against_original_inventory(self):
+        remaining = {**self.captured, 'resources': [self.captured['resources'][0]]}
+        plan = {'format_version': '1.2', 'resource_changes': [
+            {'address': self.folder, 'type': 'stackit_resourcemanager_folder', 'mode': 'managed',
+             'change': {'actions': ['delete'], 'before': {'folder_id': 'folder-id'}}}]}
+        self.assertEqual(check_plan(plan, self.captured, 'finalize_folders', remaining)['deleteCount'], 1)
+        for source in ('baseline', 'remaining'):
+            captured, current = copy.deepcopy(self.captured), copy.deepcopy(remaining)
+            selected = captured if source == 'baseline' else current
+            selected['resources'].append(copy.deepcopy(selected['resources'][0]))
+            with self.assertRaisesRegex(ValueError, 'duplicate_inventory_address'):
+                check_plan(plan, captured, 'finalize_folders', current)
+        foreign = copy.deepcopy(remaining)
+        foreign['resources'][0]['id'] = 'unreviewed-folder'
+        with self.assertRaisesRegex(ValueError, 'unreviewed_or_changed_state_resource'):
+            check_plan(plan, self.captured, 'finalize_folders', foreign)
+
 
 if __name__ == '__main__':
     unittest.main()
