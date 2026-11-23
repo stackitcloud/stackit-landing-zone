@@ -174,11 +174,15 @@ export function RetirementPanel({
         {t(manage ? "Landing Zones stilllegen" : "Angekündigter Rückbau")}
       </h2>
       {error && <p role="alert">{t(error)}</p>}
-      {available && manage && candidates.length === 0 && rows.length === 0 && (
-        <p role="status">
-          {t("Noch keine angewendete Plattform für den Rückbau verfügbar.")}
-        </p>
-      )}
+      {available &&
+        !error &&
+        manage &&
+        candidates.length === 0 &&
+        rows.length === 0 && (
+          <p role="status">
+            {t("Noch keine angewendete Plattform für den Rückbau verfügbar.")}
+          </p>
+        )}
       {manage && candidates.length > 0 && (
         <form
           onSubmit={(event) => {
