@@ -154,7 +154,10 @@ verwenden. Organisatorischer Einzelzugriff ersetzt die Configurator-Neuanlagensp
 
 Lokale Prüfungen umfassen Offline-Guards, Loopback-Tests mit echtem gepinntem Provider,
 PostgreSQL-Autoritäts-/State-/Freigabe-/Recovery-Abläufe und Browserprüfung auf Desktop
-und Mobilgerät. Sie verändern keine realen STACKIT-Ressourcen. Reale Dev-Ergebnisse
-separat dokumentieren, einschließlich einer noch offenen Projektlöschwartezeit.
+und Mobilgerät. Sie verändern keine realen STACKIT-Ressourcen.
+Die CI initialisiert außerdem das erzeugte HTTP-Backend des Workers mit gepinntem
+OpenTofu und führt einen gespeicherten synthetischen Plan mit neuem Job-Zugang aus.
+Das prüft State-Sperren, Zugangsdatenwechsel und Löschung ohne Cloud-Zugriff.
+Reale Dev-Ergebnisse separat dokumentieren, einschließlich einer noch offenen Projektlöschwartezeit.
 Wartenden Rückbau niemals als abgeschlossen ausweisen. Bestehende Demo-Umgebungen
 bleiben bei der Qualifikation erhalten.

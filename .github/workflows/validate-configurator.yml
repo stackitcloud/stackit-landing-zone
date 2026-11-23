@@ -112,6 +112,8 @@ jobs:
         with:
           tofu_version: '1.12.6'
           tofu_wrapper: false
+      - name: Test retirement HTTP backend with native OpenTofu and fresh Apply credentials
+        run: LZC_RETIREMENT_NATIVE_TOFU_BIN="$(command -v tofu)" npx vitest run tests/retirement-http-backend-native.test.ts
       - name: Check all template exports against native Accelerator variable contracts
         run: |
           npm run test:common-contract

@@ -140,6 +140,9 @@ Its organizational single-writer procedure replaces the Configurator admission f
 
 Local verification includes offline guards, real pinned-provider loopback tests,
 PostgreSQL authority/custody/approval/recovery journeys and desktop/mobile UI review.
+CI also initializes the worker's generated HTTP backend with pinned OpenTofu and
+applies a saved synthetic Plan using a fresh job credential. This verifies State
+locking, credential rotation and deletion without cloud access.
 These checks do not mutate real STACKIT resources. Record real Dev results separately,
 including any outstanding project-purge wait; never describe a waiting retirement as
 completed. Preserve all existing demo environments during that qualification.

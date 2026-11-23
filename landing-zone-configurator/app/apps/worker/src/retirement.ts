@@ -39,6 +39,7 @@ import { hostedBrokerOrigin, localBrokerOrigin } from "./runner.js";
 const hash = (bytes: Buffer | string) =>
   createHash("sha256").update(bytes).digest("hex");
 const limit = 16 * 1024 * 1024;
+export const retirementHttpBackendHcl = 'terraform {\n  backend "http" {}\n}\n';
 type Report = (path: string, body: unknown) => Promise<unknown>;
 export type RetirementWorkerOptions = {
   root: string;
@@ -209,11 +210,9 @@ export async function runRetirementWorker(
     workPath = work;
     // Replace the reviewed source's backend block; never migrate into a target-owned S3 bucket.
     await rm(join(work, "backend.tf"), { force: true });
-    await writeFile(
-      join(work, "backend.tf"),
-      'terraform { backend "http" {} }\n',
-      { mode: 0o600 },
-    );
+    await writeFile(join(work, "backend.tf"), retirementHttpBackendHcl, {
+      mode: 0o600,
+    });
     await writeFile(
       join(work, "retirement.tfvars.json"),
       JSON.stringify(input.variables),
