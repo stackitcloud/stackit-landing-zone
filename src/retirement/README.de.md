@@ -10,7 +10,7 @@ nicht in den Configurator, entfernt keine State-Einträge und benötigt keinen n
 Backend-Dienst. Während der Wartezeit läuft kein automatischer Prozess.
 
 Der Adapter unterstützt derzeit State-Ressourcen mit dem STACKIT-Root-Provider
-(Standard, `eu01`, `eu02`), Random und Time. Workloads mit privaten Providern zuerst
+(Standard, `eu01`, `eu02`), Random, Time und die eingebauten `terraform_data`-Marker der Engine. Workloads mit privaten Providern zuerst
 mit ihrer ursprünglichen Quelle und erreichbaren APIs entfernen. Die Inventarisierung
 weist verbleibende verwaltete Vault-, OPNsense-, Kubernetes-, Helm- und modullokale
 Grafana-Provider ab. Keine Ressourcen aus dem State entfernen, um diese Prüfung zu

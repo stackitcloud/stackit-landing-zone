@@ -198,6 +198,53 @@ export class StackitRetirementCloud {
       checkedAt: new Date().toISOString(),
     };
   }
+  async targets(
+    input: {
+      organizationId: string;
+      projectIds: string[];
+      folderIds: string[];
+    },
+    raw: ServiceAccountKey,
+  ) {
+    const value = z
+      .strictObject({
+        organizationId: uuid,
+        projectIds: z.array(uuid).max(2000),
+        folderIds: z.array(uuid).max(1000),
+      })
+      .parse(input);
+    const deadline = Date.now() + 60000,
+      get = await this.authenticated(raw, deadline);
+    const parents = new Map<string, string>();
+    for (const id of value.folderIds) {
+      const item = folder.parse(await get(`/v2/folders/${id}`));
+      if (
+        item.folderId !== id ||
+        item.parent.type !== "ORGANIZATION" ||
+        item.parent.id !== value.organizationId
+      )
+        throw new RetirementCloudError("retirement_cloud_access_unverified");
+      parents.set(item.folderId, item.containerId);
+    }
+    for (const id of value.projectIds) {
+      const item = project.parse(await get(`/v2/projects/${id}`));
+      if (
+        item.projectId !== id ||
+        item.lifecycleState !== "ACTIVE" ||
+        !(
+          item.parent.type === "FOLDER" &&
+          parents.get(item.parent.id) === item.parent.containerId
+        )
+      )
+        throw new RetirementCloudError("retirement_cloud_access_unverified");
+    }
+    return {
+      organizationId: value.organizationId,
+      projectIds: value.projectIds,
+      folderIds: value.folderIds,
+      checkedAt: new Date().toISOString(),
+    };
+  }
   async folderChildren(
     input: { organizationId: string; folderId: string; projectIds: string[] },
     raw: ServiceAccountKey,

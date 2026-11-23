@@ -43,8 +43,17 @@ export class Retirements {
     const input = retirementMutationSchema.parse(raw);
     return withTenant(this.pool, session, async (client) => {
       const result = await client.query(
-        "SELECT lzc_auth.retirement_change($1,$2,$3,$4) AS value",
-        [session.id, z.uuid().parse(id), input.generation, input.action],
+        input.action === "reschedule"
+          ? "SELECT lzc_auth.retirement_reschedule($1,$2,$3,$4::timestamptz) AS value"
+          : "SELECT lzc_auth.retirement_change($1,$2,$3,$4::text) AS value",
+        [
+          session.id,
+          z.uuid().parse(id),
+          input.generation,
+          input.action === "reschedule"
+            ? (input.notBefore ?? null)
+            : input.action,
+        ],
       );
       return retirementSchema.parse(result.rows[0].value);
     });

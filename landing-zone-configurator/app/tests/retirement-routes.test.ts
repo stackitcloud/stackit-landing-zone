@@ -3,8 +3,12 @@ import { expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
 import type { Session } from "../apps/api/src/auth/store.js";
+import { CredentialError } from "../apps/api/src/credentials/profiles.js";
+import type { RetirementExecutionRoutes } from "../apps/api/src/retirements/routes.js";
 
-function fixture() {
+function fixture(
+  execution?: import("../apps/api/src/retirements/routes.js").RetirementExecutionRoutes,
+) {
   const session: Session = {
     id: randomUUID(),
     userId: randomUUID(),
@@ -34,7 +38,11 @@ function fixture() {
     start: vi.fn(),
     change: vi.fn(),
   };
-  const app = buildApp({ auth, retirements });
+  const app = buildApp({
+    auth,
+    retirements,
+    ...(execution ? { retirementExecution: execution } : {}),
+  });
   const headers = {
     cookie: `__Host-lzc-session=${"b".repeat(43)}`,
     origin: auth.origin,
@@ -125,6 +133,122 @@ it("reports admission conflicts without returning raw database errors", async ()
     });
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({ error: "retirement_changed" });
+  } finally {
+    await f.app.close();
+  }
+});
+
+it("separates cookie-authorized review from one-job runner and HTTP-State capabilities", async () => {
+  const execution = {
+    review: vi.fn(async () => ({
+      retirementId: randomUUID(),
+      generation: 1,
+      hasHandoff: false,
+      prepared: false,
+      canPrepare: false,
+      scopes: [],
+      jobs: [],
+    })),
+    plan: vi.fn(),
+    apply: vi.fn(),
+    preview: vi.fn(),
+    inspect: vi.fn(),
+    recoveryReview: vi.fn(),
+    adoptRecovery: vi.fn(),
+    input: vi
+      .fn<RetirementExecutionRoutes["input"]>()
+      .mockRejectedValue(new CredentialError(409, "retirement_state_changed")),
+    stage: vi.fn(),
+    artifact: vi.fn(),
+    state: vi.fn(async () => ({ version: 4 })),
+    result: vi.fn(),
+    recovery: vi.fn(),
+  };
+  const f = fixture(execution),
+    id = randomUUID();
+  try {
+    expect(
+      (
+        await f.app.inject({
+          url: `/api/v1/retirements/${id}/execution`,
+          headers: { ...f.headers, "x-lzc-tenant": randomUUID() },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(execution.review).not.toHaveBeenCalled();
+    expect(
+      (
+        await f.app.inject({
+          url: `/api/v1/retirements/${id}/execution`,
+          headers: f.headers,
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(execution.review).toHaveBeenCalledWith(f.session, id);
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: `/api/v1/retirements/${id}/plans`,
+          headers: { ...f.headers, "x-lzc-csrf": "invalid" },
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(execution.plan).not.toHaveBeenCalled();
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/retirement-runner/input",
+          headers: f.headers,
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(execution.input).not.toHaveBeenCalled();
+    const ticket = "a".repeat(43),
+      bearer = { authorization: `Bearer ${ticket}` },
+      basic = {
+        authorization: `Basic ${Buffer.from(`runner:${ticket}`).toString("base64")}`,
+      };
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/retirement-runner/input",
+          headers: bearer,
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(execution.input).toHaveBeenCalledWith(ticket);
+    expect(
+      (
+        await f.app.inject({
+          url: "/api/retirement-runner/state",
+          headers: bearer,
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(execution.state).not.toHaveBeenCalled();
+    const state = await f.app.inject({
+      url: "/api/retirement-runner/state",
+      headers: basic,
+    });
+    expect(state.statusCode).toBe(200);
+    expect(state.headers["cache-control"]).toBe("no-store");
+    expect(execution.state).toHaveBeenCalledWith(ticket, "read");
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/retirement-runner/input",
+          headers: basic,
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(401);
   } finally {
     await f.app.close();
   }

@@ -48,12 +48,20 @@ import type { OrganisationService } from "./organisation/service.js";
 import { type PlanRoutesServices, registerPlans } from "./plans/routes.js";
 import type { RunnerPool } from "./plans/runner-pool.js";
 import { registerRunnerPool } from "./plans/runner-pool-routes.js";
-import { registerRetirements } from "./retirements/routes.js";
+
+import type { RetirementPreparation } from "./retirements/preparation.js";
+import {
+  type RetirementExecutionRoutes,
+  registerRetirementRunner,
+  registerRetirements,
+} from "./retirements/routes.js";
 import type { Retirements } from "./retirements/service.js";
 
 export function buildApp(
   options: {
     webRoot?: string;
+    retirementExecution?: RetirementExecutionRoutes;
+    retirementPreparation?: Pick<RetirementPreparation, "prepare">;
     retirements?: Pick<Retirements, "list" | "start" | "change" | "candidates">;
     notifications?: Pick<Notifications, "list" | "read" | "preferences">;
     developmentLogin?: DevelopmentLogin;
@@ -132,7 +140,15 @@ export function buildApp(
   });
   if (options.runnerPool) registerRunnerPool(app, options.runnerPool);
   if (options.auth && options.retirements)
-    registerRetirements(app, options.auth, options.retirements);
+    registerRetirements(
+      app,
+      options.auth,
+      options.retirements,
+      options.retirementExecution,
+      options.retirementPreparation,
+    );
+  if (options.retirementExecution)
+    registerRetirementRunner(app, options.retirementExecution);
 
   app.addHook("onSend", async (request, reply) => {
     reply.header("Referrer-Policy", "no-referrer");

@@ -2597,3 +2597,33 @@ button.template-node:hover {
   min-height: 5rem;
   resize: vertical;
 }
+
+.retirement-execution {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.retirement-execution form,
+.retirement-execution section,
+.retirement-scope,
+.retirement-job {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  min-width: 0;
+}
+.retirement-execution code {
+  overflow-wrap: anywhere;
+}
+.retirement-execution input:not([type="checkbox"]) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+.retirement-execution button {
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+}

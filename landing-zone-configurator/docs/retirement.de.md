@@ -1,112 +1,157 @@
-# Rückbauintegration
+# Gestufter Rückbau von Landing Zones
 
 [English](retirement.md) | [Deutsch](retirement.de.md)
 
-Das [Lifecycle-Konzept](../../docs/destroy-lifecycle-concept.de.md) definiert das
-vollständige Zielverhalten. Die aktuelle Umsetzung ist eine abgesicherte Grundlage,
-keine aktivierte Plattform-Destroy-Funktion. `LZC_RETIREMENTS_ENABLED` ist standardmäßig
-aus. Nicht als vollständigen Ausführungsablauf aktivieren oder ausrollen, bevor der
-verbleibende Koordinator und die quellengebundene Runner-Anbindung qualifiziert sind.
-Eine Produktionsaktivierung ist vom freigegebenen Dev-Test mit Wegwerf-Ressourcen getrennt.
+Das [Lifecycle-Konzept](../../docs/destroy-lifecycle-concept.de.md) beschreibt
+Verantwortung und gestuften Rückbau. Die Configurator-Implementierung wird über
+`LZC_RETIREMENTS_ENABLED` ausdrücklich aktiviert; Standard ist `false`. Voraussetzung
+sind ein qualifiziertes Runner-Paket und unabhängig weiterbestehende
+Steuerungsinfrastruktur. Die freigegebene Qualifikation verwendet eine neue
+Wegwerf-Landing-Zone in Dev. Lokale Tests ersetzen keine Produktionsabnahme;
+eine Aktivierung in Produktion ist eine gesonderte Entscheidung.
 
-## Implementierte Verträge
+## Ablauf für den Platform Owner
 
-Migration `103_platform_retirements.sql` speichert Rückbauabsicht, genaue State-Bindung,
-exportierte Plattformrevisionen/Ordnerumfänge, betroffene Besteller, Generation und
-unveränderlich ergänzte Ereignisse außerhalb der Ziel-Cloud-Ressourcen. Der Platform
-Owner braucht Plattformrolle und aktuellen verifizierten Organisationszugriff. Das
-Vorbereitungsfenster beträgt standardmäßig sieben Tage und ist vor Ankündigung
-wählbar. Der Rückbaustart sperrt Neuanlagen atomar. Vorhandene Ausführungen werden
-abgeglichen und nicht als gestoppt angenommen. Unbekannte Ergebnisse und Recovery-
-Sperren verhindern einen Abbruch.
+1. In der Ausführungshistorie die genaue angewendete Plattform auswählen und den
+   Rückbau mit Grund und Löschtermin ankündigen. Sieben Tage sind vorbelegt; der
+   Platform Owner kann den Termin bis zur State-Übernahme ändern. Besteller erhalten
+   Ankündigung und Terminänderungen im Benachrichtigungszentrum. Sie können Daten
+   exportieren oder ihre Applications selbst bereinigen. Zustimmung oder vorherige
+   Selbstlöschung sind keine Voraussetzung. E-Mails folgen der persönlichen
+   Einstellung für das Thema `retirement`.
+2. Neue Bestellungen, Veröffentlichungen, Erweiterungen, Quell-Upgrades und alte
+   Ausführungsfreigaben werden sofort gesperrt. Bereits laufende Schreibprozesse
+   prüfen und abgleichen. Pausieren öffnet keine Neuanlagen; Fortsetzen entwertet
+   frühere Generationen.
+3. Nach dem Vorbereitungsfenster das persönliche Zugangsdatenprofil des tatsächlich
+   handelnden Owners und dessen unabhängiges Service-Account-Projekt auswählen.
+   Erhalt des Zugangs, Datenexport/Aufbewahrung und State-Übernahme bestätigen.
+   Geprüft werden Organisation, Ressourcenzuordnung, bekannte Unterprojekte,
+   Quellverfügbarkeit, Runner-Stopp und die Lage von Steuerungsprojekten und
+   Bereinigungsidentität außerhalb sämtlicher erfasster Rückbauziele.
+4. Jeden ursprünglichen Plattform-/Application-State ausdrücklich in die
+   verschlüsselte Verwahrung der bestehenden Configurator-Datenbank übernehmen.
+   Das ist ein Wechsel der State-Autorität, kein zweiter aktiver State. Ursprüngliche
+   Quell-/Backend-Identitäten und unveränderliche Snapshots bleiben dokumentiert.
+   Alte Factory- und Backend-Zugriffe bleiben gesperrt. Ein normaler Abbruch ist
+   nach dieser Übernahme nicht mehr möglich.
+5. Zuerst abhängige Applications entfernen. Der Platform Owner prüft je Scope einen
+   nativen Plan mit sichtbaren Ressourcenadressen und IDs. Nur genau dessen
+   gespeichertes Artefakt darf mit demselben Runner-Paket, Quellstand, Provider-Lock,
+   State-Stand, Owner und derselben Generation ausgeführt werden. Die Freigabefrist
+   beträgt 30 Minuten. Datenexport/Aufbewahrung und Löschung sind pro Apply separat
+   zu bestätigen.
+6. Auf der Plattform zunächst Ressourcen privater Provider mit ursprünglicher
+   Quelle und erreichbaren Control Planes entfernen, anschließend
+   Plattformressourcen und Projekte über das reduzierte native Rückbau-Root.
+   Folder und gemeinsame Organisationsberechtigungen bleiben verwaltet.
+   Nie ausgeführte Bestellungen werden beim geprüften Plattform-Apply archiviert.
+   Application-Rückbau wird dem tatsächlichen Owner zugeschrieben; Besteller werden
+   nicht impersoniert.
+7. Die tatsächliche endgültige STACKIT-Projektlöschung abwarten. Folder benötigen
+   einen neuen Plan und ein ausdrückliches Apply. HTTP 409 bei der Folder-Löschung
+   bleibt eine fehlgeschlagene native Ausführung. Nach Stopp- und State-Prüfung geht
+   der Rückbau zurück nach `WAITING_FOR_PURGE`. Weder Zeitablauf noch eine leere
+   Projektliste beweisen die endgültige Löschung. Der abschließende Lauf muss mit
+   passenden nativen Löschbelegen erfolgreich sein. Gemeinsame Organisations-IAM
+   bleibt erhalten.
+8. Nachweise und Abschlussmeldungen bleiben außerhalb der gelöschten Landing Zone
+   verfügbar. Gelöschte Ressourcen werden nicht automatisch wiederhergestellt.
 
-Ein gemeinsamer transaktionaler Advisory-Lock ordnet Rückbaustart gegenüber neuen
-Bestellungen, Veröffentlichungen/importierten Verträgen, Plattformquellen, Quellen-
-Upgrades, Application-Jobs, Tickets, Claims, Backends, Dispatches, Plattform-Jobs und
-Zugangsfreigabe-Verbrauch. Er gilt nur während der kurzen Zulassungstransaktion,
-niemals während des Purge-Wartens. Bereits laufende Schreiber können Cloud-Zugangsdaten
-besitzen; die Sperre beendet diese Aufrufe nicht. Destroy-Anfragen benötigen die
-aktuelle Generation. Pause/Fortsetzung machen ältere vorbereitete Berechtigungen
-ungültig. Eine andere Veröffentlichungsrevision macht einen stillzulegenden physischen
-Ordner nicht wieder bestellbar. Geteilte oder ungeklärte State-Zuständigkeit verlangt
-Prüfung statt Zusammenlegung von Deployments.
+## State, Zugangsdaten und unterbrochene Ausführungen
 
-Besteller erhalten eine dauerhafte Workspace-Nachricht, auch nach Archivierung der
-ursprünglichen Bestellung. E-Mails beachten das Thema `retirement` und die gewählte
-Sprache. Bestehende Einstellungen und Standardauswahlen bleiben unverändert; das neue
-Thema wird daher ausdrücklich eingeschaltet. E-Mail-Abwahl oder Zustellfehler entfernen
-keine Nachricht im Posteingang. SMTP-Übergabe ist weder Zustimmung noch Zustellnachweis.
-Der Platform Owner entscheidet; Zustimmung oder vorheriges eigenes Löschen durch
-Besteller ist im Standard keine Voraussetzung.
+Migrationen 103–106 speichern Absicht, genaue State-/Folder-/Revisionsbindung,
+Besteller, Generationen, unveränderliche Ereignisse, verschlüsselte Snapshots,
+Kontrollfreigaben, HTTP-State-Verwahrung und eigene Rückbaujobs. Die Runtime darf
+diese Tabellen nicht direkt verändern. Eine kurze Transaktionssperre ordnet neue
+Zugriffe und die späte Freigabe von Zugangsdaten; sie besteht nicht während einer
+mehrtägigen Wartezeit.
 
-Authentifizierte APIs verlangen einen ausdrücklichen Workspace-Header, eine einmalig
-aufgelöste Sitzungsidentität sowie CSRF-/Origin-Prüfungen für Änderungen:
+Die Ausführung verwendet einen eigenen kalten Cloud-Foundry-Job-Broker. Die bisherige
+Bestellerbindung der Application-Ausführung wird weder erweitert noch ausgeliehen.
+Jede Zugangsdatenfreigabe prüft den real freigebenden Owner und seine Sitzung,
+Profil-/Schlüsselversion, Organisationszugriff, Generation sowie Quelle/Paket erneut.
+Native State-Zugriffe verwenden ein anwendungskontrolliertes HTTP-Backend mit
+Datenbanksperre pro Job. Plan-Jobs können keinen State schreiben. Ein nachgewiesen
+beendeter Runner gibt ausschließlich seinen eigenen HTTP-Lock frei.
 
-| Endpunkt | Wirkung |
+Ein Callback beweist weder Runner-Stopp noch erfolgreichen Rückbau. Vor dem nächsten
+Schritt die tatsächliche CF-App und Paketidentität prüfen. Ein gestoppter Plan oder
+ein vor der Apply-Phase beendeter Apply kann bei unverändertem State-Stand für einen
+neuen Plan geklärt werden; das fehlende native Ergebnis bleibt unbekannt. Ein Apply,
+der die Apply-Phase erreicht hat, bleibt ohne vertrauenswürdigen State-/Ergebnisabgleich
+gesperrt. Ein fehlgeschlagener Apply bleibt fehlgeschlagen, auch wenn nach
+Abgleich ein neuer Plan möglich wird. Bei `errored.tfstate` bleibt der Worker aktiv,
+bis die verschlüsselte Sicherung bestätigt wurde. Während einer ausstehenden
+Sicherung den CF-Task nicht beenden. Wiederholte Sicherungsuploads werden ohne
+wiederholte Cloud-Aktion bestätigt. Nach tatsächlichem Stopp darf der Owner
+Identität und entfernte Ressourcen prüfen und diesen State ausdrücklich übernehmen.
+Danach ist ein neuer Plan erforderlich; das alte Artefakt wird nicht erneut benutzt.
+Fehlt ein vertrauenswürdiger State oder Nachweis, Sperre erhalten und Wiederherstellung
+klären. Keine Datenbankphase umschreiben und keine State-Einträge verwerfen.
+
+Die bisherigen S3-Objekte sind nach Übernahme eingefrorene Nachweise und keine
+aktiven Backends. Sie können die Löschung des Management-Buckets verhindern.
+Benötigte Nachweise exportieren und das Entfernen dieser Objekte, Versionen und
+sonstiger Bucket-Daten über den zuständigen Dienst ausdrücklich prüfen. Es gibt kein
+automatisches `force_destroy`, Umgehen von Aufbewahrung oder stilles Leeren von
+Buckets. Unabhängige Zugangsdaten und Datenbanksicherungen bis zum vollständigen
+Abgleich erhalten.
+
+## API und Deployment
+
+Browser-APIs benötigen eine aufgelöste Sitzung, den expliziten Arbeitsbereich und
+bei Änderungen CSRF-/Origin-Prüfung. Application Owner sehen nur betroffene Hinweise;
+Ausführung benötigt Plattformrolle und aktuellen Organisationsnachweis.
+
+| Endpoint | Zweck |
 | --- | --- |
-| `GET /api/v1/retirements` | Rollenbezogener Status; Application Owner sehen nur ihre betroffenen Applications |
-| `GET /api/v1/retirements/candidates` | Verifizierter Platform Owner wählt eine angewendete State-Bindung |
-| `POST /api/v1/retirements` | Absicht, Grund und optionalen Zeitpunkt `notBefore` bestätigen; Nachricht und Sperre gemeinsam speichern |
-| `POST /api/v1/retirements/:id` | Generationsgebundenes `inspect`, `pause`, `resume` oder `cancel` vor destruktivem Beginn |
+| `GET /api/v1/retirements`, `/candidates` | Status und Auswahl der genau angewendeten Plattform |
+| `POST /api/v1/retirements` | Absicht, Termin, Benachrichtigung und dauerhafte Neuanlagensperre |
+| `POST /api/v1/retirements/:id` | Generationsgebunden prüfen, pausieren, fortsetzen, vor Übernahme abbrechen oder Termin ändern |
+| `GET /api/v1/retirements/:id/execution` | Sichere Scope-/Job-Übersicht ohne Zugangsdaten, Roh-State oder Roh-Plan |
+| `POST /api/v1/retirements/:id/prepare` | Unabhängigen Zugang prüfen und State ausdrücklich übernehmen |
+| `POST /api/v1/retirements/:id/plans` | Nativer Plan mit gebundener Quelle für einen freigegebenen Scope |
+| `GET .../:id/jobs/:jobId/preview` | Genaue Ressourcenliste zur Löschung |
+| `POST .../:id/jobs/:jobId/apply` | Explizite Freigabe des gespeicherten Artefakts |
+| `POST .../:id/jobs/:jobId/inspect` | Runner-Stopp, gespeicherten State und Ergebnis vor Fortschritt prüfen |
+| `GET` / `POST .../:id/jobs/:jobId/recovery` | Unterbrochenen State prüfen / nach Stopp ausdrücklich übernehmen |
 
-Der Ausführungsverlauf enthält die Platform-Owner-Bedienung. Application-Ansichten
-zeigen Betroffenen die aktuelle Nachricht ohne Rückbaubedienung. Templates liefern
-das abgeleitete Merkmal `platformRetiring`. Normale Bestellungen und alte Apply-Pläne
-bleiben auch bei veraltetem Browser serverseitig gesperrt. Entwurfsbearbeitung ist
-keine Ausführungsberechtigung.
+`/api/retirement-runner/*` verwendet eine separate Berechtigung für genau einen Job;
+Browser-Cookies berechtigen nicht. HTTP-State-Zugänge gelten nur für diesen Job/State.
+Änderungen an Quelle, Artefakt oder State, zusätzliche Ressourcen und Verschwinden
+beim Refresh werden zurückgewiesen. Öffentliche Antworten und Logs enthalten keine
+rohen nativen Pläne oder privaten States.
 
-## Private Vorbereitungsnachweise
+Der Release-Workflow übernimmt `LZC_RETIREMENTS_ENABLED` aus der ausdrücklichen
+Environment-Variable und bindet `LZC_RETIREMENT_CONTROL_PROJECT_IDS` an das
+Operatorprojekt `LZC_PROJECT_ID`. Staging deaktiviert Rückbau grundsätzlich.
+Der Runtime-Start verweigert ein fehlendes/unqualifiziertes Paket oder unvollständige
+Ausführungsabhängigkeiten. Produktion bleibt ohne gesonderte Aktivierung/Freigabe aus;
+ein automatischer Produktionsrollout ist damit nicht verbunden.
 
-Migration `104_retirement_inventories.sql` und der interne Dienst `RetirementCapture`
-erfassen den maßgeblichen Plattform-State und die exakten zuletzt angewendeten
-Application-Backend-/Quellbindungen. Der handelnde Platform Owner behält seine eigene
-Identität; Sitzungen oder Zugangsdaten von Bestellern werden nicht übernommen.
-Die Aufnahme ist unveränderlich, an Generation und Kontext gebunden und für State,
-Inventar und Quelle getrennt verschlüsselt. Backend-Lesezugriffe erfolgen außerhalb
-der Anlagesperrtransaktion und werden vor dem atomaren Commit aller Scopes wiederholt.
-Pause, Quelländerungen oder ungeklärte Schreiber verhindern die Aufnahme. Dieser
-interne Vorbereitungsdienst ist kein freigeschalteter Ausführungsendpunkt und
-verschiebt weder die Backend-Autorität noch erteilt er eine Destroy-Berechtigung.
+## Grenzen und Qualifikation
 
-Die ausschließlich Node-seitigen nativen Prüfungen erfassen bekannte private Provider,
-verlangen deren getrennten Vorabbau mit der Originalquelle und verweigern den
-Infrastrukturabbau, solange diese Ressourcen bestehen. Native Pläne müssen rein
-löschend sein, zu den erfassten Identitäten passen und den aktuellen State abdecken.
-Verschwinden beim Refresh, ausgelassene verwaltete Ressourcen, ungeprüfte Teillöschungen
-und ein als erfolgreich gemeldeter Apply ohne den erwarteten State-Übergang werden
-abgewiesen. Diese Prüfungen beweisen keine API-Berechtigung, überlebende Steuerung
-oder physische Projektbereinigung.
+Die initiale automatische Erfassung ist auf 100 abhängige Applications und zusammen
+64 MiB unverschlüsselte Nachweisdaten begrenzt. Größere, gemeinsame oder uneindeutige
+Scopes benötigen eine gesonderte Stapelprüfung. Unbekannte Provider, fehlende historische
+Quellen, Projekte außerhalb erfasster Folder, fremde Unterprojekte oder unerreichbare
+Control Planes blockieren die Ausführung statt den Umfang auszuweiten. Vor State-Übernahme verweigert das gehostete CF-Profil Kubernetes-/Helm-/OPNsense-Workloads;
+diese zuerst mit der ursprünglich erreichbaren Umgebung bereinigen. Gehostete
+Bereinigung privater Provider ist auf die enthaltenen Vault-/Grafana-Profile begrenzt.
+Terraform-Registry-Identitäten benötigen vor Übernahme eine separat geprüfte
+OpenTofu-Migration. Auch die eingefrorenen Eingaben müssen vorher sicher rekonstruierbar
+sein. Für private SNA-Control-Planes bleibt eine ursprünglich erreichbare Ausführungsumgebung nötig;
+Cloud Foundry wird durch diese Funktion nicht zum SNA-Runner.
 
-## Verbleibende Ausführungsanbindung
+Das unabhängige [OpenTofu-Runbook](../../src/retirement/README.de.md) gilt für ohne
+Configurator erstellte Landing Zones. Es benötigt weder Import noch Configurator-DB
+oder zusätzlichen Backend-Dienst; ursprünglichen State und weiterbestehendes Backend
+verwenden. Organisatorischer Einzelzugriff ersetzt die Configurator-Neuanlagensperre.
 
-Die Grundlage erreicht derzeit Vorbereitung/Abgleich. Sie bietet **noch keinen**
-administrativen Application-Destroy über Besteller hinweg, erfasste Cloud-Inventare
-und Prüfung überlebender Steuerungsressourcen, phasengebundene native Plan-/Apply-
-Dispatches, Purge-Beobachtung, späteren Ordnerabschluss, Abschlussnachrichten oder
-Batch-Bereinigung. Der vorhandene bestellergebundene Application-Destroy wird nicht
-imitiert oder pauschal erweitert. Diese Teile müssen handelnden Owner und Besteller,
-ursprünglichen State, Quellen-/Provider-Bindung, verschlüsselte Artefakte, geprüften
-Umfang und aktuelle Autorisierung erhalten. Datenbank-Phasenänderungen oder hochgeladene
-State-Dateien sind keine Abschlussnachweise.
-
-Der unabhängige [native OpenTofu-Adapter](../../src/retirement/README.de.md) bietet den
-operatorgestützten Weg für sein qualifiziertes Provider-Profil ohne Import in den
-Configurator. Diese API nutzt ihn nicht stillschweigend vor der Runner-Anbindung.
-Historische Workloads mit privaten Providern brauchen ihre ursprünglich erreichbaren
-Control Planes. Ordnerlöschung hängt weiterhin vom tatsächlichen STACKIT-Purge ab;
-kein Timer garantiert Erfolg.
-
-## Qualifikation
-
-Unit-/HTTP-Tests prüfen Sitzung, Workspace, CSRF und Fehlergrenzen. PostgreSQL-
-Integration prüft Rückbauabsicht, sieben Tage Standardfrist, Umfangstrennung, Zulassung,
-alte Plattform-Tickets, Pause-Generationen, geteilte Zuständigkeit und Nachrichten
-nach Archivierung. Desktop-/Mobil-Browsertests prüfen Englisch, ausdrückliche
-Bestätigung und Pause. Native Tests verwenden den echten festgelegten Provider gegen
-eine isolierte Loopback-API: Projektlöschung im selben State, erhaltene Ordner,
-Abweisung falschen Verschwindens bei HTTP 403, HTTP-409-Fehler und später erfolgreichen
-Ordnerabschluss. Diese Prüfungen nutzen keine Cloud-Zugangsdaten oder realen Ressourcen.
-
-Der Dev-Pilot muss eine neu angelegte, eindeutig benannte Wegwerf-Landing-Zone nutzen
-und vorhandene Demo-Deployments erhalten. Lokale Prüfungen allein erlauben weder
-Produktionsrelease noch die Aussage einer vollständigen Live-Qualifikation.
+Lokale Prüfungen umfassen Offline-Guards, Loopback-Tests mit echtem gepinntem Provider,
+PostgreSQL-Autoritäts-/State-/Freigabe-/Recovery-Abläufe und Browserprüfung auf Desktop
+und Mobilgerät. Sie verändern keine realen STACKIT-Ressourcen. Reale Dev-Ergebnisse
+separat dokumentieren, einschließlich einer noch offenen Projektlöschwartezeit.
+Wartenden Rückbau niemals als abgeschlossen ausweisen. Bestehende Demo-Umgebungen
+bleiben bei der Qualifikation erhalten.

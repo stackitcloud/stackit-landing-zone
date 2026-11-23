@@ -43,6 +43,7 @@ BEGIN
  ORDER BY run.finished_at DESC,run.created_at DESC LIMIT 1;
  IF applied IS NULL OR manifest#>>'{organization,id}' IS DISTINCT FROM r.organization_id::text THEN
   RAISE EXCEPTION 'retirement_applied_binding_required' USING ERRCODE='40001'; END IF;
+ IF jsonb_array_length(r.applications)>100 THEN RAISE EXCEPTION 'retirement_scope_requires_batch_review' USING ERRCODE='40001'; END IF;
  -- A claimed/dispatched order without a successful native Apply is not assumed empty.
  SELECT EXISTS(SELECT 1 FROM jsonb_array_elements(r.applications) item WHERE
   (EXISTS(SELECT 1 FROM lzc.application_jobs j JOIN lzc.application_job_claims c ON c.job_id=j.id WHERE j.instance_id=(item->>'id')::uuid)
@@ -53,7 +54,7 @@ BEGIN
  SELECT coalesce(jsonb_agg(scope ORDER BY scope->>'scopeKey'),'[]') INTO apps FROM (
   SELECT jsonb_build_object('scopeKey','applications/'||r.tenant_id::text||'/'||j.instance_id::text||'/terraform.tfstate',
    'instanceId',j.instance_id,'requestedBy',item->>'requestedBy','backendId',b.backend_id,'descriptor',b.descriptor,
-   'inputs',j.inputs,'appliedRunId',j.id,'sourceRevision',lzc_auth.effective_application_revision(j.instance_id)) AS scope
+   'inputs',j.inputs-'tfvars','appliedRunId',j.id,'sourceRevision',j.inputs->>'acceleratorRevision') AS scope
   FROM jsonb_array_elements(r.applications) item JOIN LATERAL(
    SELECT job.* FROM lzc.application_jobs job JOIN lzc.application_dispatches dispatch ON dispatch.job_id=job.id
     WHERE job.instance_id=(item->>'id')::uuid AND job.operation='apply' AND dispatch.status='succeeded'

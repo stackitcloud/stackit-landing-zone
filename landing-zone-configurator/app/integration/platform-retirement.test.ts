@@ -1,14 +1,31 @@
-import { randomBytes, randomUUID } from "node:crypto";
+import {
+  createHash,
+  generateKeyPairSync,
+  randomBytes,
+  randomUUID,
+} from "node:crypto";
 import { fileURLToPath } from "node:url";
+import {
+  retirementInventory,
+  retirementPlanProjection,
+  retirementStateSha256,
+  verifyRetirementApply,
+  verifyRetirementPlan,
+} from "@lzc/contracts/recovery";
+import { createEditorConfiguration, editCommonInput } from "@lzc/domain";
 import pg from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { Backends } from "../apps/api/src/deployments/backends.js";
 import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
 import { RetirementCapture } from "../apps/api/src/retirements/capture.js";
+import { RetirementExecution } from "../apps/api/src/retirements/execution.js";
+import { RetirementPreparation } from "../apps/api/src/retirements/preparation.js";
 import { Retirements } from "../apps/api/src/retirements/service.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
+import { StackitRetirementCloud } from "../packages/contracts/src/recovery/retirement-cloud.js";
+import { parseServiceAccountKey } from "../packages/contracts/src/recovery/service-account.js";
 import { inWorkspace } from "./fixture-workspace.js";
 
 const address = process.env.LZC_TEST_DATABASE_URL;
@@ -194,6 +211,26 @@ it("persists scope, seven-day notice and recipient; does not expose another work
       )
     ).rows[0].count,
   ).toBe(1);
+  const scheduled = await service.change(owner, r.id, {
+    generation: r.generation,
+    action: "reschedule",
+    notBefore: new Date(Date.now() + 2 * 86400000).toISOString(),
+  });
+  expect(scheduled.generation).toBe(r.generation + 1);
+  expect(Date.parse(scheduled.notBefore) - Date.now()).toBeLessThanOrEqual(
+    2 * 86400000,
+  );
+  expect(
+    (
+      await admin.query(
+        "SELECT count(*)::int count FROM lzc_auth.notifications WHERE event_key LIKE $1 AND kind='retirement-announced'",
+        [`${r.id}:%`],
+      )
+    ).rows[0].count,
+  ).toBe(2);
+  await expect(
+    service.change(owner, r.id, { generation: r.generation, action: "pause" }),
+  ).rejects.toMatchObject({ code: "40001" });
   expect(await service.list(outsider)).toEqual([]);
   await expect(
     service.start(outsider, {
@@ -637,4 +674,797 @@ it("captures an encrypted same-State inventory without granting execution, and k
   expect(
     (await service.list(owner)).find((r) => r.id === entry.id)?.phase,
   ).toBe("PAUSED");
+});
+
+it("transfers only a captured same-State scope to independent encrypted custody and keeps the old factory fenced", async () => {
+  const scope = await fixture(),
+    crypto = new ArtifactCrypto(randomBytes(32).toString("base64")),
+    profile = randomUUID(),
+    project = randomUUID(),
+    control = randomUUID(),
+    subject = randomUUID();
+  const org = (
+    await admin.query("SELECT organization_id FROM lzc.tenants WHERE id=$1", [
+      owner.tenantId,
+    ])
+  ).rows[0].organization_id;
+  const applicationProject = randomUUID(),
+    applicationBackend = randomUUID(),
+    applicationPlan = randomUUID(),
+    applicationApply = randomUUID();
+  const applicationDocument = Buffer.from(
+    JSON.stringify({
+      version: 4,
+      lineage: randomUUID(),
+      serial: 1,
+      resources: [
+        {
+          mode: "managed",
+          type: "terraform_data",
+          name: "contract",
+          provider: 'provider["terraform.io/builtin/terraform"]',
+          instances: [
+            {
+              attributes: {
+                id: randomUUID(),
+                input: { secret: "not-public" },
+                output: { secret: "not-public" },
+              },
+            },
+          ],
+        },
+        {
+          mode: "managed",
+          type: "stackit_resourcemanager_project",
+          name: "this",
+          provider: 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+          instances: [{ attributes: { project_id: applicationProject } }],
+        },
+      ],
+    }),
+  );
+  const applicationDescriptor = {
+    useLockfile: true,
+    bucket: "retirement-fixture",
+    key: `applications/${owner.tenantId}/${scope.instance}/terraform.tfstate`,
+    region: "eu01",
+    endpoint: "https://object.storage.eu01.onstackit.cloud",
+  };
+  const document = Buffer.from(
+    JSON.stringify({
+      version: 4,
+      lineage: randomUUID(),
+      serial: 1,
+      resources: [
+        {
+          module: "module.governance",
+          mode: "managed",
+          type: "stackit_resourcemanager_folder",
+          name: "this",
+          provider: 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+          instances: [
+            { index_key: "platform", attributes: { folder_id: scope.folder } },
+          ],
+        },
+        {
+          module: "module.management",
+          mode: "managed",
+          type: "stackit_resourcemanager_project",
+          name: "this",
+          provider: 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+          instances: [{ attributes: { project_id: project } }],
+        },
+      ],
+    }),
+  );
+  const key = parseServiceAccountKey({
+    credentials: {
+      kid: "handoff-fixture-key",
+      iss: "handoff-fixture@sa.stackit.cloud",
+      sub: subject,
+      aud: "https://accounts.stackit.cloud",
+      privateKey: generateKeyPairSync("rsa", { modulusLength: 2048 })
+        .privateKey.export({ type: "pkcs8", format: "pem" })
+        .toString(),
+    },
+  });
+  await imported(async () => {
+    await admin.query(
+      "UPDATE lzc.platform_states SET ciphertext=$2,stable_aad=true WHERE state_key=$1",
+      [
+        scope.stateKey,
+        crypto.encrypt(
+          document,
+          owner.tenantId,
+          scope.stateKey,
+          `state:${scope.stateKey}`,
+        ),
+      ],
+    );
+    await admin.query(
+      "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,ticket_hash,status,mode,operation,plan_id,artifact_sha256,state_key,state_version,applied_state_version,cleaned,finished_at) VALUES($1,$2,$3,$4,$5,'succeeded','platform-apply','apply',$6,$7,$8,1,1,true,now())",
+      [
+        randomUUID(),
+        owner.tenantId,
+        owner.userId,
+        scope.preparation,
+        randomUUID(),
+        scope.run,
+        "a".repeat(64),
+        scope.stateKey,
+      ],
+    );
+    await admin.query(
+      "INSERT INTO lzc.credential_profiles(id,tenant_id,owner_user_id,name,service_account,key_id,state) VALUES($1,$2,$3,'Cleanup fixture',$4,$5,'stored')",
+      [
+        profile,
+        owner.tenantId,
+        owner.userId,
+        key.credentials.iss,
+        key.credentials.kid,
+      ],
+    );
+  });
+  let configuration = createEditorConfiguration("standalone", randomUUID());
+  configuration = editCommonInput(configuration, "organization_id", org);
+  configuration = editCommonInput(configuration, "rm_folders", {
+    platform: {
+      name: "retirement-fixture",
+      description: null,
+      owner_emails: [],
+      reader_emails: [],
+    },
+  });
+  await imported(async () => {
+    await admin.query(
+      "UPDATE lzc.deployment_preparations SET manifest=$2 WHERE id=$1",
+      [
+        scope.preparation,
+        {
+          organization: { id: org },
+          accelerator: { commit: "a".repeat(40) },
+          configuration,
+        },
+      ],
+    );
+  });
+  await imported(async () => {
+    await admin.query(
+      "UPDATE lzc.application_instances SET requested_by=$2 WHERE id=$1",
+      [scope.instance, outsider.userId],
+    );
+    await admin.query(
+      "INSERT INTO lzc.state_backends(id,tenant_id,descriptor,identity_sha256,credentials_ciphertext) VALUES($1,$2,$3,$4,$5)",
+      [
+        applicationBackend,
+        owner.tenantId,
+        applicationDescriptor,
+        "b".repeat(64),
+        crypto.encrypt(
+          Buffer.from(
+            JSON.stringify({
+              accessKeyId: "fixture-access",
+              secretAccessKey: "fixture-secret",
+            }),
+          ),
+          owner.tenantId,
+          applicationBackend,
+          `backend:${applicationBackend}`,
+        ),
+      ],
+    );
+    const inputs = {
+      acceleratorRevision: "2b581f23dd40ccd4425e5e9efd93fb2c44cc8f8a",
+      variables: {
+        application: { name: "requester-application" },
+        platform_contract: {},
+      },
+    };
+    for (const [id, operation, parent] of [
+      [applicationPlan, "plan", null],
+      [applicationApply, "apply", applicationPlan],
+    ] as const) {
+      await admin.query(
+        "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at,plan_id,artifact_sha256) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,now()+interval '1 hour',$10,$11)",
+        [
+          id,
+          owner.tenantId,
+          scope.instance,
+          outsider.userId,
+          outsider.id,
+          randomUUID(),
+          operation,
+          inputs,
+          "a".repeat(64),
+          parent,
+          parent ? "c".repeat(64) : null,
+        ],
+      );
+    }
+    await admin.query(
+      "INSERT INTO lzc.application_dispatches(job_id,tenant_id,instance_id,owner_user_id,approved_by,approval_session_id,status,finished_at) VALUES($1,$2,$3,$4,$5,$6,'succeeded',now())",
+      [
+        applicationApply,
+        owner.tenantId,
+        scope.instance,
+        outsider.userId,
+        owner.userId,
+        owner.id,
+      ],
+    );
+    await admin.query(
+      "INSERT INTO lzc.application_job_backends(job_id,tenant_id,owner_user_id,approved_by,approval_session_id,backend_id,descriptor,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,now()+interval '1 hour')",
+      [
+        applicationApply,
+        owner.tenantId,
+        outsider.userId,
+        owner.userId,
+        owner.id,
+        applicationBackend,
+        applicationDescriptor,
+      ],
+    );
+  });
+  const capturedBackends = new Backends(
+    runtime,
+    crypto,
+    async (_backend, path) =>
+      path.endsWith(".tflock")
+        ? null
+        : { bytes: applicationDocument, identity: "fixture-state-1" },
+  );
+  const entry = await service.start(owner, {
+    stateKey: scope.stateKey,
+    reason: "Independent control qualification",
+    notBefore: new Date(Date.now() + 1000).toISOString(),
+    confirmRetirement: true,
+  });
+  const orgParent = {
+    id: org,
+    containerId: "org-fixture",
+    type: "ORGANIZATION",
+  };
+  const nativeProject = {
+    projectId: project,
+    containerId: "project-fixture",
+    parent: { id: scope.folder, containerId: "folder-fixture", type: "FOLDER" },
+    lifecycleState: "ACTIVE",
+  };
+  const calls: { url: string; method: string }[] = [];
+  let newForeignChild = false;
+  const foreignProject = randomUUID();
+  const cloud = new StackitRetirementCloud(async (address, init) => {
+    const url = new URL(String(address));
+    calls.push({ url: url.toString(), method: init?.method ?? "GET" });
+    const value =
+      url.hostname === "accounts.stackit.cloud"
+        ? { access_token: "private-fixture-token", token_type: "Bearer" }
+        : url.pathname === `/v2/organizations/${org}`
+          ? { organizationId: org, lifecycleState: "ACTIVE" }
+          : url.pathname === `/v2/projects/${control}`
+            ? {
+                projectId: control,
+                containerId: "control-fixture",
+                parent: orgParent,
+                lifecycleState: "ACTIVE",
+              }
+            : [
+                  `/v2/projects/${project}`,
+                  `/v2/projects/${applicationProject}`,
+                ].includes(url.pathname)
+              ? {
+                  ...nativeProject,
+                  projectId: url.pathname.endsWith(applicationProject)
+                    ? applicationProject
+                    : project,
+                }
+              : url.pathname === `/v2/folders/${scope.folder}`
+                ? {
+                    folderId: scope.folder,
+                    containerId: "folder-fixture",
+                    parent: orgParent,
+                  }
+                : url.pathname.endsWith("/service-accounts")
+                  ? {
+                      items: [
+                        {
+                          id: subject,
+                          email: key.credentials.iss,
+                          projectId: control,
+                        },
+                      ],
+                    }
+                  : url.pathname === "/v2/projects"
+                    ? {
+                        items: [
+                          ...(newForeignChild
+                            ? [{ ...nativeProject, projectId: foreignProject }]
+                            : []),
+                          nativeProject,
+                          { ...nativeProject, projectId: applicationProject },
+                        ],
+                        limit: 100,
+                        offset: 0,
+                      }
+                    : null;
+    if (!value) throw Error("Unexpected fixture request");
+    return new Response(JSON.stringify(value), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+  const prepare = new RetirementPreparation(
+    runtime,
+    crypto,
+    capturedBackends,
+    {
+      verifyForPreparation: async () => ({
+        check: {
+          status: "passed",
+          organizationId: org,
+          organizationName: "Fixture",
+          checkedAt: new Date().toISOString(),
+          code: "organization_readable",
+        },
+        version: 1,
+        keyId: key.credentials.kid,
+      }),
+    },
+    {
+      get: async () => ({ key, version: 1 }),
+      put: async () => {},
+      remove: async () => {},
+    },
+    cloud,
+    [control],
+    { retirementEnabled: true, supportsRetirement: () => true },
+  );
+  const input = {
+    generation: entry.generation,
+    credentialProfileId: profile,
+    cleanupProjectId: control,
+    confirmStateHandoff: true,
+    confirmCleanupPermissionsSurvive: true,
+  };
+  await expect(prepare.prepare(owner, entry.id, input)).rejects.toMatchObject({
+    code: "retirement_preparation_window",
+  });
+  expect(calls).toEqual([]);
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+  const result = await prepare.prepare(owner, entry.id, input);
+  expect(result.scopeCount).toBe(2);
+  const rows = await admin.query(
+    "SELECT * FROM lzc.retirement_execution_scopes WHERE retirement_id=$1",
+    [entry.id],
+  );
+  expect(rows.rowCount).toBe(2);
+  const rootHandoff = rows.rows.find((row) => row.scope_key === scope.stateKey);
+  expect(rootHandoff).toBeDefined();
+  const applicationHandoff = rows.rows.find(
+    (row) => row.instance_id === scope.instance,
+  );
+  expect(applicationHandoff.requested_by).toBe(outsider.userId);
+  expect(applicationHandoff.created_by).toBe(owner.userId);
+  expect(
+    crypto.decrypt(
+      rootHandoff.current_state_ciphertext,
+      owner.tenantId,
+      entry.id,
+      `retirement-state:${rootHandoff.id}`,
+    ),
+  ).toEqual(document);
+  await expect(
+    service.change(owner, entry.id, {
+      generation: entry.generation,
+      action: "cancel",
+    }),
+  ).rejects.toMatchObject({
+    code: "55000",
+    message: "retirement_control_handoff_committed",
+  });
+  await expect(
+    withTenant(runtime, outsider, (client) =>
+      client.query("SELECT lzc_auth.retirement_execution_context($1,$2,$3)", [
+        outsider.id,
+        entry.id,
+        entry.generation,
+      ]),
+    ),
+  ).rejects.toMatchObject({ code: "42501" });
+  // Exercise the actual database authority, encrypted custody, runner broker,
+  // saved-artifact approval and partial purge wait with a synthetic native driver.
+  const tickets = new Map<string, string>(),
+    pack = randomUUID();
+  let nativePlan: unknown;
+  const profiles = {
+    verifyForPreparation: async () => ({
+      check: {
+        status: "passed" as const,
+        organizationId: org,
+        organizationName: "Fixture",
+        checkedAt: new Date().toISOString(),
+        code: "organization_readable" as const,
+      },
+      version: 1,
+      keyId: key.credentials.kid,
+    }),
+  };
+  const execution = new RetirementExecution(
+    runtime,
+    crypto,
+    profiles,
+    {
+      get: async () => ({ key, version: 1 }),
+      put: async () => {},
+      remove: async () => {},
+    },
+    cloud,
+    [control],
+    {
+      retirementEnabled: true,
+      supportsRetirement: () => true,
+      supportsArtifact: (id) => id === pack,
+      isStopped: async () => true,
+      preview: async () => nativePlan,
+      start: async (id, ticket, _origin, record) => {
+        await record(randomUUID(), pack);
+        tickets.set(id, ticket);
+      },
+      remove: async () => {},
+    },
+    "http://localhost:3000",
+  );
+  const captured = await execution.review(owner, entry.id);
+  expect(captured.scopes).toHaveLength(2);
+  expect(captured.prepared).toBe(true);
+  expect(JSON.stringify(captured)).not.toMatch(
+    /ciphertext|privateKey|handoff-fixture-key/,
+  );
+  let executionScope = captured.scopes.find((s) => s.instanceId === null)!.id;
+  const rootScopeId = executionScope,
+    applicationScopeId = captured.scopes.find(
+      (s) => s.instanceId === scope.instance,
+    )!.id;
+  await expect(
+    execution.plan(owner, entry.id, {
+      generation: entry.generation,
+      scopeId: rootScopeId,
+    }),
+  ).rejects.toMatchObject({ message: "retirement_applications_pending" });
+  executionScope = applicationScopeId;
+  newForeignChild = true;
+  await expect(
+    execution.plan(owner, entry.id, {
+      generation: entry.generation,
+      scopeId: executionScope,
+    }),
+  ).rejects.toMatchObject({ code: "retirement_foreign_child" });
+  newForeignChild = false;
+
+  const waitTicket = async (id: string) => {
+    for (let i = 0; i < 50 && !tickets.has(id); i++)
+      await new Promise((r) => setTimeout(r, 10));
+    return tickets.get(id)!;
+  };
+  const artifact = Buffer.from("synthetic saved native plan"),
+    artifactHash = createHash("sha256").update(artifact).digest("hex");
+  const planFor = (state: unknown, phase: string) => ({
+    format_version: "1.0",
+    complete: true,
+    errored: false,
+    resource_changes: retirementInventory(state, {
+      includePrivate: true,
+    }).resources.map((resource) => ({
+      address: resource.address,
+      mode: "managed",
+      type: resource.type,
+      change: {
+        actions: [
+          phase === "remove_projects" &&
+          resource.address.startsWith("module.governance.")
+            ? "no-op"
+            : "delete",
+        ],
+        before: {
+          [resource.type === "stackit_resourcemanager_folder"
+            ? "folder_id"
+            : resource.type === "stackit_resourcemanager_project"
+              ? "project_id"
+              : "id"]: resource.id,
+        },
+      },
+    })),
+  });
+  const createPlan = async () => {
+    const job = await execution.plan(owner, entry.id, {
+        generation: entry.generation,
+        scopeId: executionScope,
+      }),
+      ticket = await waitTicket(job.id),
+      input = await execution.input(ticket);
+    expect(input.key).toEqual(key);
+    expect(input.protectedProjectIds).toContain(control);
+    const state = await execution.state(ticket, "read");
+    nativePlan = planFor(state, input.phase);
+    await execution.stage(ticket, "validating");
+    await execution.stage(ticket, "planning");
+    await execution.artifact(ticket, {
+      data: artifact.toString("base64"),
+      sha256: artifactHash,
+      projection: retirementPlanProjection(nativePlan),
+      planSha256: verifyRetirementPlan(
+        nativePlan,
+        input.before,
+        input.baseline,
+        input.phase,
+      ).planSha256,
+    });
+    await execution.result(ticket, { status: "succeeded" });
+    expect(
+      (await execution.review(owner, entry.id)).jobs.find(
+        (j) => j.id === job.id,
+      )?.canApply,
+    ).toBe(false);
+    await execution.inspect(owner, entry.id, job.id, entry.generation);
+    expect(
+      (await execution.review(owner, entry.id)).jobs.find(
+        (j) => j.id === job.id,
+      )?.canApply,
+    ).toBe(true);
+    await expect(execution.input(ticket)).rejects.toMatchObject({
+      code: "40001",
+    });
+    return job;
+  };
+  const runApply = async (planId: string, succeeded: boolean) => {
+    const job = await execution.apply(owner, entry.id, planId, {
+        generation: entry.generation,
+        artifactSha256: artifactHash,
+        confirmDestroyResources: true,
+        confirmDataRetentionReviewed: true,
+      }),
+      ticket = await waitTicket(job.id),
+      input = await execution.input(ticket);
+    expect(input.plan?.sha256).toBe(artifactHash);
+    await execution.stage(ticket, "validating");
+    await execution.stage(ticket, "applying");
+    const before = (await execution.state(ticket, "read")) as {
+      serial: number;
+      resources: Array<{ module?: string }>;
+    };
+    const after = succeeded
+      ? {
+          ...before,
+          serial: before.serial + 1,
+          resources:
+            input.phase === "remove_projects"
+              ? before.resources.filter((r) => r.module === "module.governance")
+              : [],
+        }
+      : before;
+    await execution.state(ticket, "lock", undefined, "retirement-fixture-lock");
+    await expect(
+      execution.state(ticket, "write", after, "wrong-lock"),
+    ).rejects.toMatchObject({ code: "40001" });
+    await execution.state(ticket, "write", after, "retirement-fixture-lock");
+    await execution.state(
+      ticket,
+      "unlock",
+      undefined,
+      "retirement-fixture-lock",
+    );
+    const receipt = verifyRetirementApply(
+      input.before,
+      retirementInventory(after, { includePrivate: true }),
+      verifyRetirementPlan(
+        nativePlan,
+        input.before,
+        input.baseline,
+        input.phase,
+      ).deletes,
+      succeeded,
+    );
+    await execution.result(ticket, {
+      status: succeeded ? "succeeded" : "failed",
+      stateSha256: retirementStateSha256(after),
+      removed: receipt.removed,
+      completedDeletes: receipt.removed.map((r) => r.address),
+      errorCode: succeeded ? null : "retirement_folder_purge_pending",
+    });
+    expect(
+      (
+        await runtime.query(
+          "SELECT lzc_auth.runner_cleanup_disposition($1,$2,'plan') AS result",
+          [
+            job.id,
+            (
+              await admin.query(
+                "SELECT runner_app_id FROM lzc.retirement_jobs WHERE id=$1",
+                [job.id],
+              )
+            ).rows[0].runner_app_id,
+          ],
+        )
+      ).rows[0].result,
+    ).toBe("protected");
+    return execution.inspect(owner, entry.id, job.id, entry.generation);
+  };
+  const applicationRetirementPlan = await createPlan();
+  const applicationRemoved = await runApply(applicationRetirementPlan.id, true);
+  expect(
+    applicationRemoved.scopes.find((s) => s.id === applicationScopeId)?.stage,
+  ).toBe("complete");
+  expect(
+    (
+      await admin.query(
+        "SELECT deleted_by FROM lzc.application_order_deletions WHERE instance_id=$1",
+        [scope.instance],
+      )
+    ).rows[0].deleted_by,
+  ).toBe(owner.userId);
+  expect(
+    (
+      await admin.query(
+        "SELECT owner_user_id FROM lzc.application_jobs WHERE id=$1",
+        [applicationApply],
+      )
+    ).rows[0].owner_user_id,
+  ).toBe(outsider.userId);
+  executionScope = rootScopeId;
+  const stoppedPlan = await execution.plan(owner, entry.id, {
+      generation: entry.generation,
+      scopeId: executionScope,
+    }),
+    stoppedTicket = await waitTicket(stoppedPlan.id);
+  await execution.input(stoppedTicket);
+  const cleared = await execution.inspect(
+    owner,
+    entry.id,
+    stoppedPlan.id,
+    entry.generation,
+  );
+  expect(cleared.jobs.find((j) => j.id === stoppedPlan.id)).toMatchObject({
+    status: "failed",
+    nativeStatus: null,
+    errorCode: "retirement_plan_outcome_unconfirmed",
+  });
+  await expect(
+    execution.stage(stoppedTicket, "validating"),
+  ).rejects.toMatchObject({ code: "40001" });
+  await expect(execution.state(stoppedTicket, "read")).rejects.toMatchObject({
+    code: "42501",
+  });
+  const interruptedPlan = await createPlan();
+  const interrupted = await execution.apply(
+    owner,
+    entry.id,
+    interruptedPlan.id,
+    {
+      generation: entry.generation,
+      artifactSha256: artifactHash,
+      confirmDestroyResources: true,
+      confirmDataRetentionReviewed: true,
+    },
+  );
+  const interruptedTicket = await waitTicket(interrupted.id),
+    interruptedInput = await execution.input(interruptedTicket);
+  await execution.stage(interruptedTicket, "validating");
+  await execution.stage(interruptedTicket, "applying");
+  const interruptedBefore = (await execution.state(
+    interruptedTicket,
+    "read",
+  )) as { serial: number; resources: Array<{ module?: string }> };
+  const interruptedState = {
+    ...interruptedBefore,
+    serial: interruptedBefore.serial + 1,
+    resources: interruptedBefore.resources.filter(
+      (r) => r.module === "module.governance",
+    ),
+  };
+  await execution.result(interruptedTicket, {
+    status: "failed",
+    recoveryRequired: true,
+    errorCode: "retirement_apply_outcome_unconfirmed",
+  });
+  await expect(
+    execution.inspect(owner, entry.id, interrupted.id, entry.generation),
+  ).rejects.toMatchObject({ code: "retirement_recovery_upload_pending" });
+  const interruptedBytes = Buffer.from(JSON.stringify(interruptedState)),
+    recoveryHash = createHash("sha256").update(interruptedBytes).digest("hex");
+  expect(
+    await execution.recovery(interruptedTicket, {
+      data: interruptedBytes.toString("base64"),
+      sha256: recoveryHash,
+    }),
+  ).toEqual({ accepted: true });
+  // Recovery acknowledgements remain idempotent even when the input authority has expired.
+  await admin.query(
+    "UPDATE lzc.retirement_jobs SET expires_at=now()-interval '1 second' WHERE id=$1",
+    [interrupted.id],
+  );
+  expect(
+    await execution.recovery(interruptedTicket, {
+      data: interruptedBytes.toString("base64"),
+      sha256: recoveryHash,
+    }),
+  ).toEqual({ accepted: true });
+  const recoveryPreview = await execution.recoveryReview(
+    owner,
+    entry.id,
+    interrupted.id,
+  );
+  expect(recoveryPreview.removed).toHaveLength(1);
+  await expect(
+    execution.adoptRecovery(owner, entry.id, interrupted.id, {
+      generation: entry.generation,
+      sha256: recoveryHash,
+      confirmStoppedStateRecovery: true,
+      confirmFreshPlanRequired: true,
+    }),
+  ).rejects.toMatchObject({ code: "retirement_reconciliation_required" });
+  await expect(
+    execution.inspect(owner, entry.id, interrupted.id, entry.generation),
+  ).rejects.toMatchObject({ code: "retirement_reconciliation_required" });
+  await expect(
+    execution.adoptRecovery(owner, entry.id, interrupted.id, {
+      generation: entry.generation,
+      sha256: "0".repeat(64),
+      confirmStoppedStateRecovery: true,
+      confirmFreshPlanRequired: true,
+    }),
+  ).rejects.toMatchObject({ code: "retirement_state_changed" });
+  const reconciled = await execution.adoptRecovery(
+    owner,
+    entry.id,
+    interrupted.id,
+    {
+      generation: entry.generation,
+      sha256: recoveryHash,
+      confirmStoppedStateRecovery: true,
+      confirmFreshPlanRequired: true,
+    },
+  );
+  expect(
+    reconciled.jobs.find((j) => j.id === interrupted.id)?.nativeStatus,
+  ).toBe("failed");
+  expect(reconciled.scopes.find((s) => s.id === rootScopeId)?.stage).toBe(
+    "remove_projects",
+  );
+  expect(interruptedInput.before.resources).toHaveLength(2);
+  const first = await createPlan();
+  await expect(
+    execution.apply(outsider, entry.id, first.id, {
+      generation: entry.generation,
+      artifactSha256: artifactHash,
+      confirmDestroyResources: true,
+      confirmDataRetentionReviewed: true,
+    }),
+  ).rejects.toMatchObject({ code: "42501" });
+  const projectsRemoved = await runApply(first.id, true);
+  expect(projectsRemoved.scopes.find((s) => s.id === rootScopeId)?.stage).toBe(
+    "finalize_folders",
+  );
+  expect(
+    (await service.list(owner)).find((r) => r.id === entry.id)?.phase,
+  ).toBe("WAITING_FOR_PURGE");
+  const folderPlan = await createPlan(),
+    waiting = await runApply(folderPlan.id, false);
+  expect(waiting.jobs.find((j) => j.operation === "apply")?.nativeStatus).toBe(
+    "failed",
+  );
+  expect(
+    (await service.list(owner)).find((r) => r.id === entry.id)?.phase,
+  ).toBe("WAITING_FOR_PURGE");
+  const finalPlan = await createPlan(),
+    finished = await runApply(finalPlan.id, true);
+  expect(finished.scopes.find((s) => s.id === rootScopeId)?.stage).toBe(
+    "complete",
+  );
+  expect(
+    (await service.list(owner)).find((r) => r.id === entry.id)?.phase,
+  ).toBe("COMPLETE");
+  expect(
+    calls
+      .filter((call) => call.method !== "GET")
+      .every((call) => new URL(call.url).hostname === "accounts.stackit.cloud"),
+  ).toBe(true);
 });

@@ -58,7 +58,7 @@ class NativeRetirementTest(unittest.TestCase):
                     return self.respond(204, {})
                 if urlsplit(self.path).path in (f'/v2/folders/{FOLDER}', f'/v2/folders/{CONTAINER}'):
                     if not state['purged']:
-                        return self.respond(409, {'message': 'Folder still contains deleting project'})
+                        return self.respond(409, {'error':'Conflict','status':409,'message':f'Folder has children. Deletion not permitted for id: [{CONTAINER}]','path':f'/resource-management/v2/folders/{CONTAINER}','timeStamp':'2026-11-23T00:00:00Z'})
                     state['deleted_folder'] = True
                     return self.respond(204, {})
                 return self.respond(500, {})
@@ -140,8 +140,17 @@ class NativeRetirementTest(unittest.TestCase):
                 variables['retirement_phase'] = 'finalize_folders'
                 (work / 'retirement.tfvars.json').write_text(json.dumps(variables))
                 run('plan', '-input=false', '-var-file=retirement.tfvars.json', '-out=waiting.bin', '-no-color')
-                result = run('apply', '-input=false', '-no-color', 'waiting.bin', success=False)
+                result = run('apply', '-json', '-input=false', '-no-color', 'waiting.bin', success=False)
                 self.assertIn('409', result.stderr + result.stdout)
+                diagnostics = [event['diagnostic'] for event in map(json.loads, result.stdout.splitlines())
+                               if event.get('type') == 'diagnostic' and event['diagnostic']['severity'] == 'error']
+                self.assertEqual(len(diagnostics), 1)
+                self.assertEqual(diagnostics[0]['summary'], 'Error deleting folder. Deletion may fail because associated projects remain hidden for up to 7 days after user deletion due to technical requirements.')
+                if os.environ.get('LZC_RETIREMENT_DIAGNOSTIC_FILE'):
+                    Path(os.environ['LZC_RETIREMENT_DIAGNOSTIC_FILE']).write_text(result.stdout + result.stderr)
+                self.assertIn('Calling API: 409 Conflict', diagnostics[0]['detail'])
+                self.assertTrue(any(event.get('type') == 'apply_errored' and event['hook']['action']=='delete' and event['hook']['resource']['addr']==f'module.governance.stackit_resourcemanager_folder.this["platform"]' for event in map(json.loads,result.stdout.splitlines())))
+
                 self.assertFalse(state['deleted_folder'])
                 state['purged'] = True
                 run('plan', '-input=false', '-var-file=retirement.tfvars.json', '-out=final.bin', '-no-color')

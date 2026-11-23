@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertRetirementProtectedResources,
+  retirementFolderConflict,
   retirementInventory,
+  retirementPlanProjection,
   verifyRetirementApply,
   verifyRetirementPlan,
   verifyRetirementState,
@@ -273,4 +276,196 @@ describe("source-bound native retirement checks", () => {
       ),
     ).toThrow("retirement_private_cleanup_incomplete");
   });
+  it("binds an IAM resource without generic id to its exact resource, role and subject", () => {
+    const raw = state();
+    raw.resources.push({
+      module: "module.management",
+      mode: "managed",
+      type: "stackit_authorization_organization_role_assignment",
+      name: "automation",
+      provider: 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+      instances: [
+        {
+          attributes: {
+            resource_id: "org-fixture",
+            role: "owner",
+            subject: "automation@example.com",
+          },
+        },
+      ],
+    } as unknown as (typeof raw.resources)[number]);
+    const baseline = retirementInventory(raw);
+    const resource = {
+      address:
+        "module.management.stackit_authorization_organization_role_assignment.automation",
+      mode: "managed",
+      type: "stackit_authorization_organization_role_assignment",
+      change: {
+        actions: ["delete"],
+        before: {
+          resource_id: "org-fixture",
+          role: "owner",
+          subject: "automation@example.com",
+          private_value: "SECRET_SENTINEL",
+        },
+      },
+    };
+    const full = {
+      ...plan(),
+      resource_changes: [...plan().resource_changes, resource],
+    };
+    const projection = retirementPlanProjection(full);
+    expect(
+      verifyRetirementPlan(projection, baseline, baseline, "remove_projects")
+        .deletes,
+    ).toHaveLength(2);
+    expect(JSON.stringify(projection)).not.toContain("SECRET_SENTINEL");
+    resource.change.before.subject = "foreign@example.com";
+    expect(() =>
+      verifyRetirementPlan(full, baseline, baseline, "remove_projects"),
+    ).toThrow("retirement_plan_identity_changed");
+  });
+  it("preserves the cleanup account, its keys and the access binding it depends on", () => {
+    const input = {
+      protectedServiceAccount: "cleanup@example.com",
+      protectedProjectIds: [],
+    };
+    for (const [type, before] of [
+      ["stackit_service_account", { email: input.protectedServiceAccount }],
+      [
+        "stackit_service_account_key",
+        { service_account_email: input.protectedServiceAccount },
+      ],
+      [
+        "stackit_authorization_organization_role_assignment",
+        { subject: input.protectedServiceAccount },
+      ],
+    ]) {
+      expect(() =>
+        assertRetirementProtectedResources(
+          {
+            resource_changes: [
+              { type, change: { actions: ["delete"], before } },
+            ],
+          },
+          input,
+        ),
+      ).toThrow();
+    }
+  });
+  it("supports the built-in Application contract marker without adding an external provider", () => {
+    const raw = {
+      version: 4,
+      lineage,
+      serial: 1,
+      resources: [
+        {
+          mode: "managed",
+          type: "terraform_data",
+          name: "contract",
+          provider: 'provider["terraform.io/builtin/terraform"]',
+          instances: [
+            {
+              attributes: {
+                id: "22222222-2222-4222-8222-222222222222",
+                input: { value: "opaque contract input" },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const baseline = retirementInventory(raw);
+    expect(
+      verifyRetirementPlan(
+        {
+          format_version: "1.2",
+          resource_changes: [
+            {
+              address: "terraform_data.contract",
+              mode: "managed",
+              type: "terraform_data",
+              change: {
+                actions: ["delete"],
+                before: { id: "22222222-2222-4222-8222-222222222222" },
+              },
+            },
+          ],
+        },
+        baseline,
+        baseline,
+        "remove_application",
+      ).deletes,
+    ).toHaveLength(1);
+  });
+});
+
+it("recognizes the pinned provider's unaddressed 409 only with matching native folder-failure hooks", () => {
+  const version = { type: "version", ui: "1.2" };
+  const hook = {
+    type: "apply_errored",
+    hook: { action: "delete", resource: { addr: folder } },
+  };
+  const diagnostic = {
+    type: "diagnostic",
+    diagnostic: {
+      severity: "error",
+      summary:
+        "Error deleting folder. Deletion may fail because associated projects remain hidden for up to 7 days after user deletion due to technical requirements.",
+      detail:
+        "Calling API: 409 Conflict, status code 409, Body: Folder has children. Deletion not permitted for id: [test]",
+    },
+  };
+  const output = (events: unknown[]) =>
+    events.map((e) => JSON.stringify(e)).join("\n");
+  expect(
+    retirementFolderConflict(output([version, hook, diagnostic]), [folder]),
+  ).toBe(true);
+  expect(
+    retirementFolderConflict(output([version, diagnostic]), [folder]),
+  ).toBe(false);
+  expect(
+    retirementFolderConflict(
+      output([
+        version,
+        { ...hook, hook: { action: "delete", resource: { addr: project } } },
+        diagnostic,
+      ]),
+      [folder],
+    ),
+  ).toBe(false);
+  expect(
+    retirementFolderConflict(
+      output([
+        version,
+        hook,
+        diagnostic,
+        {
+          type: "diagnostic",
+          diagnostic: {
+            severity: "error",
+            summary: "Access denied",
+            detail: "403",
+          },
+        },
+      ]),
+      [folder],
+    ),
+  ).toBe(false);
+  expect(
+    retirementFolderConflict(
+      output([
+        version,
+        hook,
+        {
+          ...diagnostic,
+          diagnostic: {
+            ...diagnostic.diagnostic,
+            detail: "Calling API: 409 Conflict, a different conflict",
+          },
+        },
+      ]),
+      [folder],
+    ),
+  ).toBe(false);
 });

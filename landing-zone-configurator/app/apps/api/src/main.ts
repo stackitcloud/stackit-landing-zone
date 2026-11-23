@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
+import { StackitRetirementCloud } from "@lzc/contracts/recovery";
 import pg from "pg";
+import { z } from "zod";
 import { buildApp } from "./app.js";
 import { Applications } from "./applications/service.js";
 import {
@@ -37,6 +39,8 @@ import { LocalPlanRunner } from "./plans/local.js";
 import { RunnerCleanup } from "./plans/runner-cleanup.js";
 import { RunnerPool, runnerPoolSize } from "./plans/runner-pool.js";
 import { Plans } from "./plans/service.js";
+import { RetirementExecution } from "./retirements/execution.js";
+import { RetirementPreparation } from "./retirements/preparation.js";
 import { Retirements } from "./retirements/service.js";
 import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
@@ -46,6 +50,8 @@ if (process.env.LZC_DEVELOPMENT_AUTH === "true")
   throw new Error(
     "Development login is only available in the separate Ubuntu workstation starter",
   );
+let retirementExecution: RetirementExecution | undefined;
+let retirementPreparation: RetirementPreparation | undefined;
 let plans: Plans | undefined;
 let backends: Backends | undefined;
 let catalogues: PostgresCloudCatalogues | undefined;
@@ -199,6 +205,50 @@ if (process.env.LZC_AUTH_ENABLED === "true") {
       (session) => new SecretsManagerTokenStore(secretConfig).get(session),
     );
   }
+  if (process.env.LZC_RETIREMENTS_ENABLED === "true") {
+    if (
+      !executionEnabled ||
+      !artifactCrypto ||
+      !backends ||
+      !platformInspection ||
+      !dropletId ||
+      !applicationRunner
+    )
+      throw new Error("Retirement execution dependencies required");
+    const controlProjectIds = z
+      .array(z.uuid())
+      .min(1)
+      .max(32)
+      .parse(JSON.parse(required("LZC_RETIREMENT_CONTROL_PROJECT_IDS")));
+    const retirementRunner = new CloudFoundryPlanRunner({
+      ...runnerConfiguration(),
+      broker: "retirement",
+      dropletId,
+      inspection: platformInspection,
+    });
+    const cloud = new StackitRetirementCloud();
+    retirementPreparation = new RetirementPreparation(
+      pool,
+      artifactCrypto,
+      backends,
+      credentials,
+      credentialSecrets,
+      cloud,
+      controlProjectIds,
+      retirementRunner,
+      applicationRunner,
+    );
+    retirementExecution = new RetirementExecution(
+      pool,
+      artifactCrypto,
+      credentials,
+      credentialSecrets,
+      cloud,
+      controlProjectIds,
+      retirementRunner,
+      origin,
+    );
+  }
   await pool.query("SELECT id FROM lzc.credential_profiles LIMIT 0");
   await pool.query("SELECT id FROM lzc.configurations LIMIT 0");
   if (process.env.LZC_APPLICATIONS_ENABLED === "true") {
@@ -294,7 +344,11 @@ const delivery =
     : undefined;
 const app = buildApp({
   ...(pool && executionEnabled && process.env.LZC_RETIREMENTS_ENABLED === "true"
-    ? { retirements: new Retirements(pool) }
+    ? {
+        retirements: new Retirements(pool),
+        ...(retirementExecution ? { retirementExecution } : {}),
+        ...(retirementPreparation ? { retirementPreparation } : {}),
+      }
     : {}),
   ...(pool ? { notifications: new Notifications(pool, !!mailConfig) } : {}),
   repositories,

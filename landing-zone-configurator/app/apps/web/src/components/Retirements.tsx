@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { currentLanguage, t } from "../i18n";
 import type { Session } from "./Account";
+import { RetirementExecutionPanel } from "./RetirementExecution";
 
 const phases: Record<Retirement["phase"], string> = {
   RETIRING: "Rückbau angekündigt",
@@ -265,6 +266,18 @@ export function RetirementPanel({
               ))}
             </ul>
           )}
+          {manage && (
+            <RetirementExecutionPanel
+              key={`${identity}:${row.id}`}
+              session={session}
+              retirement={row}
+              onChanged={async () => {
+                const owner = identity;
+                const result = z.array(retirementSchema).parse(await call(""));
+                if (current.current === owner) setRows(result);
+              }}
+            />
+          )}
           {manage && !["COMPLETE", "CANCELLED"].includes(row.phase) && (
             <div className="actions">
               <button
@@ -300,7 +313,7 @@ export function RetirementPanel({
               <button
                 type="button"
                 className="button secondary"
-                disabled={pending}
+                disabled={pending || row.canCancel !== true}
                 onClick={() => {
                   if (
                     window.confirm(

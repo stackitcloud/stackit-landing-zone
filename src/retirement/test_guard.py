@@ -9,7 +9,7 @@ class RetirementGuardTests(unittest.TestCase):
         self.project = 'module.management.stackit_resourcemanager_project.this'
         self.captured = {'schemaVersion': 1, 'resources': [
             {'address': self.folder, 'type': 'stackit_resourcemanager_folder', 'id': 'folder-id'},
-            {'address': self.project, 'type': 'stackit_resourcemanager_project', 'id': 'project-id'}]}
+            {'address': self.project, 'type': 'stackit_resourcemanager_project', 'id': 'project-id', 'selectors': {'project_id': 'project-id'}}]}
         self.plan = {'format_version': '1.2', 'complete': True, 'resource_changes': [
             {'address': self.project, 'type': 'stackit_resourcemanager_project', 'mode': 'managed',
              'change': {'actions': ['delete'], 'before': {'project_id': 'project-id'}}}]}
@@ -113,6 +113,25 @@ class RetirementGuardTests(unittest.TestCase):
         plan['resource_changes'][0]['change']['actions'] = ['update']
         with self.assertRaisesRegex(ValueError, 'delete_only'):
             check_private_plan(plan, state)
+
+
+    def test_missing_id_requires_exact_role_selectors(self):
+        state = {'version': 4, 'lineage': 'role-state', 'serial': 1, 'resources': [{
+            'module': 'module.management', 'mode': 'managed', 'type': 'stackit_authorization_organization_role_assignment', 'name': 'automation',
+            'provider': 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+            'instances': [{'attributes': {'resource_id': 'organization-id', 'role': 'owner', 'subject': 'automation@example.com'}}]}]}
+        captured = inventory(state)
+        plan = {'format_version': '1.2', 'resource_changes': [{
+            'address': captured['resources'][0]['address'], 'type': captured['resources'][0]['type'], 'mode': 'managed',
+            'change': {'actions': ['delete'], 'before': {'resource_id': 'organization-id', 'role': 'owner', 'subject': 'automation@example.com'}}}]}
+        self.assertEqual(check_plan(plan, captured, 'remove_projects', captured)['deleteCount'], 1)
+        plan['resource_changes'][0]['change']['before']['subject'] = 'foreign@example.com'
+        with self.assertRaisesRegex(ValueError, 'resource_identity_changed'):
+            check_plan(plan, captured, 'remove_projects', captured)
+
+    def test_cli_review_requires_all_current_resources(self):
+        with self.assertRaisesRegex(ValueError, 'plan_inventory_incomplete'):
+            check_plan(self.plan, self.captured, 'remove_projects', self.captured)
 
 
 if __name__ == '__main__':

@@ -9,7 +9,8 @@ It does not move projects, import the deployment into the Configurator, remove S
 entries, or introduce a new backend service. There is no automatic waiting process.
 
 This adapter currently supports State resources using the root STACKIT provider
-(default, `eu01`, `eu02`), Random and Time. Remove private-provider workloads first
+(default, `eu01`, `eu02`), Random, Time and the engine’s built-in `terraform_data`
+markers. Remove private-provider workloads first
 using their original source and reachable APIs. The inventory command rejects
 remaining managed Vault, OPNsense, Kubernetes, Helm and module-local Grafana providers;
 do not discard those resources from State to bypass the check. Historical or modified

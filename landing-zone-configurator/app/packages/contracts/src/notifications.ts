@@ -30,6 +30,8 @@ export const notificationKinds = [
   "action-overdue",
   "upgrade-approved",
   "retirement-announced",
+  "retirement-cancelled",
+  "retirement-completed",
 ] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 export const notificationSchema = z.strictObject({
@@ -64,6 +66,18 @@ const copy: Record<
   NotificationKind,
   readonly [string, string, string, string]
 > = {
+  "retirement-cancelled": [
+    "Rückbau abgebrochen",
+    "Die angekündigte Stilllegung wurde abgebrochen. Prüfe den aktuellen Plattformstatus in der Anwendung.",
+    "Retirement cancelled",
+    "The announced retirement has been cancelled. Review the current platform status in the app.",
+  ],
+  "retirement-completed": [
+    "Rückbau abgeschlossen",
+    "Die Plattform und ihre abhängigen Applications wurden stillgelegt. Der Rückbaunachweis bleibt in der Anwendung verfügbar.",
+    "Retirement completed",
+    "The platform and its dependent applications have been retired. Retirement evidence remains available in the app.",
+  ],
   "retirement-announced": [
     "Rückbau angekündigt",
     "Die Plattform wird stillgelegt. Prüfe betroffene Applications und den Löschtermin in der Anwendung. Sichere benötigte Daten innerhalb des Vorbereitungsfensters oder bereinige deine Application selbst.",

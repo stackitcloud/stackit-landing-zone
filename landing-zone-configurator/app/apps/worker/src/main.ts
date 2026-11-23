@@ -1,13 +1,21 @@
+import { runRetirementWorker } from "./retirement.js";
 import { runWorker } from "./runner.js";
 import { runWarmRunner } from "./warm-runner.js";
 
 const local = process.env.LZC_LOCAL_RUNNER === "true";
 const broker = process.env.LZC_RUNNER_BROKER;
-if (broker !== undefined && broker !== "platform" && broker !== "application")
+if (
+  broker !== undefined &&
+  broker !== "platform" &&
+  broker !== "application" &&
+  broker !== "retirement"
+)
   throw new Error("Invalid runner broker profile");
 const pool =
   process.env.LZC_POOL_RUNNER_ID !== undefined ||
   process.env.LZC_POOL_TICKET !== undefined;
+if (pool && broker === "retirement")
+  throw new Error("Retirement requires a dedicated cold runner");
 const shutdown = new AbortController();
 const stop = () => shutdown.abort();
 const removeShutdownListeners = () => {
@@ -28,12 +36,24 @@ const outcome = pool
         },
       },
     ).finally(removeShutdownListeners)
-  : await runWorker({
-      root: local ? (process.env.LZC_RUNNER_PACKAGE_ROOT ?? "") : process.cwd(),
-      ...(local ? { local: true, workRoot: process.cwd() } : {}),
-      id: process.env.LZC_RUN_ID,
-      ticket: process.env.LZC_RUN_TICKET,
-      brokerOrigin: process.env.LZC_BROKER_ORIGIN,
-      broker: broker === "application" ? "application" : "platform",
-    });
+  : broker === "retirement"
+    ? await runRetirementWorker({
+        root: local
+          ? (process.env.LZC_RUNNER_PACKAGE_ROOT ?? "")
+          : process.cwd(),
+        ...(local ? { local: true, workRoot: process.cwd() } : {}),
+        id: process.env.LZC_RUN_ID,
+        ticket: process.env.LZC_RUN_TICKET,
+        brokerOrigin: process.env.LZC_BROKER_ORIGIN,
+      })
+    : await runWorker({
+        root: local
+          ? (process.env.LZC_RUNNER_PACKAGE_ROOT ?? "")
+          : process.cwd(),
+        ...(local ? { local: true, workRoot: process.cwd() } : {}),
+        id: process.env.LZC_RUN_ID,
+        ticket: process.env.LZC_RUN_TICKET,
+        brokerOrigin: process.env.LZC_BROKER_ORIGIN,
+        broker: broker === "application" ? "application" : "platform",
+      });
 process.exitCode = outcome === "succeeded" ? 0 : 1;

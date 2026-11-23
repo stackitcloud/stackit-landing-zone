@@ -8,6 +8,7 @@ import re
 import sys
 
 FOLDER = 'module.governance.stackit_resourcemanager_folder.this'
+BUILTIN_PROVIDER = re.compile(r'^provider\["(?:terraform|opentofu)\.io/builtin/terraform"\]$')
 PRIVATE_PROVIDER = re.compile(r'(?:^|\.)provider\["registry\.(?:opentofu|terraform)\.org/(?:hashicorp/(?:vault|kubernetes|helm)|grafana/grafana|browningluke/opnsense)"\](?:\.[A-Za-z_][A-Za-z0-9_]*)?$')
 PROVIDER = re.compile(r'^provider\["registry\.(?:opentofu|terraform)\.org/(?:stackitcloud/stackit|hashicorp/(?:random|time))"\](?:\.(?:eu01|eu02))?$')
 
@@ -15,6 +16,28 @@ PROVIDER = re.compile(r'^provider\["registry\.(?:opentofu|terraform)\.org/(?:sta
 def require(condition, code):
     if not condition:
         raise ValueError(code)
+
+
+
+SELECTOR_KEYS = ('resource_id', 'role', 'subject', 'project_id', 'name', 'bucket_name',
+                 'instance_id', 'user_id', 'credential_id', 'credentials_group_id',
+                 'service_account_email', 'key_id', 'network_id', 'network_area_id',
+                 'router_id', 'server_id', 'security_group_id', 'rule_id')
+
+
+def resource_identity(resource_type, attributes):
+    field = 'folder_id' if resource_type == 'stackit_resourcemanager_folder' else 'project_id' if resource_type == 'stackit_resourcemanager_project' else 'id'
+    identifier = attributes.get(field)
+    require(identifier is None or (isinstance(identifier, str) and 0 < len(identifier) <= 4096), 'invalid_cloud_resource_identity')
+    if resource_type in ('stackit_resourcemanager_folder', 'stackit_resourcemanager_project'):
+        require(identifier is not None, 'missing_cloud_resource_identity')
+    selectors = {key: attributes[key] for key in SELECTOR_KEYS if isinstance(attributes.get(key), str) and attributes[key] and (identifier is None or key != 'name')}
+    if identifier is None:
+        if 'role_assignment' in resource_type:
+            require(all(key in selectors for key in ('resource_id', 'role', 'subject')), 'missing_cloud_resource_identity')
+        else:
+            require(bool(selectors.get('project_id')) if resource_type == 'stackit_objectstorage_compliance_lock' else any(key != 'project_id' for key in selectors), 'missing_cloud_resource_identity')
+    return {'id': identifier, 'selectors': selectors}
 
 
 def inventory(state, include_private=False):
@@ -25,7 +48,7 @@ def inventory(state, include_private=False):
         require(resource.get('mode') in ('managed', 'data'), 'unsupported_state_resource_mode')
         if resource.get('mode') != 'managed':
             continue
-        require(PROVIDER.fullmatch(resource.get('provider', '')) is not None or
+        require(PROVIDER.fullmatch(resource.get('provider', '')) is not None or BUILTIN_PROVIDER.fullmatch(resource.get('provider', '')) is not None or
                 (include_private and PRIVATE_PROVIDER.search(resource.get('provider', '')) is not None),
                 'remove_private_provider_workloads_with_original_source_first')
         address = '.'.join(filter(None, [resource.get('module'), resource['type'], resource['name']]))
@@ -35,10 +58,7 @@ def inventory(state, include_private=False):
             if 'index_key' in instance:
                 indexed += '[' + json.dumps(instance['index_key'], ensure_ascii=False, separators=(',', ':')) + ']'
             attributes = instance.get('attributes', {})
-            identifier = attributes.get('folder_id') if resource['type'] == 'stackit_resourcemanager_folder' else attributes.get('project_id') if resource['type'] == 'stackit_resourcemanager_project' else attributes.get('id')
-            if resource['type'] in ('stackit_resourcemanager_folder', 'stackit_resourcemanager_project'):
-                require(isinstance(identifier, str) and 0 < len(identifier) <= 256, 'missing_cloud_resource_identity')
-            resources.append({'address': indexed, 'type': resource['type'], 'id': identifier})
+            resources.append({'address': indexed, 'type': resource['type'], **resource_identity(resource['type'], attributes)})
     require(len({r['address'] for r in resources}) == len(resources), 'duplicate_resource_address')
     return {'schemaVersion': 1, 'lineage': state['lineage'], 'serial': state['serial'],
             'resources': sorted(resources, key=lambda r: r['address'])}
@@ -54,13 +74,14 @@ def verify_state(state, captured):
     return {'lineageMatches': True, 'resourceCount': len(current['resources'])}
 
 
-def check_plan(plan, captured, phase):
+def check_plan(plan, captured, phase, current=None):
     require(isinstance(plan.get('format_version'), str) and plan['format_version'].startswith('1.'), 'unsupported_plan_format')
     require(phase in ('remove_projects', 'finalize_folders'), 'unsupported_phase')
     require(captured.get('schemaVersion') == 1 and isinstance(captured.get('resources'), list), 'invalid_inventory')
     require(plan.get('errored', False) is False and plan.get('complete', True) is True,
             'incomplete_plan')
-    expected = {r['address']: r for r in captured['resources']}
+    expected = {r['address']: r for r in (current or captured)['resources']}
+    seen = set()
     require(len(expected) == len(captured['resources']), 'duplicate_inventory_address')
     for drift in plan.get('resource_drift', []):
         require(not (drift.get('mode') == 'managed' and drift.get('address') in expected
@@ -78,8 +99,10 @@ def check_plan(plan, captured, phase):
         original = expected[address]
         require(change['type'] == original['type'], 'resource_type_changed')
         before = change['change'].get('before') or {}
-        identifier = before.get('folder_id') if original['type'] == 'stackit_resourcemanager_folder' else before.get('project_id') if original['type'] == 'stackit_resourcemanager_project' else before.get('id')
-        require(identifier == original['id'], 'resource_identity_changed')
+        actual_identity = resource_identity(original['type'], before)
+        require(actual_identity['id'] == original['id'] and actual_identity['selectors'] == original.get('selectors', {}), 'resource_identity_changed')
+        require(address not in seen, 'duplicate_plan_address')
+        seen.add(address)
         governance = address.startswith('module.governance.')
         if actions == ['no-op']:
             require(phase != 'finalize_folders' or governance, 'non_governance_resource_still_present')
@@ -91,6 +114,8 @@ def check_plan(plan, captured, phase):
                 'stackit_resourcemanager_folder', 'stackit_authorization_folder_role_assignment'),
                 'finalization_may_only_delete_captured_folders_and_folder_assignments')
         deleted.append(address)
+    if current is not None:
+        require(seen == set(expected), 'plan_inventory_incomplete')
     require(not plan.get('deferred_changes'), 'deferred_plan')
     return {'phase': phase, 'deleteCount': len(deleted), 'planSha256': hashlib.sha256(
         json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
@@ -124,8 +149,8 @@ def check_private_plan(plan, state):
         require(actions in (['delete'], ['no-op']), 'retirement_requires_delete_only_plan')
         require(resource['type'] == original[address]['type'], 'resource_type_changed')
         before = change.get('before') or {}
-        identifier = before.get('folder_id') if resource['type'] == 'stackit_resourcemanager_folder' else before.get('project_id') if resource['type'] == 'stackit_resourcemanager_project' else before.get('id')
-        require(identifier == original[address]['id'], 'resource_identity_changed')
+        actual_identity = resource_identity(resource['type'], before)
+        require(actual_identity['id'] == original[address]['id'] and actual_identity['selectors'] == original[address].get('selectors', {}), 'resource_identity_changed')
         if actions == ['delete']:
             require(address in private and address not in removed, 'private_cleanup_must_retain_cloud_infrastructure')
             removed.add(address)
@@ -177,7 +202,7 @@ def main():
         else:
             with open(args.plan, encoding='utf-8') as source:
                 plan = json.load(source)
-            print(json.dumps(check_plan(plan, captured, args.phase)))
+            print(json.dumps(check_plan(plan, captured, args.phase, inventory(current))))
 
 
 if __name__ == '__main__':

@@ -76,6 +76,7 @@ export class RetirementCapture {
       inventory: Buffer;
       source: Buffer;
     }[] = [];
+    let totalBytes = 0;
     for (const scope of scopes) {
       const backendId = scope.backendId;
       const backend = backendId
@@ -121,6 +122,15 @@ export class RetirementCapture {
         digest(first.bytes) !== digest(repeated.bytes)
       )
         throw new CredentialError(409, "retirement_state_changed");
+      totalBytes +=
+        first.bytes.length +
+        Buffer.byteLength(canonicalJson(inventory)) +
+        Buffer.byteLength(canonicalJson(scope));
+      if (totalBytes > 64 * 1024 * 1024)
+        throw new CredentialError(
+          409,
+          "retirement_scope_requires_batch_review",
+        );
       const aad = `retirement:${id}:${generation}:${scope.scopeKey}`;
       captured.push({
         scope,
