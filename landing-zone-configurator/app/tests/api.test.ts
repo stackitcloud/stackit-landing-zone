@@ -53,6 +53,7 @@ it("serves the compiled UI without bypassing API authentication", async () => {
       "/deployments/plan",
       "/deployments/apply",
       "/deployments/history",
+      "/deployments/retire",
       "/workspaces",
       "/applications",
       "/credentials",

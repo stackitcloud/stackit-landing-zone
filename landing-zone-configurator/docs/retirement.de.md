@@ -12,8 +12,11 @@ eine Aktivierung in Produktion ist eine gesonderte Entscheidung.
 
 ## Ablauf für den Platform Owner
 
-1. In der Ausführungshistorie die genaue angewendete Plattform auswählen und den
-   Rückbau mit Grund und Löschtermin ankündigen. Sieben Tage sind vorbelegt; der
+1. Unter **Deployments → Stilllegen** (`/deployments/retire`) die genaue angewendete
+   Plattform auswählen und den Rückbau mit Grund und Löschtermin ankündigen.
+   Der eigene Reiter enthält Ankündigungen, Ausführungsfreigaben und den Wartezustand
+   bis zur endgültigen Projektlöschung; der Verlauf bleibt separat.
+   Sieben Tage sind vorbelegt; der
    Platform Owner kann den Termin bis zur State-Übernahme ändern. Besteller erhalten
    Ankündigung und Terminänderungen im Benachrichtigungszentrum. Sie können Daten
    exportieren oder ihre Applications selbst bereinigen. Zustimmung oder vorherige

@@ -342,7 +342,9 @@ function App() {
       !platformAccess ||
       draft ||
       configurationBinding ||
-      !["editor", "deployments", "history", "applications"].includes(view)
+      !["editor", "deployments", "history", "retire", "applications"].includes(
+        view,
+      )
     )
       return;
     let id: string | null;
@@ -369,7 +371,7 @@ function App() {
           id: configuration.id,
           revision: configuration.revision,
         });
-        if (["deployments", "history"].includes(view))
+        if (["deployments", "history", "retire"].includes(view))
           setDeploymentSelection(
             configurationDeploymentSelection(configuration),
           );
@@ -544,7 +546,7 @@ function App() {
         setDeploymentSelection(null);
       }
     } else if (draft) setDeploymentSelection(null);
-    if (next === "history") setView("history");
+    if (next === "history" || next === "retire") setView(next);
     else setView("deployments", next);
   };
 
@@ -720,7 +722,7 @@ function App() {
         </p>
       )}
       <div
-        className={`portal-layout${view === "deployments" || view === "history" ? " deployment-workflow" : ""}`}
+        className={`portal-layout${view === "deployments" || view === "history" || view === "retire" ? " deployment-workflow" : ""}`}
       >
         <aside className="sidebar" aria-label={t("Anwendungsnavigation")}>
           <div className="workspace">
@@ -750,12 +752,16 @@ function App() {
                   <button
                     type="button"
                     className={
-                      view === "deployments" || view === "history"
+                      view === "deployments" ||
+                      view === "history" ||
+                      view === "retire"
                         ? "nav-item active"
                         : "nav-item"
                     }
                     aria-current={
-                      view === "deployments" || view === "history"
+                      view === "deployments" ||
+                      view === "history" ||
+                      view === "retire"
                         ? "page"
                         : undefined
                     }
@@ -854,19 +860,21 @@ function App() {
                         ? t("Templates")
                         : view === "preview"
                           ? t(describe(selected).title)
-                          : view === "history"
-                            ? t("Verlauf")
-                            : view === "deployments"
-                              ? deploymentStep === "plan"
-                                ? t("Plan")
-                                : deploymentStep === "apply"
-                                  ? t("Apply")
-                                  : t("Vorbereitung")
-                              : view === "credentials"
-                                ? t("Deployment-Zugänge")
-                                : view === "repositories"
-                                  ? t("Konfigurationen")
-                                  : (draft?.name ?? t("Neue Konfiguration"))}
+                          : view === "retire"
+                            ? t("Stilllegen")
+                            : view === "history"
+                              ? t("Verlauf")
+                              : view === "deployments"
+                                ? deploymentStep === "plan"
+                                  ? t("Plan")
+                                  : deploymentStep === "apply"
+                                    ? t("Apply")
+                                    : t("Vorbereitung")
+                                : view === "credentials"
+                                  ? t("Deployment-Zugänge")
+                                  : view === "repositories"
+                                    ? t("Konfigurationen")
+                                    : (draft?.name ?? t("Neue Konfiguration"))}
             </span>
           </nav>
           <div className="page-heading">
@@ -884,21 +892,29 @@ function App() {
                           ? t("Neue Konfiguration")
                           : view === "preview"
                             ? t(describe(selected).title)
-                            : view === "history"
-                              ? t("Verlauf")
-                              : view === "deployments"
-                                ? deploymentStep === "plan"
-                                  ? t("Plan")
-                                  : deploymentStep === "apply"
-                                    ? t("Apply")
-                                    : t("Vorbereitung")
-                                : view === "credentials"
-                                  ? t("Deployment-Zugänge")
-                                  : view === "repositories"
-                                    ? t("Konfigurationen")
-                                    : draft?.name || t("Neue Konfiguration")}
+                            : view === "retire"
+                              ? t("Stilllegen")
+                              : view === "history"
+                                ? t("Verlauf")
+                                : view === "deployments"
+                                  ? deploymentStep === "plan"
+                                    ? t("Plan")
+                                    : deploymentStep === "apply"
+                                      ? t("Apply")
+                                      : t("Vorbereitung")
+                                  : view === "credentials"
+                                    ? t("Deployment-Zugänge")
+                                    : view === "repositories"
+                                      ? t("Konfigurationen")
+                                      : draft?.name || t("Neue Konfiguration")}
               </h1>
-              <p hidden={view === "deployments" || view === "history"}>
+              <p
+                hidden={
+                  view === "deployments" ||
+                  view === "history" ||
+                  view === "retire"
+                }
+              >
                 {view === "notifications"
                   ? t("Benachrichtigungen")
                   : view === "workspaces"
@@ -915,28 +931,36 @@ function App() {
                             )
                           : view === "preview"
                             ? describe(selected).description
-                            : view === "history"
-                              ? (draft?.name ?? deploymentSelection?.name ?? "")
-                              : view === "deployments"
-                                ? t(
-                                    "Gespeicherte Konfiguration, Ziel und Zugang nachvollziehbar verbinden.",
-                                  )
-                                : view === "credentials"
+                            : view === "retire"
+                              ? t("Stilllegen")
+                              : view === "history"
+                                ? (draft?.name ??
+                                  deploymentSelection?.name ??
+                                  "")
+                                : view === "deployments"
                                   ? t(
-                                      "Persönliche STACKIT-Service-Accounts für spätere Deployments verwalten.",
+                                      "Gespeicherte Konfiguration, Ziel und Zugang nachvollziehbar verbinden.",
                                     )
-                                  : view === "repositories"
+                                  : view === "credentials"
                                     ? t(
-                                        "Konfigurationen in deinem Arbeitsbereich speichern und wieder öffnen.",
+                                        "Persönliche STACKIT-Service-Accounts für spätere Deployments verwalten.",
                                       )
-                                    : t(
-                                        "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben.",
-                                      )}
+                                    : view === "repositories"
+                                      ? t(
+                                          "Konfigurationen in deinem Arbeitsbereich speichern und wieder öffnen.",
+                                        )
+                                      : t(
+                                          "Passe deine Landing Zone an. Die Strukturansicht aktualisiert sich mit deinen Angaben.",
+                                        )}
               </p>
             </div>
             <span
               className="badge"
-              hidden={view === "deployments" || view === "history"}
+              hidden={
+                view === "deployments" ||
+                view === "history" ||
+                view === "retire"
+              }
             >
               {view === "editor"
                 ? t("Lokaler Entwurf")
@@ -946,12 +970,16 @@ function App() {
           {platformAccess &&
             ((view === "editor" && draft) ||
               view === "deployments" ||
-              view === "history") && (
+              view === "history" ||
+              view === "retire") && (
               <nav
                 className="configuration-tabs"
                 aria-label={t("Konfiguration")}
               >
-                <span className="configuration-context">
+                <span
+                  className="configuration-context"
+                  hidden={view === "retire"}
+                >
                   {draft?.name ??
                     deploymentSelection?.name ??
                     t("Konfiguration auswählen")}
@@ -981,6 +1009,7 @@ function App() {
                   <>
                     <button
                       type="button"
+                      hidden={view === "retire"}
                       onClick={() => setView(draft ? "editor" : "repositories")}
                     >
                       {t("Konfiguration bearbeiten")}
@@ -991,6 +1020,7 @@ function App() {
                         ["plan", "Plan"],
                         ["apply", "Apply"],
                         ["history", "Verlauf"],
+                        ["retire", "Stilllegen"],
                       ] as const
                     ).map(([next, label]) => (
                       <button
@@ -998,8 +1028,8 @@ function App() {
                         type="button"
                         aria-current={
                           (
-                            next === "history"
-                              ? view === "history"
+                            next === "history" || next === "retire"
+                              ? view === next
                               : view === "deployments" &&
                                 deploymentStep === next
                           )
@@ -1051,11 +1081,12 @@ function App() {
           )}
           {session &&
             !session.workspaceRequired &&
-            (view === "history" || view === "applications") && (
+            (view === "retire" || view === "applications") && (
               <RetirementPanel
                 key={`retirements:${workspaceKey(session)}`}
                 session={session}
-                manage={platformAccess && view === "history"}
+                manage={platformAccess && view === "retire"}
+                standalone={view === "retire"}
               />
             )}
           <CloudCatalogueProvider

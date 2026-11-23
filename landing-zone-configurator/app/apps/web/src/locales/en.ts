@@ -3716,6 +3716,11 @@ export const englishMessages: Record<string, string> = {
     "A new approval policy has been published for this upgrade. Adopt it under Updates, then create a new plan. The existing plan is not approved retroactively.",
   "Zu den Update-Optionen": "Go to update options",
   "Angekündigter Rückbau": "Retirement notices",
+  Stilllegen: "Retire",
+  "Der Rückbau ist auf dieser Instanz nicht aktiviert.":
+    "Retirement is not enabled on this instance.",
+  "Noch keine angewendete Plattform für den Rückbau verfügbar.":
+    "No applied platform is available for retirement yet.",
   "Landing Zones stilllegen": "Retire landing zones",
   "Rückbau angekündigt": "Retirement announced",
   "Laufende Ausführungen klären": "Reconcile running executions",

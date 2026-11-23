@@ -11,7 +11,9 @@ receipt, and production activation is a separate decision.
 
 ## Owner workflow
 
-1. In execution history, select the exact applied platform and announce retirement.
+1. Open **Deployments → Retire** (`/deployments/retire`), select the exact applied
+   platform and announce retirement. This dedicated tab contains retirement
+   announcements, execution approvals and purge-wait status; history remains separate.
    A reason and deletion date are required. The preparation window defaults to seven
    days; the Platform Owner may change the date before State handover. Requesters
    receive the announcement and date changes in their workspace inbox. They can

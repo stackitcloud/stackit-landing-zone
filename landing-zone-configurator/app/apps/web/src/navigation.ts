@@ -10,6 +10,7 @@ export type View =
   | "credentials"
   | "deployments"
   | "history"
+  | "retire"
   | "organisation"
   | "applications";
 export type EditorStep =
@@ -20,7 +21,12 @@ export type EditorStep =
   | "projects"
   | "operations"
   | "review";
-export type DeploymentStep = "preparation" | "plan" | "apply" | "history";
+export type DeploymentStep =
+  | "preparation"
+  | "plan"
+  | "apply"
+  | "history"
+  | "retire";
 function readRoute() {
   const path = window.location.pathname.replace(/\/$/, "") || "/";
   const template = templates.find((item) => path === `/templates/${item.id}`);
@@ -50,25 +56,29 @@ function readRoute() {
             ? "editor"
             : path === "/organisation"
               ? "organisation"
-              : path === "/deployments/history"
-                ? "history"
-                : /^\/deployments(?:\/(preparation|plan|apply))?$/.test(path)
-                  ? "deployments"
-                  : path === "/credentials"
-                    ? "credentials"
-                    : path === "/repositories" || path === "/configurations"
-                      ? "repositories"
-                      : path === "/templates"
-                        ? "templates"
-                        : "workspaces";
+              : path === "/deployments/retire"
+                ? "retire"
+                : path === "/deployments/history"
+                  ? "history"
+                  : /^\/deployments(?:\/(preparation|plan|apply))?$/.test(path)
+                    ? "deployments"
+                    : path === "/credentials"
+                      ? "credentials"
+                      : path === "/repositories" || path === "/configurations"
+                        ? "repositories"
+                        : path === "/templates"
+                          ? "templates"
+                          : "workspaces";
   const deploymentStep: DeploymentStep =
-    path === "/deployments/history"
-      ? "history"
-      : path === "/deployments/apply"
-        ? "apply"
-        : path === "/deployments/plan"
-          ? "plan"
-          : "preparation";
+    path === "/deployments/retire"
+      ? "retire"
+      : path === "/deployments/history"
+        ? "history"
+        : path === "/deployments/apply"
+          ? "apply"
+          : path === "/deployments/plan"
+            ? "plan"
+            : "preparation";
   return {
     view,
     selected: template ?? standaloneTemplate,
@@ -113,19 +123,21 @@ export function useNavigation(restoreEditor: boolean) {
                 ? `/configurations/edit/${detail ?? "basics"}`
                 : view === "organisation"
                   ? "/organisation"
-                  : view === "history"
-                    ? "/deployments/history"
-                    : view === "deployments"
-                      ? detail === "plan" || detail === "apply"
-                        ? `/deployments/${detail}`
-                        : "/deployments"
-                      : view === "credentials"
-                        ? "/credentials"
-                        : view === "repositories"
-                          ? "/configurations"
-                          : view === "workspaces"
-                            ? "/workspaces"
-                            : "/templates";
+                  : view === "retire"
+                    ? "/deployments/retire"
+                    : view === "history"
+                      ? "/deployments/history"
+                      : view === "deployments"
+                        ? detail === "plan" || detail === "apply"
+                          ? `/deployments/${detail}`
+                          : "/deployments"
+                        : view === "credentials"
+                          ? "/credentials"
+                          : view === "repositories"
+                            ? "/configurations"
+                            : view === "workspaces"
+                              ? "/workspaces"
+                              : "/templates";
       if (
         window.location.pathname !== path ||
         window.location.search ||
