@@ -82,6 +82,9 @@ if(mode==="backend" && stage.name==="lzc-prod") {
   Object.assign(vars,stackitConfiguration);
   const executionEnabled=process.env.LZC_EXECUTION_ENABLED==="true";
   const applicationExecutionEnabled=process.env.LZC_APPLICATION_EXECUTION_ENABLED==="true";
+  const retirementsEnabled=process.env.LZC_RETIREMENTS_ENABLED==="true";
+  if(retirementsEnabled && (!executionEnabled || !applicationExecutionEnabled || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(process.env.LZC_PROJECT_ID??"")))throw new Error("Retirement requires execution and the external operator project ID");
+  Object.assign(vars,{LZC_RETIREMENTS_ENABLED:String(retirementsEnabled),LZC_RETIREMENT_CONTROL_PROJECT_IDS:retirementsEnabled?JSON.stringify([process.env.LZC_PROJECT_ID]):"[]"});
   if((executionEnabled&&!enabled)||(applicationExecutionEnabled&&!executionEnabled))throw new Error("Execution requires authentication and platform execution");
   const runnerPoolSize=process.env.LZC_RUNNER_POOL_SIZE??String(stage.name==="lzc-prod" ? stage.runnerPoolSize : 0);
   if(!/^[0-4]$/.test(runnerPoolSize))throw new Error("Runner pool size invalid");
@@ -111,7 +114,7 @@ if(mode==="backend" && stage.name==="lzc-prod") {
   vars.LZC_IMAGE_BUILDPACK=`https://github.com/stackitcloud/stackit-landing-zone.git#${buildpackTag(revision)}`;
   writeFileSync(resolve(dir,"runner-vars.json"),JSON.stringify({LZC_IMAGE_BUILDPACK:vars.LZC_IMAGE_BUILDPACK}),{mode:0o600});
   writeFileSync(resolve(dir,"app-vars.json"),JSON.stringify(vars),{mode:0o600});
-  writeFileSync(resolve(dir,"app-stage-vars.json"),JSON.stringify({...vars,LZC_EXECUTION_ENABLED:"false",LZC_APPLICATION_EXECUTION_ENABLED:"false",LZC_RUNNER_POOL_SIZE:"0",LZC_MAILOUT_ENABLED:"false"}),{mode:0o600});
+  writeFileSync(resolve(dir,"app-stage-vars.json"),JSON.stringify({...vars,LZC_EXECUTION_ENABLED:"false",LZC_APPLICATION_EXECUTION_ENABLED:"false",LZC_RUNNER_POOL_SIZE:"0",LZC_MAILOUT_ENABLED:"false",LZC_RETIREMENTS_ENABLED:"false"}),{mode:0o600});
   publish("LZC_CF_ORG_NAME",stage.prefix);publish("LZC_RUNNER_ORG_NAME",`${stage.prefix}-runners`);
   publish("CF_API_URL",cf.api_url);publish("CF_USERNAME",cf.username,true);publish("CF_PASSWORD",cf.password,true);publish("LZC_CF_SPACE_ID",space.id);
 }

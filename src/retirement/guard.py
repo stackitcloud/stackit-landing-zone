@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Offline retirement inventory/plan checks. Never invokes OpenTofu or a cloud API."""
+import argparse
+import hashlib
+import json
+import os
+import re
+import sys
+
+FOLDER = 'module.governance.stackit_resourcemanager_folder.this'
+BUILTIN_PROVIDER = re.compile(r'^provider\["(?:terraform|opentofu)\.io/builtin/terraform"\]$')
+PRIVATE_PROVIDER = re.compile(r'(?:^|\.)provider\["registry\.(?:opentofu|terraform)\.org/(?:hashicorp/(?:vault|kubernetes|helm)|grafana/grafana|browningluke/opnsense)"\](?:\.[A-Za-z_][A-Za-z0-9_]*)?$')
+PROVIDER = re.compile(r'^provider\["registry\.(?:opentofu|terraform)\.org/(?:stackitcloud/stackit|hashicorp/(?:random|time))"\](?:\.(?:eu01|eu02))?$')
+
+
+def require(condition, code):
+    if not condition:
+        raise ValueError(code)
+
+
+
+SELECTOR_KEYS = ('resource_id', 'role', 'subject', 'project_id', 'name', 'bucket_name',
+                 'instance_id', 'user_id', 'credential_id', 'credentials_group_id',
+                 'service_account_email', 'key_id', 'network_id', 'network_area_id',
+                 'router_id', 'server_id', 'security_group_id', 'rule_id')
+
+
+def resource_identity(resource_type, attributes):
+    field = 'folder_id' if resource_type == 'stackit_resourcemanager_folder' else 'project_id' if resource_type == 'stackit_resourcemanager_project' else 'id'
+    identifier = attributes.get(field)
+    require(identifier is None or (isinstance(identifier, str) and 0 < len(identifier) <= 4096), 'invalid_cloud_resource_identity')
+    if resource_type in ('stackit_resourcemanager_folder', 'stackit_resourcemanager_project'):
+        require(identifier is not None, 'missing_cloud_resource_identity')
+    selectors = {key: attributes[key] for key in SELECTOR_KEYS if isinstance(attributes.get(key), str) and attributes[key] and (identifier is None or key != 'name')}
+    if identifier is None:
+        if 'role_assignment' in resource_type:
+            require(all(key in selectors for key in ('resource_id', 'role', 'subject')), 'missing_cloud_resource_identity')
+        else:
+            require(bool(selectors.get('project_id')) if resource_type == 'stackit_objectstorage_compliance_lock' else any(key != 'project_id' for key in selectors), 'missing_cloud_resource_identity')
+    return {'id': identifier, 'selectors': selectors}
+
+
+def inventory(state, include_private=False):
+    require(state.get('version') == 4 and isinstance(state.get('lineage'), str)
+            and isinstance(state.get('serial'), int), 'unsupported_state')
+    resources = []
+    for resource in state.get('resources', []):
+        require(resource.get('mode') in ('managed', 'data'), 'unsupported_state_resource_mode')
+        if resource.get('mode') != 'managed':
+            continue
+        require(PROVIDER.fullmatch(resource.get('provider', '')) is not None or BUILTIN_PROVIDER.fullmatch(resource.get('provider', '')) is not None or
+                (include_private and PRIVATE_PROVIDER.search(resource.get('provider', '')) is not None),
+                'remove_private_provider_workloads_with_original_source_first')
+        address = '.'.join(filter(None, [resource.get('module'), resource['type'], resource['name']]))
+        for instance in resource.get('instances', []):
+            require(not instance.get('deposed'), 'unresolved_deposed_instance')
+            indexed = address
+            if 'index_key' in instance:
+                indexed += '[' + json.dumps(instance['index_key'], ensure_ascii=False, separators=(',', ':')) + ']'
+            attributes = instance.get('attributes', {})
+            resources.append({'address': indexed, 'type': resource['type'], **resource_identity(resource['type'], attributes)})
+    require(len({r['address'] for r in resources}) == len(resources), 'duplicate_resource_address')
+    return {'schemaVersion': 1, 'lineage': state['lineage'], 'serial': state['serial'],
+            'resources': sorted(resources, key=lambda r: r['address'])}
+
+
+def verify_state(state, captured):
+    current = inventory(state)
+    require(current['lineage'] == captured.get('lineage'), 'state_lineage_changed')
+    require(current['serial'] >= captured.get('serial', -1), 'state_serial_regressed')
+    expected = {r['address']: r for r in captured.get('resources', [])}
+    for resource in current['resources']:
+        require(expected.get(resource['address']) == resource, 'unreviewed_or_changed_state_resource')
+    return {'lineageMatches': True, 'resourceCount': len(current['resources'])}
+
+
+def check_plan(plan, captured, phase, current=None):
+    require(isinstance(plan.get('format_version'), str) and plan['format_version'].startswith('1.'), 'unsupported_plan_format')
+    require(phase in ('remove_projects', 'finalize_folders'), 'unsupported_phase')
+    require(captured.get('schemaVersion') == 1 and isinstance(captured.get('resources'), list), 'invalid_inventory')
+    require(plan.get('errored', False) is False and plan.get('complete', True) is True,
+            'incomplete_plan')
+    expected = {r['address']: r for r in (current or captured)['resources']}
+    seen = set()
+    require(len(expected) == len(captured['resources']), 'duplicate_inventory_address')
+    for drift in plan.get('resource_drift', []):
+        require(not (drift.get('mode') == 'managed' and drift.get('address') in expected
+                     and drift.get('change', {}).get('actions') == ['delete']),
+                'resource_disappeared_during_refresh_requires_authorized_review')
+    deleted = []
+    for change in plan.get('resource_changes', []):
+        if change.get('mode') == 'data':
+            require(change['change']['actions'] in [['read'], ['no-op']], 'unexpected_data_change')
+            continue
+        address = change['address']
+        actions = change['change']['actions']
+        require(actions in [['delete'], ['no-op']], 'retirement_requires_delete_only_plan')
+        require(address in expected, 'unreviewed_resource')
+        original = expected[address]
+        require(change['type'] == original['type'], 'resource_type_changed')
+        before = change['change'].get('before') or {}
+        actual_identity = resource_identity(original['type'], before)
+        require(actual_identity['id'] == original['id'] and actual_identity['selectors'] == original.get('selectors', {}), 'resource_identity_changed')
+        require(address not in seen, 'duplicate_plan_address')
+        seen.add(address)
+        governance = address.startswith('module.governance.')
+        if actions == ['no-op']:
+            require(phase != 'finalize_folders' or governance, 'non_governance_resource_still_present')
+            continue
+        if phase == 'remove_projects':
+            require(not governance, 'governance_must_remain_during_project_removal')
+        else:
+            require(governance and original['type'] in (
+                'stackit_resourcemanager_folder', 'stackit_authorization_folder_role_assignment'),
+                'finalization_may_only_delete_captured_folders_and_folder_assignments')
+        deleted.append(address)
+    if current is not None:
+        require(seen == set(expected), 'plan_inventory_incomplete')
+    require(not plan.get('deferred_changes'), 'deferred_plan')
+    return {'phase': phase, 'deleteCount': len(deleted), 'planSha256': hashlib.sha256(
+        json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
+
+
+
+def check_private_plan(plan, state):
+    captured = inventory(state, include_private=True)
+    private = set()
+    for resource in state.get('resources', []):
+        if resource.get('mode') != 'managed' or not PRIVATE_PROVIDER.search(resource.get('provider', '')):
+            continue
+        address = '.'.join(filter(None, [resource.get('module'), resource['type'], resource['name']]))
+        for instance in resource.get('instances', []):
+            suffix = '[' + json.dumps(instance['index_key'], ensure_ascii=False, separators=(',', ':')) + ']' if 'index_key' in instance else ''
+            private.add(address + suffix)
+    require(isinstance(plan.get('format_version'), str) and plan['format_version'].startswith('1.'), 'unsupported_plan_format')
+    require(plan.get('errored', False) is False and plan.get('complete', True) is True and not plan.get('deferred_changes'), 'incomplete_plan')
+    original = {item['address']: item for item in captured['resources']}
+    for drift in plan.get('resource_drift', []):
+        require(not (drift.get('mode') == 'managed' and drift.get('address') in original and drift.get('change', {}).get('actions') == ['delete']), 'resource_disappeared_during_refresh_requires_authorized_review')
+    removed = set()
+    for resource in plan.get('resource_changes', []):
+        change = resource.get('change', {})
+        if resource.get('mode') == 'data':
+            require(change.get('actions') in (['read'], ['no-op']), 'unexpected_data_change')
+            continue
+        address = resource['address']
+        require(resource.get('mode') == 'managed' and address in original, 'unreviewed_resource')
+        actions = change.get('actions')
+        require(actions in (['delete'], ['no-op']), 'retirement_requires_delete_only_plan')
+        require(resource['type'] == original[address]['type'], 'resource_type_changed')
+        before = change.get('before') or {}
+        actual_identity = resource_identity(resource['type'], before)
+        require(actual_identity['id'] == original[address]['id'] and actual_identity['selectors'] == original[address].get('selectors', {}), 'resource_identity_changed')
+        if actions == ['delete']:
+            require(address in private and address not in removed, 'private_cleanup_must_retain_cloud_infrastructure')
+            removed.add(address)
+    require(removed == private, 'private_cleanup_incomplete')
+    return {'phase': 'private_workloads', 'deleteCount': len(removed)}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    sub = parser.add_subparsers(dest='command', required=True)
+    snapshot = sub.add_parser('inventory')
+    snapshot.add_argument('--state', required=True)
+    snapshot.add_argument('--out', required=True)
+    verify = sub.add_parser('verify-state')
+    verify.add_argument('--state', required=True)
+    verify.add_argument('--inventory', required=True)
+    check = sub.add_parser('check-plan')
+    check.add_argument('--state', required=True)
+    check.add_argument('--inventory', required=True)
+    check.add_argument('--plan', required=True)
+    check.add_argument('--phase', choices=['remove_projects', 'finalize_folders'], required=True)
+    cleanup = sub.add_parser('check-private-plan')
+    cleanup.add_argument('--state', required=True)
+    cleanup.add_argument('--plan', required=True)
+    args = parser.parse_args()
+    if args.command == 'check-private-plan':
+        with open(args.state, encoding='utf-8') as source:
+            state = json.load(source)
+        with open(args.plan, encoding='utf-8') as source:
+            plan = json.load(source)
+        print(json.dumps(check_private_plan(plan, state)))
+        return
+    if args.command == 'inventory':
+        with open(args.state, encoding='utf-8') as source:
+            result = inventory(json.load(source))
+        fd = os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w', encoding='utf-8') as target:
+            json.dump(result, target, indent=2)
+            target.write('\n')
+        print(json.dumps({'resourceCount': len(result['resources'])}))
+    else:
+        with open(args.inventory, encoding='utf-8') as source:
+            captured = json.load(source)
+        with open(args.state, encoding='utf-8') as source:
+            current = json.load(source)
+        verified = verify_state(current, captured)
+        if args.command == 'verify-state':
+            print(json.dumps(verified))
+        else:
+            with open(args.plan, encoding='utf-8') as source:
+                plan = json.load(source)
+            print(json.dumps(check_plan(plan, captured, args.phase, inventory(current))))
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (ValueError, KeyError, TypeError, OSError):
+        # JSON/State may contain credentials. Never include parser text or input.
+        print('Retirement validation failed; inspect the private input locally.', file=sys.stderr)
+        sys.exit(1)

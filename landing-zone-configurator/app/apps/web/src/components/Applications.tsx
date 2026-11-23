@@ -225,6 +225,8 @@ const errors: Record<string, string> = {
     "Das Template oder die Bestellung ist ungültig. Prüfe die freigegebenen Bestellwerte.",
   template_version_not_found:
     "Diese Template-Version ist in deinem Arbeitsbereich nicht verfügbar.",
+  retirement_admission_closed:
+    "Diese Landing Zone wird stillgelegt. Neue Bestellungen, Erweiterungen und alte Ausführungsfreigaben sind gesperrt. Prüfe den Rückbaustatus.",
   template_version_retired: "Diese Template-Version wurde stillgelegt.",
   template_version_in_use:
     "Diese Template-Version wurde bereits bestellt und kann nicht gelöscht werden.",
@@ -3066,7 +3068,14 @@ export function Applications({
     }
   }
   async function order() {
-    if (!session || !selected || selected.retiredAt || busy) return;
+    if (
+      !session ||
+      !selected ||
+      selected.retiredAt ||
+      selected.platformRetiring ||
+      busy
+    )
+      return;
     setError("");
     setNotice("");
     const input = { versionId: selected.id, idempotencyKey, name, parameters };
@@ -4269,7 +4278,14 @@ export function Applications({
             )}
           </div>
         )}
-        {selected && !selected.retiredAt && (
+        {selected?.platformRetiring && (
+          <p role="status">
+            {t(
+              "Diese Plattform wird stillgelegt. Neue Application-Bestellungen sind gesperrt.",
+            )}
+          </p>
+        )}
+        {selected && !selected.retiredAt && !selected.platformRetiring && (
           <form
             onSubmit={(event) => {
               event.preventDefault();

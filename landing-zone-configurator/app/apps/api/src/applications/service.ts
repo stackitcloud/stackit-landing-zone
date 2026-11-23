@@ -128,6 +128,7 @@ type VersionRow = {
   published_at: Date;
   retired_at?: Date | null;
   can_delete?: boolean;
+  platform_retiring?: boolean;
   deployment_policy: NonNullable<ApplicationInstance["deploymentPolicy"]>;
   accelerator_revision: string;
   document: unknown;
@@ -209,6 +210,7 @@ function version(row: VersionRow): PublishedProjectTemplate {
       : {}),
     ...(row.retired_at ? { retiredAt: row.retired_at.toISOString() } : {}),
     ...(row.can_delete !== undefined ? { canDelete: row.can_delete } : {}),
+    ...(row.platform_retiring ? { platformRetiring: true } : {}),
     acceleratorRevision: row.accelerator_revision,
     platformRevision: row.platform_revision,
     targetKey: row.target_key,
@@ -527,7 +529,7 @@ export class Applications {
   listTemplates(session: Session) {
     return this.work(session, "read", async (client) => {
       const result = await client.query<VersionRow>(
-        "SELECT v.*,r.retired_at,lzc.application_template_deletable(v.id) AS can_delete,ARRAY(SELECT access.group_id FROM lzc.application_template_groups access WHERE access.tenant_id=v.tenant_id AND access.version_id=v.id ORDER BY access.group_id) AS allowed_group_ids FROM lzc.application_template_versions v LEFT JOIN lzc.application_template_retirements r ON r.tenant_id=v.tenant_id AND r.version_id=v.id WHERE NOT EXISTS(SELECT 1 FROM lzc.application_template_deletions d WHERE d.tenant_id=v.tenant_id AND d.version_id=v.id) AND (r.version_id IS NULL OR lzc.application_role('platform-engineer')) ORDER BY v.published_at DESC,v.id DESC LIMIT 200",
+        "SELECT v.*,r.retired_at,lzc.application_template_deletable(v.id) AS can_delete,lzc_auth.application_platform_retiring(v.platform_revision) AS platform_retiring,ARRAY(SELECT access.group_id FROM lzc.application_template_groups access WHERE access.tenant_id=v.tenant_id AND access.version_id=v.id ORDER BY access.group_id) AS allowed_group_ids FROM lzc.application_template_versions v LEFT JOIN lzc.application_template_retirements r ON r.tenant_id=v.tenant_id AND r.version_id=v.id WHERE NOT EXISTS(SELECT 1 FROM lzc.application_template_deletions d WHERE d.tenant_id=v.tenant_id AND d.version_id=v.id) AND (r.version_id IS NULL OR lzc.application_role('platform-engineer')) ORDER BY v.published_at DESC,v.id DESC LIMIT 200",
       );
       return result.rows.map(version);
     });
@@ -2790,6 +2792,9 @@ export class Applications {
       binding.acceleratorRevision,
     );
     await this.work(session, "order", async (client) => {
+      await client.query("SELECT lzc_auth.assert_retirement_job_release($1)", [
+        jobId,
+      ]);
       await this.jobQuery(
         client,
         session,
@@ -2833,6 +2838,10 @@ export class Applications {
     });
     const current = () =>
       this.work(session, "order", async (client) => {
+        await client.query(
+          "SELECT lzc_auth.assert_retirement_job_release($1)",
+          [jobId],
+        );
         await client.query("SELECT lzc_auth.assert_application_job_group($1)", [
           jobId,
         ]);
@@ -2912,6 +2921,9 @@ export class Applications {
       throw new ApplicationError(409, "application_runner_inputs_invalid");
     await current();
     await this.work(session, "order", async (client) => {
+      await client.query("SELECT lzc_auth.assert_retirement_job_release($1)", [
+        jobId,
+      ]);
       await this.jobQuery(
         client,
         session,

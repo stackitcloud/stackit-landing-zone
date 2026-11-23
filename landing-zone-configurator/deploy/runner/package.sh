@@ -66,6 +66,12 @@ rm -rf "$runner_dir/accelerator/.terraform"
 test ! -e "$runner_dir/accelerator/terraform.tfstate"
 test ! -e "$runner_dir/accelerator/terraform.auto.tfvars"
 test -z "$(find "$runner_dir/accelerator" -type f \( -name '*.tfstate' -o -name '*.tfstate.*' -o -name '.terraform.tfstate.lock.info' -o -name '*.tfplan' -o -name 'plan.bin' -o -name 'saved-plan.bin' -o -name 'credential.json' -o -name '*.log' \) -print -quit)"
+# The deletion adapter is immutable and independent of the active Platform root.
+retirement_commit=$(node --input-type=module -e 'import {retirementAdapterCommit} from "./packages/contracts/dist/recovery/index.js"; process.stdout.write(retirementAdapterCommit)')
+git cat-file -e "$retirement_commit^{commit}" 2>/dev/null || git fetch --no-tags https://github.com/stackitcloud/stackit-landing-zone.git "$retirement_commit"
+mkdir -p "$runner_dir/retirement-src"
+git -C "$(git rev-parse --show-toplevel)" archive "$retirement_commit" src/retirement src/modules/governance | tar -x --strip-components=1 -C "$runner_dir/retirement-src"
+node --input-type=module -e 'import {writeFileSync,readFileSync} from "node:fs"; import {createHash} from "node:crypto"; import {applicationSourcePayloadSha256,retirementSourceSchema,retirementAdapterCommit,retirementProviderLockSha256} from "./packages/contracts/dist/recovery/index.js"; const root=process.argv[1]; if(createHash("sha256").update(readFileSync(`${root}/retirement-src/retirement/.terraform.lock.hcl`)).digest("hex")!==retirementProviderLockSha256)throw Error("Retirement provider lock changed"); const metadata=retirementSourceSchema.parse({schemaVersion:1,revision:retirementAdapterCommit,providerLockSha256:retirementProviderLockSha256,payloadSha256:await applicationSourcePayloadSha256(`${root}/retirement-src`)}); writeFileSync(`${root}/retirement-source.json`,JSON.stringify(metadata),{flag:"wx",mode:0o600});' "$runner_dir"
 application_sources=()
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	mkdir -p "$runner_dir/application-src"
@@ -95,7 +101,7 @@ if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	done < <(node --input-type=module -e 'import {applicationExecutionProfiles} from "./packages/contracts/dist/index.js"; console.log(applicationExecutionProfiles.filter(p=>p.status==="supported").map(p=>p.revision).join("\n"))')
 fi
 # Every bundled native root must pass the same readonly lock and unpacked provider mirror.
-bash ../deploy/runner/prepare-provider-mirror.sh "$tofu_bin" "$runner_dir/providers" "$runner_dir/accelerator" "${application_sources[@]}"
+bash ../deploy/runner/prepare-provider-mirror.sh "$tofu_bin" "$runner_dir/providers" "$runner_dir/accelerator" "$runner_dir/retirement-src/retirement" "${application_sources[@]}"
 if [[ "${LZC_PACKAGE_APPLICATION_ROOT:-false}" == "true" ]]; then
 	node scripts/package-application-execution.mjs "$runner_dir"
 	LZC_TEST_TOFU_BIN="$(cd "$(dirname "$tofu_bin")" && pwd)/$(basename "$tofu_bin")" \

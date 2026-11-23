@@ -13,6 +13,8 @@ export class RunnerRequestError extends Error {
 }
 const api = "https://api.system.01.cf.eu01.stackit.cloud";
 export interface PlanRunner {
+  readonly retirementEnabled?: boolean;
+  supportsRetirement?(revision: string, phase: string): boolean;
   startRecovery?(
     id: string,
     ticket: string,
@@ -70,6 +72,7 @@ export interface WarmRunnerDispatch {
 }
 export class CloudFoundryPlanRunner implements PlanRunner {
   readonly firewallPlansEnabled: boolean;
+  readonly retirementEnabled: boolean;
   readonly acceleratorCommit?: string;
   readonly applicationMaintenanceEnabled?: boolean;
   readonly preview?: NonNullable<PlanRunner["preview"]>;
@@ -81,17 +84,22 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       password: string;
       spaceId: string;
       templateId: string;
-      broker?: "platform" | "application";
+      broker?: "platform" | "application" | "retirement";
       dropletId?: string;
       inspection?: PlanRunner & { readonly packageId: string };
       warm?: WarmRunnerDispatch;
     },
   ) {
+    this.retirementEnabled = config.inspection?.retirementEnabled === true;
     this.firewallPlansEnabled =
       config.inspection?.firewallPlansEnabled === true;
+    if (config.broker === "retirement" && !this.retirementEnabled)
+      throw new Error("Retirement runner package required");
     guid(config.spaceId);
     guid(config.templateId);
-    z.enum(["platform", "application"]).parse(config.broker ?? "platform");
+    z.enum(["platform", "application", "retirement"]).parse(
+      config.broker ?? "platform",
+    );
     if (config.inspection) {
       guid(config.dropletId);
       const inspection = config.inspection;
@@ -126,6 +134,12 @@ export class CloudFoundryPlanRunner implements PlanRunner {
     }
   }
 
+  supportsRetirement(revision: string, phase: string) {
+    return (
+      this.retirementEnabled &&
+      this.config.inspection?.supportsRetirement?.(revision, phase) === true
+    );
+  }
   supportsAccelerator(commit: string) {
     if (this.config.inspection?.supportsAccelerator)
       return this.config.inspection.supportsAccelerator(commit);
@@ -201,13 +215,14 @@ export class CloudFoundryPlanRunner implements PlanRunner {
   ) {
     guid(id);
     if (
-      await this.config.warm?.start(
+      this.config.broker !== "retirement" &&
+      (await this.config.warm?.start(
         id,
         ticket,
         origin,
         this.config.broker ?? "platform",
         record,
-      )
+      ))
     )
       return;
     const { call, appId } = await this.prepare(
@@ -216,8 +231,8 @@ export class CloudFoundryPlanRunner implements PlanRunner {
         LZC_RUN_TICKET: ticket,
         LZC_BROKER_ORIGIN: origin,
         LZC_RUN_ID: id,
-        ...(this.config.broker === "application"
-          ? { LZC_RUNNER_BROKER: "application" }
+        ...(this.config.broker && this.config.broker !== "platform"
+          ? { LZC_RUNNER_BROKER: this.config.broker }
           : {}),
       },
       record,

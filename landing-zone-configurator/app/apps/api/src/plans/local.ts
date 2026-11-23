@@ -28,6 +28,8 @@ import {
 import {
   decodeProjectIamPlan,
   readApplicationExecutionManifest,
+  readRetirementSource,
+  retirementAdapterCommit,
 } from "@lzc/contracts/recovery";
 import { z } from "zod";
 import type { PlanRunner } from "./cloud-foundry.js";
@@ -100,6 +102,18 @@ async function fingerprint(
       await add("platform-source.json");
     }
   }
+  const retirement = await readRetirementSource(root);
+  if (retirement) {
+    await add("retirement-source.json");
+    await add("retirement-src");
+    if (broker !== "application") {
+      const execution = await readApplicationExecutionManifest(root);
+      if (execution) {
+        await add("application-execution.json");
+        for (const profile of execution.profiles) await add(profile.sourcePath);
+      }
+    }
+  }
   const digest = hash.digest("hex");
   return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
@@ -133,6 +147,8 @@ export class LocalPlanRunner implements PlanRunner {
     readonly applicationMaintenanceEnabled: boolean,
     readonly firewallPlansEnabled: boolean,
     private readonly applicationExecution: ApplicationExecutionManifest | null,
+    readonly retirementEnabled: boolean,
+    private readonly retirementApplicationRevisions: readonly string[],
   ) {}
 
   static async open(
@@ -213,6 +229,10 @@ export class LocalPlanRunner implements PlanRunner {
       if (hash.digest("hex") !== platformFirewallImage.sha256)
         throw new Error("Packaged firewall image checksum mismatch");
     }
+    const retirement = await readRetirementSource(packageRoot);
+    const retirementApplications = retirement
+      ? (execution ?? (await readApplicationExecutionManifest(packageRoot)))
+      : null;
     const identity = await fingerprint(packageRoot, broker);
     await mkdir(jobs, { recursive: true, mode: 0o700 });
     await chmod(jobs, 0o700);
@@ -230,9 +250,27 @@ export class LocalPlanRunner implements PlanRunner {
         : maintenanceEnabled,
       firewallPlansEnabled,
       execution,
+      retirement !== null,
+      retirementApplications?.profiles
+        .filter(
+          (profile) =>
+            profile.status === "supported" && profile.maintenanceEnabled,
+        )
+        .map((profile) => profile.revision) ?? [],
     );
   }
 
+  supportsRetirement(revision: string, phase: string) {
+    if (!this.retirementEnabled) return false;
+    if (phase === "remove_application")
+      return this.retirementApplicationRevisions.includes(revision);
+    if (phase === "private_workloads")
+      return revision === this.acceleratorCommit;
+    return (
+      (phase === "remove_projects" || phase === "finalize_folders") &&
+      revision === retirementAdapterCommit
+    );
+  }
   get packageId() {
     return this.identity;
   }

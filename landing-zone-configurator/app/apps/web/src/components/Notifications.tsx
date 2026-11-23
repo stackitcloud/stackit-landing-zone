@@ -27,6 +27,7 @@ const labels: Record<(typeof notificationTopics)[number], string> = {
   recovery: "Wiederherstellung und erforderliche Aktionen",
   access: "Mitgliedschaften und Zugriffe",
   reminders: "Erinnerungen an offene Aufgaben",
+  retirement: "Angekündigter Rückbau",
 };
 async function call(
   session: Session,

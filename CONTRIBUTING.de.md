@@ -148,6 +148,12 @@ wechselseitige Navigation `[English](name.md) | [Deutsch](name.de.md)` unmittelb
 nach jede H1 und aktualisieren Sie bei Prosaänderungen beide Sprachen. Bewahren Sie
 Befehle, Beispiele, exakte Werte und bestehende Überschriftenanker.
 
+Betriebsdokumentation verwendet standardmäßig OpenTofu und `tofu`-Befehle.
+Terraform-Kompatibilität bei Bedarf erläutern; die Engine bestehender Installationen
+bis zu einer separat geprüften Migration erhalten. Tatsächliche HCL-Bezeichner,
+Dateinamen und Provider-/Ressourcennamen unverändert lassen, etwa `terraform` und
+`terraform_data`.
+
 Lassen Sie generatorverwaltete Verträge unverändert: Erzeugen Sie die englische
 Referenz mit den bestehenden Werkzeugen neu und übernehmen Sie ihre technischen
 Blöcke wortgetreu in das deutsche Pendant, mit einer deutschen Einleitung samt

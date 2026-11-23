@@ -3715,4 +3715,134 @@ export const englishMessages: Record<string, string> = {
   "Für dieses Upgrade wurde inzwischen eine neue Freigaberichtlinie veröffentlicht. Übernimm sie unter Updates und erstelle danach einen neuen Plan. Der bisherige Plan wird nicht nachträglich freigegeben.":
     "A new approval policy has been published for this upgrade. Adopt it under Updates, then create a new plan. The existing plan is not approved retroactively.",
   "Zu den Update-Optionen": "Go to update options",
+  "Angekündigter Rückbau": "Retirement notices",
+  "Landing Zones stilllegen": "Retire landing zones",
+  "Rückbau angekündigt": "Retirement announced",
+  "Laufende Ausführungen klären": "Reconcile running executions",
+  "Rückbau vorbereitet": "Retirement prepared",
+  "Ressourcen werden entfernt": "Removing resources",
+  "STACKIT-Projektlöschung abwarten": "Waiting for STACKIT project removal",
+  "Leere Ordner entfernen": "Remove empty folders",
+  "Rückbau pausiert": "Retirement paused",
+  "Prüfung erforderlich": "Review required",
+  "Rückbau abgebrochen": "Retirement cancelled",
+  "Der Rückbaustand hat sich geändert. Aktualisiere den Status und prüfe die Auswahl erneut.":
+    "The retirement has changed. Refresh the status and review your selection.",
+  "Für diese Aktion fehlen die aktuelle Plattformberechtigung oder der Organisationsnachweis.":
+    "This action requires current platform authorization and organization verification.",
+  "Diese Aktion ist im aktuellen Rückbaustand nicht verfügbar. Prüfe laufende Ausführungen und Wiederherstellungsschritte.":
+    "This action is unavailable at the current retirement stage. Review running executions and recovery steps.",
+  "Eine Plattformausführung oder Wiederherstellung ist noch ungeklärt.":
+    "A platform execution or recovery remains unresolved.",
+  "Eine Application-Ausführung oder Wiederherstellung ist noch ungeklärt.":
+    "An application execution or recovery remains unresolved.",
+  "Das angekündigte Vorbereitungsfenster läuft noch.":
+    "The announced preparation window has not ended.",
+  "Der Rückbaustatus konnte nicht geladen werden. Prüfe Anmeldung und Arbeitsbereich.":
+    "Retirement status could not be loaded. Check your sign-in and workspace.",
+  "Der Rückbau wurde nicht geändert. Aktualisiere den Status und prüfe deine Berechtigung.":
+    "The retirement was not changed. Refresh the status and check your permissions.",
+  "Mit dem Rückbaustart werden neue Bestellungen und Erweiterungen gesperrt. Betroffene Besteller werden vorab informiert und können ihre Daten sichern oder selbst bereinigen.":
+    "Starting retirement blocks new orders and expansions. Affected requesters receive advance notice and can export their data or clean up their applications.",
+  "Plattform auswählen": "Select platform",
+  Applications: "Applications",
+  "Grund für den Rückbau": "Reason for retirement",
+  "Löschung frühestens ab (UTC)": "Do not delete before (UTC)",
+  "Ich bestätige die Stilllegung der ausgewählten Plattform und die Information der betroffenen Besteller.":
+    "I confirm retirement of the selected platform and notification of affected requesters.",
+  "Rückbau ankündigen und Neuanlagen sperren":
+    "Announce retirement and block new deployments",
+  "Löschung frühestens ab:": "Do not delete before:",
+  "Eine Rückbauvoraussetzung ist noch offen.":
+    "A retirement prerequisite remains unresolved.",
+  "Status prüfen": "Check status",
+  "Rückbau fortsetzen": "Resume retirement",
+  "Rückbau pausieren": "Pause retirement",
+  "Rückbau abbrechen": "Cancel retirement",
+  "Rückbau abbrechen und Neuanlagen nach Prüfung wieder zulassen? Bereits gelöschte Ressourcen werden nicht wiederhergestellt.":
+    "Cancel retirement and allow new deployments after verification? Resources already deleted will not be restored.",
+  "Diese Landing Zone wird stillgelegt. Neue Bestellungen, Erweiterungen und alte Ausführungsfreigaben sind gesperrt. Prüfe den Rückbaustatus.":
+    "This landing zone is being retired. New orders, expansions and old execution approvals are blocked. Review its retirement status.",
+  "Diese Plattform wird stillgelegt. Neue Application-Bestellungen sind gesperrt.":
+    "This platform is being retired. New application orders are blocked.",
+  "Dienste über ihre Control Plane bereinigen":
+    "Clean up services through their control planes",
+  "Application-Ressourcen und Projekt entfernen":
+    "Remove application resources and project",
+  "Plattformressourcen und Projekte entfernen":
+    "Remove platform resources and projects",
+  "Leere Ordner abschließend entfernen": "Finalize empty folder deletion",
+  "Der Runner sichert noch einen unterbrochenen State. Beende ihn nicht und prüfe den Status später erneut.":
+    "The runner is still saving interrupted state. Do not stop it; check the status again later.",
+  "Der Runner ist noch nicht nachweislich beendet. Prüfe den Status später erneut.":
+    "The runner has not been confirmed stopped. Check the status again later.",
+  "Die Ausführung benötigt eine Wiederherstellungsprüfung. Ein erneutes Apply ist gesperrt.":
+    "This execution needs a recovery review. Another Apply is blocked.",
+  "Das Steuerungsprojekt oder der Service Account gehört zum Rückbauziel. Verwende einen unabhängigen Zugang.":
+    "The control project or service account belongs to the retirement target. Use independent credentials.",
+  "Der State wurde bereits für den Rückbau übernommen. Ein normaler Abbruch ist nicht mehr möglich.":
+    "State has already been handed over for retirement. Ordinary cancellation is no longer available.",
+  "Der Runner enthält die angewendete Quellversion nicht. Der Rückbau benötigt ein passendes Runner-Paket.":
+    "The runner does not contain the applied source revision. Retirement requires a matching runner package.",
+  "Ein Ordner enthält ein Projekt außerhalb des erfassten Rückbauumfangs. Prüfe die Zuordnung vor dem Fortsetzen.":
+    "A folder contains a project outside the captured retirement scope. Review its assignment before continuing.",
+  "Der unabhängige Service Account konnte nicht bestätigt werden. Prüfe Profil und Projektzuordnung.":
+    "The independent service account could not be verified. Check the profile and its home project.",
+  "Der State hat sich geändert. Prüfe den Status und erstelle einen neuen Plan.":
+    "State has changed. Review the status and create a new plan.",
+  "Rückbauschritte und Freigaben": "Retirement steps and approvals",
+  "Jede Phase benötigt einen eigenen geprüften Plan und eine ausdrückliche Freigabe. Ein Rückbaustart löscht noch keine Ressourcen.":
+    "Each phase requires a reviewed plan and explicit approval. Announcing retirement does not delete resources.",
+  "Termin ändern und Besteller informieren":
+    "Change date and notify requesters",
+  "Rückbauzugang erneut bestätigen": "Reconfirm retirement credentials",
+  "Unabhängigen Rückbauzugang vorbereiten":
+    "Prepare independent retirement credentials",
+  "Projekt-ID des unabhängigen Service Accounts":
+    "Independent service account's home project ID",
+  "Der Service Account und die Configurator-Datenbank müssen außerhalb der zu löschenden Landing Zone bestehen bleiben. Prüfe Datenexporte, Aufbewahrungsregeln und den verbleibenden State im bisherigen Backend.":
+    "The service account and Configurator database must survive outside the landing zone being deleted. Review data exports, retention rules and remaining state in the original backend.",
+  "Ich bestätige, dass der Rückbauzugang und seine Berechtigungen erhalten bleiben.":
+    "I confirm that the retirement credentials and their permissions will remain available.",
+  "Ich bestätige die Übernahme des States für den Rückbau. Die bisherigen Ausführungswege bleiben gesperrt; ein normaler Abbruch ist danach nicht möglich.":
+    "I confirm the state handover for retirement. Previous execution paths remain blocked; ordinary cancellation will no longer be available.",
+  "Rückbauzugang prüfen und State übernehmen":
+    "Verify retirement credentials and hand over state",
+  "Rückbauplan erstellen": "Create retirement plan",
+  Rückbauplan: "Retirement plan",
+  Rückbauausführung: "Retirement execution",
+  "Wird gestartet": "Starting",
+  "Wird initialisiert": "Initializing",
+  "Wird validiert": "Validating",
+  "Plan wird erstellt": "Creating plan",
+  "STACKIT hat die Folder-Löschung noch nicht zugelassen. Die fehlgeschlagene Ausführung bleibt dokumentiert. Prüfe den Status später und erstelle einen neuen Folder-Plan.":
+    "STACKIT has not yet allowed folder deletion. The failed execution remains recorded. Check again later and create a new folder plan.",
+  "Löschumfang prüfen": "Review deletions",
+  "Runner-Stopp und Ergebnis prüfen": "Verify runner stop and result",
+  "Unterbrochenen State prüfen": "Review interrupted state",
+  "Geplanter Löschumfang": "Planned deletions",
+  "Ressourcen zur Löschung": "resources to delete",
+  "Datenexporte, Backups und Aufbewahrungspflichten sind geprüft.":
+    "Data exports, backups and retention requirements have been reviewed.",
+  "Ich bestätige die unwiderrufliche Löschung genau dieses geprüften Umfangs.":
+    "I confirm permanent deletion of exactly this reviewed scope.",
+  "Geprüften Rückbauplan ausführen": "Apply reviewed retirement plan",
+  "State-Wiederherstellung prüfen": "Review state recovery",
+  "Der ursprüngliche Apply wird dadurch nicht erfolgreich. Prüfe die bereits entfernten Ressourcen und bestätige den unterbrochenen State erst nach nachgewiesenem Runner-Stopp. Danach ist ein neuer Plan erforderlich.":
+    "This does not make the original Apply successful. Review resources already removed and approve interrupted state only after the runner is confirmed stopped. A new plan is required afterwards.",
+  "Verbleibende Ressourcen": "remaining resources",
+  "Ich habe den unterbrochenen State und den Löschumfang geprüft und werde einen neuen Plan erstellen.":
+    "I have reviewed the interrupted state and deletions and will create a new plan.",
+  "Geprüften State für einen neuen Plan übernehmen":
+    "Adopt reviewed state for a new plan",
+  "Service-Account-Profil": "Service account profile",
+  "Status aktualisieren": "Refresh status",
+  "Diese Landing Zone benötigt für den Rückbau einen Runner mit Zugang zu ihren privaten Control Planes. Der State wurde nicht übernommen.":
+    "This landing zone needs a runner that can reach its private control planes for retirement. State has not been handed over.",
+  "Vor dem Rückbau ist eine gesondert geprüfte Migration des ursprünglichen Terraform-States zu OpenTofu erforderlich. Der State wurde nicht übernommen.":
+    "Retirement first requires a separately reviewed migration of the original Terraform state to OpenTofu. State has not been handed over.",
+  "Die ursprünglichen Eingaben können mit diesem Quellpaket nicht sicher rekonstruiert werden. Der State wurde nicht übernommen.":
+    "The original inputs cannot be safely reconstructed with this source package. State has not been handed over.",
+  "Kein nativer Abschlussnachweis. Der Runner ist beendet; erstelle einen neuen Plan.":
+    "No native completion receipt is available. The runner has stopped; create a new plan.",
 };

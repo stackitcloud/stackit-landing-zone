@@ -2540,3 +2540,90 @@ button.template-node:hover {
 .assistant-recommendation dd {
   margin: 0;
 }
+
+.retirement-panel {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--nds-viewport-border-radius-component-medium);
+  background: var(--surface);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.retirement-panel form,
+.retirement-panel article {
+  display: grid;
+  gap: 1rem;
+}
+.retirement-panel article {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+}
+.retirement-panel label {
+  display: grid;
+  gap: 0.5rem;
+}
+.retirement-panel label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: flex-start;
+}
+.retirement-panel input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin-top: 0.25rem;
+}
+.retirement-panel select,
+.retirement-panel textarea,
+.retirement-panel input[type="datetime-local"] {
+  width: 100%;
+  min-width: 0;
+}
+.retirement-panel .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.retirement-panel select,
+.retirement-panel textarea,
+.retirement-panel input[type="datetime-local"] {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--nds-viewport-border-radius-component-small);
+}
+.retirement-panel textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.retirement-execution {
+  display: grid;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.retirement-execution form,
+.retirement-execution section,
+.retirement-scope,
+.retirement-job {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  min-width: 0;
+}
+.retirement-execution code {
+  overflow-wrap: anywhere;
+}
+.retirement-execution input:not([type="checkbox"]) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+.retirement-execution button {
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+}

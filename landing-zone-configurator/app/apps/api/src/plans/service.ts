@@ -100,7 +100,7 @@ export class Plans {
       async (client) =>
         (
           await client.query(
-            'SELECT r.id,r.preparation_id AS "preparationId",r.status,r.summary,r.error_code AS "errorCode",r.created_at AS "createdAt",r.finished_at AS "finishedAt",r.operation,r.plan_id AS "planId",r.artifact_sha256 AS "artifactSha256",a.expires_at AS "expiresAt",b.descriptor AS "stateBackend" FROM lzc.plan_runs r LEFT JOIN lzc.plan_artifacts a ON a.run_id=r.id LEFT JOIN lzc.platform_states s ON s.state_key=r.state_key LEFT JOIN lzc.state_backends b ON b.id=s.backend_id ORDER BY r.created_at DESC LIMIT 100',
+            'SELECT r.id,r.preparation_id AS "preparationId",r.status,r.summary,r.error_code AS "errorCode",r.created_at AS "createdAt",r.finished_at AS "finishedAt",r.operation,r.plan_id AS "planId",r.artifact_sha256 AS "artifactSha256",a.expires_at AS "expiresAt",b.descriptor AS "stateBackend",lzc_auth.platform_run_retired(r.id) AS "retirementBlocked" FROM lzc.plan_runs r LEFT JOIN lzc.plan_artifacts a ON a.run_id=r.id LEFT JOIN lzc.platform_states s ON s.state_key=r.state_key LEFT JOIN lzc.state_backends b ON b.id=s.backend_id ORDER BY r.created_at DESC LIMIT 100',
           )
         ).rows,
     );
@@ -109,6 +109,10 @@ export class Plans {
       row.applicationImpactEnabled = true;
       row.applyBlocker = null;
       if (row.operation !== "plan" || row.status !== "succeeded") continue;
+      if (row.retirementBlocked) {
+        row.applyBlocker = { code: "retirement_admission_closed" };
+        continue;
+      }
       if (!this.execution) {
         row.applyBlocker = { code: "execution_disabled" };
         continue;
@@ -1148,6 +1152,10 @@ export class Plans {
         })
       : undefined;
     await withTenant(this.pool, session, async (client) => {
+      await client.query(
+        "SELECT lzc_auth.assert_retirement_platform_release($1)",
+        [id],
+      );
       const grant = await client.query(
         "SELECT credential_grant.run_id FROM lzc.plan_credential_grants credential_grant JOIN lzc.plan_runs run ON run.id=credential_grant.run_id WHERE credential_grant.run_id=$1 AND credential_grant.consumed_at IS NOT NULL AND credential_grant.revoked_at IS NULL AND credential_grant.expires_at>now() AND run.input_claimed AND run.status='initializing' AND run.expires_at>now()",
         [id],

@@ -137,6 +137,11 @@ English `.md` files are canonical; human-facing documentation has complete Germa
 navigation immediately after each H1 and update both languages whenever prose
 changes. Preserve commands, examples, exact values and existing heading anchors.
 
+Operational documentation uses OpenTofu and `tofu` commands by default. Mention
+Terraform compatibility where useful, but preserve an existing deployment's engine
+until a separately reviewed migration. Keep real HCL identifiers, filenames and
+provider/resource names unchanged (for example `terraform` and `terraform_data`).
+
 Keep generator-owned contracts unchanged: regenerate the English reference with
 the existing tooling and copy its technical blocks verbatim into the German peer,
 with a German introduction linking the canonical reference. Machine-ingested
