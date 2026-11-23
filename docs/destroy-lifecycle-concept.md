@@ -25,7 +25,7 @@ not a dependency-ordering fix we can promise through a provider upgrade.
 "Soft-deleted" here means a project/container is still awaiting final removal. It
 does **not** imply a recoverable project: the [project deletion documentation](https://docs.stackit.cloud/platform/resource-manager/how-tos/delete-a-project/)
 describes deletion as irreversible and resource teardown as starting immediately.
-Neither seven elapsed days nor an empty Terraform State proves completion.
+Neither seven elapsed days nor an empty State proves completion.
 
 No project relocation, quarantine folder, automatic restore, force-purge shortcut,
 multi-day `time_sleep` or forgetting live resources from State is proposed. Keeping
@@ -226,7 +226,7 @@ leave stale resource entries or unusable provider endpoints. If the original roo
 no longer refresh/plan, stop and prepare a reviewed, compatible cleanup adapter/State
 reconciliation. Do not mask this with `-refresh=false`, broad `state rm` or unknown imports.
 
-### 6.1 Standalone installations: one State, two Terraform/OpenTofu phases
+### 6.1 Standalone installations: one State, two OpenTofu phases
 
 An installation originally created without the Configurator does not need to be
 imported into it for retirement. Its existing native configuration, provider lockfile,
@@ -235,9 +235,8 @@ new API service, STACKIT CLI or second State is inherently required. The remaini
 work is a compatible phase-specific HCL configuration and an operator procedure.
 
 The normal plan compares configuration with State; a saved plan can then be applied
-explicitly. See [Terraform Plan](https://developer.hashicorp.com/terraform/cli/commands/plan),
-[Terraform Apply](https://developer.hashicorp.com/terraform/cli/commands/apply) and
-[OpenTofu Plan](https://opentofu.org/docs/cli/commands/plan/). Use that mechanism:
+explicitly. See [OpenTofu Plan](https://opentofu.org/docs/cli/commands/plan/) and
+[OpenTofu Apply](https://opentofu.org/docs/cli/commands/apply/). Use that mechanism:
 
 | Step | HCL desired configuration | Review condition |
 | --- | --- | --- |
@@ -261,29 +260,30 @@ represent the deployment's existing reviewed inputs; protect plan files as sensi
 ```sh
 # Phase A: ordinary plan/apply of the adapted teardown configuration.
 # Keep the original State identity, workspace and external backend.
-terraform init -lockfile=readonly -backend-config=backend.hcl
-terraform plan -var-file=config.tfvars -out=phase-a.tfplan
+tofu init -lockfile=readonly -backend-config=backend.hcl
+tofu plan -var-file=config.tfvars -out=phase-a.tfplan
 # Review: only approved workload/project deletions, no folder deletions.
-terraform apply phase-a.tfplan
+tofu apply phase-a.tfplan
 ```
 
 Keep the State and configuration between runs. Project deletion may be accepted
 while the parent is still occupied; record these project IDs before they disappear
-from State. Waiting can be entirely manual: no running Terraform process, scheduler
+from State. Waiting can be entirely manual: no running OpenTofu process, scheduler
 or Configurator is required. STACKIT-Portal observation is optional; if the API does
 not yet allow final folder removal, the second phase must remain pending.
 
 ```sh
 # Phase B: later, after purge, in the same adapted configuration/backend/workspace.
 # Only if ALL remaining managed resources are approved for final removal.
-terraform plan -destroy -var-file=config.tfvars -out=phase-b.tfplan
+tofu plan -destroy -var-file=config.tfvars -out=phase-b.tfplan
 # Review: only the known empty folders and approved governance remainder.
-terraform apply phase-b.tfplan
+tofu apply phase-b.tfplan
 ```
 
-Use `tofu` instead of `terraform` for an OpenTofu-managed deployment; preserve the
-original tool/version, provider lockfile, State encryption and backend. This is not
-an instruction to switch engines while retiring. If folder deletion still returns
+OpenTofu and `tofu` are the documentation default. For an existing Terraform-managed
+deployment, use the equivalent `terraform` commands and preserve its original engine
+and version until a separately reviewed migration. Preserve the provider lockfile,
+State encryption and backend; retirement is not an engine migration. If folder deletion still returns
 the known children conflict, preserve the partial State, wait and make a fresh plan
 later. Never turn the failed command into successful completion. If retained/shared
 resources still exist in the State, do not use a global Destroy for Phase B; use the
@@ -296,7 +296,7 @@ in the protected change record/repository. Only reviewed retirement operations m
 use the execution credentials. Where provider contracts permit, separately scoped
 execution rights can additionally exclude creation; do not remove shared IAM blindly.
 The organizational retirement record remains effective between CLI runs. A variable,
-local file or Terraform State lock alone cannot enforce this across administrators:
+local file or OpenTofu State lock alone cannot enforce this across administrators:
 an older active configuration or still-applicable saved expansion plan must not be run.
 
 Separate governance and workload States can simplify **future** deployments, but
@@ -347,7 +347,7 @@ an old publication. A new Landing Zone requires its own new identity and approva
 
 The same proposed manifest and phase receipts support both modes:
 
-| Native Terraform/OpenTofu | Optional Configurator |
+| Native OpenTofu (Terraform-compatible) | Optional Configurator |
 | --- | --- |
 | Versioned source, provider lockfile, external State and retirement manifest | Existing instance/platform bindings plus durable retirement records |
 | Operator or optional customer CI executes short, reviewed runs | API admits scoped phase jobs and schedules observation/finalization |
@@ -402,6 +402,55 @@ A Platform Owner can retire a platform; Application authority remains scoped to 
 authorized order. The policy may add a second approver, but this is not a universal
 new requirement.
 
+### Application retirement: decision, notice and execution
+
+The agreed default is that the **Platform Owner decides** whether to retire the
+platform and its explicitly listed dependent Application Landing Zones. Requesters
+are notified in advance and may export data or clean up their Applications themselves.
+Their consent or prior self-service deletion is not a prerequisite. This authority
+must be granted explicitly for the selected platform and Applications; being a SaaS
+operator or a member of another workspace grants no such permission.
+
+The planned workflow is:
+
+1. Persist the retirement intent and block new orders and expansions immediately.
+   Inventory every dependent Application, its requester/current responsible owner,
+   authoritative State, running jobs and data-retention obligations.
+2. Give affected requesters and current Application owners advance notice naming
+   the affected Applications, the reason, the planned deletion time, the responsible
+   Platform Owner and the opportunity to export data or perform scoped cleanup.
+   Keep the notice visible in the workspace inbox independently of email settings;
+   email follows personal topic/language preferences and configured delivery.
+   Record recipient resolution, notice and delivery failures. Never interpret an
+   SMTP handoff or silence as consent. Unresolved recipients require operator review.
+3. Allow an explicitly scheduled preparation window. Its duration is an organizational
+   choice, not a fabricated universal deadline. Rescheduling and material scope changes
+   update the notice and require a current decision. No destructive dispatch before
+   the recorded window ends and required organizational holds are resolved.
+4. After that window, the Platform Owner reviews and authorizes named Application
+   Destroy plans. Requesters may have completed their own teardown already; reconcile
+   those results instead of deleting twice. Otherwise the coordinator executes the
+   authorized Application cleanup before shared platform dependencies are removed.
+5. Wait for project purge and finalize folders as described above. Notify affected
+   users of progress, failures and completion; distinguish workload removal from
+   eventual hierarchy cleanup.
+
+No per-requester approval is required by the default. A documented customer policy
+may require additional approval, but pending mandatory approval must remain a hold;
+it cannot be inferred from a notification or overridden by an ordinary role check.
+Shared, retained or externally owned resources must first receive an explicit scope
+and dependency resolution; a platform decision is not blanket deletion authority.
+
+This is proposed implementation, not an existing administrative Destroy feature.
+The current Application Destroy path selects plans by requester identity. Reusing
+its plan validation and execution machinery requires a separately authorized
+Platform Owner operation, with the acting owner and affected requester recorded
+separately; do not impersonate the requester or bypass existing access checks.
+The new retirement notifications and email topic must also be added explicitly to
+the [notification contract](../landing-zone-configurator/docs/notifications.md).
+
+### Cancellation and progress
+
 Cancellation before any destructive action can reopen admissions only after a fresh
 operator check of all jobs, recovery holds and current State. Invalidate old approvals
 and require new ordinary Plans. Once a project delete or other irreversible operation
@@ -424,18 +473,30 @@ when the overall lifecycle correctly waits for external completion.
 
 1. **Inventory and runbook:** read-only discovery, ownership/State reconciliation,
    external control verification and the manual staged workaround. Pilot one approved
-   disposable environment; do not start with a broad organization sweep.
+   disposable environment; do not start with a broad organization sweep. Supporting
+   installations originally created without the Configurator is a required delivery
+   item. A qualified OpenTofu runbook with compatible phase HCL may be sufficient;
+   a new controller, application DB, Configurator import or State split is not required.
+   Document exact supported source versions, commands, prerequisites, pause/resume,
+   organizational freeze and completion evidence. The unchanged root is not yet such
+   a runbook: qualify its provider initialization and references before publication.
 2. **Admission fence:** persistent retirement intent, atomic race-safe admission and
    dispatch gates, job draining, auditability and safe cancellation before deletion.
 3. **Lifecycle coordinator and native phase contract:** reuse existing Application
    Destroy, add qualified phase configuration/address migrations, cross-State Platform
-   ordering, short jobs, receipts and explicit expected-409 handling.
+   ordering, short jobs, receipts and explicit expected-409 handling. Add the scoped
+   Platform Owner operation, advance-notice/preparation window and recipient handling.
 4. **Deferred finalization and batches:** durable observations, bounded policy for
    empty-folder deletes, alerts and independent per-Landing-Zone batch progress.
 5. **Qualified native adapters:** historical-source/provider-initialization cases,
    optional future State partitioning and control-plane uninstall/handoff.
 
 Required tests include:
+
+- A Platform Owner can coordinate only authorized dependent Applications; advance
+  notices and the recorded preparation window precede destructive dispatch. Requester
+  self-cleanup is optional, results are reconciled, and email opt-out does not hide
+  the inbox notice. Missing required approvals/holds block dispatch, not visibility.
 
 - An order racing the freeze is either admitted before it and accounted for, or
   rejected; it cannot dispatch afterwards on an unused old approval/ticket.

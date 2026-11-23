@@ -29,7 +29,7 @@ API-Grenze, keine durch ein Provider-Upgrade zugesicherte Korrektur der Reihenfo
 auf die endgültige Entfernung wartet. Daraus folgt **keine** Wiederherstellbarkeit:
 Die [Projektlöschungs-Dokumentation](https://docs.stackit.cloud/platform/resource-manager/how-tos/delete-a-project/)
 beschreibt den Vorgang als unumkehrbar; der Ressourcenabbau beginnt sofort.
-Weder sieben verstrichene Tage noch ein leerer Terraform-State beweisen den Abschluss.
+Weder sieben verstrichene Tage noch ein leerer State beweisen den Abschluss.
 
 Verschieben von Projekten, Quarantäneordner, automatische Wiederherstellung,
 Force-Purge-Abkürzungen, mehrtägiges `time_sleep` und das Vergessen noch vorhandener
@@ -256,7 +256,7 @@ Root nicht mehr aktualisieren/planen, anhalten und einen geprüften kompatiblen
 Cleanup-Adapter/State-Abgleich vorbereiten. Kein Verdecken mit `-refresh=false`,
 pauschalem `state rm` oder unbekannten Imports.
 
-### 6.1 Eigenständige Installationen: ein State, zwei Terraform-/OpenTofu-Phasen
+### 6.1 Eigenständige Installationen: ein State, zwei OpenTofu-Phasen
 
 Eine ursprünglich ohne Configurator angelegte Installation muss zum Rückbau nicht
 in diesen importiert werden. Ihre vorhandene native Konfiguration, Provider-Lockfile,
@@ -267,9 +267,8 @@ organisatorischer Betriebsablauf.
 
 Der normale Plan vergleicht Konfiguration und State; ein gespeicherter Plan kann
 anschließend ausdrücklich angewendet werden. Siehe
-[Terraform Plan](https://developer.hashicorp.com/terraform/cli/commands/plan),
-[Terraform Apply](https://developer.hashicorp.com/terraform/cli/commands/apply) und
-[OpenTofu Plan](https://opentofu.org/docs/cli/commands/plan/). Diesen Mechanismus nutzen:
+[OpenTofu Plan](https://opentofu.org/docs/cli/commands/plan/) und
+[OpenTofu Apply](https://opentofu.org/docs/cli/commands/apply/). Diesen Mechanismus nutzen:
 
 | Schritt | HCL-Sollkonfiguration | Prüfkriterium |
 | --- | --- | --- |
@@ -295,30 +294,32 @@ Plan-Dateien sind vertraulich zu behandeln.
 ```sh
 # Phase A: normaler Plan/Apply der angepassten Rückbaukonfiguration.
 # Ursprüngliche State-Identität, Workspace und externes Backend beibehalten.
-terraform init -lockfile=readonly -backend-config=backend.hcl
-terraform plan -var-file=config.tfvars -out=phase-a.tfplan
+tofu init -lockfile=readonly -backend-config=backend.hcl
+tofu plan -var-file=config.tfvars -out=phase-a.tfplan
 # Prüfen: nur freigegebene Workload-/Projektlöschungen, keine Ordnerlöschungen.
-terraform apply phase-a.tfplan
+tofu apply phase-a.tfplan
 ```
 
 State und Konfiguration zwischen den Läufen erhalten. Die Projektlöschung kann
 angenommen sein, während der Elternordner noch belegt ist. Projekt-IDs daher vor
 ihrem Verschwinden aus dem State erfassen. Das Warten kann vollständig manuell
-erfolgen: kein laufender Terraform-Prozess, Scheduler oder Configurator ist nötig.
+erfolgen: kein laufender OpenTofu-Prozess, Scheduler oder Configurator ist nötig.
 Beobachtung im STACKIT Portal ist optional; erlaubt die API die abschließende
 Ordnerlöschung noch nicht, bleibt die zweite Phase offen.
 
 ```sh
 # Phase B: später nach Purge, mit gleicher angepasster Konfiguration/Backend/Workspace.
 # Nur wenn ALLE verbleibenden verwalteten Ressourcen zur Löschung freigegeben sind.
-terraform plan -destroy -var-file=config.tfvars -out=phase-b.tfplan
+tofu plan -destroy -var-file=config.tfvars -out=phase-b.tfplan
 # Prüfen: nur die bekannten leeren Ordner und freigegebene Governance-Reste.
-terraform apply phase-b.tfplan
+tofu apply phase-b.tfplan
 ```
 
-Bei einer mit OpenTofu verwalteten Installation `tofu` statt `terraform` verwenden;
-ursprüngliches Werkzeug/Version, Provider-Lockfile, State-Verschlüsselung und Backend
-beibehalten. Dies ist keine Aufforderung zum Wechsel der Engine während des Rückbaus.
+OpenTofu und `tofu` sind der Dokumentationsstandard. Bei einer bereits mit Terraform
+verwalteten Installation die entsprechenden `terraform`-Befehle verwenden und die
+ursprüngliche Engine samt Version bis zu einer separat geprüften Migration behalten.
+Provider-Lockfile, State-Verschlüsselung und Backend erhalten; Rückbau ist keine
+Engine-Migration.
 Meldet die Ordnerlöschung weiterhin den bekannten Kindressourcen-Konflikt, Teil-State
 erhalten, warten und später frisch planen. Den fehlgeschlagenen Befehl niemals als
 abgeschlossene Löschung werten. Sind noch geteilte/aufzubewahrende Ressourcen im State,
@@ -332,7 +333,7 @@ Schreiber und dokumentiert `RETIRING` im geschützten Änderungsnachweis/Reposit
 Ausführungszugänge werden nur für geprüfte Rückbauschritte verwendet. Wo die
 Provider-Verträge es zulassen, können getrennte Ausführungsrechte Neuanlagen zusätzlich
 ausschließen; gemeinsame IAM-Rechte nicht pauschal entfernen. Der organisatorische
-Rückbauvermerk gilt auch zwischen CLI-Läufen. Variable, lokale Datei oder Terraform-
+Rückbauvermerk gilt auch zwischen CLI-Läufen. Variable, lokale Datei oder OpenTofu-
 State-Lock allein erzwingen das nicht gegenüber anderen Administratoren: Eine alte
 aktive Konfiguration oder ein noch anwendbarer gespeicherter Erweiterungsplan darf
 nicht mehr ausgeführt werden.
@@ -391,7 +392,7 @@ neue Identität und Freigabe.
 
 Dasselbe vorgeschlagene Manifest und dieselben Phasennachweise unterstützen beide Wege:
 
-| Natives Terraform/OpenTofu | Optionaler Configurator |
+| Natives OpenTofu (Terraform-kompatibel) | Optionaler Configurator |
 | --- | --- |
 | Versionierte Quelle, Provider-Lockfile, externer State und Rückbaumanifest | Vorhandene Instanz-/Plattformbindungen und dauerhafte Rückbauaufträge |
 | Betreiber oder optionale Kunden-CI führt kurze, geprüfte Läufe aus | API lässt begrenzte Phasenjobs zu und plant Beobachtung/Finalisierung |
@@ -452,6 +453,60 @@ Application-Berechtigungen bleiben auf die autorisierte Bestellung beschränkt.
 Eine Unternehmensregel kann einen zweiten Freigebenden verlangen; dies ist keine
 generelle neue Pflicht.
 
+### Application-Rückbau: Entscheidung, Information und Ausführung
+
+Als abgestimmter Standard entscheidet der **Platform Owner** über den Rückbau der
+Plattform und ihrer ausdrücklich benannten abhängigen Application Landing Zones.
+Besteller werden vorher informiert und können Daten exportieren oder ihre
+Applications selbst bereinigen. Ihre Zustimmung oder vorherige eigenständige
+Löschung ist keine Voraussetzung. Die Berechtigung muss ausdrücklich für die
+gewählte Plattform und Applications gelten; SaaS-Betrieb oder Mitgliedschaft in
+einem anderen Workspace verleiht sie nicht.
+
+Der geplante Ablauf:
+
+1. Rückbauabsicht dauerhaft erfassen und Neuanlagen sowie Erweiterungen sofort sperren.
+   Jede abhängige Application mit Besteller/aktuell Verantwortlichem, maßgeblichem
+   State, laufenden Jobs und Aufbewahrungspflichten inventarisieren.
+2. Betroffene Besteller und aktuelle Application-Verantwortliche vorab informieren:
+   betroffene Applications, Grund, geplanter Löschzeitpunkt, verantwortlicher Platform
+   Owner und Möglichkeit zu Datenexport oder gezielter eigener Bereinigung. Die
+   Nachricht bleibt unabhängig von E-Mail-Einstellungen im Workspace-Posteingang
+   sichtbar; E-Mails beachten persönliche Themen-/Spracheinstellungen und verfügbaren
+   Versand. Empfängerzuordnung, Information und Zustellfehler dokumentieren. SMTP-
+   Annahme oder Schweigen sind keine Zustimmung. Ungeklärte Empfänger verlangen
+   Prüfung durch den Operator.
+3. Ein ausdrücklich terminiertes Vorbereitungsfenster einräumen. Seine Dauer ist
+   organisatorisch festzulegen, keine allgemeingültige erfundene Frist. Änderungen
+   des Termins oder wesentliche Umfangsänderungen aktualisieren die Information und
+   verlangen eine aktuelle Entscheidung. Kein destruktiver Start vor Fristende und
+   Klärung vorgeschriebener organisatorischer Sperren.
+4. Danach prüft und genehmigt der Platform Owner die benannten Application-Destroy-
+   Pläne. Bereits von Bestellern ausgeführte Rückbauten abgleichen statt doppelt
+   löschen. Andernfalls führt der Koordinator den autorisierten Application-Rückbau
+   vor der Entfernung gemeinsamer Plattformabhängigkeiten aus.
+5. Projekt-Purge abwarten und Ordner wie oben beschrieben abschließen. Betroffene
+   Nutzer über Fortschritt, Fehler und Abschluss informieren; Workload-Löschung und
+   späteren Abschluss der Hierarchiebereinigung unterscheiden.
+
+Im Standard ist keine Freigabe jedes Bestellers erforderlich. Eine dokumentierte
+Kundenregel kann zusätzliche Zustimmung verlangen; eine ausstehende Pflichtfreigabe
+bleibt dann eine Sperre. Benachrichtigung oder gewöhnliche Rollenprüfung ersetzen sie
+nicht. Gemeinsame, aufzubewahrende oder fremdverwaltete Ressourcen verlangen zunächst
+eine explizite Klärung von Umfang und Abhängigkeiten; die Plattformentscheidung ist
+keine pauschale Löschberechtigung.
+
+Dies ist geplante Umsetzung, keine bereits vorhandene administrative Destroy-Funktion.
+Der aktuelle Application-Destroy wählt Pläne anhand der Bestelleridentität aus.
+Die Wiederverwendung seiner Planprüfung und Ausführung braucht daher eine separat
+autorisierte Platform-Owner-Operation. Handelnden Owner und betroffenen Besteller
+getrennt protokollieren; keine Besteller-Impersonation oder Umgehung bestehender
+Zugriffsprüfungen. Die neuen Rückbaunachrichten und das E-Mail-Thema müssen ausdrücklich
+in den [Benachrichtigungsvertrag](../landing-zone-configurator/docs/notifications.de.md)
+aufgenommen werden.
+
+### Abbruch und Fortschritt
+
 Solange noch keine destruktive Aktion ausgeführt wurde, darf ein Abbruch Neuanlagen
 erst nach frischer Prüfung aller Jobs, Recovery-Sperren und des aktuellen States
 wieder zulassen. Alte Freigaben
@@ -479,18 +534,32 @@ Lebenszyklus korrekt auf den externen Abschluss wartet.
 1. **Inventar und Betriebsanleitung:** lesende Erfassung, Eigentums-/State-Abgleich,
    externe Steuerung prüfen und manueller gestufter Workaround. Zunächst eine
    ausdrücklich freigegebene Wegwerf-Umgebung, kein organisationsweiter Sweep.
+   Ursprünglich ohne Configurator angelegte Installationen sind ein verbindlicher
+   Lieferumfang. Eine qualifizierte OpenTofu-Anleitung mit kompatibler Phasen-HCL
+   kann genügen; neuer Controller, Anwendungsdatenbank, Configurator-Import oder
+   State-Aufteilung sind keine Voraussetzung. Unterstützte Quellversionen, Befehle,
+   Voraussetzungen, Pause/Fortsetzung, organisatorische Sperre und Abschlussnachweise
+   dokumentieren. Das unveränderte Root-Modul ist noch keine solche Anleitung:
+   Provider-Initialisierung und Referenzen vor Veröffentlichung qualifizieren.
 2. **Zulassungssperre:** dauerhafter Rückbauauftrag, atomare Race-sichere Bestell- und
    Dispatch-Schranken, Job-Stilllegung, Auditierbarkeit und sicherer Abbruch vor Löschung.
 3. **Lebenszykluskoordinator und nativer Phasenvertrag:** vorhandenen Application-
    Destroy wiederverwenden, qualifizierte Phasenkonfiguration/Adressmigrationen,
    State-übergreifende Plattformreihenfolge, kurze Jobs, Nachweise und explizite
-   Behandlung des erwarteten 409 ergänzen.
+   Behandlung des erwarteten 409 ergänzen. Gezielte Platform-Owner-Operation,
+   Vorabinformation/Vorbereitungsfenster und Empfängerbehandlung ergänzen.
 4. **Später Abschluss und Batches:** dauerhafte Beobachtungen, begrenzte Regel für
    Löschung leerer Ordner, Alarme und unabhängiger Fortschritt je Landing Zone.
 5. **Qualifizierte native Adapter:** historische Quellen/Provider-Initialisierung,
    optionale spätere State-Trennung und Deinstallation/Übergabe der Steuerungsumgebung.
 
 Erforderliche Tests umfassen:
+
+- Platform Owner steuern nur autorisierte abhängige Applications; Vorabinformation
+  und erfasstes Vorbereitungsfenster liegen vor destruktivem Start. Eigene Bereinigung
+  durch Besteller bleibt optional, Ergebnisse werden abgeglichen, E-Mail-Abwahl
+  versteckt keine Nachricht im Posteingang. Fehlende Pflichtfreigaben/Sperren
+  verhindern Ausführung, nicht Sichtbarkeit.
 
 - Eine Bestellung im Rennen mit der Sperre wird entweder vorher zugelassen und
   erfasst oder abgewiesen; eine alte unbenutzte Freigabe/ein Ticket darf sie danach
