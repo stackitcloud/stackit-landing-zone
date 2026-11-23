@@ -1,3 +1,9 @@
+variable "labels" {
+  type        = map(string)
+  description = "Original Accelerator labels; the native landing_zone_accelerator label is retained."
+  default     = {}
+}
+
 variable "organization_auditors" {
   type        = list(string)
   description = "Original organization auditors; retained during retirement because they may be shared."

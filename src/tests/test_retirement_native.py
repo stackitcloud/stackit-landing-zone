@@ -42,13 +42,13 @@ class NativeRetirementTest(unittest.TestCase):
                 if urlsplit(self.path).path in (f'/v2/folders/{FOLDER}', f'/v2/folders/{CONTAINER}'):
                     return self.respond(404, {}) if state['deleted_folder'] else self.respond(200, {
                         'folderId': FOLDER, 'containerId': CONTAINER, 'name': 'Disposable retirement test',
-                        'parent': {'containerId': ORG, 'id': ORG, 'type': 'ORGANIZATION'}, 'lifecycleState': 'ACTIVE', 'labels': {}, 'creationTime': '2026-01-01T00:00:00Z', 'updateTime': '2026-01-01T00:00:00Z', 'ownerEmail': 'owner@example.com'})
+                        'parent': {'containerId': ORG, 'id': ORG, 'type': 'ORGANIZATION'}, 'lifecycleState': 'ACTIVE', 'labels': {'landing_zone_accelerator': 'true', 'environment': 'dev-retirement-pilot'}, 'creationTime': '2026-01-01T00:00:00Z', 'updateTime': '2026-01-01T00:00:00Z', 'ownerEmail': 'owner@example.com'})
                 if urlsplit(self.path).path in (f'/v2/projects/{PROJECT}', '/v2/projects/project-test-retirement'):
                     if state['deny_project']:
                         return self.respond(403, {'message': 'Denied'})
                     return self.respond(404, {}) if state['deleted_project'] else self.respond(200, {
                         'projectId': PROJECT, 'containerId': 'project-test-retirement', 'name': 'Disposable project',
-                        'parent': {'containerId': CONTAINER, 'id': FOLDER, 'type': 'FOLDER'}, 'lifecycleState': 'ACTIVE', 'labels': {}, 'creationTime': '2026-01-01T00:00:00Z', 'updateTime': '2026-01-01T00:00:00Z', 'ownerEmail': 'owner@example.com'})
+                        'parent': {'containerId': CONTAINER, 'id': FOLDER, 'type': 'FOLDER'}, 'lifecycleState': 'ACTIVE', 'labels': {'landing_zone_accelerator': 'true', 'environment': 'dev-retirement-pilot'}, 'creationTime': '2026-01-01T00:00:00Z', 'updateTime': '2026-01-01T00:00:00Z', 'ownerEmail': 'owner@example.com'})
                 return self.respond(500, {'message': 'Unexpected test endpoint: ' + self.path})
 
             def do_DELETE(self):
@@ -78,6 +78,7 @@ class NativeRetirementTest(unittest.TestCase):
                     f'  service_account_token = "test-only"\n  resourcemanager_custom_endpoint = "http://127.0.0.1:{server.server_port}"\n  default_region'))
                 variables = {'organization_id': ORG, 'owner_email': 'owner@example.com',
                              'rm_folders': {'platform': {'name': 'Disposable retirement test'}},
+                             'labels': {'environment': 'dev-retirement-pilot'},
                              'retirement_phase': 'remove_projects'}
                 (work / 'retirement.tfvars.json').write_text(json.dumps(variables))
                 raw = {'version': 4, 'terraform_version': '1.12.6', 'serial': 1,
@@ -86,7 +87,7 @@ class NativeRetirementTest(unittest.TestCase):
                      'provider': 'provider["registry.opentofu.org/stackitcloud/stackit"]', 'instances': [
                          {'index_key': 'platform', 'schema_version': 0, 'attributes': {
                              'folder_id': FOLDER, 'container_id': CONTAINER, 'name': 'Disposable retirement test',
-                             'parent_container_id': ORG, 'owner_email': 'owner@example.com', 'labels': None}}]},
+                             'parent_container_id': ORG, 'owner_email': 'owner@example.com', 'labels': {'landing_zone_accelerator': 'true', 'environment': 'dev-retirement-pilot'}}}]},
                     {'module': 'module.management', 'mode': 'managed', 'type': 'stackit_resourcemanager_project', 'name': 'this',
                      'provider': 'provider["registry.opentofu.org/stackitcloud/stackit"]', 'instances': [
                          {'schema_version': 0, 'attributes': {'project_id': PROJECT, 'container_id': 'project-test-retirement',

@@ -1,6 +1,6 @@
 import copy
 import unittest
-from guard import check_plan, inventory, verify_state
+from guard import check_plan, check_private_plan, inventory, verify_state
 
 
 class RetirementGuardTests(unittest.TestCase):
@@ -89,6 +89,30 @@ class RetirementGuardTests(unittest.TestCase):
                 'mode': 'managed', 'type': 'stackit_resourcemanager_project', 'name': 'this',
                 'provider': 'provider["registry.opentofu.org/stackitcloud/stackit"]',
                 'instances': [{'deposed': '1', 'attributes': {'project_id': 'pending'}}]}]})
+
+
+    def test_original_source_private_cleanup_never_deletes_its_control_plane(self):
+        address = 'module.management.vault_kv_secret_v2.object_storage_credentials'
+        state = {'version': 4, 'lineage': 'private-original', 'serial': 1, 'resources': [
+            {'module': 'module.management', 'mode': 'managed', 'type': 'vault_kv_secret_v2', 'name': 'object_storage_credentials',
+             'provider': 'provider["registry.opentofu.org/hashicorp/vault"]',
+             'instances': [{'attributes': {'id': 'mount/data/object-storage', 'data_json': 'SECRET_SENTINEL'}}]},
+            {'module': 'module.management', 'mode': 'managed', 'type': 'stackit_resourcemanager_project', 'name': 'this',
+             'provider': 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+             'instances': [{'attributes': {'project_id': 'project-id'}}]}]}
+        plan = {'format_version': '1.2', 'resource_changes': [
+            {'address': address, 'mode': 'managed', 'type': 'vault_kv_secret_v2',
+             'change': {'actions': ['delete'], 'before': {'id': 'mount/data/object-storage'}}}]}
+        self.assertEqual(check_private_plan(plan, state)['deleteCount'], 1)
+        with self.assertRaisesRegex(ValueError, 'private_cleanup_incomplete'):
+            check_private_plan({'format_version': '1.2', 'resource_changes': []}, state)
+        plan['resource_changes'].extend(self.plan['resource_changes'])
+        with self.assertRaisesRegex(ValueError, 'must_retain_cloud_infrastructure'):
+            check_private_plan(plan, state)
+        plan['resource_changes'] = [plan['resource_changes'][0]]
+        plan['resource_changes'][0]['change']['actions'] = ['update']
+        with self.assertRaisesRegex(ValueError, 'delete_only'):
+            check_private_plan(plan, state)
 
 
 if __name__ == '__main__':

@@ -44,6 +44,55 @@ Den [State-Locking-Vertrag](../../docs/state-locking.de.md) beachten: STACKIT S3
 liefert das qualifizierte Conditional-Write-Locking nicht. Nativer Betrieb verlangt
 den organisatorischen Ein-Schreiber-Ablauf; `use_lockfile` nicht als Schutz voraussetzen.
 
+## Private Provider-Ressourcen mit der Originalquelle abbauen
+
+Das Standard-Management-Modul schreibt Object-Storage- und Automationszugänge mit
+dem Vault-Provider. Schon eine kleine Standard-Landing-Zone benötigt daher diesen
+Vorabschritt. Originalquelle, Backend und gültige Provider-Zugänge bis zu seinem
+Abschluss erhalten; der reduzierte Rückbau-Root kann sich absichtlich nicht bei
+diesen Providern anmelden. Eine hier entfernte Secret-Ressource löscht den verwalteten
+Vault-Inhalt, nicht den Cloud-Service-Account-Key oder den Object-Storage-Zugang
+selbst. Unabhängiger Cleanup-Zugang und erforderliche Exporte müssen bereits bestehen.
+
+Bei einem Standard-Management-Deployment **ohne** Observability, Audit Logging,
+Firewall-Policy oder Kubernetes-Workloads bilden die beiden Ziele unten den gesamten
+privaten Provider-Umfang. Zuerst den privaten Original-State prüfen. Weitere private
+Ressourcen erfordern zusätzliche exakte Ziele und ihre ursprünglichen erreichbaren
+Control Planes. Diese Beispielliste ist keine allgemeingültige Zielliste.
+
+```sh
+umask 077
+mkdir -p /absolute/private/retirement
+tofu -chdir=/absolute/original/src state pull > /absolute/private/retirement/before-private.tfstate
+tofu -chdir=/absolute/original/src plan -destroy -input=false \
+  -var-file=/absolute/private/original.tfvars \
+  -target=module.management.vault_kv_secret_v2.object_storage_credentials \
+  -target=module.management.vault_kv_secret_v2.service_account_key_automation \
+  -out=/absolute/private/retirement/private.tfplan
+tofu -chdir=/absolute/original/src show -json /absolute/private/retirement/private.tfplan \
+  > /absolute/private/retirement/private.plan.json
+python3 src/retirement/guard.py check-private-plan \
+  --state /absolute/private/retirement/before-private.tfstate \
+  --plan /absolute/private/retirement/private.plan.json
+tofu -chdir=/absolute/original/src show /absolute/private/retirement/private.tfplan
+tofu -chdir=/absolute/original/src apply /absolute/private/retirement/private.tfplan
+```
+
+`-target` bleibt auf diese geprüfte Vorablöschung begrenzt. Eine Erweiterung durch
+Abhängigkeiten darf keine Projekte, Ordner, Service-Instanzen oder Cloud-Zugänge
+löschen. Das Hilfsprogramm prüft, dass **alle** erfassten privaten Provider-Ressourcen
+und ausschließlich diese gelöscht werden; öffentliche Infrastruktur darf unverändert
+bleiben. Bei weiteren Löschungen oder einem unerreichbaren privaten Endpunkt stoppen
+und das konkrete Quell-/Abhängigkeitsproblem lösen. Kein Umgehen mit `state rm` oder
+`-refresh=false`. Nach Fehlern den fehlgeschlagenen Nachweis und Teil-State erhalten.
+
+Nach Erfolg unmittelbar zum reduzierten Root unten wechseln und denselben
+maßgeblichen State und dasselbe Backend verwenden. Die aktive Originalkonfiguration
+nicht erneut ausführen: Sie würde die entfernten privaten Ressourcen neu anlegen.
+Python ist optional, wenn dieselben Prüfungen manuell erfolgen und dokumentiert
+werden. Dieser Vorab-Guard ist lokal getestet; beliebige historische private
+Provider-Konfigurationen sind damit nicht live qualifiziert.
+
 ## Ursprünglichen State erfassen und binden
 
 Ein absolutes privates Verzeichnis außerhalb des Deployments verwenden. State- und
@@ -62,7 +111,8 @@ python3 src/retirement/guard.py inventory \
 
 In `/absolute/private/retirement/retirement.tfvars.json` exakt die ursprünglichen Werte
 für `organization_id`, `owner_email`, `region`, `rm_folder_parent_id`, `rm_folders`,
-`organization_owners` und `organization_auditors` hinterlegen. Ordnerschlüssel, Namen
+`organization_owners`, `organization_auditors` und `labels` hinterlegen. Das native
+Label `landing_zone_accelerator` bleibt automatisch erhalten. Ordnerschlüssel, Namen
 und Zuweisungen unverändert lassen. Weggelassene bestehende Zuweisungen können
 Löschungen auslösen; die Prüfung von Phase A weist sämtliche Governance-Löschungen ab.
 Keine neuen Standard-Ordnernamen einsetzen.

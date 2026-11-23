@@ -51,6 +51,26 @@ show affected users the current notice without teardown controls. Templates expo
 the derived `platformRetiring` flag; normal orders and stale Apply plans are blocked
 server-side even if the browser is stale. Draft editing is not execution authority.
 
+## Private preparation evidence
+
+Migration `104_retirement_inventories.sql` and the internal `RetirementCapture`
+service capture the authoritative Platform State and the exact last-applied
+Application backend/source bindings. The acting Platform Owner retains their own
+identity; no requester session or credentials are impersonated. Captures are
+immutable, generation/context-bound and encrypted separately for State, inventory
+and source. Backend reads happen outside the admission transaction and repeat before
+an atomic all-scope commit. Pause, source changes or unresolved writers reject the
+capture. This internal preparation service is not an exposed execution endpoint and
+does not move backend authority or grant Destroy permission.
+
+The Node-only native checks accept known private providers for inventory, require a
+separate private-workload deletion with the original source, and refuse infrastructure
+removal while those resources remain. Native Plans must be deletion-only, match the
+captured identities, and account for the current State. Disappearance during refresh,
+an omitted managed resource, an unreviewed partial deletion, and a reported successful
+Apply without the expected State transition all fail validation. These checks do not
+prove API authorization, surviving control access or physical project purge.
+
 ## Remaining execution integration
 
 The foundation currently reaches preparation/draining states. It does **not** yet

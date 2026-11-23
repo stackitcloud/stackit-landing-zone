@@ -39,6 +39,54 @@ Follow the [State locking contract](../../docs/state-locking.md): STACKIT S3 doe
 not supply the qualified conditional-write lock. Native operation requires the
 organizational single-writer procedure; do not assume `use_lockfile` protects it.
 
+## Remove private-provider workloads with the original source
+
+The standard Management module writes its Object Storage and automation credentials
+with the Vault provider. Even a small default Landing Zone therefore needs this
+preliminary step. Keep the original source, backend and live provider credentials
+until it has finished; the reduced retirement root deliberately cannot authenticate
+these providers. Removing a secret here deletes its managed Vault contents, not the
+cloud service-account key or Object Storage credential itself. Independent cleanup
+access and any required exports must already exist.
+
+For a default Management deployment **without** Observability, Audit Logging,
+firewall policy or Kubernetes workloads, the two targets below are the complete
+private-provider set. Inspect your private original State first. Additional private
+resources require additional exact targets and their original reachable control
+planes. Do not copy this example as a universal target list.
+
+```sh
+umask 077
+mkdir -p /absolute/private/retirement
+tofu -chdir=/absolute/original/src state pull > /absolute/private/retirement/before-private.tfstate
+tofu -chdir=/absolute/original/src plan -destroy -input=false \
+  -var-file=/absolute/private/original.tfvars \
+  -target=module.management.vault_kv_secret_v2.object_storage_credentials \
+  -target=module.management.vault_kv_secret_v2.service_account_key_automation \
+  -out=/absolute/private/retirement/private.tfplan
+tofu -chdir=/absolute/original/src show -json /absolute/private/retirement/private.tfplan \
+  > /absolute/private/retirement/private.plan.json
+python3 src/retirement/guard.py check-private-plan \
+  --state /absolute/private/retirement/before-private.tfstate \
+  --plan /absolute/private/retirement/private.plan.json
+tofu -chdir=/absolute/original/src show /absolute/private/retirement/private.tfplan
+tofu -chdir=/absolute/original/src apply /absolute/private/retirement/private.tfplan
+```
+
+`-target` is confined to this reviewed preliminary deletion. Dependency expansion
+must not delete projects, folders, service instances or access credentials. The
+helper checks that **all** captured private-provider resources, and only those
+resources, are deleted; public infrastructure may remain unchanged. If the Plan
+includes other deletions or cannot reach a private endpoint, stop and resolve that
+specific source/dependency problem. Do not bypass it with `state rm` or `-refresh=false`.
+Retain the failed evidence and partial State after any error.
+
+After success, switch directly to the reduced root below using the same authoritative
+State/backend. Do not run the active original configuration again: it would recreate
+the removed private resources. Python is optional if the same checks are performed
+and recorded manually. This preliminary helper is locally tested; arbitrary historical
+private-provider configurations are not claimed as live-qualified.
+
 ## Capture and bind the original State
 
 Use an absolute private directory outside the deployment. Its contents can include
@@ -57,7 +105,8 @@ python3 src/retirement/guard.py inventory \
 
 Prepare `/absolute/private/retirement/retirement.tfvars.json` with the exact original
 `organization_id`, `owner_email`, `region`, `rm_folder_parent_id`, `rm_folders`,
-`organization_owners` and `organization_auditors`. Keep folder map keys, names and
+`organization_owners`, `organization_auditors` and `labels`. The native
+`landing_zone_accelerator` label is retained automatically. Keep folder map keys, names and
 assignments unchanged. Omitting existing assignments can propose deletion; the
 Phase A guard rejects all governance deletions. Do not use new default folder names.
 

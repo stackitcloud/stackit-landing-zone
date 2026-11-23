@@ -55,6 +55,28 @@ das abgeleitete Merkmal `platformRetiring`. Normale Bestellungen und alte Apply-
 bleiben auch bei veraltetem Browser serverseitig gesperrt. Entwurfsbearbeitung ist
 keine Ausführungsberechtigung.
 
+## Private Vorbereitungsnachweise
+
+Migration `104_retirement_inventories.sql` und der interne Dienst `RetirementCapture`
+erfassen den maßgeblichen Plattform-State und die exakten zuletzt angewendeten
+Application-Backend-/Quellbindungen. Der handelnde Platform Owner behält seine eigene
+Identität; Sitzungen oder Zugangsdaten von Bestellern werden nicht übernommen.
+Die Aufnahme ist unveränderlich, an Generation und Kontext gebunden und für State,
+Inventar und Quelle getrennt verschlüsselt. Backend-Lesezugriffe erfolgen außerhalb
+der Anlagesperrtransaktion und werden vor dem atomaren Commit aller Scopes wiederholt.
+Pause, Quelländerungen oder ungeklärte Schreiber verhindern die Aufnahme. Dieser
+interne Vorbereitungsdienst ist kein freigeschalteter Ausführungsendpunkt und
+verschiebt weder die Backend-Autorität noch erteilt er eine Destroy-Berechtigung.
+
+Die ausschließlich Node-seitigen nativen Prüfungen erfassen bekannte private Provider,
+verlangen deren getrennten Vorabbau mit der Originalquelle und verweigern den
+Infrastrukturabbau, solange diese Ressourcen bestehen. Native Pläne müssen rein
+löschend sein, zu den erfassten Identitäten passen und den aktuellen State abdecken.
+Verschwinden beim Refresh, ausgelassene verwaltete Ressourcen, ungeprüfte Teillöschungen
+und ein als erfolgreich gemeldeter Apply ohne den erwarteten State-Übergang werden
+abgewiesen. Diese Prüfungen beweisen keine API-Berechtigung, überlebende Steuerung
+oder physische Projektbereinigung.
+
 ## Verbleibende Ausführungsanbindung
 
 Die Grundlage erreicht derzeit Vorbereitung/Abgleich. Sie bietet **noch keinen**

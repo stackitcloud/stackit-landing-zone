@@ -3,6 +3,9 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
+import { Backends } from "../apps/api/src/deployments/backends.js";
+import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
+import { RetirementCapture } from "../apps/api/src/retirements/capture.js";
 import { Retirements } from "../apps/api/src/retirements/service.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
@@ -130,7 +133,7 @@ async function fixture() {
       [instance, owner.tenantId, version, owner.userId, randomUUID()],
     );
   });
-  return { stateKey, revision, preparation, folder, version, instance };
+  return { stateKey, revision, preparation, run, folder, version, instance };
 }
 beforeAll(async () => {
   await admin.connect();
@@ -459,21 +462,179 @@ it("keeps pre-retirement Application plans unusable after cancellation, includin
   ).rejects.toMatchObject({ message: "retirement_admission_closed" });
 });
 
-it("orders the freeze against final Plan admission without deadlocking a State row already locked by that Plan",async()=>{
- const f=await fixture(),client=await runtime.connect();
- let pending:ReturnType<typeof service.start>|undefined;
- let timer:ReturnType<typeof setTimeout>|undefined;
- try {
-  await client.query('BEGIN');
-  await client.query("SELECT set_config('lzc.user_id',$1,true),set_config('lzc.tenant_id',$2,true)",[owner.userId,owner.tenantId]);
-  await client.query('SELECT * FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE',[f.stateKey]);
-  pending=service.start(owner,{stateKey:f.stateKey,reason:'Concurrent final admission',confirmRetirement:true});
-  const r=await Promise.race([pending,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('Retirement waited on the Plan State lock')),3000);})]);
-  expect(r.phase).toBe('RETIRING');
-  await expect(client.query("INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,ticket_hash,mode,state_key,state_version) VALUES($1,$2,$3,$4,$5,'platform-plan',$6,1)",[randomUUID(),owner.tenantId,owner.userId,f.preparation,randomUUID(),f.stateKey])).rejects.toMatchObject({message:'retirement_admission_closed'});
- }finally{
-  if(timer)clearTimeout(timer);
-  await client.query('ROLLBACK');client.release();
-  if(pending)await pending;
- }
+it("orders the freeze against final Plan admission without deadlocking a State row already locked by that Plan", async () => {
+  const f = await fixture(),
+    client = await runtime.connect();
+  let pending: ReturnType<typeof service.start> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "SELECT set_config('lzc.user_id',$1,true),set_config('lzc.tenant_id',$2,true)",
+      [owner.userId, owner.tenantId],
+    );
+    await client.query(
+      "SELECT * FROM lzc.platform_states WHERE state_key=$1 FOR UPDATE",
+      [f.stateKey],
+    );
+    pending = service.start(owner, {
+      stateKey: f.stateKey,
+      reason: "Concurrent final admission",
+      confirmRetirement: true,
+    });
+    const r = await Promise.race([
+      pending,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("Retirement waited on the Plan State lock")),
+          3000,
+        );
+      }),
+    ]);
+    expect(r.phase).toBe("RETIRING");
+    await expect(
+      client.query(
+        "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,ticket_hash,mode,state_key,state_version) VALUES($1,$2,$3,$4,$5,'platform-plan',$6,1)",
+        [
+          randomUUID(),
+          owner.tenantId,
+          owner.userId,
+          f.preparation,
+          randomUUID(),
+          f.stateKey,
+        ],
+      ),
+    ).rejects.toMatchObject({ message: "retirement_admission_closed" });
+  } finally {
+    if (timer) clearTimeout(timer);
+    await client.query("ROLLBACK");
+    client.release();
+    if (pending) await pending;
+  }
+});
+
+it("captures an encrypted same-State inventory without granting execution, and keeps requester attribution", async () => {
+  const scope = await fixture();
+  const crypto = new ArtifactCrypto(randomBytes(32).toString("base64"));
+  const document = Buffer.from(
+    JSON.stringify({
+      version: 4,
+      lineage: randomUUID(),
+      serial: 3,
+      resources: [
+        {
+          module: "module.management",
+          mode: "managed",
+          type: "stackit_resourcemanager_project",
+          name: "this",
+          provider: 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+          instances: [
+            {
+              attributes: {
+                project_id: randomUUID(),
+                private_value: "PRIVATE_STATE_SENTINEL",
+              },
+            },
+          ],
+        },
+      ],
+    }),
+  );
+  await imported(async () => {
+    await admin.query(
+      "UPDATE lzc.platform_states SET ciphertext=$2,stable_aad=true WHERE state_key=$1",
+      [
+        scope.stateKey,
+        crypto.encrypt(
+          document,
+          owner.tenantId,
+          scope.stateKey,
+          `state:${scope.stateKey}`,
+        ),
+      ],
+    );
+    await admin.query(
+      "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,ticket_hash,status,mode,operation,plan_id,artifact_sha256,state_key,state_version,applied_state_version,cleaned,finished_at) VALUES($1,$2,$3,$4,$5,'succeeded','platform-apply','apply',$6,$7,$8,1,1,true,now())",
+      [
+        randomUUID(),
+        owner.tenantId,
+        owner.userId,
+        scope.preparation,
+        randomUUID(),
+        scope.run,
+        "a".repeat(64),
+        scope.stateKey,
+      ],
+    );
+  });
+  const entry = await service.start(owner, {
+    stateKey: scope.stateKey,
+    reason: "Capture qualification",
+    confirmRetirement: true,
+  });
+  const capture = new RetirementCapture(
+    runtime,
+    crypto,
+    new Backends(runtime, crypto),
+  );
+  await expect(
+    capture.capture(outsider, entry.id, entry.generation),
+  ).rejects.toMatchObject({ code: "42501" });
+  expect(await capture.capture(owner, entry.id, entry.generation)).toEqual({
+    retirementId: entry.id,
+    generation: entry.generation,
+    scopeCount: 1,
+  });
+  await capture.capture(owner, entry.id, entry.generation);
+  const rows = await admin.query(
+    "SELECT * FROM lzc.retirement_inventories WHERE retirement_id=$1",
+    [entry.id],
+  );
+  expect(rows.rowCount).toBe(1);
+  const row = rows.rows[0];
+  expect(row.captured_by).toBe(owner.userId);
+  expect(row.instance_id).toBeNull();
+  for (const key of [
+    "state_ciphertext",
+    "inventory_ciphertext",
+    "source_ciphertext",
+  ])
+    expect(row[key].toString()).not.toContain("PRIVATE_STATE_SENTINEL");
+  const aad = `retirement:${entry.id}:${entry.generation}:${scope.stateKey}`;
+  expect(
+    crypto.decrypt(
+      row.state_ciphertext,
+      owner.tenantId,
+      entry.id,
+      `${aad}:state`,
+    ),
+  ).toEqual(document);
+  expect(
+    crypto
+      .decrypt(
+        row.inventory_ciphertext,
+        owner.tenantId,
+        entry.id,
+        `${aad}:inventory`,
+      )
+      .toString(),
+  ).not.toContain("PRIVATE_STATE_SENTINEL");
+  await expect(
+    withTenant(runtime, owner, (client) =>
+      client.query(
+        "DELETE FROM lzc.retirement_inventories WHERE retirement_id=$1",
+        [entry.id],
+      ),
+    ),
+  ).rejects.toMatchObject({ code: "42501" });
+  await service.change(owner, entry.id, {
+    generation: entry.generation,
+    action: "pause",
+  });
+  await expect(
+    capture.capture(owner, entry.id, entry.generation),
+  ).rejects.toMatchObject({ code: "40001" });
+  expect(
+    (await service.list(owner)).find((r) => r.id === entry.id)?.phase,
+  ).toBe("PAUSED");
 });

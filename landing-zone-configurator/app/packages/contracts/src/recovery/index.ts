@@ -7,4 +7,6 @@ export * from "./cloud.js";
 export * from "./inventory.js";
 export * from "./project-iam.js";
 export * from "./proof.js";
+export * from "./retirement.js";
+export * from "./retirement-cloud.js";
 export * from "./service-account.js";

@@ -8,6 +8,7 @@ import re
 import sys
 
 FOLDER = 'module.governance.stackit_resourcemanager_folder.this'
+PRIVATE_PROVIDER = re.compile(r'(?:^|\.)provider\["registry\.(?:opentofu|terraform)\.org/(?:hashicorp/(?:vault|kubernetes|helm)|grafana/grafana|browningluke/opnsense)"\](?:\.[A-Za-z_][A-Za-z0-9_]*)?$')
 PROVIDER = re.compile(r'^provider\["registry\.(?:opentofu|terraform)\.org/(?:stackitcloud/stackit|hashicorp/(?:random|time))"\](?:\.(?:eu01|eu02))?$')
 
 
@@ -16,7 +17,7 @@ def require(condition, code):
         raise ValueError(code)
 
 
-def inventory(state):
+def inventory(state, include_private=False):
     require(state.get('version') == 4 and isinstance(state.get('lineage'), str)
             and isinstance(state.get('serial'), int), 'unsupported_state')
     resources = []
@@ -24,7 +25,8 @@ def inventory(state):
         require(resource.get('mode') in ('managed', 'data'), 'unsupported_state_resource_mode')
         if resource.get('mode') != 'managed':
             continue
-        require(PROVIDER.fullmatch(resource.get('provider', '')) is not None,
+        require(PROVIDER.fullmatch(resource.get('provider', '')) is not None or
+                (include_private and PRIVATE_PROVIDER.search(resource.get('provider', '')) is not None),
                 'remove_private_provider_workloads_with_original_source_first')
         address = '.'.join(filter(None, [resource.get('module'), resource['type'], resource['name']]))
         for instance in resource.get('instances', []):
@@ -94,6 +96,43 @@ def check_plan(plan, captured, phase):
         json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
 
 
+
+def check_private_plan(plan, state):
+    captured = inventory(state, include_private=True)
+    private = set()
+    for resource in state.get('resources', []):
+        if resource.get('mode') != 'managed' or not PRIVATE_PROVIDER.search(resource.get('provider', '')):
+            continue
+        address = '.'.join(filter(None, [resource.get('module'), resource['type'], resource['name']]))
+        for instance in resource.get('instances', []):
+            suffix = '[' + json.dumps(instance['index_key'], ensure_ascii=False, separators=(',', ':')) + ']' if 'index_key' in instance else ''
+            private.add(address + suffix)
+    require(isinstance(plan.get('format_version'), str) and plan['format_version'].startswith('1.'), 'unsupported_plan_format')
+    require(plan.get('errored', False) is False and plan.get('complete', True) is True and not plan.get('deferred_changes'), 'incomplete_plan')
+    original = {item['address']: item for item in captured['resources']}
+    for drift in plan.get('resource_drift', []):
+        require(not (drift.get('mode') == 'managed' and drift.get('address') in original and drift.get('change', {}).get('actions') == ['delete']), 'resource_disappeared_during_refresh_requires_authorized_review')
+    removed = set()
+    for resource in plan.get('resource_changes', []):
+        change = resource.get('change', {})
+        if resource.get('mode') == 'data':
+            require(change.get('actions') in (['read'], ['no-op']), 'unexpected_data_change')
+            continue
+        address = resource['address']
+        require(resource.get('mode') == 'managed' and address in original, 'unreviewed_resource')
+        actions = change.get('actions')
+        require(actions in (['delete'], ['no-op']), 'retirement_requires_delete_only_plan')
+        require(resource['type'] == original[address]['type'], 'resource_type_changed')
+        before = change.get('before') or {}
+        identifier = before.get('folder_id') if resource['type'] == 'stackit_resourcemanager_folder' else before.get('project_id') if resource['type'] == 'stackit_resourcemanager_project' else before.get('id')
+        require(identifier == original[address]['id'], 'resource_identity_changed')
+        if actions == ['delete']:
+            require(address in private and address not in removed, 'private_cleanup_must_retain_cloud_infrastructure')
+            removed.add(address)
+    require(removed == private, 'private_cleanup_incomplete')
+    return {'phase': 'private_workloads', 'deleteCount': len(removed)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -108,7 +147,17 @@ def main():
     check.add_argument('--inventory', required=True)
     check.add_argument('--plan', required=True)
     check.add_argument('--phase', choices=['remove_projects', 'finalize_folders'], required=True)
+    cleanup = sub.add_parser('check-private-plan')
+    cleanup.add_argument('--state', required=True)
+    cleanup.add_argument('--plan', required=True)
     args = parser.parse_args()
+    if args.command == 'check-private-plan':
+        with open(args.state, encoding='utf-8') as source:
+            state = json.load(source)
+        with open(args.plan, encoding='utf-8') as source:
+            plan = json.load(source)
+        print(json.dumps(check_private_plan(plan, state)))
+        return
     if args.command == 'inventory':
         with open(args.state, encoding='utf-8') as source:
             result = inventory(json.load(source))
