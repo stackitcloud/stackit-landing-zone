@@ -226,6 +226,92 @@ leave stale resource entries or unusable provider endpoints. If the original roo
 no longer refresh/plan, stop and prepare a reviewed, compatible cleanup adapter/State
 reconciliation. Do not mask this with `-refresh=false`, broad `state rm` or unknown imports.
 
+### 6.1 Standalone installations: one State, two Terraform/OpenTofu phases
+
+An installation originally created without the Configurator does not need to be
+imported into it for retirement. Its existing native configuration, provider lockfile,
+tfvars and authoritative State are sufficient starting points. No application DB,
+new API service, STACKIT CLI or second State is inherently required. The remaining
+work is a compatible phase-specific HCL configuration and an operator procedure.
+
+The normal plan compares configuration with State; a saved plan can then be applied
+explicitly. See [Terraform Plan](https://developer.hashicorp.com/terraform/cli/commands/plan),
+[Terraform Apply](https://developer.hashicorp.com/terraform/cli/commands/apply) and
+[OpenTofu Plan](https://opentofu.org/docs/cli/commands/plan/). Use that mechanism:
+
+| Step | HCL desired configuration | Review condition |
+| --- | --- | --- |
+| Freeze and preparation | Original source remains preserved; document retirement and close every other writer | Correct State/backend, independent operator and captured cloud IDs; dependent Application States accounted for |
+| Phase A: resources/projects | Remove the selected workloads and projects from the desired configuration; keep their original folder declarations and required cleanup access | Only approved deletions; no folder deletion, creates, updates or replacements; retain the same folder addresses/IDs |
+| Wait | Keep the Phase-A configuration and latest partial State; do not switch back to the active configuration | No normal expansion/Apply by other operators; verify pending purge rather than assuming State absence proves it |
+| Phase B: folders | Use a fresh Destroy Plan for the eligible remainder | Only captured empty folders and exclusively owned eligible governance remain; no shared/retained resources or in-scope backend to destroy |
+
+Do not simply remove project declarations while leaving their module outputs,
+provider aliases or service-provider authentication unresolved. Native modules that
+currently create Management and other foundations unconditionally require deliberate
+adaptation. Keep providers and credentials needed to delete existing objects until
+their final use; private API objects may require an earlier substep before projects
+can be removed. That is still part of Phase A, not a reason to delete folders early.
+
+The following is a **command pattern after a compatible Phase-A configuration has
+been prepared and reviewed**, not a currently supplied LZA teardown flag or a
+ready-to-run recipe for an unchanged checkout. `backend.hcl` and `config.tfvars`
+represent the deployment's existing reviewed inputs; protect plan files as sensitive.
+
+```sh
+# Phase A: ordinary plan/apply of the adapted teardown configuration.
+# Keep the original State identity, workspace and external backend.
+terraform init -lockfile=readonly -backend-config=backend.hcl
+terraform plan -var-file=config.tfvars -out=phase-a.tfplan
+# Review: only approved workload/project deletions, no folder deletions.
+terraform apply phase-a.tfplan
+```
+
+Keep the State and configuration between runs. Project deletion may be accepted
+while the parent is still occupied; record these project IDs before they disappear
+from State. Waiting can be entirely manual: no running Terraform process, scheduler
+or Configurator is required. STACKIT-Portal observation is optional; if the API does
+not yet allow final folder removal, the second phase must remain pending.
+
+```sh
+# Phase B: later, after purge, in the same adapted configuration/backend/workspace.
+# Only if ALL remaining managed resources are approved for final removal.
+terraform plan -destroy -var-file=config.tfvars -out=phase-b.tfplan
+# Review: only the known empty folders and approved governance remainder.
+terraform apply phase-b.tfplan
+```
+
+Use `tofu` instead of `terraform` for an OpenTofu-managed deployment; preserve the
+original tool/version, provider lockfile, State encryption and backend. This is not
+an instruction to switch engines while retiring. If folder deletion still returns
+the known children conflict, preserve the partial State, wait and make a fresh plan
+later. Never turn the failed command into successful completion. If retained/shared
+resources still exist in the State, do not use a global Destroy for Phase B; use the
+reviewed native finalization scope or an approved ownership/State separation first.
+
+The organizational freeze names one responsible operator, disables scheduled/manual
+creation and normal Apply pipelines for all linked States, withdraws unused approvals
+and saved expansion plans, stops/reconciles existing writers and records `RETIRING`
+in the protected change record/repository. Only reviewed retirement operations may
+use the execution credentials. Where provider contracts permit, separately scoped
+execution rights can additionally exclude creation; do not remove shared IAM blindly.
+The organizational retirement record remains effective between CLI runs. A variable,
+local file or Terraform State lock alone cannot enforce this across administrators:
+an older active configuration or still-applicable saved expansion plan must not be run.
+
+Separate governance and workload States can simplify **future** deployments, but
+are not required for this approach. Legacy States are not copied, split or emptied
+automatically. The recommended product implementation is the native phase contract
+in section 8, with normal active-mode behavior and stable migration of existing
+addresses. Until it is implemented, a compatible teardown configuration must be
+reviewed per source revision; the current unchanged LZA does not provide it yet.
+
+The two-phase, same-State mechanism was checked locally with OpenTofu 1.12.6 and only
+built-in `terraform_data` resources: Phase A deleted a project analogue, preserving
+the folder analogue's ID and State lineage; Phase B deleted only that folder and
+left the same State lineage empty. This demonstrates CLI semantics, not STACKIT
+provider initialization, cloud purge timing or a qualified live LZA teardown.
+
 ## 7. Purge observation, retries and truthful completion
 
 Track `delete_requested`, `DELETING`, `purge_unconfirmed` and `verified_absent`

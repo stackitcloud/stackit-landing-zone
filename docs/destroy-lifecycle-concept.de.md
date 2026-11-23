@@ -256,6 +256,102 @@ Root nicht mehr aktualisieren/planen, anhalten und einen geprüften kompatiblen
 Cleanup-Adapter/State-Abgleich vorbereiten. Kein Verdecken mit `-refresh=false`,
 pauschalem `state rm` oder unbekannten Imports.
 
+### 6.1 Eigenständige Installationen: ein State, zwei Terraform-/OpenTofu-Phasen
+
+Eine ursprünglich ohne Configurator angelegte Installation muss zum Rückbau nicht
+in diesen importiert werden. Ihre vorhandene native Konfiguration, Provider-Lockfile,
+tfvars und der maßgebliche State sind die Ausgangsbasis. Weder Anwendungsdatenbank,
+neuer API-Dienst, STACKIT CLI noch ein zweiter State sind grundsätzlich nötig.
+Benötigt werden eine kompatible phasenspezifische HCL-Konfiguration und ein
+organisatorischer Betriebsablauf.
+
+Der normale Plan vergleicht Konfiguration und State; ein gespeicherter Plan kann
+anschließend ausdrücklich angewendet werden. Siehe
+[Terraform Plan](https://developer.hashicorp.com/terraform/cli/commands/plan),
+[Terraform Apply](https://developer.hashicorp.com/terraform/cli/commands/apply) und
+[OpenTofu Plan](https://opentofu.org/docs/cli/commands/plan/). Diesen Mechanismus nutzen:
+
+| Schritt | HCL-Sollkonfiguration | Prüfkriterium |
+| --- | --- | --- |
+| Sperre und Vorbereitung | Ursprüngliche Quelle sichern; Rückbau dokumentieren und alle anderen Schreiber stoppen | Richtiger State/Backend, unabhängiger Operator und erfasste Cloud-IDs; abhängige Application-States berücksichtigt |
+| Phase A: Ressourcen/Projekte | Gewählte Workloads und Projekte aus der Sollkonfiguration entfernen; ursprüngliche Ordnerdeklarationen und nötigen Bereinigungszugriff behalten | Nur freigegebene Löschungen; keine Ordnerlöschung, Neuanlage, Änderung oder Ersetzung; gleiche Ordneradressen/IDs |
+| Warten | Phase-A-Konfiguration und letzten Teil-State behalten; nicht zur aktiven Konfiguration zurückwechseln | Keine normalen Erweiterungen/Applies anderer Operatoren; Purge nachverfolgen, nicht aus fehlendem State-Eintrag ableiten |
+| Phase B: Ordner | Frischen Destroy-Plan für den zulässigen Rest erzeugen | Nur erfasste leere Ordner und exklusiv zugeordnete, freigegebene Governance-Reste; keine geteilten/aufzubewahrenden Ressourcen oder benötigtes Backend im Löschumfang |
+
+Projektdeklarationen nicht einfach entfernen und dabei ungültige Modul-Outputs,
+Provider-Aliase oder Dienst-Provider-Anmeldung zurücklassen. Native Module mit heute
+unbedingt angelegtem Management und anderen Basisdiensten müssen gezielt angepasst
+werden. Für bestehende Objekte benötigte Provider und Zugangsdaten bis zu deren
+letzter Löschung erhalten. Objekte privater APIs können einen vorgelagerten Teilschritt
+vor der Projektentfernung verlangen. Das bleibt Phase A und rechtfertigt keine frühe
+Ordnerlöschung.
+
+Das Folgende ist ein **Befehlsmuster nach Erstellung und Prüfung einer kompatiblen
+Phase-A-Konfiguration**. Es ist weder ein heute verfügbares LZA-Rückbauflag noch eine
+direkt ausführbare Anleitung für einen unveränderten Checkout. `backend.hcl` und
+`config.tfvars` stehen für die vorhandenen geprüften Deployment-Eingaben;
+Plan-Dateien sind vertraulich zu behandeln.
+
+```sh
+# Phase A: normaler Plan/Apply der angepassten Rückbaukonfiguration.
+# Ursprüngliche State-Identität, Workspace und externes Backend beibehalten.
+terraform init -lockfile=readonly -backend-config=backend.hcl
+terraform plan -var-file=config.tfvars -out=phase-a.tfplan
+# Prüfen: nur freigegebene Workload-/Projektlöschungen, keine Ordnerlöschungen.
+terraform apply phase-a.tfplan
+```
+
+State und Konfiguration zwischen den Läufen erhalten. Die Projektlöschung kann
+angenommen sein, während der Elternordner noch belegt ist. Projekt-IDs daher vor
+ihrem Verschwinden aus dem State erfassen. Das Warten kann vollständig manuell
+erfolgen: kein laufender Terraform-Prozess, Scheduler oder Configurator ist nötig.
+Beobachtung im STACKIT Portal ist optional; erlaubt die API die abschließende
+Ordnerlöschung noch nicht, bleibt die zweite Phase offen.
+
+```sh
+# Phase B: später nach Purge, mit gleicher angepasster Konfiguration/Backend/Workspace.
+# Nur wenn ALLE verbleibenden verwalteten Ressourcen zur Löschung freigegeben sind.
+terraform plan -destroy -var-file=config.tfvars -out=phase-b.tfplan
+# Prüfen: nur die bekannten leeren Ordner und freigegebene Governance-Reste.
+terraform apply phase-b.tfplan
+```
+
+Bei einer mit OpenTofu verwalteten Installation `tofu` statt `terraform` verwenden;
+ursprüngliches Werkzeug/Version, Provider-Lockfile, State-Verschlüsselung und Backend
+beibehalten. Dies ist keine Aufforderung zum Wechsel der Engine während des Rückbaus.
+Meldet die Ordnerlöschung weiterhin den bekannten Kindressourcen-Konflikt, Teil-State
+erhalten, warten und später frisch planen. Den fehlgeschlagenen Befehl niemals als
+abgeschlossene Löschung werten. Sind noch geteilte/aufzubewahrende Ressourcen im State,
+keinen globalen Destroy für Phase B verwenden; zuvor den geprüften nativen
+Finalisierungsumfang oder eine freigegebene Eigentums-/State-Trennung herstellen.
+
+Die organisatorische Sperre benennt einen zuständigen Operator, deaktiviert geplante
+und manuelle Anlage-/normale Apply-Pipelines für alle verbundenen States, zieht
+ungenutzte Freigaben und gespeicherte Erweiterungspläne zurück, stoppt/prüft laufende
+Schreiber und dokumentiert `RETIRING` im geschützten Änderungsnachweis/Repository.
+Ausführungszugänge werden nur für geprüfte Rückbauschritte verwendet. Wo die
+Provider-Verträge es zulassen, können getrennte Ausführungsrechte Neuanlagen zusätzlich
+ausschließen; gemeinsame IAM-Rechte nicht pauschal entfernen. Der organisatorische
+Rückbauvermerk gilt auch zwischen CLI-Läufen. Variable, lokale Datei oder Terraform-
+State-Lock allein erzwingen das nicht gegenüber anderen Administratoren: Eine alte
+aktive Konfiguration oder ein noch anwendbarer gespeicherter Erweiterungsplan darf
+nicht mehr ausgeführt werden.
+
+Getrennte Governance- und Workload-States können **künftige** Installationen
+vereinfachen, sind hierfür aber keine Voraussetzung. Bestehende States werden nicht
+automatisch kopiert, aufgeteilt oder geleert. Die empfohlene Produktumsetzung ist der
+native Phasenvertrag aus Abschnitt 8 mit unverändertem Normalbetrieb und stabiler
+Migration bestehender Adressen. Bis zu seiner Implementierung muss eine kompatible
+Rückbaukonfiguration je Quellrevision geprüft werden; der heutige unveränderte LZA
+stellt sie noch nicht bereit.
+
+Der zweistufige Mechanismus mit demselben State wurde lokal mit OpenTofu 1.12.6 und
+ausschließlich eingebauten `terraform_data`-Ressourcen geprüft: Phase A entfernt ein
+Projekt-Pendant und erhält ID des Ordner-Pendants sowie State-Lineage. Phase B entfernt
+nur diesen Ordner; derselbe State bleibt leer zurück. Das belegt CLI-Semantik, nicht
+STACKIT-Provider-Initialisierung, Cloud-Purge-Dauer oder einen qualifizierten Live-Rückbau
+des LZA.
+
 ## 7. Purge-Beobachtung, Wiederholungen und wahrheitsgemäßer Abschluss
 
 `delete_requested`, `DELETING`, `purge_unconfirmed` und `verified_absent` werden
