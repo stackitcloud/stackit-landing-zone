@@ -28,7 +28,10 @@ eine Aktivierung in Produktion ist eine gesonderte Entscheidung.
    Erhalt des Zugangs, Datenexport/Aufbewahrung und State-Übernahme bestätigen.
    Geprüft werden Organisation, Ressourcenzuordnung, bekannte Unterprojekte,
    Quellverfügbarkeit, Runner-Stopp und die Lage von Steuerungsprojekten und
-   Bereinigungsidentität außerhalb sämtlicher erfasster Rückbauziele.
+   Bereinigungsidentität außerhalb sämtlicher erfasster Rückbauziele. Operator-Projekt-IDs
+   stammen aus der vertrauenswürdigen Deployment-Bindung; Kundenzugangsdaten benötigen
+   keine Rechte auf die SaaS-Betreiberorganisation. Der kundeneigene Bereinigungsaccount,
+   sein Heimatprojekt und dessen Zuordnung werden separat mit dem Kundenzugang geprüft.
 4. Jeden ursprünglichen Plattform-/Application-State ausdrücklich in die
    verschlüsselte Verwahrung der bestehenden Configurator-Datenbank übernehmen.
    Das ist ein Wechsel der State-Autorität, kein zweiter aktiver State. Ursprüngliche

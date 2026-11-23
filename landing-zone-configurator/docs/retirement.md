@@ -24,7 +24,10 @@ receipt, and production activation is a separate decision.
    credential profile and its independent home project. Confirm surviving access,
    retention/export review and State handover. The Configurator checks organization,
    resource ownership, known children, source availability, writer stops and that
-   its control projects and cleanup identity are outside all captured targets.
+   its trusted operator project IDs and cleanup identity are outside all captured
+   targets. Operator project IDs come from the deployment binding; a customer
+   credential never needs access to the SaaS operator organization. The cleanup
+   account/home project and its ancestry are checked with that customer credential.
 4. Explicitly hand over each original Platform/Application State to encrypted
    custody in the existing Configurator database. This is one authority transfer,
    not an additional live State. Original source/backend identities and immutable

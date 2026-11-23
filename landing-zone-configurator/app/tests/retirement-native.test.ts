@@ -469,3 +469,26 @@ it("recognizes the pinned provider's unaddressed 409 only with matching native f
     ),
   ).toBe(false);
 });
+
+it("protects service resources and role assignments inside surviving control projects too", () => {
+  const protectedProject = "66666666-6666-4666-8666-666666666666";
+  for (const [type, before] of [
+    ["stackit_postgresflex_instance", { project_id: protectedProject }],
+    [
+      "stackit_authorization_project_role_assignment",
+      { resource_id: protectedProject, subject: "other@example.test" },
+    ],
+  ] as const) {
+    expect(() =>
+      assertRetirementProtectedResources(
+        {
+          resource_changes: [{ type, change: { actions: ["delete"], before } }],
+        },
+        {
+          protectedServiceAccount: "cleanup@example.test",
+          protectedProjectIds: [protectedProject],
+        },
+      ),
+    ).toThrow("retirement_control_inside_target");
+  }
+});

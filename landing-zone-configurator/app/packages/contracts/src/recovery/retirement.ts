@@ -450,6 +450,14 @@ export function assertRetirementProtectedResources(
     if (!z.array(z.string()).parse(change.actions).includes("delete")) continue;
     const before = object.parse(change.before ?? {});
     requireValue(
+      !input.protectedProjectIds.includes(String(before.project_id)) &&
+        !(
+          String(resource.type).includes("project_role_assignment") &&
+          input.protectedProjectIds.includes(String(before.resource_id))
+        ),
+      "retirement_control_inside_target",
+    );
+    requireValue(
       !(
         resource.type === "stackit_resourcemanager_project" &&
         input.protectedProjectIds.includes(String(before.project_id))

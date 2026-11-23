@@ -85,6 +85,36 @@ function fixture(
   return { cloud: new StackitRetirementCloud(request), calls };
 }
 describe("retirement read-only STACKIT observations", () => {
+  it("does not require customer credentials to read the operator's separate SaaS projects", async () => {
+    const operator = "66666666-6666-4666-8666-666666666666";
+    const { cloud, calls } = fixture((url) =>
+      url.pathname === `/v2/projects/${operator}`
+        ? json({ message: "Operator project is private" }, 403)
+        : undefined,
+    );
+    const witness = await cloud.control(
+      { ...input, controlProjectIds: [operator] },
+      key,
+    );
+    expect(witness.controlProjectIds).toEqual([control, operator]);
+    expect(witness.controlProjectProof).toBe("operator-deployment-binding");
+    expect(
+      calls.some(
+        (call) => new URL(call.url).pathname === `/v2/projects/${operator}`,
+      ),
+    ).toBe(false);
+    await expect(
+      cloud.control(
+        {
+          ...input,
+          controlProjectIds: [operator],
+          targetProjectIds: [operator],
+        },
+        key,
+      ),
+    ).rejects.toMatchObject({ code: "retirement_control_inside_target" });
+  });
+
   it("verifies the actual cleanup account and independently surviving control project", async () => {
     const { cloud, calls } = fixture();
     const witness = await cloud.control(input, key);

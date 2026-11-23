@@ -146,7 +146,11 @@ export class StackitRetirementCloud {
       .parse(await get(`/v2/organizations/${value.organizationId}`));
     if (org.organizationId !== value.organizationId)
       throw new RetirementCloudError("retirement_cloud_access_unverified");
-    for (const id of controls) {
+    // Operator projects are trusted deployment bindings. A customer's cleanup
+    // key must neither need nor receive access to the SaaS operator organization.
+    // Their immutable IDs are excluded above; verify only the customer's own
+    // surviving cleanup home and its ancestry using that customer's credentials.
+    for (const id of [value.cleanupProjectId]) {
       const control = project.parse(await get(`/v2/projects/${id}`));
       if (control.projectId !== id || control.lifecycleState !== "ACTIVE")
         throw new RetirementCloudError("retirement_cloud_access_unverified");
@@ -193,6 +197,7 @@ export class StackitRetirementCloud {
       organizationId: value.organizationId,
       cleanupProjectId: value.cleanupProjectId,
       controlProjectIds: controls,
+      controlProjectProof: "operator-deployment-binding" as const,
       cleanupSubject: raw.credentials.sub,
       cleanupKeyId: raw.credentials.kid,
       checkedAt: new Date().toISOString(),
