@@ -140,6 +140,8 @@ class NativeRetirementTest(unittest.TestCase):
                 variables['retirement_phase'] = 'finalize_folders'
                 (work / 'retirement.tfvars.json').write_text(json.dumps(variables))
                 run('plan', '-input=false', '-var-file=retirement.tfvars.json', '-out=waiting.bin', '-no-color')
+                waiting = json.loads(run('show', '-json', 'waiting.bin').stdout)
+                self.assertEqual(guard.check_plan(waiting, captured, 'finalize_folders', guard.inventory(current))['deleteCount'], 1)
                 result = run('apply', '-json', '-input=false', '-no-color', 'waiting.bin', success=False)
                 self.assertIn('409', result.stderr + result.stdout)
                 diagnostics = [event['diagnostic'] for event in map(json.loads, result.stdout.splitlines())
