@@ -7,6 +7,7 @@ export const notificationTopics = [
   "recovery",
   "access",
   "reminders",
+  "retirement",
 ] as const;
 export const notificationPreferencesSchema = z.strictObject({
   locale: z.enum(["de", "en"]),
@@ -28,13 +29,20 @@ export const notificationKinds = [
   "access-changed",
   "action-overdue",
   "upgrade-approved",
+  "retirement-announced",
 ] as const;
 export type NotificationKind = (typeof notificationKinds)[number];
 export const notificationSchema = z.strictObject({
   id: z.uuid(),
   topic: z.enum(["invitations", ...notificationTopics]),
   kind: z.enum(notificationKinds),
-  resourceType: z.enum(["invitation", "application", "platform", "workspace"]),
+  resourceType: z.enum([
+    "invitation",
+    "application",
+    "platform",
+    "workspace",
+    "retirement",
+  ]),
   resourceId: z.uuid(),
   operation: z.enum(["plan", "apply"]).nullable(),
   createdAt: z.iso.datetime({ offset: true }),
@@ -56,6 +64,12 @@ const copy: Record<
   NotificationKind,
   readonly [string, string, string, string]
 > = {
+  "retirement-announced": [
+    "Rückbau angekündigt",
+    "Die Plattform wird stillgelegt. Prüfe betroffene Applications und den Löschtermin in der Anwendung. Sichere benötigte Daten innerhalb des Vorbereitungsfensters oder bereinige deine Application selbst.",
+    "Retirement announced",
+    "The platform is being retired. Review affected applications and the deletion schedule in the app. Export required data during the preparation window or clean up your application yourself.",
+  ],
   invitation: [
     "Einladung zum Arbeitsbereich",
     "Du wurdest eingeladen. Melde dich mit der eingeladenen STACKIT-Identität an und prüfe den Beitritt. Der Link ist einmalig und höchstens sieben Tage gültig.",
@@ -141,7 +155,7 @@ export function notificationPath(
   tenantId?: string,
 ) {
   const base =
-    item.resourceType === "application"
+    item.resourceType === "application" || item.resourceType === "retirement"
       ? "/applications"
       : item.resourceType === "platform"
         ? "/deployments/history"

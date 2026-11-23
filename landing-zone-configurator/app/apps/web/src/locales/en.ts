@@ -3715,4 +3715,54 @@ export const englishMessages: Record<string, string> = {
   "Für dieses Upgrade wurde inzwischen eine neue Freigaberichtlinie veröffentlicht. Übernimm sie unter Updates und erstelle danach einen neuen Plan. Der bisherige Plan wird nicht nachträglich freigegeben.":
     "A new approval policy has been published for this upgrade. Adopt it under Updates, then create a new plan. The existing plan is not approved retroactively.",
   "Zu den Update-Optionen": "Go to update options",
+  "Angekündigter Rückbau": "Retirement notices",
+  "Landing Zones stilllegen": "Retire landing zones",
+  "Rückbau angekündigt": "Retirement announced",
+  "Laufende Ausführungen klären": "Reconcile running executions",
+  "Rückbau vorbereitet": "Retirement prepared",
+  "Ressourcen werden entfernt": "Removing resources",
+  "STACKIT-Projektlöschung abwarten": "Waiting for STACKIT project removal",
+  "Leere Ordner entfernen": "Remove empty folders",
+  "Rückbau pausiert": "Retirement paused",
+  "Prüfung erforderlich": "Review required",
+  "Rückbau abgebrochen": "Retirement cancelled",
+  "Der Rückbaustand hat sich geändert. Aktualisiere den Status und prüfe die Auswahl erneut.":
+    "The retirement has changed. Refresh the status and review your selection.",
+  "Für diese Aktion fehlen die aktuelle Plattformberechtigung oder der Organisationsnachweis.":
+    "This action requires current platform authorization and organization verification.",
+  "Diese Aktion ist im aktuellen Rückbaustand nicht verfügbar. Prüfe laufende Ausführungen und Wiederherstellungsschritte.":
+    "This action is unavailable at the current retirement stage. Review running executions and recovery steps.",
+  "Eine Plattformausführung oder Wiederherstellung ist noch ungeklärt.":
+    "A platform execution or recovery remains unresolved.",
+  "Eine Application-Ausführung oder Wiederherstellung ist noch ungeklärt.":
+    "An application execution or recovery remains unresolved.",
+  "Das angekündigte Vorbereitungsfenster läuft noch.":
+    "The announced preparation window has not ended.",
+  "Der Rückbaustatus konnte nicht geladen werden. Prüfe Anmeldung und Arbeitsbereich.":
+    "Retirement status could not be loaded. Check your sign-in and workspace.",
+  "Der Rückbau wurde nicht geändert. Aktualisiere den Status und prüfe deine Berechtigung.":
+    "The retirement was not changed. Refresh the status and check your permissions.",
+  "Mit dem Rückbaustart werden neue Bestellungen und Erweiterungen gesperrt. Betroffene Besteller werden vorab informiert und können ihre Daten sichern oder selbst bereinigen.":
+    "Starting retirement blocks new orders and expansions. Affected requesters receive advance notice and can export their data or clean up their applications.",
+  "Plattform auswählen": "Select platform",
+  Applications: "Applications",
+  "Grund für den Rückbau": "Reason for retirement",
+  "Löschung frühestens ab (UTC)": "Do not delete before (UTC)",
+  "Ich bestätige die Stilllegung der ausgewählten Plattform und die Information der betroffenen Besteller.":
+    "I confirm retirement of the selected platform and notification of affected requesters.",
+  "Rückbau ankündigen und Neuanlagen sperren":
+    "Announce retirement and block new deployments",
+  "Löschung frühestens ab:": "Do not delete before:",
+  "Eine Rückbauvoraussetzung ist noch offen.":
+    "A retirement prerequisite remains unresolved.",
+  "Status prüfen": "Check status",
+  "Rückbau fortsetzen": "Resume retirement",
+  "Rückbau pausieren": "Pause retirement",
+  "Rückbau abbrechen": "Cancel retirement",
+  "Rückbau abbrechen und Neuanlagen nach Prüfung wieder zulassen? Bereits gelöschte Ressourcen werden nicht wiederhergestellt.":
+    "Cancel retirement and allow new deployments after verification? Resources already deleted will not be restored.",
+  "Diese Landing Zone wird stillgelegt. Neue Bestellungen, Erweiterungen und alte Ausführungsfreigaben sind gesperrt. Prüfe den Rückbaustatus.":
+    "This landing zone is being retired. New orders, expansions and old execution approvals are blocked. Review its retirement status.",
+  "Diese Plattform wird stillgelegt. Neue Application-Bestellungen sind gesperrt.":
+    "This platform is being retired. New application orders are blocked.",
 };

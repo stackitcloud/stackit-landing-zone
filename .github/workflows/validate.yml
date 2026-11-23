@@ -199,6 +199,11 @@ jobs:
       - name: Run configuration tests
         run: |
           tofu -chdir=src test -no-color
+          python3 -m unittest discover -s src/retirement -p 'test_*.py'
+          tofu -chdir=src/retirement init -backend=false -input=false -lockfile=readonly -no-color
+          tofu -chdir=src/retirement validate -no-color
+          tofu -chdir=src/retirement test -no-color
+          LZC_TEST_TOFU_BIN="$(command -v tofu)" LZC_TEST_PROVIDER_MIRROR="$PWD/src/.terraform/providers" python3 -m unittest discover -s src/tests -p test_retirement_native.py
           LZC_TEST_TOFU_BIN="$(command -v tofu)" LZC_TEST_PROVIDER_MIRROR="$PWD/src/.terraform/providers" python3 src/tests/test_audit_bucket_lifecycle.py
 
       - name: Run independent Application configuration tests

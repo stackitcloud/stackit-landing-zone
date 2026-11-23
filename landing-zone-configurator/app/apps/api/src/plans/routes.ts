@@ -42,6 +42,13 @@ export function registerPlans(
   const outputStreams = new Map<string, number>();
   app.register(async (routes) => {
     routes.setErrorHandler((error, _request, reply) => {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "55000" &&
+        error.message === "retirement_admission_closed"
+      )
+        return reply.code(409).send({ error: "retirement_admission_closed" });
       if ((error as { statusCode?: number }).statusCode === 413)
         return reply.code(413).send({ error: "request_too_large" });
       if (

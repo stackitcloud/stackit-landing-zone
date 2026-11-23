@@ -1,0 +1,4 @@
+# Copy to backend.local.tf and supply the ORIGINAL remote object through backend.hcl.
+terraform {
+  backend "s3" {}
+}

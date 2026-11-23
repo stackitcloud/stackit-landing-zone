@@ -56,6 +56,9 @@ const labels: Record<string, string> = {
   recovery_required: "Wiederherstellung erforderlich",
 };
 const failures: Record<string, string> = {
+  retirement_admission_closed:
+    "Diese Landing Zone wird stillgelegt. Neue Bestellungen, Erweiterungen und alte Ausführungsfreigaben sind gesperrt. Prüfe den Rückbaustatus.",
+
   firewall_administration_required:
     "Für Firewall-HA fehlt ein gebundener OPNsense-Administrationszugang. Erstelle unter Zugänge ein Profil mit Service-Account und OPNsense-Zugang und danach eine neue Vorbereitung und einen neuen Plan. Bestehende Nachweise bleiben erhalten.",
   configuration_execution_not_supported:

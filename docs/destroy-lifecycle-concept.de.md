@@ -62,7 +62,12 @@ daher Berechtigungsverlust, versteckte Projekte und tatsächliche Abwesenheit
 unterscheiden; der State allein reicht als Löschinventar nicht aus. Auch im für
 dieses Konzept geprüften Provider-`main` besteht die Ordnergrenze weiterhin.
 
-Alle folgenden Lebenszyklusnamen, UI-Aktionen und Hilfswerkzeuge sind Vorschläge.
+Der [native Rückbauadapter](../src/retirement/README.de.md) implementiert den
+ordnererhaltenden Zwei-Phasen-Weg für sein ausdrücklich unterstütztes Provider-Profil
+mit Offline-Qualifikation. Die [Configurator-Grundlage](../landing-zone-configurator/docs/retirement.de.md)
+implementiert dauerhafte Rückbauabsicht und Zulassungssperre hinter einem deaktivierten
+Feature-Schalter. Vollständige koordinierte Ausführung und Live-Qualifikation sind
+noch nicht ausgeliefert; weitere Lebenszyklusaktionen beschreiben das Zielverhalten.
 Der native Accelerator bleibt ohne Configurator, Anwendungsdatenbank,
 kundenseitigen Git-Dienst oder gehostetes SaaS-Konto nutzbar.
 

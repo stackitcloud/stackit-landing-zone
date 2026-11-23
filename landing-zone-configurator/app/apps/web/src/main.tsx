@@ -50,6 +50,7 @@ import {
 import { Organisation } from "./components/Organisation";
 import { ProjectTemplates } from "./components/ProjectTemplates";
 import { projectTemplateSummary } from "./components/project-template-summary";
+import { RetirementPanel } from "./components/Retirements";
 import { TemplateAdvice } from "./components/TemplateAdvice";
 import { Topology } from "./components/Topology";
 import { currentLanguage, setLanguage, t } from "./i18n";
@@ -1048,6 +1049,15 @@ function App() {
               }}
             />
           )}
+          {session &&
+            !session.workspaceRequired &&
+            (view === "history" || view === "applications") && (
+              <RetirementPanel
+                key={`retirements:${workspaceKey(session)}`}
+                session={session}
+                manage={platformAccess && view === "history"}
+              />
+            )}
           <CloudCatalogueProvider
             key={`catalogues:${workspaceEpoch}:${platformAccess ? "platform" : "application"}`}
           >

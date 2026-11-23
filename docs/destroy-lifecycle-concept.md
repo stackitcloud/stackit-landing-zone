@@ -55,7 +55,12 @@ projects and physical absence must be distinguished by the coordinator; State al
 cannot be the deletion inventory. Provider `main` still contains the folder limitation
 when inspected for this concept.
 
-All lifecycle names, UI actions and helper behavior below are proposals. Native
+The [native retirement adapter](../src/retirement/README.md) implements the
+folder-preserving two-phase path for its explicitly supported provider profile,
+with offline qualification. The [Configurator foundation](../landing-zone-configurator/docs/retirement.md)
+implements durable intent and admission fencing behind a disabled feature flag.
+The complete coordinated execution and live qualification are not yet delivered;
+remaining lifecycle actions below describe the target contract. Native
 Accelerator use must continue to work without a Configurator, application database,
 customer Git service or hosted SaaS account.
 

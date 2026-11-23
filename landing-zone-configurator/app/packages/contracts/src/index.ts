@@ -4,6 +4,7 @@ export * from "./application-state-recovery.js";
 export * from "./assistant.js";
 export * from "./backend.js";
 export * from "./cloud-catalogue-fields.js";
+export * from "./retirement.js";
 
 import { z } from "zod";
 import {

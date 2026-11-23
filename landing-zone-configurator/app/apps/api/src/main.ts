@@ -37,6 +37,7 @@ import { LocalPlanRunner } from "./plans/local.js";
 import { RunnerCleanup } from "./plans/runner-cleanup.js";
 import { RunnerPool, runnerPoolSize } from "./plans/runner-pool.js";
 import { Plans } from "./plans/service.js";
+import { Retirements } from "./retirements/service.js";
 import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
 
@@ -292,6 +293,9 @@ const delivery =
       )
     : undefined;
 const app = buildApp({
+  ...(pool && executionEnabled && process.env.LZC_RETIREMENTS_ENABLED === "true"
+    ? { retirements: new Retirements(pool) }
+    : {}),
   ...(pool ? { notifications: new Notifications(pool, !!mailConfig) } : {}),
   repositories,
   ...(pool && process.env.LZC_ASSISTANT_ENABLED === "true"

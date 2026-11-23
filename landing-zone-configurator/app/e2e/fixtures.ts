@@ -24,6 +24,11 @@ export const test = base.extend<{ backgroundRequests: undefined }>({
           await route.fulfill({ json: lists[path] });
         } else if (
           request.method() === "GET" &&
+          new URL(request.url()).pathname === "/api/v1/retirements"
+        ) {
+          await route.fulfill({ status: 404, json: { error: "not_found" } });
+        } else if (
+          request.method() === "GET" &&
           /^\/api\/v1\/applications\/instances\/[a-f0-9-]+\/execution-lifecycle$/.test(
             path,
           )

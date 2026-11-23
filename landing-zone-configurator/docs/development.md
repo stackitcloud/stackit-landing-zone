@@ -13,6 +13,7 @@ references; the [user guide](user-guide.md) describes product usage.
 | Area | Reference |
 | --- | --- |
 | Notifications and transactional email | [Notifications](notifications.md), [MailOut operations](../infra/mailout/README.md) |
+| Staged retirement and admission freeze | [Retirement integration](retirement.md), [native OpenTofu runbook](../../src/retirement/README.md) |
 | Components, trust boundaries and diagrams | [Architecture](architecture.md) |
 | Native schemas and compiler | [Common feature model](common-feature-model.md), [common editor](common-editor.md) |
 | Template drafts and parameters | [Project template drafts](project-template-drafts.md), [parameters and bindings](template-parameters-and-bindings.md) |
