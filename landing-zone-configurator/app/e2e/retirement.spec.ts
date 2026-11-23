@@ -91,6 +91,15 @@ test("announces retirement with an explicit scope and seven-day window, and fenc
   });
   await page.goto("/deployments/history");
   const panel = page.getByRole("region", { name: "Retire landing zones" });
+  await expect(panel).toHaveCount(0);
+  const retireTab = page.getByRole("button", { name: "Retire", exact: true });
+  await retireTab.click();
+  await expect(page).toHaveURL(/\/deployments\/retire$/);
+  await expect(retireTab).toHaveAttribute("aria-current", "page");
+  await expect(
+    page.getByRole("heading", { name: "Retire", exact: true }),
+  ).toBeVisible();
+  await page.reload();
   await expect(panel).toBeVisible();
   const submit = panel.getByRole("button", {
     name: "Announce retirement and block new deployments",
@@ -310,7 +319,7 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
     }
     return route.fulfill({ json: { id: applyId } });
   });
-  await page.goto("/deployments/history");
+  await page.goto("/deployments/retire");
   const panel = page.getByRole("region", { name: "Retire landing zones" });
   await panel
     .getByRole("button", { name: "Retirement steps and approvals" })

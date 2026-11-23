@@ -6305,6 +6305,7 @@ test.describe("explicit saved-plan approval", () => {
       "Plan",
       "Apply",
       "Verlauf",
+      "Stilllegen",
     ]);
     await expect(
       page.getByRole("button", { name: "Plattform planen", exact: true }),
@@ -6385,6 +6386,22 @@ test.describe("explicit saved-plan approval", () => {
     await expect(approval).not.toBeChecked();
     await page.reload();
     await expect(page).toHaveURL(/\/deployments\/apply$/);
+    await expect(approval).not.toBeChecked();
+    await page
+      .getByLabel("Zielorganisation UUID bestätigen")
+      .fill(organizationId);
+    await approval.check();
+    await tabs.getByRole("button", { name: "Stilllegen", exact: true }).click();
+    await expect(page).toHaveURL(/\/deployments\/retire$/);
+    await expect(
+      page.getByRole("heading", { name: "Stilllegen", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Der Rückbau ist auf dieser Instanz nicht aktiviert.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await tabs.getByRole("button", { name: "Apply", exact: true }).click();
     await expect(approval).not.toBeChecked();
     expect(mutations).toBe(0);
     expect(

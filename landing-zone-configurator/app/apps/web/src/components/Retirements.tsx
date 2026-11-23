@@ -38,15 +38,18 @@ const messages: Record<string, string> = {
 export function RetirementPanel({
   session,
   manage = false,
+  standalone = false,
 }: {
   session: Session;
   manage?: boolean;
+  standalone?: boolean;
 }) {
   const [rows, setRows] = useState<Retirement[]>([]);
   const [candidates, setCandidates] = useState<
     z.infer<typeof retirementCandidateSchema>[]
   >([]);
   const [available, setAvailable] = useState(false),
+    [disabled, setDisabled] = useState(false),
     [pending, setPending] = useState(false),
     [error, setError] = useState("");
   const [selected, setSelected] = useState(""),
@@ -89,6 +92,7 @@ export function RetirementPanel({
     setRows([]);
     setCandidates([]);
     setAvailable(false);
+    setDisabled(false);
     setPending(false);
     setError("");
     setSelected("");
@@ -101,7 +105,10 @@ export function RetirementPanel({
           credentials: "same-origin",
           headers: { "x-lzc-tenant": tenantId },
         });
-        if (response.status === 404) return;
+        if (response.status === 404) {
+          if (!abort.signal.aborted) setDisabled(true);
+          return;
+        }
         if (!response.ok) throw Error("retirement_unavailable");
         const result = z.array(retirementSchema).parse(await response.json());
         if (abort.signal.aborted || current.current !== requestedIdentity)
@@ -148,6 +155,12 @@ export function RetirementPanel({
       if (current.current === owner) setPending(false);
     }
   }
+  if (standalone && disabled)
+    return (
+      <p role="status">
+        {t("Der Rückbau ist auf dieser Instanz nicht aktiviert.")}
+      </p>
+    );
   if ((!available && !error) || (!manage && rows.length === 0 && !error))
     return null;
   return (
@@ -161,6 +174,15 @@ export function RetirementPanel({
         {t(manage ? "Landing Zones stilllegen" : "Angekündigter Rückbau")}
       </h2>
       {error && <p role="alert">{t(error)}</p>}
+      {available &&
+        !error &&
+        manage &&
+        candidates.length === 0 &&
+        rows.length === 0 && (
+          <p role="status">
+            {t("Noch keine angewendete Plattform für den Rückbau verfügbar.")}
+          </p>
+        )}
       {manage && candidates.length > 0 && (
         <form
           onSubmit={(event) => {

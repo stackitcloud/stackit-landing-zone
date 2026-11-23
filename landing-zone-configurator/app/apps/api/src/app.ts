@@ -333,6 +333,7 @@ export function buildApp(
       "/deployments/plan",
       "/deployments/apply",
       "/deployments/history",
+      "/deployments/retire",
       "/organisation",
       "/notifications",
       "/applications",
