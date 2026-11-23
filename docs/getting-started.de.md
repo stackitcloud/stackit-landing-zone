@@ -372,7 +372,7 @@ stackit project delete --project-id <BOOTSTRAP_PROJECT_ID>
 ```
 
 > [!NOTE]
-> Resource-Manager-Ordner können erst 7 Tage nach dem Entfernen des letzten enthaltenen Projekts gelöscht werden. Ein `tofu apply` mit anschließendem `tofu destroy` schlägt daher fehl – Destroy meldet beim Löschen der Ordner einen Fehler, solange Projekte noch innerhalb ihrer Aufbewahrungsfrist liegen.
+> Resource-Manager-Ordner bleiben gesperrt, bis ihre Projekte tatsächlich entfernt sind; STACKIT dokumentiert derzeit eine Wartezeit von bis zu sieben Tagen. Ein Destroy kann deshalb bei der Ordnerbereinigung stoppen, nachdem andere Ressourcen bereits entfernt wurden. Teil-State und unabhängigen Bereinigungszugriff erhalten. Das [Konzept zum gestuften Destroy](destroy-lifecycle-concept.de.md) beschreibt die vorgeschlagene Neuanlagensperre, den betrieblichen Workaround und den späteren Abschluss; eine automatische Phasensteuerung ist noch nicht ausgeliefert.
 
 ---
 

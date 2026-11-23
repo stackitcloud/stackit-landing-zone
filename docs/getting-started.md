@@ -342,7 +342,7 @@ stackit project delete --project-id <BOOTSTRAP_PROJECT_ID>
 ```
 
 > [!NOTE]
-> Resource Manager folders can only be deleted 7 days after the last project within them has been removed. Running `tofu apply` followed by `tofu destroy` will therefore fail — the destroy will error when attempting to delete the folders while projects are still within their retention period.
+> Resource Manager folders remain blocked until their projects are actually removed; STACKIT currently documents a wait of up to seven days. A Destroy can therefore stop at folder cleanup after other resources have already been removed. Preserve the partial State and independent cleanup access. See the [staged Destroy concept](destroy-lifecycle-concept.md) for the proposed admission freeze, operational workaround and deferred finalization; no automatic phase engine is delivered yet.
 
 ---
 
