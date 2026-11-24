@@ -15,6 +15,7 @@ const settings = z.strictObject({
   username: z.string().min(1),
   password: z.string().min(1),
   from: z.email(),
+  ratePerHour: z.coerce.number().int().min(1).max(1000),
   replyTo: z.email().optional(),
   origin: z.url().refine((v) => {
     const u = new URL(v);
@@ -30,6 +31,7 @@ export function mailSettings(env: NodeJS.ProcessEnv): MailSettings | undefined {
     username: env.LZC_MAILOUT_USERNAME,
     password: env.LZC_MAILOUT_PASSWORD,
     from: env.LZC_MAILOUT_FROM,
+    ratePerHour: env.LZC_MAILOUT_RATE_PER_HOUR ?? "10",
     ...(env.LZC_MAILOUT_REPLY_TO ? { replyTo: env.LZC_MAILOUT_REPLY_TO } : {}),
     origin: env.LZC_PUBLIC_ORIGIN,
   });

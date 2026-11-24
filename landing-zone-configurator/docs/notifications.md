@@ -70,8 +70,8 @@ invitation hash remains the source of truth. Do not copy invitation URLs into
 logs or issue comments. The invitation list shows queued, sending, accepted,
 suppressed, failed or uncertain email state without exposing the encrypted token.
 
-Emailed invitations are limited to 20 per inviter per hour across workspaces;
-failed queue creation rolls back the invitation. Delivery batches are bounded.
+Emailed invitations are limited to 100 per inviter per hour across workspaces;
+failed queue creation rolls back the invitation. Delivery batches are bounded. A durable PostgreSQL reservation paces all replicas together, conservatively at 10 messages per hour by default. The sending-domain quota and invitation admission limit are separate. Higher throughput requires an approved MailOut quota and matching binding `ratePerHour`; it never grants a provider quota increase.
 
 ## Delivery and privacy
 
@@ -92,7 +92,7 @@ messages from the accessible inbox. Mail already handed to SMTP cannot be recall
 Private SQL functions isolate inbox, preferences and delivery maintenance; the
 runtime role cannot read the outbox tables directly. Every app replica may poll;
 transactional claims and `SKIP LOCKED` prevent duplicate dispatch. Safe transient
-failures retry at most five attempts, with exponential delays. Permanent SMTP
+failures retry with exponential delays (at most one hour between attempts) while the notification remains eligible, for up to seven days. Encrypted invitation links survive temporary throttling beyond five attempts. Permanent SMTP
 rejections stop. Lost DATA acknowledgements, a database failure after SMTP
 acceptance and abandoned sender leases become **uncertain**, without blind resend.
 The original workflow is never retried or changed because email failed.

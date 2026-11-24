@@ -78,6 +78,7 @@ export class NotificationDelivery {
     },
     private readonly crypto: ArtifactCrypto,
     private readonly logo: Buffer,
+    private readonly intervalSeconds = 360,
   ) {}
   async maintain() {
     if (this.busy) return;
@@ -87,8 +88,8 @@ export class NotificationDelivery {
       for (let i = 0; i < 10; i++) {
         const claim = randomUUID();
         const claimed = await this.pool.query(
-          "SELECT lzc_auth.notification_delivery_claim($1) AS value",
-          [claim],
+          "SELECT lzc_auth.notification_delivery_claim($1,$2) AS value",
+          [claim, this.intervalSeconds],
         );
         const value = claimed.rows[0].value as {
           id?: string;
