@@ -97,7 +97,7 @@ preferences as Dev; invitation delivery is selected by the inviter.
   project's sending-domain message history, suppression list and metrics for
   actual delivery, bounce or complaint outcomes. Provider bounce processing is
   automatic; do not remove suppressions merely to force another attempt.
-- Retryable SMTP outcomes have at most five attempts. Lost DATA acknowledgement or
+- Temporary SMTP failures retry with capped exponential delays while eligible (up to seven days), retaining encrypted invitation links. Delivery is paced across replicas at the binding's optional `ratePerHour` (default 10). Change it only after the provider has approved the corresponding sending-domain quota. Lost DATA acknowledgement or
   an abandoned lease is quarantined as `uncertain`; no automatic resend. Inspect
   provider history using the stable `<notification-UUID@sender-domain>` Message-ID
   before considering a new notification. Never rerun infrastructure to resend mail.

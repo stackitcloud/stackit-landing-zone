@@ -93,7 +93,13 @@ async function verified(s: Session, email = `${s.userId}@example.test`) {
     [s.userId, randomUUID(), email],
   );
 }
+async function resetPacing() {
+  await migration.query(
+    "UPDATE lzc_auth.notification_delivery_schedule SET next_send_at='-infinity'",
+  );
+}
 async function clearQueue() {
+  await resetPacing();
   await migration.query(
     "UPDATE lzc_auth.notifications SET email_status='suppressed',invitation_cipher=NULL,invitation_email=NULL WHERE email_status IN ('pending','sending')",
   );
@@ -159,6 +165,7 @@ it("rechecks opt-out and access between claiming and sending", async () => {
   await notifications.preferences(s, { locale: "de", emailTopics: ["access"] });
   const next = await event(s);
   const second = randomUUID();
+  await resetPacing();
   await pool.query("SELECT lzc_auth.notification_delivery_claim($1)", [second]);
   await migration.query(
     "UPDATE lzc.memberships SET manage_members=false WHERE tenant_id=$1 AND user_id=$2",
@@ -173,6 +180,44 @@ it("rechecks opt-out and access between claiming and sending", async () => {
     ).rows[0].value,
   ).toBeNull();
   expect((await notifications.list(s)).items).toEqual([]);
+});
+it("shares the SMTP budget across replicas and preserves unsent messages until the next slot", async () => {
+  await clearQueue();
+  const s = await workspace();
+  await verified(s);
+  await event(s);
+  await event(s);
+  const send = vi.fn(async () => "accepted" as const);
+  const make = () =>
+    new NotificationDelivery(
+      pool,
+      origin,
+      { send },
+      crypto,
+      Buffer.from("logo"),
+    );
+  await Promise.all([make().maintain(), make().maintain(), make().maintain()]);
+  expect(send).toHaveBeenCalledTimes(1);
+  const counts = await migration.query(
+    "SELECT email_status,count(*)::int AS count FROM lzc_auth.notifications WHERE tenant_id=$1 AND kind='access-changed' GROUP BY email_status",
+    [s.tenantId],
+  );
+  expect(counts.rows).toEqual(
+    expect.arrayContaining([
+      { email_status: "accepted", count: 1 },
+      { email_status: "pending", count: 1 },
+    ]),
+  );
+  await make().maintain();
+  expect(send).toHaveBeenCalledTimes(1);
+  await resetPacing();
+  await make().maintain();
+  expect(send).toHaveBeenCalledTimes(2);
+  await expect(
+    pool.query(
+      "UPDATE lzc_auth.notification_delivery_schedule SET next_send_at=now()",
+    ),
+  ).rejects.toMatchObject({ code: "42501" });
 });
 it("fences concurrent senders and quarantines ambiguous outcomes without resending", async () => {
   await clearQueue();
@@ -203,11 +248,20 @@ it("fences concurrent senders and quarantines ambiguous outcomes without resendi
   await make().maintain();
   expect(send).toHaveBeenCalledTimes(1);
 });
-it("bounds transient retries and distinguishes SMTP acceptance from delivery", async () => {
+it("retains encrypted invitations beyond five temporary failures and expires old mail without resending accepted mail", async () => {
   await clearQueue();
   const s = await workspace();
   await verified(s);
-  const id = await event(s);
+  const invitation = await invitations.create(s, ["application-owner"], false, {
+    email: "retry@example.test",
+    locale: "de",
+  });
+  const id = (
+    await migration.query(
+      "SELECT id FROM lzc_auth.notifications WHERE resource_id=$1 AND kind='invitation'",
+      [invitation.id],
+    )
+  ).rows[0].id;
   const send = vi.fn(async () => "temporary" as const);
   const delivery = new NotificationDelivery(
     pool,
@@ -216,23 +270,28 @@ it("bounds transient retries and distinguishes SMTP acceptance from delivery", a
     crypto,
     Buffer.from("logo"),
   );
-  for (let n = 0; n < 5; n++) {
+  for (let n = 0; n < 6; n++) {
     await migration.query(
       "UPDATE lzc_auth.notifications SET next_attempt_at=now() WHERE id=$1",
       [id],
     );
+    await resetPacing();
     await delivery.maintain();
   }
-  expect(send).toHaveBeenCalledTimes(5);
+  expect(send).toHaveBeenCalledTimes(6);
   expect(
     (
       await migration.query(
-        "SELECT email_status,attempts FROM lzc_auth.notifications WHERE id=$1",
+        "SELECT email_status,attempts,invitation_cipher IS NOT NULL AS payload_retained FROM lzc_auth.notifications WHERE id=$1",
         [id],
       )
     ).rows[0],
-  ).toEqual({ email_status: "failed", attempts: 5 });
-  const accepted = await event(s);
+  ).toEqual({ email_status: "pending", attempts: 6, payload_retained: true });
+  await migration.query(
+    "UPDATE lzc_auth.notifications SET next_attempt_at=now() WHERE id=$1",
+    [id],
+  );
+  await resetPacing();
   await new NotificationDelivery(
     pool,
     origin,
@@ -241,9 +300,28 @@ it("bounds transient retries and distinguishes SMTP acceptance from delivery", a
     Buffer.from("logo"),
   ).maintain();
   expect(
-    (await notifications.list(s)).items.find((n) => n.id === accepted)
-      ?.emailStatus,
+    (await invitations.list(s)).find(
+      (n: { id: string; mailStatus?: string }) => n.id === invitation.id,
+    )?.mailStatus,
   ).toBe("accepted");
+  await delivery.maintain();
+  expect(send).toHaveBeenCalledTimes(6);
+  const expired = await event(s);
+  await migration.query(
+    "UPDATE lzc_auth.notifications SET created_at=now()-interval '8 days' WHERE id=$1",
+    [expired],
+  );
+  await resetPacing();
+  await delivery.maintain();
+  expect(
+    (
+      await migration.query(
+        "SELECT email_status FROM lzc_auth.notifications WHERE id=$1",
+        [expired],
+      )
+    ).rows[0].email_status,
+  ).toBe("suppressed");
+  expect(send).toHaveBeenCalledTimes(6);
 });
 it("queues invitations atomically, encrypts their links and binds acceptance to the verified recipient", async () => {
   await clearQueue();
@@ -459,12 +537,23 @@ it("generates one expiring-invitation reminder while retaining personal email op
 });
 it("limits mailed invitations per inviter and atomically rolls back an over-limit attempt", async () => {
   await clearQueue();
-  const s = await workspace();
-  for (let index = 0; index < 20; index++)
+  let s = await workspace();
+  const firstTenant = s.tenantId;
+  for (let index = 0; index < 100; index++) {
+    if (index === 50) {
+      const next = await organisations.create(
+        s,
+        `Mail second ${randomUUID()}`,
+        randomUUID(),
+      );
+      await organisations.switch(s, next);
+      s = { ...s, tenantId: next };
+    }
     await invitations.create(s, ["application-owner"], false, {
       email: `rate-${index}@example.test`,
       locale: "de",
     });
+  }
   await expect(
     invitations.create(s, ["application-owner"], false, {
       email: "over-limit@example.test",
@@ -475,10 +564,10 @@ it("limits mailed invitations per inviter and atomically rolls back an over-limi
     Number(
       (
         await migration.query(
-          "SELECT count(*) FROM lzc_auth.invitations WHERE tenant_id=$1",
-          [s.tenantId],
+          "SELECT count(*) FROM lzc_auth.invitations WHERE tenant_id=ANY($1::uuid[])",
+          [[firstTenant, s.tenantId]],
         )
       ).rows[0].count,
     ),
-  ).toBe(20);
+  ).toBe(100);
 });

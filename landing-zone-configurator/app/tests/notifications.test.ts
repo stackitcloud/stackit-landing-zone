@@ -51,7 +51,7 @@ it("renders every event in both locales with embedded branding and text alternat
     ),
   ).toThrow("notification_link_invalid");
 });
-it("distinguishes bounded retries from a lost SMTP DATA response", () => {
+it("distinguishes safe temporary retries from a lost SMTP DATA response", () => {
   expect(mailFailure({ responseCode: 451, command: "DATA" })).toBe("temporary");
   expect(mailFailure({ responseCode: 550, command: "DATA" })).toBe("rejected");
   expect(mailFailure({ command: "CONN", code: "ETIMEDOUT" })).toBe("temporary");

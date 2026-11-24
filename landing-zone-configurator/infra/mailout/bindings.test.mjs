@@ -3,7 +3,7 @@ import {readFileSync}from'node:fs';
 import{assertMailoutBinding}from'../ci/verify-mailout-binding.mjs';
 const dev='7dbff805-6788-4d5d-88c0-a5212ac5e90f';const prod='b601468a-e897-4f74-8e10-ac4ab1e448af';
 const binding={schemaVersion:1,projectId:dev,domainId:dev,senderId:dev,host:'smtp.mailout.eu01.stackit.cloud',port:25,from:'notifications@dev.landing-zone.runs.onstackit.cloud',username:'fixture',password:'fixture-secret'};
-test('leaves email disabled without explicit private bindings',()=>{assert.deepEqual(mailoutEnvironment(undefined,'lzc-dev',dev),{LZC_MAILOUT_ENABLED:'false',LZC_MAILOUT_HOST:'',LZC_MAILOUT_PORT:'25',LZC_MAILOUT_USERNAME:'',LZC_MAILOUT_PASSWORD:'',LZC_MAILOUT_FROM:''});});
+test('leaves email disabled without explicit private bindings',()=>{assert.deepEqual(mailoutEnvironment(undefined,'lzc-dev',dev),{LZC_MAILOUT_ENABLED:'false',LZC_MAILOUT_HOST:'',LZC_MAILOUT_PORT:'25',LZC_MAILOUT_USERNAME:'',LZC_MAILOUT_PASSWORD:'',LZC_MAILOUT_FROM:'',LZC_MAILOUT_RATE_PER_HOUR:'10'});});
 test('accepts only stage/project/sender-bound private SMTP settings',()=>{assert.equal(mailoutEnvironment(JSON.stringify(binding),'lzc-dev',dev).LZC_MAILOUT_PASSWORD,'fixture-secret');for(const b of [{...binding,from:'arbitrary@example.test'},{...binding,projectId:prod},{...binding,host:'smtp.evil.example'},{...binding,port:80},{...binding,password:''}])assert.throws(()=>mailoutEnvironment(JSON.stringify(b),'lzc-dev',dev));assert.throws(()=>mailoutEnvironment(JSON.stringify(binding),'lzc-prod',prod));});
 test('the real CF manifest carries enabled and disabled bindings through to the runtime',()=>{
  const manifest=readFileSync(new URL('../../deploy/cloud-foundry/manifest.yml',import.meta.url),'utf8');
@@ -27,4 +27,10 @@ test('binds production SMTP only to the production sender and validates it after
  const workflow=readFileSync(new URL('../../../.github/workflows/configurator-production.yml',import.meta.url),'utf8');
  assert.match(workflow,/LZC_MAILOUT_BINDINGS: \$\{\{ secrets.LZC_MAILOUT_BINDINGS \}\}/);
  assert.match(workflow,/node infra\/ci\/verify-mailout-binding.mjs/);
+});
+
+test('uses the conservative domain-wide quota unless an approved binding supplies another rate',()=>{
+ assert.equal(mailoutEnvironment(JSON.stringify(binding),'lzc-dev',dev).LZC_MAILOUT_RATE_PER_HOUR,'10');
+ assert.equal(mailoutEnvironment(JSON.stringify({...binding,ratePerHour:100}),'lzc-dev',dev).LZC_MAILOUT_RATE_PER_HOUR,'100');
+ for(const ratePerHour of [0,-1,1001,1.5,'100'])assert.throws(()=>mailoutEnvironment(JSON.stringify({...binding,ratePerHour}),'lzc-dev',dev));
 });

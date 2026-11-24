@@ -73,7 +73,7 @@ an SMTP oder einem endgültigen Ergebnis sowie nach sieben Tagen ohne Versand wi
 er entfernt. Der Einladungshash bleibt maßgeblich. Einladungslinks gehören nicht in
 Logs oder Issues. Die Einladungsliste zeigt den Versandstatus ohne Token an.
 
-E-Mail-Einladungen sind pro Einladendem arbeitsbereichsübergreifend auf 20 pro
+E-Mail-Einladungen sind pro Einladendem arbeitsbereichsübergreifend auf 100 pro
 Stunde begrenzt. Scheitert der Versandauftrag, wird auch die Einladung zurückgerollt.
 Versand-Batches sind begrenzt.
 
@@ -97,7 +97,7 @@ sich nicht zurückrufen.
 Private SQL-Funktionen begrenzen Posteingang, Einstellungen und Versandwartung.
 Die Laufzeitrolle kann die Versandtabellen nicht direkt lesen. Transaktionale
 Claims und `SKIP LOCKED` verhindern parallelen Doppelversand. Sichere vorübergehende
-Fehler werden mit exponentiellem Abstand höchstens fünfmal versucht. Dauerhafte
+Fehler werden mit exponentiellem Abstand (höchstens eine Stunde zwischen Versuchen) erneut versucht, solange die Nachricht berechtigt und höchstens sieben Tage alt ist. Verschlüsselte Einladungslinks bleiben auch nach fünf temporären Fehlern erhalten. Dauerhafte
 SMTP-Ablehnungen stoppen. Verlorene DATA-Bestätigungen, Datenbankfehler nach
 SMTP-Annahme und verwaiste Claims werden als **unklar** markiert und nicht blind
 wiederholt. Ein Mailfehler wiederholt oder verändert keinen Infrastrukturvorgang.
@@ -112,3 +112,5 @@ Versandaufträge sind höchstens sieben Tage versandfähig; Metadaten werden nac
 
 Einrichtung, geschützte Release-Bindung, Deaktivierung, Rotation und
 Zustellungsdiagnose stehen im [Betriebshandbuch](../infra/mailout/README.de.md).
+
+Die Versandrate ist vom Einladungslimit getrennt: Eine dauerhafte PostgreSQL-Reservierung begrenzt alle App-Instanzen gemeinsam standardmäßig auf 10 Nachrichten pro Stunde. Ein höherer Wert benötigt eine bestätigte MailOut-Quota und den passenden Wert `ratePerHour` in der SMTP-Bindung. Die Einstellung erhöht keine Provider-Quota.

@@ -102,7 +102,7 @@ entsprechen Dev; den Einladungsversand wählt der Einladende.
 - SMTP-Annahme bedeutet Provider-Annahme. MailOut-Nachrichtenhistorie,
   Sperrlisten und Metriken zeigen Zustellung, Bounces und Beschwerden.
   Bounce-Verarbeitung ist automatisch. Sperren nicht ungeprüft entfernen.
-- Höchstens fünf sichere Versandversuche. Verlorene DATA-Bestätigung und
+- Temporäre SMTP-Fehler werden mit begrenztem exponentiellem Abstand bis zur Berechtigungs-/Gültigkeitsgrenze (höchstens sieben Tage) erneut versucht; verschlüsselte Einladungslinks bleiben erhalten. Alle Instanzen teilen die Versandrate `ratePerHour` der Bindung (Standard 10 pro Stunde). Höhere Werte erst nach Bestätigung der Provider-Quota setzen. Verlorene DATA-Bestätigung und
   verwaiste Claims bleiben ohne automatische Wiederholung `uncertain`.
   Vor einem neuen Auftrag die stabile Message-ID
   `<Benachrichtigungs-UUID@Absenderdomain>` in der Provider-Historie prüfen.

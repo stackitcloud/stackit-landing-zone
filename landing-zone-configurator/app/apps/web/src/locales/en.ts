@@ -302,13 +302,15 @@ export const englishMessages: Record<string, string> = {
   "Diesen Einladungslink widerrufen?": "Revoke this invitation link?",
   "Mit dieser Einladung kann danach niemand mehr beitreten.":
     "No one will be able to join using this invitation afterwards.",
-  "Du hast das Limit von 20 E-Mail-Einladungen pro Stunde erreicht. Bitte versuche es später erneut.":
-    "You have reached the limit of 20 emailed invitations per hour. Please try again later.",
+  "Du hast das Limit von 100 E-Mail-Einladungen pro Stunde erreicht. Bitte versuche es später erneut.":
+    "You have reached the limit of 100 emailed invitations per hour. Please try again later.",
   "Arbeitsbereich der Nachricht öffnen": "Open notification workspace",
   "Diese Nachricht gehört zu einem anderen Arbeitsbereich. Wechsle nach Prüfung deiner Mitgliedschaft, um den Vorgang zu sehen.":
     "This notification belongs to another workspace. Switch after checking your membership to view the workflow.",
   "Der Arbeitsbereich ist für deine aktuelle Mitgliedschaft nicht verfügbar.":
     "This workspace is unavailable with your current membership.",
+  "E-Mails werden entsprechend dem Versandkontingent nach und nach versendet. Temporäre Fehler werden automatisch erneut versucht.":
+    "Emails are sent gradually within the sending quota. Temporary failures are retried automatically.",
   "E-Mail-Status:": "Email status:",
   "Versand vorgemerkt": "Queued for sending",
   "Versand läuft": "Sending",

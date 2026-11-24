@@ -340,6 +340,7 @@ const delivery =
         mailTransport,
         notificationCrypto,
         await readFile(new URL("../assets/stackit-mail.png", import.meta.url)),
+        Math.ceil(3600 / mailConfig.ratePerHour),
       )
     : undefined;
 const app = buildApp({

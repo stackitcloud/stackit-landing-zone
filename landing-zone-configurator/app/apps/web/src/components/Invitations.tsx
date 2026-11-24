@@ -45,7 +45,7 @@ const messages: Record<string, string> = {
   invitation_recipient_mismatch:
     "Diese Einladung gehört zu einer anderen verifizierten STACKIT-E-Mail-Adresse. Bitte melde dich mit dem eingeladenen Konto an.",
   invitation_email_rate_limit:
-    "Du hast das Limit von 20 E-Mail-Einladungen pro Stunde erreicht. Bitte versuche es später erneut.",
+    "Du hast das Limit von 100 E-Mail-Einladungen pro Stunde erreicht. Bitte versuche es später erneut.",
   invitation_unavailable:
     "Diese Einladung ist abgelaufen, widerrufen oder bereits verwendet. Bitte fordere eine neue Einladung an.",
   invitation_email_unavailable:
@@ -346,6 +346,13 @@ export function Invitations({
                   </span>
                 )}
               </div>
+              {item.mailStatus === "pending" && (
+                <p className="muted">
+                  {t(
+                    "E-Mails werden entsprechend dem Versandkontingent nach und nach versendet. Temporäre Fehler werden automatisch erneut versucht.",
+                  )}
+                </p>
+              )}
               {item.mailStatus && (
                 <p>
                   {t("E-Mail-Status:")}{" "}
