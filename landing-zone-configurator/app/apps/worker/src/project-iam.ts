@@ -13,6 +13,18 @@ import {
 } from "@lzc/contracts/recovery";
 import { z } from "zod";
 
+// OpenTofu 1.12.6 returns this pristine snapshot for an absent HTTP State.
+// Existing, partially applied or malformed States must retain normal checks.
+const absentHttpState = z.strictObject({
+  version: z.literal(4),
+  terraform_version: z.literal("1.12.6"),
+  serial: z.literal(0),
+  lineage: z.literal(""),
+  outputs: z.strictObject({}),
+  resources: z.array(z.never()).length(0),
+  check_results: z.null().optional(),
+});
+
 export async function pullIamState(
   root: string,
   work: string,
@@ -30,7 +42,10 @@ export async function pullIamState(
         maxBuffer: 16 * 1024 * 1024,
       },
     );
-    return result.stdout.trim() ? Buffer.from(result.stdout) : null;
+    const text = result.stdout.trim();
+    if (!text || absentHttpState.safeParse(JSON.parse(text)).success)
+      return null;
+    return Buffer.from(result.stdout);
   } catch (error) {
     const e = error as { code?: unknown; stderr?: unknown; stdout?: unknown };
     if (

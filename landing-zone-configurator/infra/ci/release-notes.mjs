@@ -1,6 +1,13 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.2.7": {
+  introduction:"Restore first-time Application Landing Zone planning.",
+  changes:[
+   "Recognize OpenTofu's pristine empty State for new orders and avoid starting IAM migration checks before a project exists.",
+   "Keep existing State and IAM protections; retry the same order without recreating its platform binding or project.",
+  ],
+ },
  "v2.2.6": {
   introduction:"Reliable invitation batches and quota-aware email delivery.",
   changes:[
