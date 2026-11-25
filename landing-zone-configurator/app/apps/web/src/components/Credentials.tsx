@@ -32,9 +32,15 @@ const messages: Record<string, string> = {
 export function Credentials({
   session,
   onChanged,
+  createOnly = false,
+  onCreated,
+  onBusyChange,
 }: {
   session: Session | null;
   onChanged?: () => void;
+  createOnly?: boolean;
+  onCreated?: (id?: string) => void;
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [organizations, setOrganizations] = useState<Record<string, string>>(
@@ -49,6 +55,7 @@ export function Credentials({
   const [notice, setNotice] = useState("");
   const file = useRef<HTMLInputElement>(null);
   const active = useRef(false);
+  const lifetime = useRef<AbortController | null>(null);
   async function checked(response: Response) {
     if (!response.ok) {
       const value = await response.json().catch(() => ({}));
@@ -72,6 +79,7 @@ export function Credentials({
   useEffect(() => {
     if (!session) return;
     const controller = new AbortController();
+    lifetime.current = controller;
     void refresh(controller.signal).catch(() => {
       if (!controller.signal.aborted)
         setError("Profile konnten nicht geladen werden. Bitte aktualisieren.");
@@ -83,6 +91,7 @@ export function Credentials({
     if (active.current) return;
     active.current = true;
     setBusy(true);
+    onBusyChange?.(true);
     setError("");
     setNotice("");
     try {
@@ -95,6 +104,7 @@ export function Credentials({
     } finally {
       active.current = false;
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
   async function save() {
@@ -114,9 +124,10 @@ export function Credentials({
         } catch {
           throw new Error("Die ausgewählte Datei enthält kein gültiges JSON.");
         }
-        await checked(
+        const saved = await checked(
           await fetch("/api/v1/credentials", {
             method: "POST",
+            signal: lifetime.current?.signal ?? null,
             credentials: "same-origin",
             headers: {
               "Content-Type": "application/json",
@@ -136,13 +147,18 @@ export function Credentials({
             }),
           }),
         );
+        const result = await saved.json();
+        if (lifetime.current?.signal.aborted) return;
         setName("");
         setFirewallAdministration(false);
         setFirewallUsername("");
         setNotice(
           "Der Zugang ist gespeichert. STACKIT-Berechtigungen wurden noch nicht geprüft.",
         );
-        await refresh();
+        if (!createOnly) await refresh();
+        onCreated?.(
+          typeof result.profileId === "string" ? result.profileId : undefined,
+        );
       } finally {
         if (file.current) file.current.value = "";
         setFirewallPassword("");
@@ -151,7 +167,7 @@ export function Credentials({
   }
   return (
     <section className="panel">
-      <h2>{t("Deployment-Zugänge")}</h2>
+      {!createOnly && <h2>{t("Deployment-Zugänge")}</h2>}
       <p>
         {t(
           "Hinterlege den STACKIT-Service-Account für deine späteren Deployments. Nur du kannst diese Profile in deinem Arbeitsbereich verwalten.",
@@ -263,134 +279,142 @@ export function Credentials({
               {t("Zugang sicher speichern")}
             </button>
           </form>
-          <h3>{t("Deine gespeicherten Zugänge")}</h3>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={busy}
-            onClick={() => void perform(() => refresh())}
-          >
-            {t("Zugänge aktualisieren")}
-          </button>
-          {!profiles.length && (
-            <p>{t("Noch keine persönlichen Zugänge geladen.")}</p>
-          )}
-          {profiles.map((profile) => (
-            <article className="project-form" key={profile.id}>
-              <h3>{profile.name}</h3>
-              <p className="credential-account">{profile.serviceAccount}</p>
-              {profile.state === "stored" &&
-                profile.firewallAdministrationConfigured && (
-                  <p>{t("OPNsense-Administrationszugang sicher hinterlegt")}</p>
-                )}
-              <p>
-                {profile.state === "stored"
-                  ? profile.lastCheck
-                    ? t("Sicher gespeichert · letzte Prüfung siehe unten")
-                    : t(
-                        "Sicher gespeichert · Berechtigungen noch nicht geprüft",
-                      )
-                  : t(
-                      "Speicherung unvollständig · bitte löschen und neu anlegen",
-                    )}
-              </p>
-              {profile.lastCheck && <CheckSummary check={profile.lastCheck} />}
-              {profile.state === "stored" && (
-                <>
-                  <Field
-                    id={`organization-${profile.id}`}
-                    label="Zielorganisation (UUID)"
-                    value={
-                      organizations[profile.id] ??
-                      profile.lastCheck?.organizationId ??
-                      ""
-                    }
-                    onChange={(value) =>
-                      setOrganizations((previous) => ({
-                        ...previous,
-                        [profile.id]: value,
-                      }))
-                    }
-                    hint="Die Organisations-ID findest du im STACKIT Portal oder in deiner Konfiguration. Diese Prüfung verändert keine Cloud-Ressourcen."
-                  />
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={
-                      busy ||
-                      !(
-                        organizations[profile.id] ??
-                        profile.lastCheck?.organizationId
-                      )
-                    }
-                    onClick={() =>
-                      void perform(async () => {
-                        const response = await checked(
-                          await fetch(
-                            `/api/v1/credentials/${profile.id}/check`,
-                            {
-                              method: "POST",
-                              credentials: "same-origin",
-                              headers: {
-                                "Content-Type": "application/json",
-                                "X-LZC-CSRF": session.csrfToken,
-                              },
-                              body: JSON.stringify({
-                                organizationId:
-                                  organizations[profile.id] ??
-                                  profile.lastCheck?.organizationId,
-                              }),
-                            },
-                          ),
-                        );
-                        const result = await response.json();
-                        setNotice(
-                          result.check.status === "passed"
-                            ? "Anmeldung und Organisationszugriff geprüft. Schreibrechte für ein Deployment sind damit noch nicht bestätigt."
-                            : "Prüfung abgeschlossen. Bitte beachte das Ergebnis am Profil.",
-                        );
-                        await refresh();
-                      })
-                    }
-                  >
-                    {t("Zugang prüfen")}
-                  </button>
-                </>
-              )}
+          {!createOnly && (
+            <>
+              <h3>{t("Deine gespeicherten Zugänge")}</h3>
               <button
                 type="button"
-                className="text-button danger"
+                className="button secondary"
                 disabled={busy}
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      t(
-                        "Zugang „{{value0}}“ aus dem Configurator löschen? Der Schlüssel wird in STACKIT selbst nicht widerrufen.",
-                        { value0: profile.name },
-                      ),
-                    )
-                  )
-                    return;
-                  void perform(async () => {
-                    await checked(
-                      await fetch(`/api/v1/credentials/${profile.id}`, {
-                        method: "DELETE",
-                        credentials: "same-origin",
-                        headers: { "X-LZC-CSRF": session.csrfToken },
-                      }),
-                    );
-                    setNotice(
-                      "Zugang aus dem Configurator entfernt. Zum Widerrufen des STACKIT-Schlüssels nutze die Service-Account-Verwaltung im Portal.",
-                    );
-                    await refresh();
-                  });
-                }}
+                onClick={() => void perform(() => refresh())}
               >
-                {t("Zugang löschen")}
-                <span className="sr-only">: {profile.name}</span>
+                {t("Zugänge aktualisieren")}
               </button>
-            </article>
-          ))}
+              {!profiles.length && (
+                <p>{t("Noch keine persönlichen Zugänge geladen.")}</p>
+              )}
+              {profiles.map((profile) => (
+                <article className="project-form" key={profile.id}>
+                  <h3>{profile.name}</h3>
+                  <p className="credential-account">{profile.serviceAccount}</p>
+                  {profile.state === "stored" &&
+                    profile.firewallAdministrationConfigured && (
+                      <p>
+                        {t("OPNsense-Administrationszugang sicher hinterlegt")}
+                      </p>
+                    )}
+                  <p>
+                    {profile.state === "stored"
+                      ? profile.lastCheck
+                        ? t("Sicher gespeichert · letzte Prüfung siehe unten")
+                        : t(
+                            "Sicher gespeichert · Berechtigungen noch nicht geprüft",
+                          )
+                      : t(
+                          "Speicherung unvollständig · bitte löschen und neu anlegen",
+                        )}
+                  </p>
+                  {profile.lastCheck && (
+                    <CheckSummary check={profile.lastCheck} />
+                  )}
+                  {profile.state === "stored" && (
+                    <>
+                      <Field
+                        id={`organization-${profile.id}`}
+                        label="Zielorganisation (UUID)"
+                        value={
+                          organizations[profile.id] ??
+                          profile.lastCheck?.organizationId ??
+                          ""
+                        }
+                        onChange={(value) =>
+                          setOrganizations((previous) => ({
+                            ...previous,
+                            [profile.id]: value,
+                          }))
+                        }
+                        hint="Die Organisations-ID findest du im STACKIT Portal oder in deiner Konfiguration. Diese Prüfung verändert keine Cloud-Ressourcen."
+                      />
+                      <button
+                        type="button"
+                        className="button secondary"
+                        disabled={
+                          busy ||
+                          !(
+                            organizations[profile.id] ??
+                            profile.lastCheck?.organizationId
+                          )
+                        }
+                        onClick={() =>
+                          void perform(async () => {
+                            const response = await checked(
+                              await fetch(
+                                `/api/v1/credentials/${profile.id}/check`,
+                                {
+                                  method: "POST",
+                                  credentials: "same-origin",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                    "X-LZC-CSRF": session.csrfToken,
+                                  },
+                                  body: JSON.stringify({
+                                    organizationId:
+                                      organizations[profile.id] ??
+                                      profile.lastCheck?.organizationId,
+                                  }),
+                                },
+                              ),
+                            );
+                            const result = await response.json();
+                            setNotice(
+                              result.check.status === "passed"
+                                ? "Anmeldung und Organisationszugriff geprüft. Schreibrechte für ein Deployment sind damit noch nicht bestätigt."
+                                : "Prüfung abgeschlossen. Bitte beachte das Ergebnis am Profil.",
+                            );
+                            await refresh();
+                          })
+                        }
+                      >
+                        {t("Zugang prüfen")}
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="text-button danger"
+                    disabled={busy}
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          t(
+                            "Zugang „{{value0}}“ aus dem Configurator löschen? Der Schlüssel wird in STACKIT selbst nicht widerrufen.",
+                            { value0: profile.name },
+                          ),
+                        )
+                      )
+                        return;
+                      void perform(async () => {
+                        await checked(
+                          await fetch(`/api/v1/credentials/${profile.id}`, {
+                            method: "DELETE",
+                            credentials: "same-origin",
+                            headers: { "X-LZC-CSRF": session.csrfToken },
+                          }),
+                        );
+                        setNotice(
+                          "Zugang aus dem Configurator entfernt. Zum Widerrufen des STACKIT-Schlüssels nutze die Service-Account-Verwaltung im Portal.",
+                        );
+                        await refresh();
+                      });
+                    }}
+                  >
+                    {t("Zugang löschen")}
+                    <span className="sr-only">: {profile.name}</span>
+                  </button>
+                </article>
+              ))}
+            </>
+          )}
           <p className="field-error" role="alert">
             {t(error)}
           </p>

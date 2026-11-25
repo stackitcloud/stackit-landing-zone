@@ -65,15 +65,18 @@ export function registerCredentials(
         } catch {
           return reply.code(400).send({ error: "invalid_service_account_key" });
         }
-        if (input.firewallAdministration)
-          await profiles.create(
-            session,
-            input.name,
-            key,
-            input.firewallAdministration,
-          );
-        else await profiles.create(session, input.name, key);
-        return reply.code(201).send({ stored: true });
+        const profileId = input.firewallAdministration
+          ? await profiles.create(
+              session,
+              input.name,
+              key,
+              input.firewallAdministration,
+            )
+          : await profiles.create(session, input.name, key);
+        return reply.code(201).send({
+          stored: true,
+          ...(typeof profileId === "string" ? { profileId } : {}),
+        });
       },
     );
     routes.post("/api/v1/credentials/:id/check", async (request, reply) => {

@@ -143,6 +143,14 @@ test("normal save preserves managed audit through the saved list and a separatel
       },
     });
   });
+  await page.route("**/api/v1/plans", (r) =>
+    r.fulfill({
+      json:
+        r.request().method() === "POST"
+          ? { id: "99999999-2222-4333-8444-555555555555" }
+          : { runs: [] },
+    }),
+  );
   await page.goto("/configurations");
   await page
     .getByRole("button", {
@@ -185,7 +193,7 @@ test("normal save preserves managed audit through the saved list and a separatel
   });
   await page
     .getByRole("button", {
-      name: `Deployment vorbereiten: ${stored.name}`,
+      name: `Plan erstellen: ${stored.name}`,
       exact: true,
     })
     .click();
@@ -207,26 +215,25 @@ test("normal save preserves managed audit through the saved list and a separatel
   await expect(storage.getByText(/Revision 16/)).toBeVisible();
   await storage
     .getByRole("button", {
-      name: `Deployment vorbereiten: ${stored.name}`,
+      name: `Plan erstellen: ${stored.name}`,
       exact: true,
     })
     .click();
-  await expect(page).toHaveURL(/\/deployments$/);
-  await page
-    .getByLabel(
-      "Ich bestätige: Diese Vorbereitung verwendet den aktuellen Accelerator-Stand für Plattformverträge.",
-      { exact: false },
-    )
+  await expect(page).toHaveURL(/\/deployments\/plan$/);
+  const plan = page.getByRole("dialog", {
+    name: "Plan erstellen",
+    exact: true,
+  });
+  await plan
+    .getByRole("checkbox", {
+      name: "Ich bestätige Zielorganisation und State-Zuordnung für diesen Plan.",
+      exact: true,
+    })
     .check();
-  await page
-    .getByRole("button", {
-      name: "Zugang prüfen und Vorbereitung speichern",
-      exact: true,
-    })
+  await plan
+    .getByRole("button", { name: "Plan erstellen", exact: true })
     .click();
-  await expect(
-    page.getByText("Vorbereitung gespeichert.", { exact: false }),
-  ).toBeVisible();
+  await expect(plan).toHaveCount(0);
   expect(preparations).toHaveLength(1);
   expect(writes).toBe(1);
 });

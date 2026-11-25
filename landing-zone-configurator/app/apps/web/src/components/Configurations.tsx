@@ -81,6 +81,8 @@ export function Configurations({
   onSaved,
   onLoad,
   onPrepare,
+  onPlanCurrent,
+  onAdviceChange,
   compact = false,
   dirty = true,
 }: {
@@ -90,6 +92,10 @@ export function Configurations({
   onSaved: (binding: ConfigurationBinding | null) => void;
   onLoad: (draft: EditorDraft, binding: ConfigurationBinding) => void;
   onPrepare: (selection: DeploymentSelection) => void;
+  onPlanCurrent?: () => void;
+  onAdviceChange?:
+    | ((advice: { id: string; revision: number } | null) => void)
+    | undefined;
   compact?: boolean;
   dirty?: boolean;
 }) {
@@ -106,6 +112,9 @@ export function Configurations({
     string,
     string
   > | null>(null);
+  useEffect(() => {
+    onAdviceChange?.(!binding && includeAdvice ? templateAdvice : null);
+  }, [binding, includeAdvice, templateAdvice, onAdviceChange]);
   const currentDraft = useRef({ draft, dirty });
   currentDraft.current = { draft, dirty };
   const active = useRef(false);
@@ -291,9 +300,11 @@ export function Configurations({
             type="button"
             className="button primary"
             disabled={busy || !session || !draft}
-            onClick={() => void save(false, true)}
+            onClick={() =>
+              onPlanCurrent ? onPlanCurrent() : void save(false, true)
+            }
           >
-            {t("Speichern und zur Bereitstellung")}
+            {t(dirty ? "Speichern und Plan erstellen" : "Plan erstellen")}
           </button>
           <button
             type="button"
@@ -423,7 +434,7 @@ export function Configurations({
                 type="button"
                 className="button secondary"
                 disabled={busy}
-                aria-label={t("Deployment vorbereiten: {{value0}}", {
+                aria-label={t("Plan erstellen: {{value0}}", {
                   value0: item.name,
                 })}
                 onClick={() =>
@@ -448,7 +459,7 @@ export function Configurations({
                       ) &&
                       !window.confirm(
                         t(
-                          "Der aktuelle Entwurf enthält nicht gespeicherte Änderungen. Die Vorbereitung verwendet den gespeicherten Stand ohne diese Änderungen. Trotzdem fortfahren?",
+                          "Der aktuelle Entwurf enthält nicht gespeicherte Änderungen. Der Plan verwendet den gespeicherten Stand ohne diese Änderungen. Trotzdem fortfahren?",
                         ),
                       )
                     )
@@ -457,7 +468,7 @@ export function Configurations({
                   })
                 }
               >
-                {t("Deployment vorbereiten")}
+                {t("Plan erstellen")}
               </button>
               <button
                 type="button"

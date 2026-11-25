@@ -3086,6 +3086,11 @@ describe.skipIf(!enabled)(
     it("reconciles only explicitly reviewed checkpoints once and preserves state for a corrected fresh plan", async () => {
       const test = await failedCheckpoint();
       expect(test.checkpoint.canResume).toBe(true);
+      expect(
+        (await test.plans.list(test.owner)).find(
+          (row) => row.id === test.run.id,
+        )?.retryCheckpointRequired,
+      ).toBe(true);
       const input = {
         confirmRetainState: true,
         stateVersion: test.checkpoint.stateVersion,
@@ -3126,6 +3131,11 @@ describe.skipIf(!enabled)(
       ]);
       expect(test.runner.start).toHaveBeenCalledTimes(starts);
       expect(test.secrets.get).toHaveBeenCalledTimes(secrets);
+      expect(
+        (await test.plans.list(test.owner)).find(
+          (row) => row.id === test.run.id,
+        )?.retryCheckpointRequired,
+      ).toBe(false);
       expect(
         (
           await migration!.query(
@@ -3479,6 +3489,27 @@ describe.skipIf(!enabled)(
         test.approval(saved.artifactSha256),
       );
       expect(test.runner.start).toHaveBeenCalledTimes(2);
+    });
+
+    it("returns only the committed credential profile identity for inline Plan selection", async () => {
+      const test = await fixture(true);
+      const profiles = new PostgresCredentialProfiles(pool, test.secrets);
+      const { key } = await test.secrets.get();
+      const id = await profiles.create(test.owner, "Inline Plan account", key);
+      expect(id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(await profiles.list(test.owner)).toContainEqual(
+        expect.objectContaining({
+          id,
+          name: "Inline Plan account",
+          state: "stored",
+        }),
+      );
+      expect(test.secrets.put).toHaveBeenCalledWith(
+        test.owner,
+        id,
+        key,
+        undefined,
+      );
     });
 
     it("authenticates HTTP backend tickets, applies strict CSRF approval and exports only a validated platform contract", async () => {

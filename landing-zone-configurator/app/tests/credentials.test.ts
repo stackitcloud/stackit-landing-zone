@@ -252,7 +252,7 @@ it("protects credential routes with the session and CSRF, rejects identity injec
   const profiles = {
     check: vi.fn(),
     list: vi.fn(async () => []),
-    create: vi.fn(async () => {}),
+    create: vi.fn(async () => "11111111-2222-4333-8444-555555555555"),
     remove: vi.fn(async () => {}),
   };
   const app = buildApp({ auth, credentials: profiles });
@@ -294,7 +294,10 @@ it("protects credential routes with the session and CSRF, rejects identity injec
     payload,
   });
   expect(result.statusCode).toBe(201);
-  expect(result.json()).toEqual({ stored: true });
+  expect(result.json()).toEqual({
+    stored: true,
+    profileId: "11111111-2222-4333-8444-555555555555",
+  });
   expect(result.body).not.toContain(privateKey);
   expect(profiles.create).toHaveBeenCalledExactlyOnceWith(
     session,
