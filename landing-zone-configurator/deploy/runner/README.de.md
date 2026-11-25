@@ -123,3 +123,13 @@ Keiner der Werte wird öffentlichen tfvars, Hashes oder Befehlsargumenten
 hinzugefügt; beide werden auch bei fehlgeschlagenen Befehlen aus Ausgaben
 entfernt. Apply verwendet den exakt geprüften gespeicherten Plan ohne Neuplanung;
 Application-Aufträge lehnen diese Fähigkeiten ab.
+
+## Erster Application-Plan und fehlender State
+
+Bei einer neuen Bestellung kann OpenTofu 1.12.6 einen fehlenden HTTP-State als
+unberührten leeren Snapshot statt als Fehler zurückgeben. Der Runner behandelt
+ausschließlich diesen exakten initialen Snapshot als fehlend und setzt den ersten
+Plan ohne IAM-Migrationsprüfung fort. Für bestehende oder teilweise gefüllte States
+bleiben sämtliche Zuordnungs- und IAM-Prüfungen erhalten. Nach einer Runner-Korrektur
+den Plan derselben Bestellung erneut starten; eine manuelle Projekt- oder
+State-Anlage ist nicht erforderlich.

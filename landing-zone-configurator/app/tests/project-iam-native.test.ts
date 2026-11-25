@@ -23,6 +23,84 @@ import { recoveryFixture } from "./fixtures/application-state-recovery.js";
 
 const binary = process.env.LZC_TEST_TOFU_BIN;
 const mirror = process.env.LZC_TEST_PROVIDER_MIRROR;
+
+it.skipIf(!binary).each(["absent", "existing"] as const)(
+  "real OpenTofu distinguishes an %s HTTP State before IAM discovery",
+  async (kind) => {
+    const existing = {
+      version: 4,
+      terraform_version: "1.12.6",
+      serial: 1,
+      lineage: "33333333-3333-4333-8333-333333333333",
+      outputs: { preserved: { value: "existing", type: "string" } },
+      resources: [],
+      check_results: null,
+    };
+    const methods: string[] = [];
+    const server = createServer((req, res) => {
+      methods.push(req.method!);
+      if (req.method !== "GET") {
+        res.statusCode = 405;
+        res.end();
+      } else if (kind === "absent") {
+        res.statusCode = 404;
+        res.end();
+      } else {
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify(existing));
+      }
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const folder = await mkdtemp(join(tmpdir(), "lzc-iam-first-plan-"));
+    try {
+      await mkdir(join(folder, "tools"));
+      await symlink(binary!, join(folder, "tools/tofu"));
+      const address = server.address() as { port: number };
+      await writeFile(
+        join(folder, "main.tf"),
+        `terraform {\n backend "http" {\n address = "http://127.0.0.1:${address.port}/state"\n }\n}\nresource "terraform_data" "contract" { input = "first-plan" }\n`,
+      );
+      const env = {
+        PATH: process.env.PATH,
+        TF_INPUT: "0",
+        CHECKPOINT_DISABLE: "1",
+      };
+      const command = (args: string[]) =>
+        promisify(execFile)(binary!, args, {
+          cwd: folder,
+          env,
+          timeout: 20_000,
+        });
+      await command(["init", "-no-color"]);
+      const state = await pullIamState(
+        folder,
+        folder,
+        env,
+        Date.now() + 20_000,
+      );
+      if (kind === "absent") {
+        expect(state).toBeNull();
+        const plan = await command(["plan", "-no-color", "-lock=false"]);
+        expect(plan.stdout).toContain("1 to add, 0 to change, 0 to destroy");
+      } else {
+        expect(state).not.toBeNull();
+        expect(JSON.parse(state!.toString())).toMatchObject(existing);
+        expect(() =>
+          readRecoveryState(state!, "33333333-3333-4333-8333-333333333333"),
+        ).toThrow("checkpoint-invalid");
+      }
+      expect(methods.every((method) => method === "GET")).toBe(true);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await rm(folder, { recursive: true, force: true });
+    }
+  },
+  30_000,
+);
+
 it.skipIf(!binary || !mirror)(
   "real OpenTofu and pinned provider adopt direct grants before a separate cleanup Apply",
   async () => {

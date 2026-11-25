@@ -111,3 +111,12 @@ validated and delivered only through child-process
 Neither value is added to public tfvars, hashes or command arguments, and both
 are redacted from output, including failed commands. Apply consumes the exact
 reviewed saved plan without replanning; application jobs reject these capabilities.
+
+## First Application Plan and absent State
+
+For a new order, an absent HTTP State can be returned by OpenTofu 1.12.6 as a
+pristine empty snapshot rather than an error. The Runner treats only that exact
+initial snapshot as absent and proceeds with the first Plan without IAM migration
+discovery. Existing or partially populated States retain all scope and IAM checks.
+After a Runner correction, retry the Plan on the same order; no manual project or
+State creation is required.
