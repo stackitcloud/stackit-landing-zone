@@ -3819,7 +3819,7 @@ export function assistantDnsRoleFailures(
       const assertion = sentence
         .replace(/[*`_]/g, "")
         .replace(
-          /\b(?:kein\w*|nicht|no|not)\s+(?:(?:rein\w*|purely|merely|just|only)\s+)?(?:nicht[\s\p{Dash_Punctuation}]*autoritat\w*|non[\s\p{Dash_Punctuation}]*authoritat\w*)/gu,
+          /\b(?:kein\w*|nicht|no|not)\s+(?:(?:rein\w*|blo(?:ss|ß)\w*|purely|merely|just|only)\s+)?(?:forwarding[\s\p{Dash_Punctuation}]*\/\s*)?(?:nicht[\s\p{Dash_Punctuation}]*autoritat\w*|non[\s\p{Dash_Punctuation}]*authoritat\w*)/gu,
           "",
         );
       return (
