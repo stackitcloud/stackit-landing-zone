@@ -181,8 +181,13 @@ test("STACKIT heartbeat preserves focused unsaved draft and persisted binding", 
     await name.evaluate((element, original) => element === original, input),
   ).toBe(true);
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
-  ).toBeDisabled();
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", {
+        name: "Speichern und Plan erstellen",
+        exact: true,
+      }),
+  ).toBeEnabled();
   expect(state.writes()).toBe(0);
   await page
     .locator("#configuration-save")
@@ -190,7 +195,9 @@ test("STACKIT heartbeat preserves focused unsaved draft and persisted binding", 
     .click();
   await expect.poll(state.writes).toBe(1);
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Plan erstellen", exact: true }),
   ).toBeEnabled();
 });
 
@@ -226,8 +233,13 @@ test("transient renewal errors and session expiry preserve the owned draft for t
   ).toBeVisible();
   await expect(name).toHaveValue("Unsaved expired draft");
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
-  ).toBeDisabled();
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", {
+        name: "Speichern und Plan erstellen",
+        exact: true,
+      }),
+  ).toBeEnabled();
   expect(state.writes()).toBe(0);
 });
 
@@ -273,8 +285,13 @@ test("session scope switches hide private drafts and restore only their original
     page.getByLabel("Name der Konfiguration", { exact: true }),
   ).toHaveValue("Private unsaved workspace draft");
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
-  ).toBeDisabled();
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", {
+        name: "Speichern und Plan erstellen",
+        exact: true,
+      }),
+  ).toBeEnabled();
   expect(state.writes()).toBe(0);
   await page
     .locator("#configuration-save")
@@ -282,7 +299,9 @@ test("session scope switches hide private drafts and restore only their original
     .click();
   await expect.poll(state.writes).toBe(1);
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Plan erstellen", exact: true }),
   ).toBeEnabled();
 });
 
@@ -411,8 +430,13 @@ test("logout from an older session generation cannot clear the renewed owned dra
     page.getByLabel("Name der Konfiguration", { exact: true }),
   ).toHaveValue("New generation unsaved draft");
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
-  ).toBeDisabled();
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", {
+        name: "Speichern und Plan erstellen",
+        exact: true,
+      }),
+  ).toBeEnabled();
   expect(state.writes()).toBe(0);
 });
 

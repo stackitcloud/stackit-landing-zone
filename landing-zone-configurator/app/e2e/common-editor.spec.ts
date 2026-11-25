@@ -524,7 +524,9 @@ test("shared configuration saves, reopens and restores in the account workspace"
     .getByRole("navigation", { name: "Brotkrumennavigation", exact: true })
     .getByRole("link", { name: "Konfigurationen", exact: true })
     .click();
-  await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
+  await page
+    .getByRole("button", { name: "Plan erstellen", exact: true })
+    .click();
   await expect(page.getByRole("alert")).toContainText(
     "Erstbereitstellungsplan noch nicht verfügbar",
   );
