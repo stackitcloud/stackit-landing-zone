@@ -271,41 +271,52 @@ test("adds credentials inside the plan dialog and selects the returned profile w
     "plan",
   ]);
 });
-test("saves an edited configuration only after explicit confirmation and plans the resulting revision", async ({
-  page,
-}) => {
-  const state = await setup(page);
-  await page.goto("/configurations");
-  await page
-    .getByRole("button", {
-      name: "Konfiguration öffnen: Direct plan platform",
-      exact: true,
-    })
-    .click();
-  await page
-    .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
-    .fill("Direct plan platform edited");
-  const tabs = page.getByRole("navigation", {
-    name: "Konfiguration",
-    exact: true,
+for (const viaDeployments of [false, true])
+  test(`saves an edited configuration only after explicit confirmation and plans the resulting revision${viaDeployments ? " through Deployments" : " from the editor"}`, async ({
+    page,
+  }) => {
+    const state = await setup(page);
+    await page.goto("/configurations");
+    await page
+      .getByRole("button", {
+        name: "Konfiguration öffnen: Direct plan platform",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("textbox", { name: "Name der Konfiguration", exact: true })
+      .fill("Direct plan platform edited");
+    if (viaDeployments) {
+      await page
+        .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+        .getByRole("button", { name: "Deployments", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Neuen Plan erstellen", exact: true })
+        .click();
+    } else {
+      await page
+        .getByRole("navigation", { name: "Konfiguration", exact: true })
+        .getByRole("button", {
+          name: "Speichern und Plan erstellen",
+          exact: true,
+        })
+        .click();
+    }
+    expect(state.mutations).toEqual([]);
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByText("Direct plan platform edited", { exact: true }),
+    ).toBeVisible();
+    await confirmAndStart(page);
+    expect(state.revision()).toBe(2);
+    expect(state.mutations.map((m) => m.path)).toEqual([
+      "save",
+      "prepare",
+      "plan",
+    ]);
   });
-  await tabs
-    .getByRole("button", { name: "Speichern und Plan erstellen", exact: true })
-    .click();
-  expect(state.mutations).toEqual([]);
-  await expect(
-    page
-      .getByRole("dialog")
-      .getByText("Direct plan platform edited", { exact: true }),
-  ).toBeVisible();
-  await confirmAndStart(page);
-  expect(state.revision()).toBe(2);
-  expect(state.mutations.map((m) => m.path)).toEqual([
-    "save",
-    "prepare",
-    "plan",
-  ]);
-});
 for (const locked of [false, true])
   test(`Apply retry ${locked ? "requires explicit checkpoint reconciliation" : "creates a fresh Plan without replaying an old Apply"}`, async ({
     page,

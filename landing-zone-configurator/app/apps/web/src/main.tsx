@@ -1358,7 +1358,13 @@ function App() {
                       onChoose={() => setView("repositories")}
                       onSelect={(selection) => openDeployment(selection, false)}
                       onNewPlan={() => {
-                        setPlanFromDraft(false);
+                        setPlanFromDraft(
+                          Boolean(
+                            draft &&
+                              configurationBinding?.id ===
+                                deploymentSelection?.configurationId,
+                          ),
+                        );
                         setRetryApply(false);
                         setRetryCredential(undefined);
                         setPlanDialogOpen(true);
