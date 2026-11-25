@@ -932,8 +932,21 @@ describe("real PostgreSQL session and tenant boundaries", () => {
           _history: unknown,
           _message: string,
           context?: AssistantCatalogueContext,
+          _accounts?: unknown,
+          _stream?: unknown,
+          options?: {
+            loadCatalogues?: (
+              region?: "eu01" | "eu02",
+            ) => Promise<AssistantCatalogueContext>;
+          },
         ) => {
-          contexts.push(context);
+          expect(context?.regions).toEqual([]);
+          const [loaded, repeated] = await Promise.all([
+            options?.loadCatalogues?.("eu01"),
+            options?.loadCatalogues?.("eu01"),
+          ]);
+          expect(repeated).toEqual(loaded);
+          contexts.push(loaded);
           return {
             explanation: "Aktuelle Angebote beruecksichtigt",
             questions: [],

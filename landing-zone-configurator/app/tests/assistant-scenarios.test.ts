@@ -1776,6 +1776,23 @@ it("accepts authority expressed by denying non-authoritative forwarding but reje
     ),
   ).toContain("dns_secondary_authority_denied");
 });
+it("recognizes a negated compound forwarding category without ignoring contradictory authority claims", () => {
+  const text =
+    "Secondary repliziert eine externe Primary-Zone und ist autoritativ – sie ist keine bloße Forwarding-/Non-authoritative-Zone. Der native Accelerator bildet die Secondary-Konfiguration nicht vollständig ab.";
+  expect(assistantDnsRoleFailures(text, "secondary")).toEqual([]);
+  expect(
+    assistantDnsRoleFailures(
+      text + " Secondary ist nicht autoritativ.",
+      "secondary",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+  expect(
+    assistantDnsRoleFailures(
+      text.replace("keine bloße", "eine bloße"),
+      "secondary",
+    ),
+  ).toContain("dns_secondary_authority_denied");
+});
 it("accepts coordinated unsaved statements without accepting affirmative or contrastive storage claims", () => {
   for (const text of [
     "Es wurde nichts geändert, gespeichert oder ausgeführt.",
@@ -1930,4 +1947,18 @@ it("rejects the historical advice that disabled audit logging keeps an archive b
       changes: [],
     }).failures,
   ).toContain("audit_archive_disabled_lifecycle_missing");
+});
+
+it("does not let an English folder heading conceal a German answer", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "foundations-prefixed-folders",
+  )!;
+  const result = validateAssistantScenario(scenario, {
+    explanation:
+      "Folder names: Vorschlag gespeichert. Bitte beantworte die Frage.",
+    questions: [],
+    changes: [],
+    references: ["governance-folders"],
+  });
+  expect(result.failures).toContain("dialogue_language_mismatch");
 });

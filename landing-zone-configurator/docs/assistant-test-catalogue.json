@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "status": "field-inventory-and-smoke-corpus-not-ai-qualification",
   "engineRevision": "a256f6896d11134fdc351786f1be5eba4e56b2e2",
-  "knowledgeSha256": "a8141436b8150486a4c6439d2f75b5e58a83acc12d15a95e925d1ba771f01410",
+  "knowledgeSha256": "17ccf708b092683cca8ec2da06d23c642b1df2eb538d021180ec2951abbfe09e",
   "sourceDigests": {
-    "scripts/assistant-scenarios.ts": "41c7c937f106564c7dcc89cb5559669098199e889f0a4cc5bba0a8aa4043a0c1",
+    "scripts/assistant-scenarios.ts": "e23ac5ca2d18b0022224bf8cc5bd483e268ee7a5ee8d2ea0e3f07e30c185ab4d",
     "scripts/assistant-tests.ts": "a715eb7a9e0ff21c1338c390dbaa6db283d9130dc5f9a155e7e6409b7207b7b8",
     "scripts/assistant-test-model.ts": "ba6ced19b4974fb8144d39506b8601b428a02cada2dcf7b300e4e9113bb33209"
   },
-  "suiteSha256": "4b9f4f5836129c2cabf1b8d00f4d8958fd53d6003c6af4f9ae543210d2594f12",
+  "suiteSha256": "a3a838afd4bd8f3b6729611085f30141f9ad6857b4307aa4e63e677dc9ec4b2a",
   "topics": [
     {
       "id": "credential-foundations",
@@ -658,6 +658,7 @@
         },
         {
           "id": "foundations-prefixed-folders",
+          "expectedLanguage": "en",
           "topic": "identity-foundations",
           "fixture": "folder-naming",
           "acceptableReferences": [
@@ -943,6 +944,7 @@
         },
         {
           "id": "governance-prefixed-folders-followup",
+          "expectedLanguage": "en",
           "topic": "governance-folders",
           "fixture": "folder-naming",
           "acceptableReferences": [

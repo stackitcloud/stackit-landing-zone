@@ -366,7 +366,13 @@ export class NativeConsultation {
     };
   }
   private remember(value: unknown): void {
+    if (Array.isArray(value)) {
+      for (const entry of value) this.remember(entry);
+      return;
+    }
     const data = object(value);
+    if (data.configuration) this.remember(data.configuration);
+    if (data.nativeDefaults) this.remember(data.nativeDefaults);
     if (Array.isArray(data.topics))
       for (const topic of data.topics) {
         const id = object(topic).id;

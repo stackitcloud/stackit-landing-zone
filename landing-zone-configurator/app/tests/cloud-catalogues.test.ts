@@ -659,3 +659,51 @@ it("maps all Observability scopes and bastion fields without confusing VM and Ku
     catalogueField("platform_kubernetes[*].cluster.node_pools[*].machine_type"),
   ).toBe("machineTypes");
 });
+
+it("coalesces public PIM reads, keeps their original timestamp and isolates returned values until TTL expiry", async () => {
+  const now = vi.spyOn(Date, "now").mockReturnValue(1000);
+  const request = vi.fn<typeof fetch>(async (url) =>
+    Response.json({
+      data: String(url).includes("/products?")
+        ? [pimProductExample]
+        : [pimSkuExample],
+    }),
+  );
+  try {
+    const client = new StackitCatalogueClient(request);
+    const [first, second] = await Promise.all([
+      client.pim("eu01"),
+      client.pim("eu01"),
+    ]);
+    expect(request).toHaveBeenCalledTimes(2);
+    first.skus.length = 0;
+    expect(second.skus).toHaveLength(1);
+    expect((await client.pim("eu01")).fetchedAt).toBe(second.fetchedAt);
+    expect((await client.pim("eu01")).skus).toHaveLength(1);
+    expect(request).toHaveBeenCalledTimes(2);
+    now.mockReturnValue(61_001);
+    expect((await client.pim("eu01")).skus).toHaveLength(1);
+    expect(request).toHaveBeenCalledTimes(4);
+  } finally {
+    now.mockRestore();
+  }
+});
+
+it("does not cache failed PIM reads or reuse another region's metadata", async () => {
+  let failed = true;
+  const request = vi.fn<typeof fetch>(async (url) => {
+    if (failed) throw Error("synthetic-unavailable");
+    const target = new URL(String(url));
+    return Response.json({
+      data: target.pathname.endsWith("products")
+        ? [pimProductExample]
+        : [{ ...pimSkuExample, region: target.searchParams.get("region") }],
+    });
+  });
+  const client = new StackitCatalogueClient(request);
+  await expect(client.pim("eu01")).rejects.toThrow();
+  failed = false;
+  expect((await client.pim("eu01")).region).toBe("eu01");
+  expect((await client.pim("eu02")).region).toBe("eu02");
+  expect(request).toHaveBeenCalledTimes(5);
+});

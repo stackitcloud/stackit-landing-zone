@@ -363,8 +363,18 @@ const app = buildApp({
             (diagnostic): void => {
               app.log.warn(diagnostic, "Assistant transport failure");
             },
+            (usage) =>
+              app.log.info(
+                { event: "assistant_inference_usage", ...usage },
+                "Assistant inference usage",
+              ),
           ),
           catalogues,
+          (timing) =>
+            app.log.info(
+              { event: "assistant_phase_completed", ...timing },
+              "Assistant phase completed",
+            ),
         ),
       }
     : {}),

@@ -2,6 +2,7 @@ import { setTimeout } from "node:timers/promises";
 import { isDeepStrictEqual } from "node:util";
 import {
   type AssistantLanguage,
+  type AssistantProgressPhase,
   assistantLanguageSchema,
   assistantProposalFields,
   assistantProposalValue,
@@ -603,6 +604,7 @@ export class AssistantInferenceError extends Error {
 }
 
 export type AssistantStream = {
+  onProgress?: (phase: AssistantProgressPhase) => void;
   signal?: AbortSignal;
   onText: (text: string) => void;
 };
@@ -755,6 +757,9 @@ async function boundedResponse(response: Response) {
 /** Retained temporarily for parity tests of the former controller. The live
  * conversational entry point below never falls back to this controller. */
 export type AssistantInferenceUsage = {
+  phase?: string;
+  model?: string;
+  elapsedMs?: number;
   promptTokens: number;
   completionTokens: number;
   tokenLimit?: number;
@@ -927,6 +932,7 @@ export class LegacyAssistantModelServing {
             : {}),
       }),
     };
+    const started = performance.now();
     const response = await this.request(url, options).catch(async (error) => {
       const code = transportCode(error);
       if (!code || !retryableTransportCodes.has(code) || requestSignal.aborted)
@@ -965,6 +971,9 @@ export class LegacyAssistantModelServing {
         response.headers.get("x-ratelimit-limit-tokens"),
       );
       this.onUsage({
+        phase: schemaName,
+        model,
+        elapsedMs: performance.now() - started,
         promptTokens: usage.data.usage.prompt_tokens,
         completionTokens: usage.data.usage.completion_tokens,
         ...(Number.isFinite(tokenLimit) && tokenLimit > 0

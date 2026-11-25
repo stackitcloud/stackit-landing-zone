@@ -176,6 +176,10 @@ const tokenEndpoints: Record<ServiceAccountKey["credentials"]["aud"], string> =
   };
 /** Product metadata only. No token, private key or raw provider response leaves this service. */
 export class StackitCatalogueClient {
+  private readonly publicPim = new Map<
+    string,
+    { expiresAt: number; value?: PimCatalogue; pending?: Promise<PimCatalogue> }
+  >();
   constructor(private readonly request: typeof fetch = fetch) {}
   private async pimPages<T>(
     path: "products" | "skus",
@@ -210,6 +214,30 @@ export class StackitCatalogueClient {
 
   async pim(region: "eu01" | "eu02"): Promise<PimCatalogue> {
     z.enum(["eu01", "eu02"]).parse(region);
+    const cached = this.publicPim.get(region);
+    if (cached?.value && cached.expiresAt > Date.now())
+      return structuredClone(cached.value);
+    if (cached?.pending) return structuredClone(await cached.pending);
+    const entry: {
+      expiresAt: number;
+      value?: PimCatalogue;
+      pending?: Promise<PimCatalogue>;
+    } = { expiresAt: 0 };
+    this.publicPim.set(region, entry);
+    const pending = this.loadPim(region);
+    entry.pending = pending;
+    try {
+      const value = await pending;
+      entry.value = value;
+      entry.expiresAt = Date.now() + 60_000;
+      delete entry.pending;
+      return structuredClone(value);
+    } catch (error) {
+      if (this.publicPim.get(region) === entry) this.publicPim.delete(region);
+      throw error;
+    }
+  }
+  private async loadPim(region: "eu01" | "eu02"): Promise<PimCatalogue> {
     const products = await this.pimPages(
       "products",
       new URLSearchParams({ pageSize: "100", language: "en" }),

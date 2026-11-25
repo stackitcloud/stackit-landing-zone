@@ -463,3 +463,15 @@ export type AssistantCataloguePicker = z.infer<
 >;
 /** Shared bounded text budget for generated Assistant replies. */
 export const assistantAnswerTextMaxLength = 16384;
+
+/** Server-authored progress; never model text or a proposal. */
+export const assistantProgressPhaseSchema = z.enum([
+  "preparing",
+  "catalogues",
+  "consulting",
+  "checking",
+  "finishing",
+]);
+export type AssistantProgressPhase = z.infer<
+  typeof assistantProgressPhaseSchema
+>;
