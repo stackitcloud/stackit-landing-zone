@@ -4453,3 +4453,51 @@ it("renders reviewed architecture facts from current intent without a prose-gene
   expect(result.changes).toEqual([]);
   expect(result.references).toContain("project-templates");
 });
+
+it("keeps phase progress separate from reviewed text and requires a final completion", async () => {
+  const text = vi.fn(),
+    progress = vi.fn();
+  const checked = async (response: Response) => response;
+  const response = (events: unknown[]) =>
+    new Response(events.map((event) => JSON.stringify(event)).join("\n"), {
+      headers: { "Content-Type": "application/x-ndjson" },
+    });
+  const phases = [
+    "preparing",
+    "catalogues",
+    "consulting",
+    "checking",
+    "finishing",
+  ];
+  const events = phases.map((phase) => ({ type: "progress", phase }));
+  const payload = { proposal: null };
+  await expect(
+    readAssistantResponse(
+      response([...events, { type: "complete", data: payload }]),
+      text,
+      checked,
+      progress,
+    ),
+  ).resolves.toEqual(payload);
+  expect(text).not.toHaveBeenCalled();
+  expect(progress.mock.calls.map((call) => call[0])).toEqual(phases);
+  await expect(
+    readAssistantResponse(response(events), text, checked, progress),
+  ).rejects.toThrow();
+  await expect(
+    readAssistantResponse(
+      response([{ type: "progress", phase: "unreviewed answer" }]),
+      text,
+      checked,
+      progress,
+    ),
+  ).rejects.toThrow();
+  // Older callers can ignore negotiated progress; older servers need not emit it.
+  await expect(
+    readAssistantResponse(
+      response([...events, { type: "complete", data: payload }]),
+      text,
+      checked,
+    ),
+  ).resolves.toEqual(payload);
+});

@@ -517,3 +517,47 @@ it("requires the current follow-up to be reviewed instead of replaying an earlie
     ).ready,
   ).toBe(true);
 });
+
+it("reviews bundled current values and default provenance without repeating discovery schemas", async () => {
+  const complete = vi.fn().mockResolvedValue({
+    ready: true,
+    findings: [],
+    requestChecks,
+    boundaryChecks: [],
+  });
+  await reviewConsultationAnswer({
+    ...input,
+    serviceFacts: {},
+    complete,
+    inspections: [
+      {
+        request: {
+          tool: "knowledge",
+          topics: ["devops-git"],
+          includeConfiguration: true,
+        },
+        result: {
+          schema: { neverRepeatDiscovery: true },
+          configuration: [
+            {
+              values: { devops: { git_flavor: "git-100" } },
+              schema: { neverRepeatDiscovery: true },
+            },
+          ],
+          nativeDefaults: [
+            {
+              path: "devops.allowed_network_ranges",
+              value: ["0.0.0.0/0"],
+              source: "accelerator",
+            },
+          ],
+        },
+      },
+    ],
+  });
+  const wire = JSON.stringify(complete.mock.calls[0]?.[0]);
+  expect(wire).toContain("git-100");
+  expect(wire).toContain("0.0.0.0/0");
+  expect(wire).toContain("accelerator");
+  expect(wire).not.toContain("neverRepeatDiscovery");
+});

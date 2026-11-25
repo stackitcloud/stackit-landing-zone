@@ -1931,3 +1931,17 @@ it("rejects the historical advice that disabled audit logging keeps an archive b
     }).failures,
   ).toContain("audit_archive_disabled_lifecycle_missing");
 });
+
+it("does not let an English folder heading conceal a German answer", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "foundations-prefixed-folders",
+  )!;
+  const result = validateAssistantScenario(scenario, {
+    explanation:
+      "Folder names: Vorschlag gespeichert. Bitte beantworte die Frage.",
+    questions: [],
+    changes: [],
+    references: ["governance-folders"],
+  });
+  expect(result.failures).toContain("dialogue_language_mismatch");
+});

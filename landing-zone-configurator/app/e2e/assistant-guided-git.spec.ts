@@ -176,6 +176,47 @@ test("English UI retains a capacity recommendation and offers the actual native 
     }
     return r.fulfill({ json: { conversation } });
   });
+  await page.addInitScript(() => {
+    const nativeFetch = window.fetch.bind(window);
+    let delayed = false;
+    window.fetch = async (...args) => {
+      const response = await nativeFetch(...args);
+      if (
+        delayed ||
+        args[1]?.method !== "POST" ||
+        !String(args[0]).endsWith("/assistant") ||
+        !String(args[1]?.body).includes(
+          "Please add a central git instance to the config",
+        )
+      )
+        return response;
+      delayed = true;
+      const data = await response.json();
+      const encoder = new TextEncoder();
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                JSON.stringify({ type: "progress", phase: "checking" }) + "\n",
+              ),
+            );
+            Object.assign(window, {
+              finishAssistantReview: () => {
+                controller.enqueue(
+                  encoder.encode(
+                    JSON.stringify({ type: "complete", data }) + "\n",
+                  ),
+                );
+                controller.close();
+              },
+            });
+          },
+        }),
+        { headers: { "Content-Type": "application/x-ndjson" } },
+      );
+    };
+  });
   await page.goto("/configurations");
   await page
     .getByRole("button", {
@@ -191,6 +232,20 @@ test("English UI retains a capacity recommendation and offers the actual native 
     .getByRole("textbox", { name: "Your message", exact: true })
     .fill("Please add a central git instance to the config");
   await chat.getByRole("button", { name: "Send message", exact: true }).click();
+  await expect(
+    chat
+      .getByRole("status")
+      .filter({ hasText: "Checking the answer and proposal" }),
+  ).toBeVisible();
+  await expect(
+    chat.getByRole("button", { name: "Send message", exact: true }),
+  ).toBeDisabled();
+  await expect(chat.locator(".assistant-proposal")).toHaveCount(0);
+  await page.evaluate(() =>
+    (
+      window as unknown as { finishAssistantReview: () => void }
+    ).finishAssistantReview(),
+  );
   const questions = chat.getByRole("region", {
     name: "Follow-up questions",
     exact: true,

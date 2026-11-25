@@ -1,6 +1,7 @@
 import {
   type AssistantDefaultNotice,
   type AssistantMergeConflict,
+  type AssistantProgressPhase,
   type AssistantRecommendation,
   assistantAdditiveField,
   assistantMergeConfirmationSchema,
@@ -168,6 +169,7 @@ function ScopedAssistantChat({
     useState<Conversation | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<AssistantProgressPhase | null>(null);
   const [error, setError] = useState<string | AssistantFailureError>("");
   const errorText =
     error instanceof AssistantFailureError ? error.localize() : t(error);
@@ -338,6 +340,7 @@ function ScopedAssistantChat({
     active.current = true;
     refreshGeneration.current++;
     setBusy(true);
+    setProgress(null);
     setError("");
     setNotice("");
     const signal = lifetime.current?.signal;
@@ -374,7 +377,12 @@ function ScopedAssistantChat({
               ...(action !== "remove"
                 ? { "Content-Type": "application/json" }
                 : {}),
-              ...(action === "send" ? { Accept: "application/x-ndjson" } : {}),
+              ...(action === "send"
+                ? {
+                    Accept: "application/x-ndjson",
+                    "X-LZC-Assistant-Progress": "1",
+                  }
+                : {}),
               ...(action === "remove" && conversation
                 ? {
                     "If-Match": `"${conversation.id}:${conversation.revision}"`,
@@ -460,6 +468,9 @@ function ScopedAssistantChat({
             if (!signal?.aborted) setPreviewText(text);
           },
           checked,
+          (phase) => {
+            if (!signal?.aborted) setProgress(phase);
+          },
         );
         if (signal?.aborted) return;
         setConversation(body.conversation);
@@ -509,6 +520,7 @@ function ScopedAssistantChat({
       active.current = false;
       if (!signal?.aborted) {
         setBusy(false);
+        setProgress(null);
         setPreviewText(null);
       }
     }
@@ -825,7 +837,23 @@ function ScopedAssistantChat({
                 <Send size={18} aria-hidden="true" />
               </button>
             </div>
-            {busy && <p role="status">{t("Anfrage läuft…")}</p>}
+            {busy && (
+              <p role="status">
+                {t(
+                  progress
+                    ? {
+                        preparing: "Anfrage wird vorbereitet …",
+                        catalogues:
+                          "Aktuelle Service-Angebote werden abgerufen …",
+                        consulting: "Deine Anfrage wird bearbeitet …",
+                        checking:
+                          "Antwort und Vorschlag werden fachlich geprüft …",
+                        finishing: "Antwort wird bereitgestellt …",
+                      }[progress]
+                    : "Anfrage läuft…",
+                )}
+              </p>
+            )}
           </form>
         </div>
       )}

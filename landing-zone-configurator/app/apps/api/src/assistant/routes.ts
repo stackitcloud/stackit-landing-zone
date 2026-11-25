@@ -92,7 +92,16 @@ function sendStream(
   reply.header("Content-Type", "application/x-ndjson");
   reply.header("Cache-Control", "no-store");
   reply.header("X-Accel-Buffering", "no");
+  const progress = request.headers["x-lzc-assistant-progress"] === "1";
+  if (progress) write({ type: "progress", phase: "preparing" });
   void task({
+    ...(progress
+      ? {
+          onProgress: (
+            phase: import("@lzc/contracts").AssistantProgressPhase,
+          ) => write({ type: "progress", phase }),
+        }
+      : {}),
     signal: controller.signal,
     onText: (text) => write({ type: "text", text }),
   })

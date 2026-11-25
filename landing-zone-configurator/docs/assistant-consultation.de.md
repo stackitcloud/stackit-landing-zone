@@ -234,6 +234,41 @@ wiederverwendbare Template-Prinzipale von konkreten Projektmitgliedern. Deshalb
 brauchen Template-Rechteänderungen keine einzelnen Benutzeradressen. Neue Presets
 benötigen weiterhin einen bestätigten initialen Owner.
 
+## Laufzeit von Abfragen und Antworten
+
+Der Editor-Dialog lädt Produktkataloge erst, wenn ein Katalogwerkzeug oder eine
+kataloggestützte Auswahl sie benötigt. Abfragen derselben Region teilen sich pro
+Dialogschritt einen laufenden Abruf. Authentifizierte Angebote werden bei der
+nächsten Nachricht erneut im Projektzugriff des aktuellen Benutzers gelesen.
+Übergreifend zwischengespeichert werden ausschließlich öffentliche PIM-Metadaten:
+maximal 60 Sekunden pro Region, mit ursprünglichem Abrufzeitpunkt. Fehler werden
+nicht gespeichert und veraltete Daten nicht ersatzweise ausgeliefert. Jeder
+Aufrufer erhält eine unabhängige Kopie.
+
+Für Konfigurationsaufgaben kann `read_knowledge` mit `includeConfiguration` die
+bearbeitbaren Konfigurationswurzeln und tatsächlichen nativen Defaults der
+gewählten Themen gemeinsam abrufen. Reine Beratung benötigt dieses Bündel nicht.
+Begrenzte Bündel nennen verbleibende Pfade ausdrücklich. Unabhängige Abfragen
+laufen gemeinsam; Validierung und abhängige Änderungen warten weiterhin auf ihre
+Eingaben. Die fachliche Prüfung erhält auch gebündelte Werte und Default-Quellen.
+Ihr Ergebnis soll konkrete Nachweise referenzieren, statt ganze Dokumente zu
+wiederholen. Vollständigkeits-, Absichts-, Sprach- und Grenzprüfungen bleiben
+verpflichtend. Ordnervorschläge enthalten vor der Prüfung eine lokalisierte
+Zusammenfassung der exakt validierten Ordnernamen.
+
+Der Browser fordert mit `X-LZC-Assistant-Progress: 1` bei NDJSON-Anfragen feste
+Phasenmeldungen an. Er zeigt Vorbereitung, Katalogabruf, Bearbeitung, fachliche
+Prüfung und Abschluss getrennt an. Ältere Clients behalten das bisherige
+Ereignisprotokoll. Phasenmeldungen enthalten keine unfertigen Modelltexte oder
+Vorschläge; eine Übernahme ist erst nach validiertem Abschluss möglich.
+
+`assistant_phase_completed` protokolliert eine zufällige Korrelations-ID des
+Dialogschritts, Phase, Millisekunden und Erfolg. `assistant_inference_usage`
+enthält Modell, Phase, Laufzeit und Tokenzahlen. Prompts, Konfiguration,
+Zugangsdaten und Werkzeugargumente werden nicht protokolliert. Diese Messungen
+trennen Kataloglaufzeit, Modellrunden und fachliche Prüfung, ohne das
+Reasoning-Budget oder die dreiminütige Dialogfrist zu verändern.
+
 ## Kontext und Defaults
 
 Nach einer abgelehnten Schlussantwort wird ihr Kandidat nicht automatisch an

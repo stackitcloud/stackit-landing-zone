@@ -1,4 +1,11 @@
 export const englishMessages: Record<string, string> = {
+  "Anfrage wird vorbereitet …": "Preparing your request …",
+  "Aktuelle Service-Angebote werden abgerufen …":
+    "Looking up current service offerings …",
+  "Deine Anfrage wird bearbeitet …": "Working on your request …",
+  "Antwort und Vorschlag werden fachlich geprüft …":
+    "Checking the answer and proposal …",
+  "Antwort wird bereitgestellt …": "Preparing the response …",
   "Die Zielorganisation stimmt nicht mit dem geprüften Plan überein. Prüfe die exakte Organisations-ID.":
     "The target organization does not match the reviewed Plan. Check the exact organization ID.",
   "Die Ausführung benötigt Wiederherstellung. Prüfe zuerst den Checkpoint. Bereits ausgeführte Änderungen werden bei einem neuen Plan berücksichtigt.":

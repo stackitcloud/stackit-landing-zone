@@ -10,6 +10,7 @@ import {
   assistantProposalConflicts,
   assistantProposalFields,
   assistantProposalValue,
+  catalogueField,
   mergeAssistantDrafts,
   selectAssistantProposalFields,
 } from "@lzc/contracts";
@@ -73,7 +74,11 @@ export class AssistantError extends Error {
   }
 }
 
-import type { ConsultationState } from "./consultation.js";
+import {
+  type ConsultationState,
+  type ConsultationTiming,
+  reportConsultationTiming,
+} from "./consultation.js";
 import { consultationProposalDiff } from "./proposal-diff.js";
 import { assistantTemplateQuestionPaths } from "./template-paths.js";
 
@@ -340,6 +345,9 @@ export class AssistantConversations {
       Partial<Pick<AssistantModelServing, "adviseTemplates">>,
     private readonly catalogues?: Pick<PostgresCloudCatalogues, "automatic"> &
       Partial<Pick<PostgresCloudCatalogues, "pim">>,
+    private readonly onTiming?: (
+      event: ConsultationTiming & { turnId: string },
+    ) => void,
   ) {}
 
   private async loadObservabilityCatalogue(
@@ -817,6 +825,9 @@ export class AssistantConversations {
     const message = chatMessageSchema.parse(text);
     if (this.active >= 5) throw new AssistantError(429, "assistant_busy");
     this.active++;
+    const turnId = randomUUID(),
+      started = performance.now();
+    let ok = false;
     try {
       const knowledge = buildAssistantKnowledge();
       const base = await this.work(
@@ -903,10 +914,32 @@ export class AssistantConversations {
           ? (identity.identity?.email ?? null)
           : null,
       };
-      const catalogues = await this.productCatalogues(
-        session,
-        configuredCatalogueRegions(base.values),
-      );
+      const catalogues: AssistantCatalogueContext = { regions: [] };
+      const loaded = new Map<string, Promise<AssistantCatalogueContext>>();
+      const loadCatalogues = async (region?: "eu01" | "eu02") => {
+        const regions = region
+          ? [region]
+          : configuredCatalogueRegions(base.values);
+        const snapshots = await Promise.all(
+          regions.map((region) => {
+            let pending = loaded.get(region);
+            if (!pending) {
+              pending = this.productCatalogues(session, [region]);
+              loaded.set(region, pending);
+            }
+            return pending;
+          }),
+        );
+        for (const snapshot of snapshots)
+          for (const entry of snapshot.regions) {
+            const index = catalogues.regions.findIndex(
+              (item) => item.region === entry.region,
+            );
+            if (index < 0) catalogues.regions.push(entry);
+            else catalogues.regions[index] = entry;
+          }
+        return catalogues;
+      };
       let consultationState: ConsultationState | undefined;
       const latestAssistant = base.row.messages.findLast(
         (entry) => entry.role === "assistant",
@@ -975,6 +1008,8 @@ export class AssistantConversations {
           base.context?.messages ?? [],
           stream,
           {
+            loadCatalogues,
+            onTiming: (event) => this.onTiming?.({ ...event, turnId }),
             pendingProposal,
             state: latestAssistant?.proposalDiscarded
               ? undefined
@@ -1006,6 +1041,13 @@ export class AssistantConversations {
         },
         assistantTemplateQuestionPaths(modelValues),
       );
+      stream?.onProgress?.("finishing");
+      if (
+        validatedProposal.questions.some((question) =>
+          catalogueField(question.path),
+        )
+      )
+        await loadCatalogues();
       const proposal = enrichCatalogueQuestions(
         validatedProposal,
         base.values,
@@ -1043,60 +1085,70 @@ export class AssistantConversations {
           throw error;
         }
       });
-      return await this.work(session, id, async (client, configuration) => {
-        stream?.signal?.throwIfAborted();
-        if (configuration.revision !== revision)
-          throw new AssistantError(409, "configuration_changed");
-        const messages = [
-          ...base.row.messages,
-          {
-            id: randomUUID(),
-            role: "user",
-            content: message,
-            authorId: session.userId,
-            authorName: session.login,
-          },
-          {
-            id: randomUUID(),
-            role: "assistant",
-            authorId: session.userId,
-            ...(consultationState ? { consultationState } : {}),
-            ...(proposal.recommendations?.length
-              ? { recommendations: proposal.recommendations }
-              : {}),
-            content:
-              proposal.explanation +
-              "\n" +
-              proposal.questions.map((question) => question.text).join("\n"),
-          },
-        ];
-        const row = (
-          await client.query<Conversation>(
-            "UPDATE lzc.assistant_conversations SET messages=$1,proposal=$2,base_revision=$3,knowledge_hash=$6,proposal_baseline=$7,revision=revision+1 WHERE id=$4 AND revision=$5 AND expires_at>now() RETURNING *",
-            [
-              JSON.stringify(messages),
-              JSON.stringify(proposal),
-              revision,
-              base.row.id,
-              base.row.revision,
-              knowledge.sha256,
-              JSON.stringify(
-                Object.fromEntries(
-                  proposal.changes.map((change) => [
-                    change.path,
-                    assistantProposalValue(base.values, change.path) ?? null,
-                  ]),
+      const result = await this.work(
+        session,
+        id,
+        async (client, configuration) => {
+          stream?.signal?.throwIfAborted();
+          if (configuration.revision !== revision)
+            throw new AssistantError(409, "configuration_changed");
+          const messages = [
+            ...base.row.messages,
+            {
+              id: randomUUID(),
+              role: "user",
+              content: message,
+              authorId: session.userId,
+              authorName: session.login,
+            },
+            {
+              id: randomUUID(),
+              role: "assistant",
+              authorId: session.userId,
+              ...(consultationState ? { consultationState } : {}),
+              ...(proposal.recommendations?.length
+                ? { recommendations: proposal.recommendations }
+                : {}),
+              content:
+                proposal.explanation +
+                "\n" +
+                proposal.questions.map((question) => question.text).join("\n"),
+            },
+          ];
+          const row = (
+            await client.query<Conversation>(
+              "UPDATE lzc.assistant_conversations SET messages=$1,proposal=$2,base_revision=$3,knowledge_hash=$6,proposal_baseline=$7,revision=revision+1 WHERE id=$4 AND revision=$5 AND expires_at>now() RETURNING *",
+              [
+                JSON.stringify(messages),
+                JSON.stringify(proposal),
+                revision,
+                base.row.id,
+                base.row.revision,
+                knowledge.sha256,
+                JSON.stringify(
+                  Object.fromEntries(
+                    proposal.changes.map((change) => [
+                      change.path,
+                      assistantProposalValue(base.values, change.path) ?? null,
+                    ]),
+                  ),
                 ),
-              ),
-            ],
-          )
-        ).rows[0];
-        if (!row)
-          throw new AssistantError(409, "assistant_conversation_changed");
-        return response(row, configuration);
-      });
+              ],
+            )
+          ).rows[0];
+          if (!row)
+            throw new AssistantError(409, "assistant_conversation_changed");
+          return response(row, configuration);
+        },
+      );
+      ok = true;
+      return result;
     } finally {
       this.active--;
+      reportConsultationTiming(
+        (event) => this.onTiming?.({ ...event, turnId }),
+        { phase: "turn", elapsedMs: performance.now() - started, ok },
+      );
     }
   }
 

@@ -85,6 +85,39 @@ select another tenant, arbitrary HTTP endpoints, credentials, live State or a Pl
 Native schemas and defaults come from the generated Accelerator input contract;
 the model does not maintain a second list of default values.
 
+### Read and response latency
+
+Editor consultation loads product catalogues only when a catalogue tool or a
+catalogue-backed selector needs them. Requests for the same region share one
+in-flight lookup within that turn. Authenticated offerings are read again on the
+next turn and remain scoped to the current user's project access. Only public
+PIM metadata is cached across turns: at most 60 seconds, by region, with its
+original fetch timestamp. Failed public lookups are not cached or served stale;
+each consumer receives an independent copy.
+
+For configuration work, `read_knowledge` can request `includeConfiguration` to
+receive the selected topics' editable roots and authoritative native defaults
+alongside their knowledge. Advice-only reads omit that bundle. Bounded bundles
+explicitly list remaining paths for further reads. Independent reads run together;
+validation and dependent writes still wait for their actual inputs. Bundled values
+and default provenance also reach the semantic reviewer. Its output should cite
+specific evidence rather than repeat whole documents; its completeness, intent,
+language and boundary checks remain mandatory. Folder proposals include a localized
+summary of the exact validated folder names before review.
+
+The browser negotiates phase events with `X-LZC-Assistant-Progress: 1` on NDJSON
+requests. It displays preparation, catalogue lookup, consultation, semantic review
+and finalization separately. Older clients retain the original event protocol.
+Progress contains fixed phase codes, never unfinished model prose or proposals;
+acceptance remains possible only after validated completion.
+
+`assistant_phase_completed` logs include an opaque turn correlation ID, phase,
+elapsed milliseconds and success. `assistant_inference_usage` logs include model,
+phase, elapsed time and token counts. Neither includes prompts, configuration,
+credentials or tool arguments. These measurements distinguish catalogue latency,
+model iterations and semantic review without reducing the model's reasoning budget
+or changing the three-minute consultation deadline.
+
 Catalogue requests can carry user requirements with a source turn and quotation.
 Concrete setup recommendations use this project/region lookup even when the model
 already knows the documented plan ceilings. The lookup drives recommendation cards

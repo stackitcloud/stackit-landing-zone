@@ -1,7 +1,12 @@
+import {
+  type AssistantProgressPhase,
+  assistantProgressPhaseSchema,
+} from "@lzc/contracts";
 export async function readAssistantResponse<Result>(
   response: Response,
   onText: (text: string) => void,
   checked: (response: Response) => Promise<Response>,
+  onProgress?: (phase: AssistantProgressPhase) => void,
 ): Promise<Result> {
   if (!response.headers.get("content-type")?.includes("application/x-ndjson"))
     return response.json();
@@ -16,7 +21,9 @@ export async function readAssistantResponse<Result>(
     if (!line.trim()) return;
     if (completed) throw new Error("Unerwartete Daten nach dem Abschluss.");
     const event = JSON.parse(line);
-    if (
+    if (event.type === "progress") {
+      onProgress?.(assistantProgressPhaseSchema.parse(event.phase));
+    } else if (
       event.type === "text" &&
       typeof event.text === "string" &&
       event.text.length <= 3000

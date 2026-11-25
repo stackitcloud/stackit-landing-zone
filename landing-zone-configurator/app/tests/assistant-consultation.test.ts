@@ -1760,3 +1760,231 @@ it("includes mandatory credential boundaries in final review without requiring a
     "Explain the configuration lifecycle; no edits.",
   );
 });
+
+it("bundles opted-in editable configuration and defaults with knowledge, keeping protected inputs out", async () => {
+  const loadCatalogues = vi.fn();
+  const timings: unknown[] = [];
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [
+        {
+          tool: "knowledge",
+          topics: ["identity-foundations", "governance-folders"],
+          includeConfiguration: true,
+        },
+      ],
+    }),
+    (request) => {
+      const result = lastResult(request).toolResults[0].result;
+      const values = Object.assign(
+        {},
+        ...result.configuration.map((part: { values: unknown }) => part.values),
+      );
+      expect(values.company_code).toBe("acme");
+      expect(values.rm_folders).toEqual({
+        platform: { name: "acme-platform" },
+      });
+      expect(JSON.stringify(result)).not.toContain("never-send-secret");
+      expect(
+        result.nativeDefaults.some(
+          (part: { path: string }) => part.path === "company_code",
+        ),
+      ).toBe(true);
+      expect(loadCatalogues).not.toHaveBeenCalled();
+      return final({
+        references: ["identity-foundations", "governance-folders"],
+      });
+    },
+  ]);
+  await client.converse(
+    selection,
+    {
+      region: "eu01",
+      company_code: "acme",
+      rm_folders: { platform: { name: "acme-platform" } },
+      firewall_admin_password: "never-send-secret",
+    },
+    [],
+    "Show the current company prefix and folder names.",
+    undefined,
+    [],
+    undefined,
+    { loadCatalogues, onTiming: (event) => timings.push(event) },
+  );
+  expect(timings).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        phase: "assistant_consultation_step",
+        ok: true,
+      }),
+      expect.objectContaining({
+        phase: "assistant_consultation_review",
+        ok: true,
+      }),
+    ]),
+  );
+});
+
+it("does not inspect configuration for ordinary advice and treats telemetry as observational", async () => {
+  const { client } = model([
+    () => ({
+      action: "inspect",
+      requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+    }),
+    (request) => {
+      const result = lastResult(request).toolResults[0].result;
+      expect(result.configuration).toBeUndefined();
+      expect(result.nativeDefaults).toBeUndefined();
+      return final({ references: ["devops-git"] });
+    },
+  ]);
+  const loadCatalogues = vi.fn();
+  const result = await client.converse(
+    selection,
+    { region: "eu01" },
+    [],
+    "Explain Git limits only.",
+    undefined,
+    [],
+    undefined,
+    {
+      loadCatalogues,
+      onTiming: () => {
+        throw Error("observer-failed");
+      },
+    },
+  );
+  expect(result.changes).toEqual([]);
+  expect(loadCatalogues).not.toHaveBeenCalled();
+});
+
+it("loads catalogues only at a native catalogue read and keeps source-backed choices", async () => {
+  const scenario = assistantScenarios.find(
+    (s) => s.id === "editor-devops-sized-80-en",
+  )!;
+  const fixture = assistantScenarioFixture(scenario);
+  const loadCatalogues = vi.fn(async () => fixture.catalogues);
+  const { client } = model([
+    () => {
+      expect(loadCatalogues).not.toHaveBeenCalled();
+      return {
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+      };
+    },
+    () => {
+      expect(loadCatalogues).not.toHaveBeenCalled();
+      return {
+        action: "inspect",
+        requests: [
+          {
+            tool: "catalogue",
+            path: "devops.git_flavor",
+            region: "eu01",
+            requirements: [],
+          },
+        ],
+      };
+    },
+    (request) => {
+      expect(
+        lastResult(request).toolResults[0].result.catalogue.options.map(
+          (entry: { value: string }) => entry.value,
+        ),
+      ).toContain("git-100");
+      return final({ references: ["devops-git"] });
+    },
+  ]);
+  await client.converse(
+    selection,
+    fixture.values,
+    [],
+    "Show Git plans without changing anything.",
+    { regions: [] },
+    [],
+    undefined,
+    { loadCatalogues },
+  );
+  expect(loadCatalogues).toHaveBeenCalledExactlyOnceWith("eu01");
+});
+
+it.each(["en", "de"] as const)(
+  "shows the exact validated folder names in %s before semantic review",
+  async (language) => {
+    const { client } = model(
+      [
+        () => ({
+          action: "inspect",
+          requests: [
+            {
+              tool: "knowledge",
+              topics: ["governance-folders"],
+              includeConfiguration: true,
+            },
+          ],
+        }),
+        () => ({
+          action: "validate_proposal",
+          basis: [],
+          changes: [
+            {
+              path: "rm_folders",
+              operation: "merge",
+              value: { platform: { name: "acme-platform" } },
+            },
+          ],
+        }),
+        (body) => {
+          expect(lastResult(body).validation.ok).toBe(true);
+          return final({
+            kind: "proposal",
+            proposal: lastResult(body).validation.proposal,
+            references: ["governance-folders"],
+            explanation:
+              language === "en"
+                ? "Proposed folder rename."
+                : "Ordnerumbenennung vorgeschlagen.",
+          });
+        },
+      ],
+      [
+        (body) => {
+          const payload = JSON.parse(
+            body.messages.find((message) => message.role === "user")!.content,
+          );
+          expect(payload.answer.explanation).toContain(
+            language === "en" ? "Folder names:" : "Ordnernamen:",
+          );
+          expect(payload.answer.explanation).toContain(
+            "platform: acme-platform",
+          );
+          return { ready: true, findings: [] };
+        },
+      ],
+    );
+    const original = {
+      platform: { name: "old-platform" },
+      apps: { name: "existing-apps" },
+    };
+    const answer = await client.converse(
+      selection,
+      {
+        company_code: "acme",
+        rm_folders: original,
+        "assistant.language": language,
+      },
+      [],
+      "Rename only platform to acme-platform; preserve apps.",
+    );
+    expect(answer.explanation).toContain("platform: acme-platform");
+    expect(answer.changes).toMatchObject([
+      {
+        path: "rm_folders",
+        operation: "merge",
+        value: { platform: { name: "acme-platform" } },
+      },
+    ]);
+    expect(original.apps.name).toBe("existing-apps");
+  },
+);

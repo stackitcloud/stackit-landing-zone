@@ -1679,6 +1679,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
   ),
   {
     id: "foundations-prefixed-folders",
+    expectedLanguage: "en",
     topic: "identity-foundations",
     fixture: "folder-naming",
     acceptableReferences: [
@@ -1690,6 +1691,7 @@ export const assistantScenarios: readonly AssistantScenario[] = [
   },
   {
     id: "governance-prefixed-folders-followup",
+    expectedLanguage: "en",
     topic: "governance-folders",
     fixture: "folder-naming",
     acceptableReferences: [
