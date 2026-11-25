@@ -78,7 +78,7 @@ function readRoute() {
           ? "apply"
           : path === "/deployments/plan"
             ? "plan"
-            : "preparation";
+            : "plan";
   return {
     view,
     selected: template ?? standaloneTemplate,
@@ -93,7 +93,7 @@ export function useNavigation(restoreEditor: boolean) {
           view: "editor" as const,
           selected: standaloneTemplate,
           step: "basics" as const,
-          deploymentStep: "preparation" as const,
+          deploymentStep: "plan" as const,
         }
       : readRoute(),
   );
@@ -130,7 +130,7 @@ export function useNavigation(restoreEditor: boolean) {
                       : view === "deployments"
                         ? detail === "plan" || detail === "apply"
                           ? `/deployments/${detail}`
-                          : "/deployments"
+                          : "/deployments/plan"
                         : view === "credentials"
                           ? "/credentials"
                           : view === "repositories"

@@ -42,7 +42,7 @@ export interface CredentialProfiles {
     name: string,
     key: ServiceAccountKey,
     firewallAdministration?: FirewallAdministration,
-  ): Promise<void>;
+  ): Promise<void | string>;
   remove(session: Session, id: string): Promise<void>;
 }
 export class PostgresCredentialProfiles implements CredentialProfiles {
@@ -119,6 +119,7 @@ export class PostgresCredentialProfiles implements CredentialProfiles {
         [id],
       );
     });
+    return id;
   }
   async check(session: Session, id: string, organizationId: string) {
     return (await this.verifyForPreparation(session, id, organizationId)).check;

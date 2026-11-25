@@ -24,7 +24,7 @@ connection is not a replacement for STACKIT login or cloud permissions.
 
 ## Create and review a configuration
 
-Open **Configurations** to create a draft or **Edit** a saved configuration. The editor belongs to Configurations; **Deployments** contains preparation, Plan, Apply and history. Saving alone starts no deployment.
+Open **Configurations** to create a draft or **Edit** a saved configuration. The editor belongs to Configurations; **Deployments** contains Plan, Apply and history. Saving alone starts no deployment.
 
 Start from a platform template or an existing configuration. Templates are
 starting points, not a recommendation to enable every optional service.
@@ -54,11 +54,12 @@ before creating a configuration remain personal. Sharing a configuration grants
 no cloud execution permissions. Proposals still require explicit acceptance and
 configuration changes require saving.
 
-**Open save options →** only opens storage choices. **Save configuration** writes a
-new database revision; **Save and prepare deployment** performs the same save and
-then opens preparation. Downloading an example uses the local draft and does not
-save it. If the current draft has unsaved changes, preparing its older saved
-configuration requires an explicit confirmation.
+**Save configuration** writes a new database revision. **Save and create plan**
+opens the Plan dialog for the current draft; the draft is saved when you confirm
+and start the Plan. A saved, unchanged configuration uses **Create plan** and keeps
+its revision. Downloading an example uses the local draft without saving it.
+Starting from a stored configuration while its local draft has unsaved changes
+requires an explicit choice of the saved version.
 
 For a self-managed Accelerator deployment, **Configurations → Review → Download
 Accelerator example** exports the platform and one native example project per
@@ -268,15 +269,34 @@ completion, the originally approving Platform Owner can separately attest an
 external Runner/cloud reconciliation after the old execution credentials expire;
 this is not an automatic cloud verification or State repair.
 
-Choose the correct environment and target, bind the authorized technical
-credentials, then create a preparation and request a Plan. Follow the job output
-and review the resulting changes, source/configuration version and state binding.
+From the current configuration choose **Create plan**, or **Save and create plan**
+for an edited draft. The dialog uses that configuration directly. Select a deployment
+credential; if none is available, choose **Add credentials** and create it inside the
+dialog. A single stored profile is preselected. Confirm the target organization and
+State binding, then start the Plan. The saved revision and currently approved
+execution source are bound internally; no separate Preparation screen or version
+selector is required. State binding and execution metadata remain under details.
+
+The internal immutable preparation still records the exact configuration, credential
+version, target and State identity. Apply inherits these bindings from the reviewed
+Plan and requires separate approval. Changes by another editor are rejected instead
+of silently planning a different revision. Failed Plans leave **Create new plan**
+visible so the corrected configuration can be planned again.
+
+After a failed platform Apply choose **Retry Apply**. The action retains the same
+configuration and State identity and preselects the previous credential if it is
+still available. It creates a fresh Plan against the current State; it never
+replays a consumed saved Plan. If a checkpoint/recovery hold exists, inspect and
+explicitly reconcile it first. Active or uncertain Runners, changed checkpoints,
+State locks and unresolved migrations remain subject to the normal recovery rules.
+Review the new Plan and approve Apply again. Configuration changes saved since the
+failure must also be reviewed in that Plan.
 
 For Firewall HA, create a credential profile with the optional OPNsense
-administration username and password for both appliances before preparing the
-deployment. These credentials are protected separately from configuration and
+administration username and password for both appliances, either under **Credentials**
+or through **Add credentials** in the Plan dialog. These credentials are protected separately from configuration and
 must match the appliances; saving them does not change their passwords. Existing
-HA Plans without this credential binding need a new preparation and Plan.
+HA Plans without this credential binding need a new Plan with the matching profile.
 Single-node Firewall infrastructure does not require this additional credential.
 Firewall policy/bootstrap and VPN PSKs remain outside this execution contract.
 See [deployment credentials](deployment-credentials.md#optional-firewall-ha-administration).
@@ -290,7 +310,7 @@ truncation and connection errors are shown. OpenTofu may remain quiet during a
 long operation: phase and elapsed time are not an estimated percentage.
 
 Apply uses the reviewed saved Plan and requires its own authorization.
-Changed inputs, source, state or an expired approval can require a new preparation.
+Changed inputs, source, State or an expired approval require a fresh checked Plan.
 Do not start parallel infrastructure writes to the same state.
 The UI job status and diagnostic ID help an operator investigate failures;
 retrying is not a substitute for resolving an expired or inconsistent preparation.

@@ -10,17 +10,12 @@ Stand: 2026-10-02. Umsetzung auf `feature/landing-zone-configurator`.
 
 ## Was der Benutzer testen kann (nach erfolgreichem Release)
 
-1. **Deployments** öffnen und im Abschnitt **Erstbereitstellung planen** eine
-   gespeicherte Vorbereitung auswählen.
-2. Nur für eine neue Landing Zone bestätigen, dass noch keine Ressourcen und kein
-   bestehender State zu dieser Konfiguration existieren. Bestehende/teilweise
-   erzeugte Landing Zones sind in diesem Ablauf nicht unterstützt.
-3. **Erstbereitstellung planen** starten. Erwartete Stationen: Runner vorbereiten,
-   initialisieren, validieren, planen und abgeschlossen/fehlgeschlagen.
-4. Seite neu laden: Auftrag und Ergebnis bleiben erhalten. Anlegen, Ändern,
-   Ersetzen, Löschen, Datenlesen und geänderte Ausgaben werden getrennt gezählt.
-5. Optional einen weiteren Plan abbrechen. Abbruch entzieht sofort den Broker-
-   Zugriff; das Stoppen des CF-Tasks durch Cleanup erfolgt zeitversetzt.
+1. Öffne die aktuelle Konfiguration und wähle **Plan erstellen** oder bei Änderungen **Speichern und Plan erstellen**.
+2. Wähle im Dialog den Deployment-Zugang. Über **Zugang hinzufügen** lässt sich ein fehlendes Profil direkt anlegen. Prüfe Zielorganisation und State-Zuordnung.
+3. Bestätige und starte den Plan. Der Server hält die Vorbereitung intern unveränderlich fest und prüft gespeicherte Revision, Zugang, Ausführungsquelle und State-Identität. Apply bleibt eine eigene Freigabe.
+4. Verfolge Initialisierung, Validierung und Planung. Neuladen erhält Job und Ergebnis. Nach einem Plan-Fehler bleibt **Neuen Plan erstellen** direkt verfügbar.
+5. Nach einem Apply-Fehler erzeugt **Apply erneut versuchen** einen neuen Plan für dieselbe Konfiguration und denselben State, möglichst mit dem bisherigen Zugang. Eine Checkpoint-Sperre muss zuerst ausdrücklich abgeglichen werden. Verbrauchte gespeicherte Pläne oder unklare Cloud-Operationen werden nicht blind wiederholt.
+6. Bei Bedarf einen laufenden Plan abbrechen. Dies widerruft den Broker-Zugang; Cleanup beendet den Runner unabhängig.
 
 Betreiber können vorbereitete Einmal-Runner über die Eingabe `runner_pool_size`
 des manuellen Releases aktivieren. Ein bereiter Runner übernimmt einen
@@ -416,9 +411,8 @@ Gleichzeitige identische Bestaetigungen erzeugen nur einen Beleg. Der Run wird
 als fehlgeschlagen abgeschlossen; State, Version, Lock und Backend bleiben
 unveraendert. Es erfolgen weder Cloud-Zugriffe noch ein automatischer Plan/Apply.
 
-Danach kann der Benutzer die korrigierte Konfiguration speichern, eine neue
-Vorbereitung waehlen und einen neuen Plan gegen denselben bestehenden State
-starten. Fuer Apply ist erneut die separate Pruefung und Freigabe des neuen
+Danach kann der Benutzer die korrigierte Konfiguration speichern und daraus
+direkt einen neuen Plan gegen denselben bestehenden State starten. Fuer Apply ist erneut die separate Pruefung und Freigabe des neuen
 gespeicherten Plans erforderlich. Der alte Plan bleibt verbraucht. Bei einem
 zwischenzeitlich veraenderten Checkpoint ist eine neue Pruefung erforderlich.
 Unklare Runner-Abbrueche, nicht verifizierbare Migrationen und separate Recovery-

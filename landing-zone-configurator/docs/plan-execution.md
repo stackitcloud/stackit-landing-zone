@@ -9,11 +9,12 @@ As of: 2026-10-02. Implementation on `feature/landing-zone-configurator`.
 <a id="was-der-benutzer-testen-kann-nach-erfolgreichem-release"></a>
 ## What the user can test (after a successful release)
 
-1. Open **Deployments** and select a saved preparation in **Plan initial provisioning**.
-2. Only for a new Landing Zone, confirm that no resources or existing state for this configuration exist yet. Existing/partially created Landing Zones are not supported in this workflow.
-3. Start **Plan initial provisioning**. Expected stages: prepare Runner, initialize, validate, plan and completed/failed.
-4. Reload the page: job and result are retained. Creation, modification, replacement, deletion, data reads and changed outputs are counted separately.
-5. Optionally cancel another Plan. Cancellation immediately revokes broker access; cleanup stops the CF task after a delay.
+1. Open the current configuration and choose **Create plan**, or **Save and create plan** for an edited draft.
+2. Select the deployment credential in the dialog; **Add credentials** creates a missing profile in place. Review the target organization and State binding.
+3. Confirm and start the Plan. The server records an immutable preparation internally and checks the saved revision, credential, execution source and State identity. Apply remains a separate approval.
+4. Follow Runner initialization, validation and planning. Reloading retains the job and its result. After a failed Plan, **Create new plan** stays directly available.
+5. After a failed Apply, **Retry Apply** creates a new Plan for the same configuration and State using the previous credential where available. A held checkpoint requires explicit reconciliation first. No consumed saved Plan or ambiguous cloud operation is blindly replayed.
+6. Cancel a running Plan if needed. Cancellation revokes broker access; cleanup independently stops the Runner.
 
 An operator can enable prepared, one-shot Runners through the manual release's
 `runner_pool_size` input. A ready Runner takes one authorized job without creating
@@ -190,7 +191,7 @@ Migration `034_platform_reconciliation.sql` adds explicit, audited UI reconcilia
 
 **Allow replanning** requires separate confirmation to preserve state unchanged. The API rechecks the displayed version and checksum in a transaction. Only an already started Apply regularly terminated with `apply_failed`, with readable bootstrap checkpoint, positive state version, no held lock, open migration or separate recovery state, is eligible. Immutable tenant/owner-bound audit evidence binds Apply, real session, state key, version and checksum. Concurrent identical confirmations create only one record. The run is completed as failed; state, version, lock and backend remain unchanged. No cloud access or automatic Plan/Apply occurs.
 
-The user can then save the corrected configuration, choose a new preparation and start a new Plan against the same existing state. Apply again requires separate review and approval of the new saved plan. The old plan remains consumed. If the checkpoint has changed meanwhile, a new check is required. Ambiguous Runner aborts, unverifiable migrations and separate recovery states remain blocked and need separate operational reconciliation. No automatic unblocking, state deletion, import or Destroy action. The migration must be enabled before using the new API.
+The user can then save the corrected configuration and start a new Plan directly from it against the same existing state. Apply again requires separate review and approval of the new saved plan. The old plan remains consumed. If the checkpoint has changed meanwhile, a new check is required. Ambiguous Runner aborts, unverifiable migrations and separate recovery states remain blocked and need separate operational reconciliation. No automatic unblocking, state deletion, import or Destroy action. The migration must be enabled before using the new API.
 
 ### Replanning after a failed Apply using S3
 

@@ -3923,50 +3923,37 @@ for (const format of ["legacy", "common"] as const) {
     await page
       .getByRole("button", { name: fork.fullName, exact: true })
       .click();
-    await page.getByRole("button", { name: /Deployment vorbereiten/ }).click();
-    await expect(page).toHaveURL(/\/deployments$/);
-    await expect(
-      page.getByText(draft.organization, { exact: true }),
-    ).toBeVisible();
-    await page.getByLabel("Persönlicher Zugang").selectOption(profileId);
-    await page
-      .getByRole("button", { name: "Zugang prüfen und Vorbereitung speichern" })
-      .click();
-    await expect(page.getByRole("status")).toContainText(
-      "Es wurde kein Plan oder Apply ausgeführt",
-    );
-    await page.reload();
-    await page
-      .getByLabel("Vorbereitung auswählen", { exact: true })
-      .selectOption(record.id);
-    await expect(
-      page.getByText("Vorbereitet · Apply erst nach Planprüfung und Freigabe", {
-        exact: true,
-      }),
-    ).toBeVisible();
-
-    await page
-      .getByRole("button", { name: "Weiter zu Plan", exact: true })
-      .click();
-    await page
-      .getByLabel("Gespeicherte Vorbereitung", { exact: true })
-      .selectOption(record.id);
-    const startPlan = page.getByRole("button", {
-      name: "Plattform planen",
+    await page.getByRole("button", { name: /Plan erstellen/ }).click();
+    await expect(page).toHaveURL(/\/deployments\/plan$/);
+    const dialog = page.getByRole("dialog", {
+      name: "Plan erstellen",
       exact: true,
-      includeHidden: true,
     });
-    await expect(startPlan).toBeDisabled();
-    await page
+    await expect(
+      dialog.getByText(draft.organization, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dialog.getByLabel("Deployment-Zugang", { exact: true }),
+    ).toHaveValue(profileId);
+    await expect(
+      dialog.getByRole("button", { name: "Plan erstellen", exact: true }),
+    ).toBeDisabled();
+    expect(stored).toBe(false);
+    await dialog
       .getByRole("checkbox", {
-        name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
+        name: "Ich bestätige Zielorganisation und State-Zuordnung für diesen Plan.",
+        exact: true,
       })
       .check();
-    await startPlan.click();
+    await dialog
+      .getByRole("button", { name: "Plan erstellen", exact: true })
+      .click();
     await expect(
       page.getByRole("status").filter({ hasText: /Plan wird berechnet/ }),
     ).toBeVisible();
-    await expect(startPlan).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "Neuen Plan erstellen", exact: true }),
+    ).toBeDisabled();
     await expect(
       page
         .locator(".plan-runs")
@@ -3978,17 +3965,14 @@ for (const format of ["legacy", "common"] as const) {
       page.getByText("Änderungen geplant – nichts angewendet."),
     ).toBeVisible();
     await expect(page.getByText("12", { exact: true })).toBeVisible();
-    await page
-      .getByRole("navigation", { name: "Konfiguration", exact: true })
-      .getByRole("button", { name: "Vorbereitung", exact: true })
-      .click();
-    await page
-      .getByLabel("Vorbereitung auswählen", { exact: true })
-      .selectOption(record.id);
-    await page.getByText("Versionsnachweise", { exact: true }).click();
-    await expect(page.getByText(head, { exact: true })).toBeVisible();
+    await expect(
+      page.getByLabel("Gespeicherte Vorbereitung", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /Vorbereitung entfernen/ }),
+    ).toHaveCount(0);
     await page.screenshot({
-      path: testInfo.outputPath("preparation.png"),
+      path: testInfo.outputPath("direct-plan-history.png"),
       fullPage: true,
     });
     expect(
@@ -3996,16 +3980,6 @@ for (const format of ["legacy", "common"] as const) {
         () => window.document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    page.once("dialog", (dialog) => dialog.accept());
-    await page.getByRole("button", { name: /Vorbereitung entfernen/ }).click();
-    await expect(page.getByRole("alert")).toContainText(
-      "besitzt Plan-Nachweise",
-    );
-    await expect(
-      page.getByText("Vorbereitet · Apply erst nach Planprüfung und Freigabe", {
-        exact: true,
-      }),
-    ).toHaveCount(1);
   });
 }
 
@@ -4116,8 +4090,26 @@ test.describe("explicit saved-plan approval", () => {
         },
       }),
     );
+    const currentDraft = editCommonInput(
+      editCommonInput(
+        createEditorConfiguration("standalone", configurationId),
+        "organization_id",
+        organizationId,
+      ),
+      "owner_email",
+      "platform@company.test",
+    );
+    const current = {
+      id: configurationId,
+      name: "Datenbank-Plattform",
+      revision: 7,
+      draft: currentDraft,
+    };
     await page.route("**/api/v1/configurations", (route) =>
-      route.fulfill({ json: { configurations: [] } }),
+      route.fulfill({ json: { configurations: [current] } }),
+    );
+    await page.route(`**/api/v1/configurations/${configurationId}`, (route) =>
+      route.fulfill({ json: { configuration: current } }),
     );
     await page.route("**/api/v1/credentials", (route) =>
       route.fulfill({
@@ -4367,19 +4359,22 @@ test.describe("explicit saved-plan approval", () => {
       exact: true,
     });
     await tabs
-      .getByRole("button", { name: "Prepare deployment", exact: true })
+      .getByRole("button", { name: "Create plan", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Preparation", level: 1 }),
+      page.getByRole("dialog", { name: "Create plan", exact: true }),
     ).toBeVisible();
-    await page
-      .getByRole("combobox", { name: "Select preparation", exact: true })
-      .selectOption(preparationId);
     await expect(
-      page.getByRole("heading", { name: preparation.name, exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText(/Plan history|Apply history/)).toHaveCount(0);
-    await tabs.getByRole("button", { name: "Plan", exact: true }).click();
+      page.getByRole("button", { name: "Preparation", exact: true }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+    await page
+      .getByRole("navigation", { name: "Main navigation", exact: true })
+      .getByRole("button", { name: "Deployments", exact: true })
+      .click();
     await expect(
       page.getByRole("heading", { name: "Plan", level: 1 }),
     ).toBeVisible();
@@ -4613,26 +4608,24 @@ test.describe("explicit saved-plan approval", () => {
     });
     await expect(tabs).toContainText("Revision 7");
     await tabs
-      .getByRole("button", { name: "Deployment vorbereiten", exact: true })
+      .getByRole("button", { name: "Plan erstellen", exact: true })
       .click();
     await expect(
-      page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
-    ).toHaveValue(configurationId);
-    await tabs.getByRole("button", { name: "Plan", exact: true }).click();
-    await page.getByText("Neuen Plan erstellen", { exact: true }).click();
-    const preparationSelection = page.getByLabel("Gespeicherte Vorbereitung", {
-      exact: true,
-    });
-    await expect(preparationSelection.locator("option")).toHaveText([
-      "Bitte auswählen",
-      "Revision 7 - 44444444 - Datenbank-Plattform",
-      "Revision 6 - 66666666 - Datenbank-Plattform",
-      "Revision 7 - 55555555 - Datenbank-Plattform",
-    ]);
-    await preparationSelection.selectOption(previousPreparation.id);
-    await expect(preparationSelection).toHaveValue(previousPreparation.id);
-    await preparationSelection.selectOption(repeatedPreparation.id);
-    await expect(preparationSelection).toHaveValue(repeatedPreparation.id);
+      page
+        .getByRole("dialog")
+        .getByText("Aktueller gespeicherter Stand", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByLabel("Gespeicherte Vorbereitung", { exact: true }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Schließen", exact: true })
+      .click();
+    await page
+      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+      .getByRole("button", { name: "Deployments", exact: true })
+      .click();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -4667,7 +4660,7 @@ test.describe("explicit saved-plan approval", () => {
       page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
     ).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Plattform planen", exact: true }),
+      page.getByRole("button", { name: "Neuen Plan erstellen", exact: true }),
     ).toHaveCount(0);
     await page.reload();
     await expect(tabs).toContainText("Revision 7");
@@ -4716,8 +4709,11 @@ test.describe("explicit saved-plan approval", () => {
     await expect(name).toHaveValue("Meine Plattform");
     await name.fill("Meine Plattform geändert");
     await expect(
-      tabs.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
-    ).toBeDisabled();
+      tabs.getByRole("button", {
+        name: "Speichern und Plan erstellen",
+        exact: true,
+      }),
+    ).toBeEnabled();
     await page
       .getByRole("navigation", { name: "Hauptnavigation", exact: true })
       .getByRole("button", { name: "Deployments", exact: true })
@@ -4743,16 +4739,26 @@ test.describe("explicit saved-plan approval", () => {
       })
       .click();
     await expect(name).toHaveValue("Meine Plattform geändert");
-    await page
-      .getByRole("button", {
-        name: "Speichern und zur Bereitstellung",
-        exact: true,
-      })
+    const storage = page.getByRole("region", {
+      name: "Konfiguration speichern",
+      exact: true,
+    });
+    await storage
+      .getByRole("button", { name: "Konfiguration speichern", exact: true })
       .click();
-    await expect(page).toHaveURL(/\/deployments$/);
     await expect(tabs).toContainText("Revision 8");
+    await storage
+      .getByRole("button", { name: "Plan erstellen", exact: true })
+      .click();
+    await expect(
+      page.getByRole("dialog", { name: "Plan erstellen", exact: true }),
+    ).toBeVisible();
     expect(saves).toBe(1);
     expect(cloudMutations).toEqual([]);
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Schließen", exact: true })
+      .click();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -4940,76 +4946,54 @@ test.describe("explicit saved-plan approval", () => {
           },
         });
       });
-      await page.goto("/deployments");
-      await expect(page).toHaveURL(/\/deployments$/);
-      for (const reload of [false, true]) {
-        if (reload) await page.reload();
-        if (useS3) {
-          await expect(
-            page.getByText(/Organisationsarbeitsbereichen sind noch nicht/),
-          ).toHaveCount(0);
-          await expect(
-            page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
-          ).toHaveValue(reload ? configurationId : "");
-          if (!reload) {
-            await page
-              .getByLabel("Gespeicherte Konfiguration", { exact: true })
-              .selectOption(configurationId);
-          }
-          await expect(page.getByLabel("Persönlicher Zugang")).toHaveValue("");
-          await page
-            .getByLabel("Persönlicher Zugang")
-            .selectOption(credentialId);
-        }
+      await page.goto("/configurations");
+      await page
+        .getByRole("button", {
+          name: `Plan erstellen: ${configuration.name}`,
+          exact: true,
+        })
+        .click();
+      const dialog = page.getByRole("dialog", {
+        name: "Plan erstellen",
+        exact: true,
+      });
+      await expect(
+        page.getByLabel("Gespeicherte Vorbereitung", { exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        dialog.getByLabel("Deployment-Zugang", { exact: true }),
+      ).toHaveValue(useS3 ? "" : credentialId);
+      await dialog
+        .getByLabel("Deployment-Zugang", { exact: true })
+        .selectOption(credentialId);
+      expect(stored).toBe(false);
+      expect(planned).toBe(false);
+      await dialog
+        .getByText("State-Zuordnung und Ausführungsdetails", { exact: true })
+        .click();
+      if (useS3) {
         await expect(
-          page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
-        ).toHaveValue(configurationId);
-        await expect(page.getByLabel("Persönlicher Zugang")).toHaveValue(
-          credentialId,
-        );
-        expect(stored).toBe(false);
-        expect(planned).toBe(false);
-      }
-      await page.getByText(/^State-Backend ·/).click();
-      if (!useS3) {
+          dialog.getByLabel("Backend der Landing Zone", { exact: true }),
+        ).toHaveValue(backendId);
         await expect(
-          page.getByText("Accelerator-Standard", { exact: true }),
-        ).toBeVisible();
+          dialog.getByLabel("Backend der Landing Zone", { exact: true }),
+        ).toBeDisabled();
+      } else {
         await expect(
-          page.getByText("Management-State-Bucket · Anlage im ersten Apply", {
+          dialog.getByText("Management-State-Bucket · Anlage im ersten Apply", {
             exact: true,
           }),
         ).toBeVisible();
         await expect(
-          page.getByText("terraform.tfstate", { exact: true }),
-        ).toBeVisible();
-        await expect(
-          page.getByLabel("S3 Access Key", { exact: true }),
+          dialog.getByLabel("S3 Access Key", { exact: true }),
         ).not.toBeVisible();
       }
-      if (useS3) {
-        await expect(
-          page.getByLabel("Backend der Landing Zone", { exact: true }),
-        ).toHaveValue(backendId);
-        await expect(
-          page.getByLabel("Backend der Landing Zone", { exact: true }),
-        ).toBeDisabled();
-      }
-      await page.getByLabel("Persönlicher Zugang").selectOption(credentialId);
-      if (currentSource) {
-        await expect(
-          page.getByRole("button", {
-            name: "Zugang prüfen und Vorbereitung speichern",
-          }),
-        ).toBeDisabled();
-        expect(stored).toBe(false);
-        expect(planned).toBe(false);
-        await page
-          .getByRole("checkbox", {
-            name: /^Ich bestätige: Diese Vorbereitung verwendet/,
-          })
-          .check();
-      }
+      await dialog
+        .getByRole("checkbox", {
+          name: "Ich bestätige Zielorganisation und State-Zuordnung für diesen Plan.",
+          exact: true,
+        })
+        .check();
       if (currentSource) {
         for (const [code, message] of [
           [
@@ -5027,53 +5011,24 @@ test.describe("explicit saved-plan approval", () => {
           ],
         ] as const) {
           preparationError = code;
-          await page
-            .getByRole("button", {
-              name: "Zugang prüfen und Vorbereitung speichern",
-            })
+          await dialog
+            .getByRole("button", { name: "Plan erstellen", exact: true })
             .click();
-          await expect(page.getByRole("alert")).toContainText(message);
+          await expect(dialog.getByRole("alert")).toContainText(message);
           expect(stored).toBe(false);
           expect(planned).toBe(false);
+          await expect(
+            dialog.getByLabel("Deployment-Zugang", { exact: true }),
+          ).toHaveValue(credentialId);
         }
         preparationError = null;
-        await page
-          .getByRole("button", { name: "Vorbereitungen aktualisieren" })
-          .click();
-        await expect(
-          page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
-        ).toHaveValue(configurationId);
-        await expect(page.getByLabel("Persönlicher Zugang")).toHaveValue(
-          credentialId,
-        );
-        await expect(
-          page.getByRole("checkbox", {
-            name: /^Ich bestätige: Diese Vorbereitung verwendet/,
-          }),
-        ).toBeChecked();
       }
-      await page
-        .getByRole("button", {
-          name: "Zugang prüfen und Vorbereitung speichern",
-        })
+      await dialog
+        .getByRole("button", { name: "Plan erstellen", exact: true })
         .click();
-      await expect(page.getByRole("status")).toContainText(
-        "Es wurde kein Plan oder Apply ausgeführt",
-      );
-      await page
-        .getByRole("button", { name: "Weiter zu Plan", exact: true })
-        .click();
-      await page
-        .getByLabel("Gespeicherte Vorbereitung", { exact: true })
-        .selectOption(preparationId);
-      await page
-        .getByRole("checkbox", {
-          name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
-        })
-        .check();
-      await page
-        .getByRole("button", { name: "Plattform planen", exact: true })
-        .click();
+      await expect(dialog).toHaveCount(0);
+      expect(stored).toBe(true);
+      expect(planned).toBe(true);
       await page
         .getByRole("button", { name: "Weiter zu Apply", exact: true })
         .click();
@@ -5103,6 +5058,9 @@ test.describe("explicit saved-plan approval", () => {
     page,
   }, testInfo) => {
     const githubRequests = await setup(page);
+    await page.route("**/api/v1/plans", (route) =>
+      route.fulfill({ json: { runs: [] } }),
+    );
     const backendId = "77777777-2222-4333-8444-555555555555";
     const descriptor = {
       bucket: "customer-tfstate",
@@ -5144,7 +5102,12 @@ test.describe("explicit saved-plan approval", () => {
       }),
     );
     await page.goto("/deployments");
-    await page.getByText(/^State-Backend ·/).click();
+    await page
+      .getByRole("button", { name: "Neuen Plan erstellen", exact: true })
+      .click();
+    await page
+      .getByText("State-Zuordnung und Ausführungsdetails", { exact: true })
+      .click();
     await page
       .getByText("Bestehendes S3-Backend registrieren", { exact: true })
       .click();
@@ -5184,12 +5147,19 @@ test.describe("explicit saved-plan approval", () => {
     expect(text).not.toContain("test-secret-value");
     expect(text).not.toContain("test-access-id");
     await page.reload();
-    await page.getByText(/^State-Backend ·/).click();
+    await page
+      .getByRole("button", { name: "Neuen Plan erstellen", exact: true })
+      .click();
+    await page
+      .getByText("State-Zuordnung und Ausführungsdetails", { exact: true })
+      .click();
     await page
       .getByText("Bestehendes S3-Backend registrieren", { exact: true })
       .click();
     await expect(
-      page.getByText("customer-tfstate / terraform.tfstate", { exact: true }),
+      page
+        .getByRole("paragraph")
+        .filter({ hasText: /^customer-tfstate \/ terraform\.tfstate$/ }),
     ).toBeVisible();
     expect(githubRequests).toEqual([]);
     expect(
@@ -5734,8 +5704,9 @@ test.describe("explicit saved-plan approval", () => {
         .click();
       await page.getByText("Neuen Plan erstellen", { exact: true }).click();
       await page
-        .getByLabel("Gespeicherte Vorbereitung", { exact: true })
-        .selectOption(preparationId);
+        .getByRole("dialog")
+        .getByRole("button", { name: "Schließen", exact: true })
+        .click();
       await page
         .getByRole("navigation", { name: "Konfiguration", exact: true })
         .getByRole("button", { name: "Apply", exact: true })
@@ -5801,8 +5772,9 @@ test.describe("explicit saved-plan approval", () => {
       .click();
     await page.getByText("Neuen Plan erstellen", { exact: true }).click();
     await page
-      .getByLabel("Gespeicherte Vorbereitung", { exact: true })
-      .selectOption(preparationId);
+      .getByRole("dialog")
+      .getByRole("button", { name: "Schließen", exact: true })
+      .click();
     await page
       .getByRole("navigation", { name: "Konfiguration", exact: true })
       .getByRole("button", { name: "Apply", exact: true })
@@ -5972,16 +5944,8 @@ test.describe("explicit saved-plan approval", () => {
             mutations.push(request.url());
         });
         await page.goto("/deployments/plan");
-        await page
-          .getByLabel("Gespeicherte Vorbereitung", { exact: true })
-          .selectOption(preparationId);
-        await page
-          .getByRole("checkbox", {
-            name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
-          })
-          .check();
         const planButton = page.getByRole("button", {
-          name: "Plattform planen",
+          name: "Neuen Plan erstellen",
           exact: true,
         });
         await expect(planButton).toBeDisabled();
@@ -5997,7 +5961,7 @@ test.describe("explicit saved-plan approval", () => {
           "New plans are blocked until the failed apply and its state have been reviewed and reconciled.",
         );
         await expect(
-          page.getByRole("button", { name: "Plan platform", exact: true }),
+          page.getByRole("button", { name: "Create new plan", exact: true }),
         ).toBeDisabled();
         expect(mutations).toEqual([]);
         expect(
@@ -6249,19 +6213,10 @@ test.describe("explicit saved-plan approval", () => {
           expect(reconciled).toBe(false);
         } else {
           await expect(page).toHaveURL(/\/deployments\/plan$/);
-          await page
-            .getByLabel("Gespeicherte Vorbereitung", { exact: true })
-            .selectOption(preparationId);
           const planButton = page.getByRole("button", {
-            name: "Plattform planen",
+            name: "Neuen Plan erstellen",
             exact: true,
           });
-          await expect(planButton).toBeDisabled();
-          await page
-            .getByRole("checkbox", {
-              name: /Ich bestätige: Zielorganisation und State-Zuordnung/,
-            })
-            .check();
           await expect(planButton).toBeEnabled();
         }
         expect(actions).toEqual(["checkpoint", "reconcile"]);
@@ -6301,41 +6256,14 @@ test.describe("explicit saved-plan approval", () => {
     });
     await expect(tabs.getByRole("button")).toHaveText([
       "Konfiguration bearbeiten",
-      "Vorbereitung",
       "Plan",
       "Apply",
       "Verlauf",
       "Stilllegen",
     ]);
     await expect(
-      page.getByRole("button", { name: "Plattform planen", exact: true }),
-    ).not.toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
-    ).toHaveCount(0);
-    await page
-      .getByLabel("Vorbereitung auswählen", { exact: true })
-      .selectOption(preparationId);
-    await expect(
-      page.getByText("Anmeldung erfolgreich · Organisation lesbar", {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await page.screenshot({
-      path: testInfo.outputPath("deployment-preparation.png"),
-    });
-    await page
-      .getByRole("button", { name: "Weiter zu Plan", exact: true })
-      .click();
-    await expect(page).toHaveURL(/\/deployments\/plan$/);
-    await expect(
       page.getByLabel("Gespeicherte Vorbereitung", { exact: true }),
-    ).toHaveValue(preparationId);
-    await expect(
-      page.getByRole("button", {
-        name: "Gespeicherte Konfiguration auswählen",
-      }),
-    ).not.toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Freigegebenen Plan anwenden" }),
     ).toHaveCount(0);
@@ -6358,7 +6286,7 @@ test.describe("explicit saved-plan approval", () => {
     });
     await expect(approval).not.toBeChecked();
     await expect(
-      page.getByRole("button", { name: "Plattform planen", exact: true }),
+      page.getByRole("button", { name: "Neuen Plan erstellen", exact: true }),
     ).not.toBeVisible();
     await expect(
       page.getByLabel("Gespeicherte Konfiguration", { exact: true }),
@@ -6472,7 +6400,6 @@ test.describe("explicit saved-plan approval", () => {
       });
     });
     await page.goto("/deployments/plan");
-    await page.getByText("Neuen Plan erstellen", { exact: true }).click();
     await expect(page.locator(".plan-runs > article")).toHaveCount(2);
     await expect(
       page
@@ -6480,7 +6407,7 @@ test.describe("explicit saved-plan approval", () => {
         .getByText(/Apply: Wiederherstellung erforderlich/),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Plattform planen", exact: true }),
+      page.getByRole("button", { name: "Neuen Plan erstellen", exact: true }),
     ).toBeDisabled();
     const history = page
       .locator(".plan-runs > details")
@@ -6578,7 +6505,9 @@ test.describe("explicit saved-plan approval", () => {
       page.getByText("Apply derzeit gesperrt", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText(/Für Firewall-HA fehlt ein gebundener/),
+      page.getByText(
+        /Für Firewall-HA fehlt ein OPNsense-Administrationszugang/,
+      ),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "Weiter zu Apply", exact: true })
@@ -6597,14 +6526,16 @@ test.describe("explicit saved-plan approval", () => {
     await page.reload();
     await expect(apply).toBeDisabled();
     await expect(
-      page.getByText(/Für Firewall-HA fehlt ein gebundener/),
+      page.getByText(
+        /Für Firewall-HA fehlt ein OPNsense-Administrationszugang/,
+      ),
     ).toBeVisible();
     await page.getByLabel("Sprache", { exact: true }).selectOption("en");
     await expect(
       page.getByText("Apply currently blocked", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText(/Firewall HA requires bound OPNsense administration/),
+      page.getByText(/Firewall HA needs OPNsense administration/),
     ).toBeVisible();
     await page.getByLabel("Language", { exact: true }).selectOption("de");
     plan.applyAllowed = true;

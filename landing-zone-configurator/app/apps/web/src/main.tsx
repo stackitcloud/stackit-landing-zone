@@ -8,7 +8,10 @@ import {
   type EditorDraft,
   isCommonDraft,
   objectValue,
+  readConfigurationRecord,
   readEditorDraft,
+  recordName,
+  recordOrganization,
   textValue,
   upgradeEditorDraft,
 } from "@lzc/domain";
@@ -48,6 +51,7 @@ import {
   NotificationWorkspace,
 } from "./components/Notifications";
 import { Organisation } from "./components/Organisation";
+import { PlanDialog } from "./components/PlanDialog";
 import { ProjectTemplates } from "./components/ProjectTemplates";
 import { projectTemplateSummary } from "./components/project-template-summary";
 import { RetirementPanel } from "./components/Retirements";
@@ -179,11 +183,18 @@ function App() {
     )
       setView("applications");
   }, [session, platformAccess, view, setView]);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const planAdvice = useRef<{ id: string; revision: number } | null>(null);
+  const [planFromDraft, setPlanFromDraft] = useState(false);
+  const [planRefresh, setPlanRefresh] = useState(0);
+  const [retryCredential, setRetryCredential] = useState<string | undefined>();
+  const [retryApply, setRetryApply] = useState(false);
   const [deploymentSelection, setDeploymentSelection] =
     useState<DeploymentSelection | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: clear selection whenever the signed-in identity changes.
   useEffect(() => {
     setDeploymentSelection(null);
+    setPlanDialogOpen(false);
   }, [session?.user.id, session?.user.login, session?.tenant?.id]);
   const [draftEpoch, setDraftEpoch] = useState(0);
   const [workspaceEpoch, setWorkspaceEpoch] = useState(0);
@@ -502,7 +513,7 @@ function App() {
   ) => {
     if (!selection) {
       setDeploymentSelection(null);
-      return;
+      return false;
     }
     if (
       selection.configurationId !== configurationBinding?.id &&
@@ -513,7 +524,7 @@ function App() {
         ),
       )
     )
-      return;
+      return false;
     setDeploymentSelection(selection);
     if (selection.configurationId !== configurationBinding?.id) {
       setConfigurationBinding(null);
@@ -530,7 +541,14 @@ function App() {
           else sessionStorage.removeItem(`lzc-configuration:${scope}`);
         } catch {}
     }
-    if (navigate) setView("deployments");
+    if (navigate) {
+      setView("deployments", "plan");
+      setPlanFromDraft(false);
+      setRetryApply(false);
+      setRetryCredential(undefined);
+      setPlanDialogOpen(true);
+    }
+    return true;
   };
   const openDeploymentStep = (next: DeploymentStep) => {
     if (configurationBinding && savedDraft) {
@@ -548,6 +566,133 @@ function App() {
     } else if (draft) setDeploymentSelection(null);
     if (next === "history" || next === "retire") setView(next);
     else setView("deployments", next);
+  };
+
+  const currentPlanSelection = (() => {
+    if (!planFromDraft) return deploymentSelection;
+    if (!draft) return null;
+    try {
+      return configurationDeploymentSelection({
+        id:
+          configurationBinding?.id ??
+          (isCommonDraft(draft) ? draft.id : crypto.randomUUID()),
+        revision: configurationBinding?.revision ?? 1,
+        draft,
+        name: draft.name,
+      });
+    } catch {
+      return null;
+    }
+  })();
+  useEffect(() => {
+    if (
+      view !== "deployments" ||
+      deploymentSelection ||
+      !configurationBinding ||
+      !savedDraft
+    )
+      return;
+    try {
+      setDeploymentSelection(
+        configurationDeploymentSelection({
+          ...configurationBinding,
+          name: draft?.name ?? "",
+          draft: readEditorDraft(JSON.parse(savedDraft)),
+        }),
+      );
+    } catch {}
+  }, [
+    view,
+    deploymentSelection,
+    configurationBinding,
+    savedDraft,
+    draft?.name,
+  ]);
+  const saveForPlan = async (
+    signal: AbortSignal,
+  ): Promise<DeploymentSelection> => {
+    if (!session || !draft)
+      throw Error(t("Öffne eine Konfiguration, um einen Plan zu erstellen."));
+    const owner = workspaceKey(session),
+      snapshot = readEditorDraft(draft),
+      binding = configurationBinding;
+    const response = await fetch(
+      binding
+        ? `/api/v1/configurations/${binding.id}`
+        : "/api/v1/configurations",
+      {
+        method: binding ? "PUT" : "POST",
+        credentials: "same-origin",
+        signal,
+        headers: {
+          "Content-Type": "application/json",
+          "X-LZC-CSRF": session.csrfToken,
+        },
+        body: JSON.stringify({
+          draft: snapshot,
+          ...(binding
+            ? { revision: binding.revision }
+            : planAdvice.current
+              ? { templateAdvice: planAdvice.current }
+              : {}),
+        }),
+      },
+    );
+    const body = await response.json();
+    if (!response.ok)
+      throw Error(
+        t(
+          body.error === "configuration_changed"
+            ? "Die Konfiguration wurde geändert. Öffne den aktuellen Stand und erstelle einen neuen Plan."
+            : "Die Konfiguration konnte nicht gespeichert werden. Dein Entwurf bleibt erhalten.",
+        ),
+      );
+    if (signal.aborted || workspaceKey(latestDraft.current.owner) !== owner)
+      throw Error("context_changed");
+    const configuration = body.configuration;
+    setConfigurationBinding({
+      id: configuration.id,
+      revision: configuration.revision,
+    });
+    setSavedDraft(JSON.stringify(snapshot));
+    const selected = configurationDeploymentSelection(configuration);
+    setDeploymentSelection(selected);
+    return selected;
+  };
+  const retryFromPlan = async (
+    configurationId: string,
+    credentialId: string | null,
+    repository?: { id: number; owner: string; name: string },
+  ) => {
+    const owner = workspaceKey(session);
+    try {
+      const endpoint = repository
+        ? `/api/v1/github/configuration/${configurationId}?${new URLSearchParams({ id: String(repository.id), owner: repository.owner, name: repository.name })}`
+        : `/api/v1/configurations/${configurationId}`;
+      const response = await fetch(endpoint, { credentials: "same-origin" });
+      if (!response.ok) throw Error("not_found");
+      const body = await response.json();
+      if (workspaceKey(latestDraft.current.owner) !== owner) return;
+      const chosen = repository
+        ? {
+            target: repository,
+            configurationId,
+            head: body.head,
+            name: recordName(readConfigurationRecord(body.document)),
+            organizationId: recordOrganization(
+              readConfigurationRecord(body.document),
+            ),
+          }
+        : configurationDeploymentSelection(body.configuration);
+      if (!openDeployment(chosen, false)) return;
+      setPlanFromDraft(false);
+      setRetryCredential(credentialId ?? undefined);
+      setRetryApply(true);
+      setPlanDialogOpen(true);
+      setView("deployments", "plan");
+    } catch {
+      setLoginError("Die gespeicherte Konfiguration ist nicht mehr verfügbar.");
+    }
   };
 
   const copyPlatform = () => {
@@ -1000,10 +1145,19 @@ function App() {
                 {view === "editor" ? (
                   <button
                     type="button"
-                    disabled={!configurationBinding || draftDirty}
-                    onClick={() => openDeploymentStep("preparation")}
+                    disabled={!session}
+                    onClick={() => {
+                      setPlanFromDraft(true);
+                      setRetryApply(false);
+                      setRetryCredential(undefined);
+                      setPlanDialogOpen(true);
+                    }}
                   >
-                    {t("Deployment vorbereiten")}
+                    {t(
+                      draftDirty
+                        ? "Speichern und Plan erstellen"
+                        : "Plan erstellen",
+                    )}
                   </button>
                 ) : (
                   <>
@@ -1016,7 +1170,6 @@ function App() {
                     </button>
                     {(
                       [
-                        ["preparation", "Vorbereitung"],
                         ["plan", "Plan"],
                         ["apply", "Apply"],
                         ["history", "Verlauf"],
@@ -1089,6 +1242,35 @@ function App() {
                 standalone={view === "retire"}
               />
             )}
+          {planDialogOpen && session && platformAccess && (
+            <PlanDialog
+              key={`plan:${workspaceKey(session)}`}
+              session={session}
+              selection={currentPlanSelection}
+              name={
+                planFromDraft
+                  ? (draft?.name ?? "")
+                  : (deploymentSelection?.name ?? "")
+              }
+              configurationId={
+                planFromDraft
+                  ? (configurationBinding?.id ?? null)
+                  : (deploymentSelection?.configurationId ?? null)
+              }
+              {...(planFromDraft && (draftDirty || !configurationBinding)
+                ? { onSave: saveForPlan }
+                : {})}
+              preferredCredentialId={retryCredential}
+              retry={retryApply}
+              onClose={() => setPlanDialogOpen(false)}
+              onStarted={(selected) => {
+                setDeploymentSelection(selected);
+                setPlanDialogOpen(false);
+                setPlanRefresh((value) => value + 1);
+                setView("deployments", "plan");
+              }}
+            />
+          )}
           <CloudCatalogueProvider
             key={`catalogues:${workspaceEpoch}:${platformAccess ? "platform" : "application"}`}
           >
@@ -1130,7 +1312,16 @@ function App() {
                         compact
                         onSaved={saveConfigurationBinding}
                         onLoad={loadConfiguration}
+                        onAdviceChange={(advice) => {
+                          planAdvice.current = advice;
+                        }}
                         onPrepare={openDeployment}
+                        onPlanCurrent={() => {
+                          setPlanFromDraft(true);
+                          setRetryApply(false);
+                          setRetryCredential(undefined);
+                          setPlanDialogOpen(true);
+                        }}
                       />
                     </>
                   ) : undefined
@@ -1164,9 +1355,18 @@ function App() {
                         configurationBinding?.id ??
                         (draft ? "unsaved" : undefined)
                       }
-                      onSelect={(selection) => openDeployment(selection, false)}
                       onChoose={() => setView("repositories")}
-                      onCredentials={() => setView("credentials")}
+                      onSelect={(selection) => openDeployment(selection, false)}
+                      onNewPlan={() => {
+                        setPlanFromDraft(false);
+                        setRetryApply(false);
+                        setRetryCredential(undefined);
+                        setPlanDialogOpen(true);
+                      }}
+                      onRetryApply={(id, credential, repository) =>
+                        void retryFromPlan(id, credential, repository)
+                      }
+                      refreshKey={planRefresh}
                     />
                   )}
                 {view === "credentials" && (
@@ -1355,7 +1555,20 @@ function App() {
                     dirty={draftDirty}
                     compact={view === "editor"}
                     onSaved={saveConfigurationBinding}
+                    onAdviceChange={
+                      view === "editor"
+                        ? (advice) => {
+                            planAdvice.current = advice;
+                          }
+                        : undefined
+                    }
                     onPrepare={openDeployment}
+                    onPlanCurrent={() => {
+                      setPlanFromDraft(true);
+                      setRetryApply(false);
+                      setRetryCredential(undefined);
+                      setPlanDialogOpen(true);
+                    }}
                     onLoad={loadConfiguration}
                   />
                   <div hidden={view !== "repositories"}>

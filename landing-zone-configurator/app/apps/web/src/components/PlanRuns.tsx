@@ -30,6 +30,7 @@ type Run = {
   applyBlocker?: PlatformApplyBlocker | null;
   expiresAt?: string | null;
   stateBackend?: S3BackendDescriptor | null;
+  retryCheckpointRequired?: boolean;
 };
 const active = new Set([
   "starting",
@@ -60,13 +61,13 @@ const failures: Record<string, string> = {
     "Diese Landing Zone wird stillgelegt. Neue Bestellungen, Erweiterungen und alte Ausführungsfreigaben sind gesperrt. Prüfe den Rückbaustatus.",
 
   firewall_administration_required:
-    "Für Firewall-HA fehlt ein gebundener OPNsense-Administrationszugang. Erstelle unter Zugänge ein Profil mit Service-Account und OPNsense-Zugang und danach eine neue Vorbereitung und einen neuen Plan. Bestehende Nachweise bleiben erhalten.",
+    "Für Firewall-HA fehlt ein OPNsense-Administrationszugang. Ergänze im Plan-Dialog ein passendes Zugangsprofil und erstelle einen neuen Plan.",
   configuration_execution_not_supported:
     "Diese Konfiguration enthält Komponenten, die der Erstbereitstellungsplan noch nicht unterstützt. Wähle eine unterstützte Standalone-Konfiguration.",
   configuration_apply_not_supported:
     "Diese Konfiguration kann geplant, aber mit den enthaltenen Komponenten noch nicht angewendet werden. Die gesperrten Felder sind unten aufgeführt. Ein neuer Plan allein hebt diese Sperre nicht auf.",
   configuration_changed:
-    "Die Konfiguration wurde seit der Vorbereitung geändert. Erstelle eine neue Vorbereitung und einen neuen Plan.",
+    "Die Konfiguration wurde seit dem Planstart geändert. Erstelle einen neuen Plan.",
   configuration_not_found:
     "Die gespeicherte Konfiguration ist nicht mehr verfügbar.",
   github_connection_required:
@@ -75,15 +76,15 @@ const failures: Record<string, string> = {
     "Deine aktuelle Rolle erlaubt keine Apply-Freigabe.",
   runner_unavailable: "Der Runner konnte nicht gestartet werden.",
   credential_changed:
-    "Der Zugang wurde geändert. Erstelle eine neue Vorbereitung.",
+    "Der Zugang wurde geändert. Wähle den aktuellen Zugang und erstelle einen neuen Plan.",
   access_check_failed:
     "Der Zugang zur Zielorganisation konnte nicht bestätigt werden.",
   input_invalid:
     "Die festgehaltene Konfiguration konnte nicht bestätigt werden.",
   preparation_accelerator_mismatch:
-    "Die Vorbereitung verwendet einen anderen Accelerator-Stand als der installierte Runner. Erstelle eine neue Vorbereitung und bestätige dort den aktuellen Accelerator-Stand. Bestehende States und Nachweise bleiben erhalten.",
+    "Der Plan verwendet einen anderen Ausführungsstand als der installierte Runner. Erstelle einen neuen Plan mit dem aktuell freigegebenen Stand. Bestehende States und Nachweise bleiben erhalten.",
   preparation_organization_mismatch:
-    "Die Zielorganisation der Vorbereitung passt nicht zur gespeicherten Konfiguration. Prüfe die Organisationsauswahl und erstelle eine neue Vorbereitung.",
+    "Die Zielorganisation des Plans passt nicht zur gespeicherten Konfiguration. Prüfe die Organisation und erstelle einen neuen Plan.",
   init_failed: "OpenTofu konnte die Provider nicht initialisieren.",
   validate_failed: "OpenTofu hat die Konfiguration abgewiesen.",
   plan_failed:
@@ -93,7 +94,7 @@ const failures: Record<string, string> = {
   plan_already_running: "Es läuft bereits ein Plan in deinem Arbeitsbereich.",
   plan_daily_limit: "Das Tageslimit von 20 Plänen ist erreicht.",
   repository_changed:
-    "Der Fork wurde geändert. Erstelle eine neue Vorbereitung.",
+    "Der Fork wurde geändert. Öffne den aktuellen Stand und erstelle einen neuen Plan.",
   credential_not_found: "Der persönliche Zugang ist nicht mehr verfügbar.",
   stale_plan:
     "Der Plan ist nicht mehr aktuell. Erstelle und prüfe einen neuen Plan.",
@@ -108,7 +109,7 @@ const failures: Record<string, string> = {
   backend_read_failed:
     "Der S3-State ist nicht lesbar. Prüfe den Backend-Zugang.",
   backend_binding_changed:
-    "Die Backend-Zuordnung stimmt nicht mehr. Erstelle eine neue Vorbereitung.",
+    "Die Backend-Zuordnung stimmt nicht mehr. Prüfe sie im Plan-Dialog und erstelle einen neuen Plan.",
   legacy_state_migration_required:
     "Ein bisheriger Konfigurator-State muss zuerst explizit übernommen werden. Es wird kein neuer State angelegt.",
   state_failed:
@@ -134,7 +135,7 @@ const failures: Record<string, string> = {
   plan_not_approvable:
     "Der Plan ist nicht mehr freigabefähig: abgelaufen, geändert oder bereits verwendet. Prüfe den Ausführungsstatus und erstelle bei Bedarf einen neuen Plan.",
   organization_mismatch:
-    "Die Zielorganisation stimmt nicht mit der gespeicherten Vorbereitung überein. Prüfe die exakte Organisations-ID.",
+    "Die Zielorganisation stimmt nicht mit dem geprüften Plan überein. Prüfe die exakte Organisations-ID.",
   artifact_invalid:
     "Das gespeicherte Plan-Artefakt konnte nicht bestätigt werden. Erstelle und prüfe einen neuen Plan.",
   runner_package_changed:
@@ -150,7 +151,7 @@ const failures: Record<string, string> = {
   apply_failed:
     "Apply ist fehlgeschlagen. Ressourcen können bereits verändert worden sein. Prüfe den Ausführungsstatus vor weiteren Aktionen.",
   recovery_required:
-    "Die Ausführung benötigt Wiederherstellung. Ressourcen können bereits verändert worden sein. Kein erneutes Apply starten.",
+    "Die Ausführung benötigt Wiederherstellung. Prüfe zuerst den Checkpoint. Bereits ausgeführte Änderungen werden bei einem neuen Plan berücksichtigt.",
 };
 
 function ApplyBlocker({ run }: { run: Run }) {
@@ -187,6 +188,7 @@ type Preparation = {
       configurationId?: string;
       revision?: number;
       commit?: string;
+      repository?: { id: number; owner: string; name: string };
     };
   };
 };
@@ -341,10 +343,12 @@ function CheckpointReview({
   runId,
   session,
   onReconciled,
+  retry = false,
 }: {
   runId: string;
   session: Session;
   onReconciled: () => Promise<void>;
+  retry?: boolean;
 }) {
   const [checkpoint, setCheckpoint] = useState<PlatformCheckpoint | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -435,6 +439,10 @@ function CheckpointReview({
       pending.current = null;
     }
   }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry inspection runs once for this immutable run/session mount.
+  useEffect(() => {
+    if (retry) void perform("checkpoint");
+  }, []);
   return (
     <section aria-label={t("Recovery-Abgleich")}>
       <h5>{t("Recovery-Abgleich")}</h5>
@@ -762,8 +770,10 @@ export function PlanRuns({
   readOnly = false,
   scopeToPreparations = false,
   phase = "plan",
-  preparationId = "",
-  onPreparationChange,
+  onNewPlan,
+  onRetryApply,
+  canCreatePlan = false,
+  refreshKey = 0,
   onStep,
 }: {
   session: Session;
@@ -772,18 +782,23 @@ export function PlanRuns({
   readOnly?: boolean;
   scopeToPreparations?: boolean;
   phase?: DeploymentStep;
-  preparationId?: string;
-  onPreparationChange?: (id: string) => void;
+  onNewPlan: () => void;
+  onRetryApply?: (
+    configurationId: string,
+    credentialId: string | null,
+    repository?: { id: number; owner: string; name: string },
+  ) => void;
+  canCreatePlan?: boolean;
+  refreshKey?: number;
   onStep?: ((step: DeploymentStep) => void) | undefined;
 }) {
   const [runs, setRuns] = useState<Run[]>([]),
     [enabled, setEnabled] = useState(false),
-    [selected, setSelected] = useState(""),
-    [confirmed, setConfirmed] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [blocked, setBlocked] = useState<string[]>([]);
   const pending = useRef(false);
+  const [retryRun, setRetryRun] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [expanded, setExpanded] = useState<string[]>([]);
@@ -794,7 +809,7 @@ export function PlanRuns({
     const preparation = preparations.find(
       (item) => item.id === run.preparationId,
     );
-    return `${scope}:${selected}:${run.id}:${run.artifactSha256 ?? ""}:${run.expiresAt ?? ""}:${run.applyAllowed}:${preparation?.credentialId}:${preparation?.manifest.organization.id}:${JSON.stringify(run.stateBackend)}`;
+    return `${scope}:${run.id}:${run.artifactSha256 ?? ""}:${run.expiresAt ?? ""}:${run.applyAllowed}:${preparation?.credentialId}:${preparation?.manifest.organization.id}:${JSON.stringify(run.stateBackend)}`;
   }
   async function refresh(signal?: AbortSignal) {
     const requestScope = scope;
@@ -832,8 +847,6 @@ export function PlanRuns({
     const controller = new AbortController();
     setRuns([]);
     setEnabled(false);
-    setConfirmed(false);
-    setSelected("");
     setError("");
     setBlocked([]);
     setHistoryOpen(false);
@@ -843,11 +856,7 @@ export function PlanRuns({
         setError("Pläne konnten nicht geladen werden.");
     });
     return () => controller.abort();
-  }, [scope]);
-  useEffect(() => {
-    setSelected(preparationId);
-    setConfirmed(false);
-  }, [preparationId]);
+  }, [scope, refreshKey]);
   useEffect(() => {
     const deadlines = runs
       .map((run) => Date.parse(run.expiresAt ?? ""))
@@ -914,7 +923,6 @@ export function PlanRuns({
         );
       }
       await refresh();
-      setConfirmed(false);
     } catch (e) {
       if (currentScope.current === requestScope) {
         setError(e instanceof Error ? e.message : "Aktion fehlgeschlagen.");
@@ -1132,6 +1140,50 @@ export function PlanRuns({
                   {failures.recovery_required}
                 </p>
               )}
+              {!readOnly &&
+                !historical &&
+                onRetryApply &&
+                run.operation === "apply" &&
+                ["failed", "recovery_required"].includes(run.status) &&
+                (() => {
+                  const prepared = preparations.find(
+                    (p) => p.id === run.preparationId,
+                  );
+                  const configurationId =
+                    prepared?.manifest.source?.configurationId;
+                  return (
+                    <div className="project-form">
+                      <h5>{t("Apply erneut versuchen")}</h5>
+                      <p>
+                        {t(
+                          "Die Wiederholung berechnet einen neuen Plan auf dem aktuellen State. Prüfe ihn und gib Apply anschließend erneut frei. Bereits ausgeführte Änderungen bleiben berücksichtigt.",
+                        )}
+                      </p>
+                      <button
+                        type="button"
+                        className="button primary"
+                        disabled={
+                          busy ||
+                          !configurationId ||
+                          runs.some((item) => active.has(item.status))
+                        }
+                        onClick={() => {
+                          if (!configurationId) return;
+                          if (run.retryCheckpointRequired !== false)
+                            setRetryRun(run.id);
+                          else
+                            onRetryApply(
+                              configurationId,
+                              prepared?.credentialId ?? null,
+                              prepared?.manifest.source?.repository,
+                            );
+                        }}
+                      >
+                        {t("Apply erneut versuchen")}
+                      </button>
+                    </div>
+                  );
+                })()}
               <PlanOutput key={`${scope}:${run.id}`} run={run} />
               {run.operation === "apply" && (
                 <details>
@@ -1170,16 +1222,27 @@ export function PlanRuns({
               )}
               {!readOnly &&
                 !historical &&
-                phase === "apply" &&
-                run.status === "recovery_required" && (
+                (phase === "apply" || retryRun === run.id) &&
+                (run.status === "recovery_required" || retryRun === run.id) && (
                   <CheckpointReview
-                    key={`${scope}:${run.id}:checkpoint`}
+                    key={`${scope}:${run.id}:checkpoint:${retryRun === run.id}`}
+                    retry={retryRun === run.id}
                     runId={run.id}
                     session={session}
                     onReconciled={async () => {
-                      setConfirmed(false);
                       await refresh();
-                      onStep?.("plan");
+                      const prepared = preparations.find(
+                        (p) => p.id === run.preparationId,
+                      );
+                      const id = prepared?.manifest.source?.configurationId;
+                      if (retryRun === run.id && id && onRetryApply) {
+                        setRetryRun(null);
+                        onRetryApply(
+                          id,
+                          prepared?.credentialId ?? null,
+                          prepared?.manifest.source?.repository,
+                        );
+                      } else onStep?.("plan");
                     }}
                   />
                 )}
@@ -1344,11 +1407,6 @@ export function PlanRuns({
     <section className="plan-runs" aria-label={t("Bereitstellungsstatus")}>
       <div className="deployment-progress">
         <span>
-          {t("Vorbereitung:")}{" "}
-          {preparations.filter((item) => item.credentialId).length}{" "}
-          {t("gespeichert")}
-        </span>
-        <span>
           {t("Plan:")} {(() => {
             const run = scopedRuns.find((item) => item.operation !== "apply");
             return t(
@@ -1397,102 +1455,34 @@ export function PlanRuns({
                 {t("Weiter zu Apply")}
               </button>
             )}
-          <details
-            hidden={readOnly || phase !== "plan"}
-            open={!currentRuns.some((run) => run.operation !== "apply")}
-          >
-            <summary>{t("Neuen Plan erstellen")}</summary>
-            <div className="field">
-              <label htmlFor="plan-preparation">
-                {t("Gespeicherte Vorbereitung")}
-              </label>
-              <select
-                id="plan-preparation"
-                value={selected}
-                disabled={busy}
-                onChange={(event) => {
-                  setSelected(event.target.value);
-                  onPreparationChange?.(event.target.value);
-                  setConfirmed(false);
-                }}
-              >
-                <option value="">{t("Bitte auswählen")}</option>
-                {preparations
-                  .filter((preparation) => preparation.credentialId)
-                  .map((preparation) => (
-                    <option key={preparation.id} value={preparation.id}>
-                      {t("Revision")}{" "}
-                      {preparation.manifest.source?.revision ??
-                        preparation.manifest.source?.commit?.slice(0, 8) ??
-                        "?"}{" "}
-                      - {preparation.id.slice(0, 8)} - {preparation.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            {!selected && (
-              <p className="field-hint">
-                {t(
-                  "Wähle eine gespeicherte Vorbereitung. Neue Vorbereitungen legst du im Reiter Vorbereitung an.",
-                )}
-              </p>
-            )}
-            <label className="field-hint">
-              <input
-                type="checkbox"
-                checked={confirmed}
-                disabled={busy}
-                onChange={(event) => setConfirmed(event.target.checked)}
-              />{" "}
-              {t(
-                "Ich bestätige: Zielorganisation und State-Zuordnung passen zur Landing Zone.",
-              )}
-            </label>
-            {blockedByRun && (
-              <p
-                id="plan-blocked-reason"
-                role="alert"
-                className="validation-box"
-              >
-                {t(
-                  blockedByRecovery
-                    ? "Neue Plans sind gesperrt, bis der fehlgeschlagene Apply und sein State geprüft und abgeglichen wurden."
-                    : failures.plan_already_running,
-                )}
-              </p>
-            )}
-            <p>
+          {!readOnly && phase === "plan" && (
+            <div className="actions">
               <button
-                className="button primary"
                 type="button"
+                className="button primary"
                 aria-describedby={
                   blockedByRun ? "plan-blocked-reason" : undefined
                 }
-                disabled={
-                  busy ||
-                  !selected ||
-                  !preparations.some(
-                    (item) => item.id === selected && item.credentialId,
-                  ) ||
-                  !confirmed ||
-                  blockedByRun
-                }
-                onClick={() =>
-                  void mutate("/api/v1/plans", {
-                    preparationId: selected,
-                    confirmStateBinding: true,
-                  })
-                }
+                disabled={busy || blockedByRun || !enabled || !canCreatePlan}
+                onClick={onNewPlan}
               >
-                {t("Plattform planen")}
+                {t("Neuen Plan erstellen")}
               </button>
-            </p>
-            <p className="field-hint">
-              {t(
-                "Apply startet ausschließlich nach Prüfung und ausdrücklicher Freigabe eines vom Server zugelassenen, gespeicherten Plans.",
+              {blockedByRun && (
+                <p
+                  id="plan-blocked-reason"
+                  role="alert"
+                  className="validation-box"
+                >
+                  {t(
+                    blockedByRecovery
+                      ? "Neue Plans sind gesperrt, bis der fehlgeschlagene Apply und sein State geprüft und abgeglichen wurden."
+                      : failures.plan_already_running,
+                  )}
+                </p>
               )}
-            </p>
-          </details>
+            </div>
+          )}
           <button
             type="button"
             className="button secondary"

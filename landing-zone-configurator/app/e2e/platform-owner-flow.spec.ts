@@ -366,14 +366,21 @@ test("Configurations resumes editing and only confirms losing a changed draft", 
     .click();
   await expect(name).toHaveValue("Unsaved platform draft");
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
-  ).toBeDisabled();
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", {
+        name: "Speichern und Plan erstellen",
+        exact: true,
+      }),
+  ).toBeEnabled();
   await showList();
   discard = true;
   await open();
   await expect(name).toHaveValue("Existing platform workflow");
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Plan erstellen", exact: true }),
   ).toBeEnabled();
   expect(dialogs).toHaveLength(2);
   expect(state.writes).toEqual([]);
@@ -447,8 +454,13 @@ test("configuration reopen protects edits made during its read and skips confirm
   await expect.poll(() => dialogs.length).toBe(1);
   await expect(name).toHaveValue("Changed while loading");
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
-  ).toBeDisabled();
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", {
+        name: "Speichern und Plan erstellen",
+        exact: true,
+      }),
+  ).toBeEnabled();
   // Another browser saved exactly the current content. It is dirty relative to
   // this tab's old snapshot, but reopening would discard no actual changes.
   const equivalent = { ...state.stored(), name: "Changed while loading" };
@@ -469,7 +481,9 @@ test("configuration reopen protects edits made during its read and skips confirm
   await open();
   await expect(name).toHaveValue("Changed while loading");
   await expect(
-    page.getByRole("button", { name: "Deployment vorbereiten", exact: true }),
+    page
+      .getByRole("navigation", { name: "Konfiguration", exact: true })
+      .getByRole("button", { name: "Plan erstellen", exact: true }),
   ).toBeEnabled();
   expect(dialogs).toHaveLength(1);
   expect(state.writes).toEqual([]);

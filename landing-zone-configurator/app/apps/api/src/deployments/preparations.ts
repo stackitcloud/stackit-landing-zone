@@ -329,7 +329,7 @@ export class Preparations {
         `preparations:${session.userId}`,
       ]);
       const count = await c.query(
-        "SELECT count(*)::int AS count FROM lzc.deployment_preparations",
+        "SELECT count(*)::int AS count FROM lzc.deployment_preparations p WHERE NOT EXISTS (SELECT 1 FROM lzc.plan_runs r WHERE r.preparation_id=p.id)",
       );
       if (count.rows[0].count >= 100)
         throw new CredentialError(409, "preparation_limit_reached");

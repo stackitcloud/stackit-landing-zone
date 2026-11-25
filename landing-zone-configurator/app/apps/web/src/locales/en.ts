@@ -1,4 +1,8 @@
 export const englishMessages: Record<string, string> = {
+  "Die Zielorganisation stimmt nicht mit dem geprüften Plan überein. Prüfe die exakte Organisations-ID.":
+    "The target organization does not match the reviewed Plan. Check the exact organization ID.",
+  "Die Ausführung benötigt Wiederherstellung. Prüfe zuerst den Checkpoint. Bereits ausgeführte Änderungen werden bei einem neuen Plan berücksichtigt.":
+    "This execution requires recovery. Check the checkpoint first. A new Plan will account for changes already applied.",
   "Der Arbeitsbereich wurde geändert. Lade die Seite neu.":
     "The workspace has changed. Reload the page.",
   "Der private Verlauf ist nicht mehr verfügbar. Bitte neu laden.":
@@ -3852,4 +3856,70 @@ export const englishMessages: Record<string, string> = {
     "The original inputs cannot be safely reconstructed with this source package. State has not been handed over.",
   "Kein nativer Abschlussnachweis. Der Runner ist beendet; erstelle einen neuen Plan.":
     "No native completion receipt is available. The runner has stopped; create a new plan.",
+  "Plan erstellen": "Create plan",
+  "Speichern und Plan erstellen": "Save and create plan",
+  "Plan erstellen: {{value0}}": "Create plan: {{value0}}",
+  "Der aktuelle Entwurf enthält nicht gespeicherte Änderungen. Der Plan verwendet den gespeicherten Stand ohne diese Änderungen. Trotzdem fortfahren?":
+    "The current draft has unsaved changes. The plan will use the saved version without those changes. Continue?",
+  "Öffne eine Konfiguration, um einen Plan zu erstellen.":
+    "Open a configuration to create a plan.",
+  "Ausführungsnachweise konnten nicht geladen werden.":
+    "Execution evidence could not be loaded.",
+  "Die Konfiguration wurde geändert. Öffne den aktuellen Stand und erstelle einen neuen Plan.":
+    "The configuration has changed. Open the current version and create a new plan.",
+  "Die Konfiguration konnte nicht gespeichert werden. Dein Entwurf bleibt erhalten.":
+    "The configuration could not be saved. Your draft is preserved.",
+  "Der Plan konnte nicht gestartet werden. Prüfe den Ausführungsverlauf und versuche es erneut.":
+    "The plan could not be started. Check the execution history and try again.",
+  "Konfiguration wird gespeichert und geprüft …":
+    "Saving and checking configuration…",
+  "Zugang und Ziel werden geprüft …": "Checking credentials and target…",
+  "Plan wird gestartet …": "Starting plan…",
+  "Apply erneut versuchen": "Retry Apply",
+  "Die Wiederholung berechnet einen neuen Plan auf dem aktuellen State. Prüfe ihn und gib Apply anschließend erneut frei. Bereits ausgeführte Änderungen bleiben berücksichtigt.":
+    "Retry creates a new plan against the current state. Review it and approve Apply again. Previously completed changes remain accounted for.",
+  Stand: "Version",
+  "Aktueller Entwurf · wird vor dem Plan gespeichert":
+    "Current draft · saved before planning",
+  "Aktueller gespeicherter Stand": "Current saved version",
+  "Deployment-Zugang": "Deployment credentials",
+  "Zugang hinzufügen": "Add credentials",
+  "Zurück zum Plan": "Back to plan",
+  "Lege hier einen Deployment-Zugang an. Danach kannst du den Plan direkt starten.":
+    "Add deployment credentials here, then start your plan directly.",
+  "State-Zuordnung und Ausführungsdetails":
+    "State binding and execution details",
+  "Verwendet den aktuell freigegebenen Ausführungsstand. Apply übernimmt den geprüften Zugang und die State-Zuordnung aus diesem Plan.":
+    "Uses the currently approved execution version. Apply inherits the verified credentials and state binding from this plan.",
+  "Die bestehende State-Zuordnung wird geprüft. Apply benötigt anschließend deine separate Freigabe.":
+    "The existing state binding is checked. Apply then requires your separate approval.",
+  "Ich bestätige Zielorganisation und State-Zuordnung für diesen Plan.":
+    "I confirm the target organization and state binding for this plan.",
+  "Konfigurationsstand:": "Configuration version:",
+  "Nach dem Speichern": "After saving",
+  "Zugeordnetes S3-Backend": "Bound S3 backend",
+  "Der bisherige Zugang ist nicht mehr verfügbar. Wähle einen Zugang oder lege ihn hier an.":
+    "The previous credentials are no longer available. Choose credentials or add them here.",
+  "Für Firewall-HA fehlt ein OPNsense-Administrationszugang. Ergänze im Plan-Dialog ein passendes Zugangsprofil und erstelle einen neuen Plan.":
+    "Firewall HA needs OPNsense administration credentials. Add a matching credential profile in the plan dialog and create a new plan.",
+  "Die gespeicherte Konfiguration wurde geändert. Öffne den aktuellen Stand und erstelle einen neuen Plan.":
+    "The saved configuration has changed. Open the current version and create a new plan.",
+  "Die Konfiguration wurde seit dem Planstart geändert. Erstelle einen neuen Plan.":
+    "The configuration has changed since this plan was started. Create a new plan.",
+  "Der Zugang wurde geändert. Wähle den aktuellen Zugang und erstelle einen neuen Plan.":
+    "The credentials have changed. Choose the current credentials and create a new plan.",
+  "Der Plan verwendet einen anderen Ausführungsstand als der installierte Runner. Erstelle einen neuen Plan mit dem aktuell freigegebenen Stand. Bestehende States und Nachweise bleiben erhalten.":
+    "The plan uses a different execution version from the installed runner. Create a new plan with the currently approved version. Existing state and evidence are retained.",
+  "Die Zielorganisation des Plans passt nicht zur gespeicherten Konfiguration. Prüfe die Organisation und erstelle einen neuen Plan.":
+    "The plan target organization does not match the saved configuration. Check the organization and create a new plan.",
+  "Der Fork wurde geändert. Öffne den aktuellen Stand und erstelle einen neuen Plan.":
+    "The fork has changed. Open the current version and create a new plan.",
+  "Die Backend-Zuordnung stimmt nicht mehr. Prüfe sie im Plan-Dialog und erstelle einen neuen Plan.":
+    "The backend binding has changed. Check it in the plan dialog and create a new plan.",
+  "Zu viele offene Plan-Anfragen. Lass nicht verwendete Ausführungsnachweise durch den Betreiber prüfen.":
+    "Too many pending plan requests. Ask the operator to review unused execution evidence.",
+  "Der aktuelle Ausführungsstand ist für neue Pläne nicht freigegeben. Bitte die Runner-Konfiguration prüfen lassen.":
+    "The current execution version is not approved for new plans. Ask the operator to check the runner configuration.",
+  "Der Plan-Auftrag enthält ungültige oder zur aktuellen API-Version unpassende Angaben. Lade die Seite neu und öffne die gespeicherte Konfiguration erneut.":
+    "The plan request contains invalid or incompatible API fields. Reload the page and reopen the saved configuration.",
 };

@@ -28,7 +28,7 @@ GitHub-Verbindung ersetzt weder die STACKIT-Anmeldung noch Cloud-Berechtigungen.
 <a id="create-and-review-a-configuration"></a>
 ## Konfiguration erstellen und prüfen
 
-Öffne **Konfigurationen**, um einen Entwurf anzulegen oder eine gespeicherte Konfiguration über **Bearbeiten** zu ändern. Der Editor gehört zu Konfigurationen; **Deployments** enthält Vorbereitung, Plan, Apply und Verlauf. Speichern allein startet kein Deployment.
+Öffne **Konfigurationen**, um einen Entwurf anzulegen oder eine gespeicherte Konfiguration über **Bearbeiten** zu ändern. Der Editor gehört zu Konfigurationen; **Deployments** enthält Plan, Apply und Verlauf. Speichern allein startet kein Deployment.
 
 Beginne mit einer Plattformvorlage oder einer bestehenden Konfiguration. Vorlagen sind
 Ausgangspunkte, keine Empfehlung, jeden optionalen Dienst einzuschalten.
@@ -61,12 +61,13 @@ Zugangsdatenprofile und Beratungen vor dem Anlegen einer Konfiguration bleiben
 persönlich. Das Teilen einer Konfiguration erteilt keine Rechte zur Cloud-Ausführung.
 Vorschläge müssen weiterhin ausdrücklich übernommen und Änderungen gespeichert werden.
 
-**Speicheroptionen öffnen →** öffnet nur die Speicherauswahl. **Konfiguration
-speichern** schreibt eine neue Datenbankrevision; **Speichern und zur
-Bereitstellung** speichert genauso und öffnet anschließend die Vorbereitung.
-Ein Beispiel-Download verwendet den lokalen Entwurf und speichert ihn nicht.
-Enthält der aktuelle Entwurf ungespeicherte Änderungen, muss die Vorbereitung
-des älteren gespeicherten Stands ausdrücklich bestätigt werden.
+**Konfiguration speichern** schreibt eine neue Datenbankrevision. **Speichern und
+Plan erstellen** öffnet den Plan-Dialog für den aktuellen Entwurf; gespeichert wird
+beim Bestätigen und Starten des Plans. Ein unveränderter gespeicherter Stand nutzt
+**Plan erstellen** und behält seine Revision. Ein Beispiel-Download verwendet den
+lokalen Entwurf ohne Speichern. Wird bei ungespeicherten lokalen Änderungen eine
+gespeicherte Konfiguration gewählt, muss dieser gespeicherte Stand ausdrücklich
+bestätigt werden.
 
 Für eine selbst verwaltete Accelerator-Bereitstellung exportiert
 **Konfigurationen → Prüfen → Accelerator-Beispiel herunterladen** die Plattform
@@ -303,16 +304,37 @@ Abschlüssen kann der ursprünglich freigebende Platform Owner nach Ablauf der
 alten Ausführungsberechtigungen einen externen Runner-/Cloud-Abgleich gesondert
 bestätigen. Das ist keine automatische Cloud-Prüfung oder State-Reparatur.
 
-Wähle die richtige Umgebung und das richtige Ziel, binde die autorisierten technischen
-Zugangsdaten, erstelle eine Vorbereitung und fordere anschließend einen Plan an. Verfolge
-die Job-Ausgabe und prüfe die resultierenden Änderungen, Quell-/Konfigurationsversion
-und State-Bindung.
+Wähle aus der aktuellen Konfiguration **Plan erstellen** oder bei Änderungen
+**Speichern und Plan erstellen**. Der Dialog verwendet direkt diese Konfiguration.
+Wähle einen Deployment-Zugang. Fehlt er, kannst du ihn über **Zugang hinzufügen**
+im Dialog anlegen. Ein einzelnes gespeichertes Profil wird vorausgewählt. Bestätige
+Zielorganisation und State-Zuordnung und starte den Plan. Gespeicherte Revision und
+aktuell freigegebener Ausführungsstand werden intern gebunden; ein eigener
+Vorbereitungsschritt oder eine Versionsauswahl ist nicht erforderlich. State- und
+Ausführungsnachweise bleiben unter den Details sichtbar.
 
-Lege für Firewall-HA vor der Vorbereitung ein Zugangsprofil mit optionalem
+Die interne unveränderliche Vorbereitung hält weiterhin die genaue Konfiguration,
+Zugangsversion, das Ziel und die State-Identität fest. Apply übernimmt diese Bindung
+aus dem geprüften Plan und benötigt eine eigene Freigabe. Gleichzeitige Änderungen
+anderer Bearbeiter werden abgewiesen, statt unbemerkt einen anderen Stand zu planen.
+Nach einem Plan-Fehler bleibt **Neuen Plan erstellen** direkt sichtbar.
+
+Wähle nach einem fehlgeschlagenen Plattform-Apply **Apply erneut versuchen**. Die
+Aktion behält Konfiguration und State-Identität bei und wählt den bisherigen Zugang
+vor, sofern er noch verfügbar ist. Sie berechnet einen neuen Plan auf dem aktuellen
+State und führt keinen verbrauchten gespeicherten Plan erneut aus. Bei einer
+Checkpoint- oder Recovery-Sperre ist zuerst der explizite Abgleich erforderlich.
+Aktive oder ungeklärte Runner, geänderte Checkpoints, State-Sperren und offene
+Migrationen unterliegen weiterhin den normalen Recovery-Regeln. Prüfe den neuen
+Plan und gib Apply erneut frei. Seit dem Fehler gespeicherte Konfigurationsänderungen
+sind dabei ebenfalls zu prüfen.
+
+Lege für Firewall-HA unter **Zugänge** oder über **Zugang hinzufügen** im
+Plan-Dialog ein Zugangsprofil mit optionalem
 OPNsense-Administrator und Passwort für beide Appliances an. Diese Angaben werden
 getrennt von der Konfiguration geschützt gespeichert und müssen zu den Appliances
 passen; das Speichern ändert deren Passwörter nicht. Bestehende HA-Pläne ohne diese
-Zugangsbindung benötigen eine neue Vorbereitung und einen neuen Plan. Einzelne
+Zugangsbindung benötigen einen neuen Plan mit dem passenden Profil. Einzelne
 Firewall-Instanzen benötigen diesen zusätzlichen Zugang nicht. Firewall-Policy/
 -Bootstrap und VPN-PSKs bleiben außerhalb dieses Ausführungsvertrags.
 Siehe [Deployment-Zugänge](deployment-credentials.de.md#optional-firewall-ha-administration).
@@ -327,8 +349,8 @@ OpenTofu kann während langer Operationen still bleiben: Phase und verstrichene 
 sind keine geschätzte Prozentangabe.
 
 Apply verwendet den geprüften gespeicherten Plan und benötigt eine eigene Autorisierung.
-Geänderte Eingaben, Quellen, State oder eine abgelaufene Freigabe können eine neue
-Vorbereitung erfordern. Starte keine parallelen Infrastrukturschreibzugriffe auf denselben
+Geänderte Eingaben, Quellen, State oder eine abgelaufene Freigabe erfordern
+einen neuen geprüften Plan. Starte keine parallelen Infrastrukturschreibzugriffe auf denselben
 State. UI-Jobstatus und Diagnose-ID helfen Betreibern bei der Fehleranalyse;
 ein erneuter Versuch ersetzt nicht die Behebung einer abgelaufenen oder inkonsistenten Vorbereitung.
 

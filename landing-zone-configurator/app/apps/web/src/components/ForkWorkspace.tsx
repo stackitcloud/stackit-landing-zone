@@ -547,7 +547,7 @@ export function ForkWorkspace({
                           })
                         }
                       >
-                        {t("Deployment vorbereiten")}
+                        {t("Plan erstellen")}
                         <span className="sr-only">: {config.name}</span>
                       </button>
                     </li>
