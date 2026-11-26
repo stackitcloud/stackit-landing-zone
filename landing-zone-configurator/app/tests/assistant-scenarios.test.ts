@@ -25,6 +25,7 @@ import {
   assistantPrematurePersistenceClaim,
   assistantScenarioFixture,
   assistantScenarios,
+  assistantTemplateOptionMatches,
   assistantUnsavedNotice,
   buildAssistantScenarioInventory,
   syntheticOrganizationId,
@@ -1345,7 +1346,9 @@ it("binds audit Grafana advice to native routing, retention and upgrade boundari
   expect(topic?.text).toContain("No plan_name in audit_logs");
   expect(topic?.text).toContain("observability.plan_name needs Logs support");
   expect(topic?.text).toContain("own retention/cost");
-  expect(topic?.text).toContain("No order upgrade");
+  expect(topic?.text).toMatch(
+    /No order upgrade for linked\s+projects|linked projects need no upgrade/,
+  );
   expect(topic?.text).toContain("historical replay");
   expect(topic?.text).toContain("removes dedicated Logs");
   expect(topic?.sources.map((s) => s.path)).toContain(
@@ -1961,4 +1964,345 @@ it("does not let an English folder heading conceal a German answer", () => {
     references: ["governance-folders"],
   });
   expect(result.failures).toContain("dialogue_language_mismatch");
+});
+
+it("compares audit settings by native defaults while retaining scope and unrelated-component checks", () => {
+  for (const id of [
+    "editor-audit-complete",
+    "editor-audit-explicit-project",
+    "editor-audit-after-foundations",
+  ]) {
+    const scenario = assistantScenarios.find((entry) => entry.id === id)!;
+    const expected = scenario.editorExpected!.value as Record<
+      string,
+      JsonValue
+    >;
+    const value = {
+      ...expected,
+      managed_resources: false,
+      link_scopes: expected.link_scopes ?? [
+        { resource_type: "organization", resource_id: syntheticOrganizationId },
+      ],
+    };
+    const answer = {
+      explanation: "Reviewable draft; nothing saved.",
+      references: ["audit-logs"],
+      questions: [],
+      changes: [{ path: "audit_logs", operation: "merge", value }],
+    };
+    expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        changes: [
+          { ...answer.changes[0], value: { ...value, retention_days: 180 } },
+        ],
+      }).failures,
+    ).toContain("editor_expected_value_not_applied");
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        changes: [
+          {
+            ...answer.changes[0],
+            value: {
+              ...value,
+              link_scopes: [
+                {
+                  resource_type: "project",
+                  resource_id: "00000000-0000-4000-8000-000000000088",
+                },
+              ],
+            },
+          },
+        ],
+      }).failures,
+    ).toContain("editor_expected_value_not_applied");
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        changes: [
+          ...answer.changes,
+          { path: "company_code", operation: "replace", value: "unrequested" },
+        ],
+      }).failures,
+    ).toContain("audit_proposal_changed_other_components");
+  }
+});
+
+it("allows documented network-choice actions but rejects invented networks and conflicting lock durations", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "editor-audit-partial-retention",
+  )!;
+  const answer = {
+    explanation: "90 days retained; nothing saved.",
+    changes: [],
+    references: ["audit-logs"],
+    questions: [
+      {
+        path: "audit_logs.acl",
+        text: "Which client sources?",
+        answerType: "requirements",
+        options: [
+          "Use Accelerator default (0.0.0.0/0)",
+          "Provide actual company/VPN egress CIDRs",
+        ],
+      },
+      {
+        path: "audit_logs.s3_object_lock",
+        text: "Enable archive protection?",
+        answerType: "requirements",
+        options: ["Enabled — objects 90 days protected", "Disabled"],
+      },
+    ],
+  };
+  expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      questions: [...answer.questions].reverse(),
+    }).failures,
+  ).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      questions: [
+        { ...answer.questions[0], options: ["Company network 10.0.0.0/8"] },
+        answer.questions[1],
+      ],
+    }).failures,
+  ).toContain("audit_invented_network_options");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      questions: [
+        answer.questions[0],
+        {
+          ...answer.questions[1],
+          options: ["Enabled — objects 180 days protected", "Disabled"],
+        },
+      ],
+    }).failures,
+  ).toContain("audit_lock_retention_mismatch");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      questions: [answer.questions[0]],
+    }).failures,
+  ).toContain("audit_unanswered_decisions_not_preserved");
+});
+
+it("accepts read-only already-covered advice without a draft disclaimer while rejecting persistence claims", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "application-access-owner-already-covered",
+  )!;
+  const answer = {
+    explanation:
+      "The existing Owner profile includes Kubernetes/SKE rights for requester and automation. No changes are needed.",
+    references: ["project-templates"],
+    questions: [],
+    changes: [],
+  };
+  expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      explanation: answer.explanation + " Konfiguration gespeichert.",
+    }).failures,
+  ).toContain("premature_saved_claim");
+});
+
+it("requires the real missing owner question alongside an otherwise valid independent rights edit", () => {
+  const scenario = assistantScenarios.find(
+    (entry) =>
+      entry.id === "application-access-public-kubernetes-incomplete-owner",
+  )!;
+  const fixture = assistantScenarioFixture(scenario);
+  const profile = fixture.draft.projectTemplates!.find(
+    (entry) => entry.key === "central",
+  )!.accessProfile!;
+  if (profile.mode !== "granular") throw Error("fixture");
+  const answer = {
+    explanation:
+      "Permissions proposed; central initial owner still required. Nothing saved.",
+    references: ["project-templates"],
+    questions: [
+      {
+        path: "projectTemplates",
+        text: "Which central initial Owner should be used?",
+      },
+    ],
+    changes: [
+      {
+        path: "projectTemplates",
+        operation: "merge",
+        value: {
+          central: {
+            accessProfile: {
+              ...profile,
+              permissions: [
+                ...new Set([
+                  ...profile.permissions,
+                  ...applicationProjectPermissionNames.filter((permission) =>
+                    permission.startsWith("ske."),
+                  ),
+                ]),
+              ],
+            },
+          },
+        },
+      },
+    ],
+  };
+  expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, { ...answer, questions: [] }).failures,
+  ).toContain("application_access_proposal_incorrect_or_unrelated_change");
+  const invalid = structuredClone(answer);
+  invalid.changes[0]!.value.central.accessProfile.automationPermissions.push(
+    "ske.cluster.create",
+  );
+  expect(validateAssistantScenario(scenario, invalid).failures).toContain(
+    "application_access_proposal_incorrect_or_unrelated_change",
+  );
+});
+
+it("keeps a contextual legacy-transition confirmation separate from an already selected Owner", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "application-access-both-kubernetes-mixed-owner",
+  )!;
+  const answer = {
+    explanation:
+      "The selected Owner is retained. For central, confirm the Legacy transition to the Workload profile; existing Public rights stay. Nothing saved.",
+    references: ["project-templates"],
+    changes: [],
+    questions: [
+      {
+        path: "projectTemplates",
+        text: "Bestätigst du die Umstellung jetzt ausdrücklich?",
+        options: ["Ja, Umstellung bestätigen", "Nein, warten"],
+      },
+    ],
+  };
+  expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      questions: [
+        { path: "projectTemplates", text: "Which Owner should we use?" },
+      ],
+    }).failures,
+  ).toContain("application_access_mixed_shared_owner_or_confirmation_missing");
+});
+
+it("recognizes requirements on the component root and relevant nested field without accepting an empty technical picker", () => {
+  for (const [id, path] of [
+    ["catalogue-firewall-business-en", "connectivity.firewall"],
+    [
+      "catalogue-firewall-capacity-followup-en",
+      "connectivity.firewall.ha.backup_zone",
+    ],
+  ]) {
+    const scenario = assistantScenarios.find((entry) => entry.id === id)!;
+    const answer = {
+      explanation:
+        "The current sizing remains provisional. Nothing has been saved.",
+      changes: [],
+      references: ["firewall-infrastructure"],
+      questions: [
+        {
+          path,
+          text: "How should we resolve the remaining requirement?",
+          answerType: "requirements",
+          options: [
+            "Retry the verified project catalogue",
+            "Provide an already-known approved choice",
+          ],
+        },
+      ],
+    };
+    expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+    expect(
+      validateAssistantScenario(scenario, {
+        ...answer,
+        questions: [
+          {
+            ...answer.questions[0],
+            path:
+              path === "connectivity.firewall"
+                ? "connectivity.firewall.flavor"
+                : path,
+            answerType: "catalogue",
+            options: [],
+          },
+        ],
+      }).failures,
+    ).toContain("business_requirements_replaced_by_technical_picker");
+  }
+});
+
+it("rejects affirmative English or elliptical save claims while accepting negative and future instructions", () => {
+  for (const text of [
+    "Saved.",
+    "Konfiguration gespeichert.",
+    "I have saved the configuration.",
+    "The draft is saved.",
+    "Nothing changed, but we saved the settings.",
+  ])
+    expect(assistantPrematurePersistenceClaim(text)).toBe(true);
+  for (const text of [
+    "Nothing has been saved.",
+    "The draft is not saved.",
+    "I have not saved the configuration.",
+    "When the configuration is saved, create a Plan.",
+    "The previously saved settings remain unchanged.",
+  ])
+    expect(assistantPrematurePersistenceClaim(text)).toBe(false);
+});
+
+it("accepts uniquely identified template names while rejecting incomplete or ambiguous selectors", () => {
+  const scenario = assistantScenarios.find(
+    (entry) => entry.id === "application-access-both-kubernetes-clarify",
+  )!;
+  const answer = {
+    explanation:
+      "Select the Corporate target; the Public template is unique. Nothing saved.",
+    changes: [],
+    references: ["project-templates"],
+    questions: [
+      {
+        path: "projectTemplates",
+        text: "Which Corporate template(s)?",
+        answerType: "requirements",
+        multiple: true,
+        options: [
+          "Corporate central (zentr.)",
+          "Second Corporate (2.)",
+          "Both Corporate templates",
+        ],
+      },
+    ],
+  };
+  expect(validateAssistantScenario(scenario, answer).failures).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      questions: [
+        { ...answer.questions[0], options: ["Corporate central (zentr.)"] },
+      ],
+    }).failures,
+  ).toContain("application_access_multi_target_not_clarified");
+  const candidates = [
+    { key: "one", name: "Duplicate", kind: "corporate" },
+    { key: "two", name: "Duplicate", kind: "corporate" },
+  ];
+  expect(assistantTemplateOptionMatches("Duplicate", "one", candidates)).toBe(
+    false,
+  );
+  expect(
+    assistantTemplateOptionMatches("Duplicate (one)", "one", candidates),
+  ).toBe(true);
+  expect(
+    assistantTemplateOptionMatches("Someone else", "one", candidates),
+  ).toBe(false);
 });

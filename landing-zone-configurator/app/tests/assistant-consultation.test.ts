@@ -2056,3 +2056,103 @@ it.each(["cancel", "deadline"] as const)(
     }
   },
 );
+
+it("retains unmodified template candidates for review while scoping publication readiness to the actual proposal", async () => {
+  const fixture = assistantScenarioFixture(
+    assistantScenarios.find(
+      (entry) => entry.id === "application-access-both-kubernetes-clarify",
+    )!,
+  );
+  const { client } = model(
+    [
+      () => ({
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: ["project-templates"] }],
+      }),
+      () => ({
+        action: "validate_proposal",
+        basis: [],
+        changes: [
+          {
+            path: "projectTemplates",
+            operation: "add_permissions",
+            value: {
+              templateKeys: ["public-workload", "second-corporate"],
+              principals: ["requester", "automation"],
+              source: { kind: "services", ids: ["ske"] },
+            },
+          },
+        ],
+      }),
+      (body) => {
+        expect(lastResult(body).validation.ok).toBe(true);
+        return final({
+          kind: "proposal",
+          proposal: lastResult(body).validation.proposal,
+          references: ["project-templates"],
+        });
+      },
+      () =>
+        final({
+          kind: "clarification",
+          references: ["project-templates"],
+          questions: [
+            {
+              path: "projectTemplates",
+              text: "Which Corporate template should we change?",
+              options: [
+                "Corporate central (central)",
+                "Second Corporate (second-corporate)",
+              ],
+            },
+          ],
+        }),
+    ],
+    [
+      (body) => {
+        const payload = JSON.parse(
+          body.messages.find((message) => message.role === "user")!.content,
+        );
+        expect(
+          payload.templateCandidates
+            .map((item: { key: string }) => item.key)
+            .sort(),
+        ).toEqual(["central", "public-workload", "second-corporate"]);
+        expect(
+          payload.templateReadiness
+            .map((item: { key: string }) => item.key)
+            .sort(),
+        ).toEqual(["public-workload", "second-corporate"]);
+        expect(
+          payload.templateCandidates.every(
+            (item: object) => !Object.hasOwn(item, "hasInitialOwner"),
+          ),
+        ).toBe(true);
+        return {
+          ready: false,
+          findings: [
+            "Corporate has two actual candidates; ask the target selection instead of choosing a subset.",
+          ],
+        };
+      },
+    ],
+  );
+  const answer = await client.converse(
+    selection,
+    fixture.values,
+    [],
+    "Add Kubernetes rights for both principals in Public and Corporate templates.",
+    undefined,
+    [],
+    undefined,
+    {
+      validateChanges: (changes) =>
+        assistantPublicValues(applyAssistantChanges(fixture.draft, changes)),
+    },
+  );
+  expect(answer.changes).toEqual([]);
+  expect(answer.questions[0]?.options).toEqual([
+    "Corporate central (central)",
+    "Second Corporate (second-corporate)",
+  ]);
+});

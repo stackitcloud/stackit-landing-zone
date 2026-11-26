@@ -36,7 +36,9 @@ kopiert; nach Apply ein neues Ereignis im Dashboard prüfen. Zustellung kann
 verzögert sein; zunächst die letzten 24 Stunden und alle Filter wählen. Felder:
 `retention_days`, `acl`, `s3_object_lock`, `managed_resources`, `link_scopes`
 mit `resource_type/resource_id`. Object Lock verwendet standardmäßig `true`,
-auch bei verschachteltem `null`; die Aufbewahrung beträgt standardmäßig 180 Tage.
+auch bei verschachteltem `null`. Die Schutzdauer folgt dem gewählten
+`retention_days` (Standard 180 Tage): Bei gewählten 90 Tagen sind es auch
+90 geschützte Tage, keine feste Object-Lock-Dauer von 180 Tagen.
 Ausdrückliches `false` verzichtet vor der Archiverstellung darauf. Mit Lock gelten
 1–365 Tage und GOVERNANCE-Modus: kein umkehrbarer Schalter und keine
 Compliance-Zertifizierung.

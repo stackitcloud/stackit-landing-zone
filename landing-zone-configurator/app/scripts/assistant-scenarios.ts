@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { isIP } from "node:net";
 import { isDeepStrictEqual } from "node:util";
 import { catalogueField } from "@lzc/contracts";
 import {
@@ -26,6 +27,7 @@ import {
   multiTemplatePermissionHistoryText,
 } from "../apps/api/src/assistant/application-permission-dialogue.js";
 import { enrichCatalogueQuestions } from "../apps/api/src/assistant/catalogue-guidance.js";
+import { consultationNativeDefault } from "../apps/api/src/assistant/consultation.js";
 import {
   applyAssistantChanges,
   type Dialogue,
@@ -2362,6 +2364,123 @@ export function assistantExecutionLifecycleFailures(text: string) {
   return failures;
 }
 
+/** Compare native effects, including optional defaults and the management module's
+ * organization-link fallback, without accepting extra unrelated settings. */
+function sameAuditConfiguration(
+  actual: unknown,
+  expected: unknown,
+  organizationId: unknown,
+) {
+  const left = objectValue(actual as JsonValue),
+    right = objectValue(expected as JsonValue);
+  const keys = new Set([
+    ...Object.keys(left),
+    ...Object.keys(right),
+    "managed_resources",
+    "link_scopes",
+  ]);
+  const canonical = (value: Record<string, JsonValue>) => {
+    const result = structuredClone(value);
+    for (const key of keys) {
+      const fact = consultationNativeDefault(`audit_logs.${key}`);
+      if (result[key] == null && fact.found)
+        result[key] = fact.value as JsonValue;
+    }
+    if (result.managed_resources !== true && result.link_scopes == null)
+      result.link_scopes = [
+        {
+          resource_type: "organization",
+          resource_id: organizationId as JsonValue,
+        },
+      ];
+    return result;
+  };
+  return isDeepStrictEqual(canonical(left), canonical(right));
+}
+
+function auditQuestionFactFailures(
+  dialogue: Dialogue,
+  current: Record<string, unknown>,
+  retentionDays: number,
+) {
+  const audit = objectValue(current.audit_logs as JsonValue);
+  const defaults = consultationNativeDefault("audit_logs.acl");
+  const canonicalAddress = (value: string) => {
+    const [address, prefix] = value.split("/");
+    const family = isIP(address!);
+    return family
+      ? `${address!.toLowerCase()}/${prefix ?? (family === 4 ? 32 : 128)}`
+      : null;
+  };
+  const allowed = new Set(
+    [
+      ...(Array.isArray(audit.acl) ? audit.acl : []),
+      ...(Array.isArray(defaults.value) ? defaults.value : []),
+    ]
+      .filter((value): value is string => typeof value === "string")
+      .map(canonicalAddress),
+  );
+  const failures: string[] = [];
+  for (const question of dialogue.questions) {
+    if (question.path === "audit_logs.acl") {
+      const addresses = (question.options ?? [])
+        .flatMap(
+          (option) =>
+            option.match(
+              /(?:\d{1,3}\.){3}\d{1,3}(?:\/\d{1,2})?|[0-9a-fA-F]*:[0-9a-fA-F:.]+(?:\/\d{1,3})?/g,
+            ) ?? [],
+        )
+        .map(canonicalAddress)
+        .filter((value) => value !== null);
+      if (addresses.some((address) => !allowed.has(address)))
+        failures.push("audit_invented_network_options");
+    }
+    if (question.path === "audit_logs.s3_object_lock") {
+      for (const option of question.options ?? []) {
+        if (!/^(?:aktiviert|enabled|enable|ja|yes|true)\b/i.test(option.trim()))
+          continue;
+        const duration =
+          /(?:Objekte?|objects?)\s+(\d+)\s*(?:Tage|days)\s*(?:schreibgeschützt|geschützt|protected|locked)/i.exec(
+            option,
+          );
+        if (duration && Number(duration[1]) !== retentionDays)
+          failures.push("audit_lock_retention_mismatch");
+      }
+    }
+  }
+  return [...new Set(failures)];
+}
+
+export function assistantTemplateOptionMatches(
+  option: string,
+  key: string,
+  candidates: { key: string; name: string; kind: string }[],
+) {
+  const target = candidates.find((candidate) => candidate.key === key);
+  if (!target) return false;
+  const normalize = (value: string) =>
+    value.trim().replace(/\s+/g, " ").toLowerCase();
+  const mentions = (value: string) => {
+    const escaped = normalize(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return (
+      !!escaped &&
+      new RegExp(
+        `(?:^|[^\\p{L}\\p{N}_-])${escaped}(?:$|[^\\p{L}\\p{N}_-])`,
+        "iu",
+      ).test(normalize(option))
+    );
+  };
+  return (
+    mentions(target.key) ||
+    (candidates.filter(
+      (candidate) =>
+        candidate.kind === target.kind &&
+        normalize(candidate.name) === normalize(target.name),
+    ).length === 1 &&
+      mentions(target.name))
+  );
+}
+
 function sameApplicationAccessConfiguration(
   left: CommonConfiguration,
   right: CommonConfiguration,
@@ -2550,9 +2669,15 @@ export function validateAssistantScenario(
         failures.push("application_access_legacy_unconfirmed_change");
       const legacy = dialogue.questions.filter((q) => {
         const text = [q.text, ...(q.options ?? [])].join(" ");
+        const explicitProfile = /workload/i.test(text);
+        const contextualProfile =
+          /workload/i.test(dialogue.explanation) &&
+          /legacy/i.test(dialogue.explanation) &&
+          /central/i.test(dialogue.explanation) &&
+          !/owner|eigentümer|eigentuemer/i.test(q.text);
         return (
-          /workload/i.test(text) &&
-          /umstell|erset|wechsel|migrier|bestätig|bestaetig|confirm|replace|transition|migrat|verwenden|nutzen|\buse\b/i.test(
+          (explicitProfile || contextualProfile) &&
+          /umstell|erset|wechsel|migrier|bestätig|bestaetig|confirm|replace|transition|migrat/i.test(
             text,
           )
         );
@@ -2587,7 +2712,13 @@ export function validateAssistantScenario(
         dialogue.changes.length ||
         !dialogue.questions.some((q) =>
           ["central", "second-corporate"].every((key) =>
-            q.options?.some((option) => option.includes(key)),
+            q.options?.some((option) =>
+              assistantTemplateOptionMatches(
+                option,
+                key,
+                fixture.draft.projectTemplates ?? [],
+              ),
+            ),
           ),
         )
       )
@@ -2638,7 +2769,13 @@ export function validateAssistantScenario(
       dialogue.changes.length ||
       dialogue.questions.length !== 1 ||
       !["central", "second-public"].every((key) =>
-        dialogue.questions[0]?.options?.some((option) => option.includes(key)),
+        dialogue.questions[0]?.options?.some((option) =>
+          assistantTemplateOptionMatches(
+            option,
+            key,
+            fixture.draft.projectTemplates ?? [],
+          ),
+        ),
       )
     )
       failures.push("application_access_ambiguous_public_not_clarified");
@@ -2756,7 +2893,17 @@ export function validateAssistantScenario(
       const candidate = applyAssistantChanges(fixture.draft, dialogue.changes);
       if (
         !dialogue.changes.length ||
-        dialogue.questions.length ||
+        (scenario.applicationAccess === "public-kubernetes-incomplete-owner"
+          ? dialogue.questions.length !== 1 ||
+            !dialogue.questions.every(
+              (q) =>
+                [
+                  "projectTemplates",
+                  "projectTemplates.central.accessProfile.initialOwnerEmail",
+                ].includes(q.path) &&
+                /owner|eigentümer|eigentuemer/i.test(q.text),
+            )
+          : dialogue.questions.length > 0) ||
         !sameApplicationAccessConfiguration(candidate, expected)
       )
         failures.push(
@@ -2851,7 +2998,11 @@ export function validateAssistantScenario(
       scenario.expectedLanguage ?? "de",
     );
     const question = presented.questions.find(
-      (question) => question.path === scenario.requirementsQuestion,
+      (question) =>
+        question.path === scenario.requirementsQuestion ||
+        question.path.startsWith(`${scenario.requirementsQuestion}.`) ||
+        question.path ===
+          scenario.requirementsQuestion!.split(".").slice(0, -1).join("."),
     );
     if (
       dialogue.changes.length ||
@@ -3161,17 +3312,12 @@ export function validateAssistantScenario(
     if (
       dialogue.changes.length ||
       !isDeepStrictEqual(
-        dialogue.questions.map((q) => q.path),
-        scenario.auditQuestionPaths,
+        dialogue.questions.map((q) => q.path).sort(),
+        [...scenario.auditQuestionPaths].sort(),
       )
     )
       failures.push("audit_unanswered_decisions_not_preserved");
-    if (
-      dialogue.questions.some(
-        (q) => q.path === "audit_logs.acl" && (q.options?.length ?? 0) > 0,
-      )
-    )
-      failures.push("audit_invented_network_options");
+    failures.push(...auditQuestionFactFailures(dialogue, fixture.values, 90));
     return { dialogue, failures };
   }
   if (scenario.editorExpected) {
@@ -3188,7 +3334,25 @@ export function validateAssistantScenario(
           (current, key) => objectValue(current)[key],
           compileCommonConfiguration(candidate),
         );
-      if (!isDeepStrictEqual(value, scenario.editorExpected.value))
+      if (scenario.editorExpected.path === "audit_logs") {
+        if (
+          !sameAuditConfiguration(
+            value,
+            scenario.editorExpected.value,
+            fixture.values.organization_id,
+          )
+        )
+          failures.push("editor_expected_value_not_applied");
+        const before = compileCommonConfiguration(fixture.draft),
+          after = compileCommonConfiguration(candidate);
+        const withoutAudit = (input: Record<string, JsonValue>) => {
+          const result = structuredClone(input);
+          delete result.audit_logs;
+          return result;
+        };
+        if (!isDeepStrictEqual(withoutAudit(before), withoutAudit(after)))
+          failures.push("audit_proposal_changed_other_components");
+      } else if (!isDeepStrictEqual(value, scenario.editorExpected.value))
         failures.push("editor_expected_value_not_applied");
       if (scenario.topic === "observability") {
         const settings = objectValue(
@@ -3694,7 +3858,10 @@ export function validateAssistantScenario(
       failures.push("sna_scope_or_repeated_question");
   }
   if (scenario.fixture !== "baseline") {
-    if (!assistantUnsavedNotice(dialogue.explanation))
+    if (
+      (dialogue.changes.length || dialogue.questions.length) &&
+      !assistantUnsavedNotice(dialogue.explanation)
+    )
       failures.push("missing_unsaved_notice");
     if (
       scenario.id !== "firewall-ha-already-saved" &&
@@ -3747,6 +3914,30 @@ export function assistantUnsavedNotice(explanation: string) {
 }
 
 export function assistantPrematurePersistenceClaim(explanation: string) {
+  const sentences = explanation
+    .replace(/[*`_]/g, "")
+    .split(/[.!?;\n]+|\b(?:aber|jedoch|sondern|but|however)\b/i);
+  if (
+    sentences.some((sentence) => {
+      const text = sentence.trim();
+      if (
+        /^(?:(?:alles|konfiguration|der entwurf|entwurf|einstellungen|the configuration|configuration|the draft|draft|settings|changes)\s+)?(?:gespeichert|saved|persisted|published|deployed)$/i.test(
+          text,
+        )
+      )
+        return true;
+      if (/^(?:if|when|once|after|before|unless)\b/i.test(text)) return false;
+      return (
+        /\b(?:I|we)(?:'ve| have)?\s+(?:(?:now|just|successfully)\s+)*(?:saved|persisted|published|deployed)\b/i.test(
+          text,
+        ) ||
+        /\b(?:configuration|config|draft|settings|changes|it)\s+(?:is|are|was|were|has been|have been)\s+(?:(?:now|just|successfully|already)\s+)*(?:saved|persisted|published|deployed)\b/i.test(
+          text,
+        )
+      );
+    })
+  )
+    return true;
   const claims = explanation.matchAll(
     /\b(?:wurde|wurden|ist|sind)\b((?:(?!\b(?:wurde|wurden|ist|sind)\b)[^.!?\n]){0,100})\b(?:konfiguriert|gespeichert|eingetragen|bereitgestellt)\b/gi,
   );

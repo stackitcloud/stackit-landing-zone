@@ -250,7 +250,7 @@ bearbeitbaren Konfigurationswurzeln und tatsächlichen nativen Defaults der
 gewählten Themen gemeinsam abrufen. Reine Beratung benötigt dieses Bündel nicht.
 Begrenzte Bündel nennen verbleibende Pfade ausdrücklich. Unabhängige Abfragen
 laufen gemeinsam; Validierung und abhängige Änderungen warten weiterhin auf ihre
-Eingaben. Die fachliche Prüfung erhält auch gebündelte Werte und Default-Quellen.
+Eingaben. Die fachliche Prüfung erhält auch gebündelte Werte und Default-Quellen. Die vollständige Liste der Template-Schlüssel, -Namen und -Arten bleibt erhalten, auch wenn die Veröffentlichungsbereitschaft nur betroffene Templates umfasst; fehlende Alternativen dürfen keine scheinbar eindeutige Auswahl erzeugen. Auch Fragetexte und Auswahloptionen werden fachlich geprüft. Nicht abrufbare Kataloge benötigen einen hilfreichen nächsten Entscheidungsschritt statt einer leeren Auswahl.
 Ihr Ergebnis soll konkrete Nachweise referenzieren, statt ganze Dokumente zu
 wiederholen. Vollständigkeits-, Absichts-, Sprach- und Grenzprüfungen bleiben
 verpflichtend. Ordnervorschläge enthalten vor der Prüfung eine lokalisierte
