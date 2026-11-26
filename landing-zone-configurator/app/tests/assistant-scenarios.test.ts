@@ -2087,7 +2087,27 @@ it("allows documented network-choice actions but rejects invented networks and c
   expect(
     validateAssistantScenario(scenario, {
       ...answer,
+      questions: [],
+    }).failures,
+  ).toContain("audit_unanswered_decisions_not_preserved");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
       questions: [answer.questions[0]],
+    }).failures,
+  ).toEqual([]);
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      questions: [
+        { ...answer.questions[0], path: "audit_logs.retention_days" },
+      ],
+    }).failures,
+  ).toContain("audit_unanswered_decisions_not_preserved");
+  expect(
+    validateAssistantScenario(scenario, {
+      ...answer,
+      questions: [answer.questions[0], answer.questions[0]],
     }).failures,
   ).toContain("audit_unanswered_decisions_not_preserved");
 });

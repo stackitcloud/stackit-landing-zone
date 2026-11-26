@@ -3309,12 +3309,17 @@ export function validateAssistantScenario(
         failures.push("audit_default_changed_other_components");
       return { dialogue, failures };
     }
+    // A model-led turn may clarify one remaining decision or visibly retain a
+    // native default while asking another. Do not enforce the old form schedule;
+    // reject no progress, repeated/answered fields and unrelated questions.
+    const questionPaths = dialogue.questions.map((question) => question.path);
     if (
       dialogue.changes.length ||
-      !isDeepStrictEqual(
-        dialogue.questions.map((q) => q.path).sort(),
-        [...scenario.auditQuestionPaths].sort(),
-      )
+      !questionPaths.length ||
+      questionPaths.some(
+        (path) => !scenario.auditQuestionPaths!.includes(path),
+      ) ||
+      new Set(questionPaths).size !== questionPaths.length
     )
       failures.push("audit_unanswered_decisions_not_preserved");
     failures.push(...auditQuestionFactFailures(dialogue, fixture.values, 90));
