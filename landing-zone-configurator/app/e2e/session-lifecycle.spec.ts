@@ -522,7 +522,7 @@ test("an explicit URL wins over an older draft checkpoint location on immediate 
   await page.reload();
   await expect(page).toHaveURL(/\/applications$/);
   await expect(
-    page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
+    page.getByRole("tab", { name: "Vorlagen", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   await page
     .getByRole("navigation", { name: "Hauptnavigation", exact: true })

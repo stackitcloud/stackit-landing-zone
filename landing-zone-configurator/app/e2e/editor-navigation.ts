@@ -6,7 +6,7 @@ export async function openTemplateDrafts(page: Page) {
     .getByRole("button", { name: "Application Landing Zones", exact: true })
     .click();
   await expect(page).toHaveURL(/\/applications$/);
-  const tab = page.getByRole("tab", { name: "Template-Entwürfe", exact: true });
+  const tab = page.getByRole("tab", { name: "Vorlagen", exact: true });
   // Authenticated tabs arrive asynchronously; guests can see the editor directly.
   await expect
     .poll(
@@ -49,4 +49,17 @@ export async function mockEmptyApplicationLists(page: Page) {
       expect(route.request().method()).toBe("GET");
       return route.fulfill({ json: body });
     });
+}
+
+export async function openExpertApplicationTab(
+  page: Page,
+  name: "Plattformanbindung" | "Veröffentlichung" | "Archiv",
+) {
+  const tab = page.getByRole("tab", { name, exact: true });
+  const advanced = page.getByRole("button", { name: "Erweitert", exact: true });
+  await expect
+    .poll(async () => (await tab.isVisible()) || (await advanced.isVisible()))
+    .toBe(true);
+  if (!(await tab.isVisible())) await advanced.click();
+  await tab.click();
 }

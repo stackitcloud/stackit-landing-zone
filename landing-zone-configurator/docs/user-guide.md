@@ -110,14 +110,16 @@ upgraded when a new version is published.
 
 ### Platform Owner workflow
 
-Under **Application Landing Zones**, follow the tabs from left to right:
+Under **Application Landing Zones**, use **Templates**, **Catalogue** and **Orders**:
 
-1. **Template drafts:** choose the platform configuration, edit the templates directly here and explicitly save. The next-step button remains disabled while the configuration is unsaved or changed.
-2. **Platform binding:** check and approve the applied platform contract, then configure its execution binding and Application state backend. If no suitable successful Platform Apply is available, complete the platform deployment and identity prerequisites first.
-3. **Publication:** choose the template, approved contract, matching target, requester access and deployment policy, then explicitly publish a version. A missing execution binding is shown here with a reference to the preceding step.
-4. **Catalogue:** check the published version and its visibility. Orders and the archive remain separate tabs after the catalogue.
+1. **Templates:** choose the platform configuration, edit its templates and explicitly save. **Make templates available** remains disabled while changes are unsaved.
+2. **Make template available:** choose a saved template. The guided review offers deployed platforms belonging to the persisted configuration ID. It preselects a platform, access profile, state storage or compatible target only when the choice is unique. Names are never used to match configurations; unrelated platforms are not selected automatically. Missing access profiles can be created here without leaving the workflow.
+3. **Review and approve:** check the platform revision, target area, technical access, requester groups and approval policy. One explicit approval carries out the existing contract approval, execution setup and template publication in order. It starts no Plan or Apply. Existing orders retain their pinned versions and bindings. After publication, the existing optional upgrade-offer flow remains available.
+4. **Catalogue / Orders:** check what requesters can order and manage existing landing zones.
 
-The same controlled draft is used in Configurations and Application Landing Zones. Each transition is navigation only; saving, contract approval, execution configuration, publication, Plan and Apply remain separate explicit actions. Application Owners enter the catalogue directly and do not see the platform administration steps. The workspace order quota applies across the whole workspace and is displayed above these tabs.
+**Advanced** exposes the full platform-binding, publication and archive controls, including imported contracts, explicit execution bindings, state storage and technical revisions. Use it for exceptional assignments and support diagnostics. Returning to the guided workflow does not change those bindings. If a platform is missing or has no compatible target, apply the required platform changes first; the guided workflow cannot publish an unbound executable template.
+
+Configurations and template editing use the same controlled draft. Saving remains explicit; guided approval does not bypass server-side authorization, state/version checks or execution gates. A failed intermediate step does not roll back an already approved contract or execution binding; check the displayed result before trying again. Application Owners enter the catalogue directly and do not receive platform administration capabilities. The order quota remains workspace-wide.
 
 ### Choose the deployed Application project permissions
 
@@ -173,6 +175,8 @@ Publishing again creates a new version and does not reuse deleted version number
 
 ### Bind published templates to an applied platform
 
+For routine publication, use the guided workflow above. The following details describe the expert controls under **Advanced**.
+
 Open the saved platform configuration as Platform Engineer in the same workspace.
 Publication reads its template drafts from this open configuration; platform contracts
 and State backends are loaded independently. For an already bound workspace, personal
@@ -186,7 +190,7 @@ approval date instead. The selected contract lists targets and audit integration
 UUID is available under technical contract details. The same labels appear in platform
 execution setup, Template publication and platform upgrade paths.
 
-Under **Publication**, select the template, approved contract, matching target and
+Under **Advanced → Publication**, select the template, approved contract, matching target and
 permitted Application Owner groups. Publish a new immutable version; existing versions
 and orders are not rebound. The invited owner selects that version in the same workspace.
 Public projects support optional local networking; Corporate projects use the approved

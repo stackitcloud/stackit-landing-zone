@@ -57,10 +57,15 @@ import { applicationGroupsSchema } from "./ApplicationGroups";
 import { ApplicationOrderQuota } from "./ApplicationOrderQuota";
 import { ApplicationOrderUpdates } from "./ApplicationOrderUpdates";
 import { ApplicationPlatformUpgradePublication } from "./ApplicationPlatformUpgradePublication";
+import {
+  ApplicationPublication,
+  type PublicationPreview,
+} from "./ApplicationPublication";
 import { ApplicationStateRecovery } from "./ApplicationStateRecovery";
 import { ApplicationUpgradeApproval } from "./ApplicationUpgradeApproval";
 import { ApplicationUpgradeProgress } from "./ApplicationUpgradeProgress";
 import { ApplicationUpgradePublication } from "./ApplicationUpgradePublication";
+import { Credentials } from "./Credentials";
 import { OutputConsole } from "./OutputConsole";
 import {
   approvedContractSchema,
@@ -301,6 +306,7 @@ const appliedPlatformsSchema = z.object({
         organizationId: z.uuid(),
         finishedAt: z.iso.datetime(),
         configurationName: z.string().min(1).max(256).default("Plattform"),
+        configurationId: z.string().nullable().optional(),
         configurationRevision: z.string().max(128).nullable().optional(),
       }),
     )
@@ -2380,6 +2386,7 @@ export function Applications({
   templateEditor,
   configurationDirty = false,
   configurationSaved = false,
+  configurationId = null,
   onEditTemplates,
   onTemplateEditingChange,
 }: {
@@ -2389,6 +2396,7 @@ export function Applications({
   templateEditor?: ReactNode;
   configurationDirty?: boolean;
   configurationSaved?: boolean;
+  configurationId?: string | null;
   onEditTemplates?: () => void;
   onTemplateEditingChange?: (editing: boolean) => void;
 }) {
@@ -2463,6 +2471,8 @@ export function Applications({
     z.infer<typeof approvedContractSchema>[]
   >([]);
   const [platformRevision, setPlatformRevision] = useState("");
+  const [expertMode, setExpertMode] = useState(false);
+  const [showPublication, setShowPublication] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   useEffect(() => {
     onTemplateEditingChange?.(activeTab === null || activeTab === "drafts");
@@ -2729,14 +2739,20 @@ export function Applications({
   const tabs = [
     ...(canPublish
       ? [
-          { id: "drafts", label: "Template-Entwürfe" },
-          { id: "platform", label: "Plattformanbindung" },
-          { id: "publish", label: "Veröffentlichung" },
+          { id: "drafts", label: "Vorlagen" },
+          ...(expertMode
+            ? [
+                { id: "platform", label: "Plattformanbindung" },
+                { id: "publish", label: "Veröffentlichung" },
+              ]
+            : publishedVersion
+              ? [{ id: "publish", label: "Bereitstellung abschließen" }]
+              : []),
         ]
       : []),
     { id: "catalogue", label: "Katalog" },
     { id: "orders", label: "Bestellungen" },
-    ...(canPublish ? [{ id: "archive", label: "Archiv" }] : []),
+    ...(canPublish && expertMode ? [{ id: "archive", label: "Archiv" }] : []),
   ];
   const selectedTab = tabs.some((tab) => tab.id === activeTab)
     ? activeTab
@@ -2813,6 +2829,101 @@ export function Applications({
     setName("");
     setIdempotencyKey(crypto.randomUUID());
     setNotice("");
+  }
+  async function publishGuided(input: {
+    templateId: string;
+    preview: PublicationPreview;
+    credentialId: string;
+    backendId: string;
+    targetKey: string;
+    allowedGroupIds: string[];
+    direct: boolean;
+    signal: AbortSignal;
+  }) {
+    if (!session || configurationDirty || !configurationSaved)
+      throw new Error("Speichere zuerst die Konfiguration.");
+    const template = drafts.find((item) => item.id === input.templateId);
+    if (!template) throw new Error("Template wählen");
+    const issues = applicationPlanScopeIssues(
+      template,
+      template.settings,
+      runnerRevision ?? "",
+    );
+    if (issues.length) throw new Error(issues[0]);
+    const ensureCurrent = () => {
+      if (input.signal.aborted) throw new DOMException("Aborted", "AbortError");
+    };
+    ensureCurrent();
+    const approved = approvedContractSchema.parse(
+      await request(
+        "applied-platforms/approve",
+        session,
+        {
+          source: input.preview.source,
+          confirmApproval: true,
+          credentialProfileId: input.credentialId,
+        },
+        input.signal,
+      ),
+    );
+    ensureCurrent();
+    if (
+      delegationEnabled &&
+      !executionBindings.some(
+        (binding) => binding.platformRevision === approved.document.revision,
+      )
+    ) {
+      await request(
+        `platform-contracts/${approved.document.revision}/execution`,
+        session,
+        {
+          enabled: true,
+          stateBackendId: input.backendId,
+          confirmExecution: true,
+        },
+        input.signal,
+      );
+      ensureCurrent();
+    }
+    const published = publishedProjectTemplateSchema.parse(
+      await request(
+        "templates",
+        session,
+        {
+          template,
+          ...(runnerRevision ? { acceleratorRevision: runnerRevision } : {}),
+          ...(deploymentPolicyEnabled
+            ? {
+                deploymentPolicy: input.direct ? "direct" : "approval-required",
+              }
+            : {}),
+          ...(groupAccessEnabled
+            ? { allowedGroupIds: input.allowedGroupIds }
+            : {}),
+          platformRevision: approved.document.revision,
+          targetKey: input.targetKey,
+        },
+        input.signal,
+      ),
+    );
+    ensureCurrent();
+    setVersions((current) => [
+      published,
+      ...current.filter((item) => item.id !== published.id),
+    ]);
+    setPublishedVersion(published);
+    setPublicationStep(upgradesEnabled ? "upgrade" : "done");
+    setActiveTab("publish");
+    setShowPublication(false);
+    // Publication has succeeded. A refresh failure must never invite a duplicate publication.
+    try {
+      await load(input.signal);
+    } catch {
+      if (!input.signal.aborted)
+        setError(
+          "Die Version wurde veröffentlicht, aber der Katalog konnte nicht aktualisiert werden. Veröffentliche sie nicht erneut; lade die Seite später neu.",
+        );
+    }
   }
   async function publish() {
     if (!session || busy) return;
@@ -3293,6 +3404,19 @@ export function Applications({
         />
       )}
 
+      {canPublish && (
+        <button
+          type="button"
+          className="button secondary"
+          aria-pressed={expertMode}
+          onClick={() => {
+            setExpertMode((value) => !value);
+            setActiveTab("drafts");
+          }}
+        >
+          {t(expertMode ? "Zurück zum einfachen Ablauf" : "Erweitert")}
+        </button>
+      )}
       <div
         className="application-tabs"
         role="tablist"
@@ -3351,10 +3475,10 @@ export function Applications({
           aria-labelledby="application-tab-drafts"
           hidden={selectedTab !== "drafts"}
         >
-          <h2>{t("1. Templates definieren und speichern")}</h2>
+          <h2>{t("Vorlagen")}</h2>
           <p>
             {t(
-              "Definiere die bestellbaren Application Landing Zones in deiner Plattformkonfiguration. Speichere den Entwurf, prüfe danach die Plattformanbindung und veröffentliche anschließend eine Version für den Katalog.",
+              "Definiere die bestellbaren Landing Zones, speichere deine Konfiguration und stelle die Vorlagen für dein Team bereit.",
             )}
           </p>
           <button
@@ -3369,37 +3493,110 @@ export function Applications({
               {t("Geöffnete Konfiguration")}: <strong>{draft.name}</strong>
             </p>
           )}
-          {templateEditor ?? (
-            <p>
+          <div
+            hidden={
+              showPublication &&
+              !expertMode &&
+              !configurationDirty &&
+              configurationSaved
+            }
+          >
+            {templateEditor ?? (
+              <p>
+                {t(
+                  "Öffne eine Plattformkonfiguration, um ihre Template-Entwürfe hier zu bearbeiten.",
+                )}
+              </p>
+            )}
+            {draft && !templateEditor && onEditTemplates && (
+              <button
+                type="button"
+                className="button secondary"
+                onClick={onEditTemplates}
+              >
+                {t("Template-Entwürfe bearbeiten")}
+              </button>
+            )}
+            {(configurationDirty || (draft && !configurationSaved)) && (
+              <p role="status">
+                {t(
+                  "Speichere zuerst die Konfiguration. Nicht gespeicherte Änderungen sind noch nicht für den nächsten Schritt gesichert.",
+                )}
+              </p>
+            )}
+            <button
+              type="button"
+              className="button primary"
+              disabled={!draft || !configurationSaved || configurationDirty}
+              onClick={() =>
+                expertMode ? setActiveTab("platform") : setShowPublication(true)
+              }
+            >
               {t(
-                "Öffne eine Plattformkonfiguration, um ihre Template-Entwürfe hier zu bearbeiten.",
+                expertMode
+                  ? "Weiter: Plattformanbindung"
+                  : "Vorlagen bereitstellen",
               )}
-            </p>
-          )}
-          {draft && !templateEditor && onEditTemplates && (
+            </button>
+          </div>
+          {showPublication && !expertMode && (
             <button
               type="button"
               className="button secondary"
-              onClick={onEditTemplates}
+              onClick={() => setShowPublication(false)}
             >
-              {t("Template-Entwürfe bearbeiten")}
+              {t("Zurück zu den Vorlagen")}
             </button>
           )}
-          {(configurationDirty || (draft && !configurationSaved)) && (
-            <p role="status">
-              {t(
-                "Speichere zuerst die Konfiguration. Nicht gespeicherte Änderungen sind noch nicht für den nächsten Schritt gesichert.",
-              )}
-            </p>
-          )}
-          <button
-            type="button"
-            className="button primary"
-            disabled={!draft || !configurationSaved || configurationDirty}
-            onClick={() => setActiveTab("platform")}
-          >
-            {t("Weiter: Plattformanbindung")}
-          </button>
+          {showPublication &&
+            !expertMode &&
+            draft &&
+            configurationSaved &&
+            !configurationDirty && (
+              <ApplicationPublication
+                key={`${configurationId}:${JSON.stringify(draft)}:${session.user.id}`}
+                draft={draft}
+                configurationId={configurationId}
+                platforms={appliedPlatforms}
+                profiles={technicalProfiles}
+                backends={executionBackends}
+                delegationEnabled={delegationEnabled}
+                deploymentPolicyEnabled={deploymentPolicyEnabled}
+                groups={groupAccessEnabled ? applicationGroups.groups : null}
+                defaultGroupIds={publicationAccess}
+                preview={async (id, signal) =>
+                  appliedPreviewSchema.parse(
+                    await request(
+                      `applied-platforms/${id}/preview`,
+                      session,
+                      undefined,
+                      signal,
+                    ),
+                  )
+                }
+                credentialEditor={
+                  <details>
+                    <summary>{t("Neuen Zugang anlegen")}</summary>
+                    <Credentials
+                      session={session}
+                      createOnly
+                      onCreated={() => {
+                        void load().catch(() =>
+                          setError(
+                            "Technische STACKIT-Zugänge konnten nicht geladen werden.",
+                          ),
+                        );
+                      }}
+                    />
+                  </details>
+                }
+                publish={publishGuided}
+                onAdvanced={() => {
+                  setExpertMode(true);
+                  setActiveTab("platform");
+                }}
+              />
+            )}
         </section>
       )}
       {canPublish && (

@@ -195,9 +195,7 @@ for (const context of ["configuration", "templates"] as const) {
         .getByRole("navigation", { name: "Hauptnavigation", exact: true })
         .getByRole("button", { name: "Application Landing Zones", exact: true })
         .click();
-      await page
-        .getByRole("tab", { name: "Template-Entwürfe", exact: true })
-        .click();
+      await page.getByRole("tab", { name: "Vorlagen", exact: true }).click();
     }
     const chat = page.getByRole("region", {
       name: "Konfigurations-Chat",

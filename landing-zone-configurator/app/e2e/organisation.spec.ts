@@ -4,6 +4,7 @@ import {
 } from "@lzc/domain";
 import {
   mockEmptyApplicationLists,
+  openExpertApplicationTab,
   openTemplateDrafts,
 } from "./editor-navigation";
 import { expect, test } from "./fixtures";
@@ -3311,11 +3312,9 @@ for (const { publishing, applied, renewProof, executing } of [
         .click();
       if (applied) {
         await expect(
-          page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
+          page.getByRole("tab", { name: "Vorlagen", exact: true }),
         ).toHaveAttribute("aria-selected", "true");
-        await page
-          .getByRole("tab", { name: "Plattformanbindung", exact: true })
-          .click();
+        await openExpertApplicationTab(page, "Plattformanbindung");
         if (renewProof)
           await expect(
             page.getByRole("button", { name: "Nachweis prüfen", exact: true }),
@@ -3342,9 +3341,7 @@ for (const { publishing, applied, renewProof, executing } of [
           page.locator(".application-properties").first(),
         ).toContainText(source.applyRunId);
       } else {
-        await page
-          .getByRole("tab", { name: "Plattformanbindung", exact: true })
-          .click();
+        await openExpertApplicationTab(page, "Plattformanbindung");
         await expect(
           page.getByLabel("Plattform-Outputs · JSON-Vertrag", { exact: true }),
         ).toBeHidden();
@@ -3387,9 +3384,7 @@ for (const { publishing, applied, renewProof, executing } of [
       await expect(page.getByRole("status")).toContainText(
         "Plattformvertrag freigegeben",
       );
-      await page
-        .getByRole("tab", { name: "Veröffentlichung", exact: true })
-        .click();
+      await openExpertApplicationTab(page, "Veröffentlichung");
       await page
         .getByLabel("Freigegebener Plattformvertrag", { exact: true })
         .selectOption(platformRevision);
@@ -3512,9 +3507,7 @@ for (const { publishing, applied, renewProof, executing } of [
           exact: true,
         })
         .click();
-      await page
-        .getByRole("tab", { name: "Veröffentlichung", exact: true })
-        .click();
+      await openExpertApplicationTab(page, "Veröffentlichung");
       await page
         .getByLabel("Application Landing Zone Template aus meinem Entwurf", {
           exact: true,
