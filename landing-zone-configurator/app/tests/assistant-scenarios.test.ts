@@ -313,7 +313,8 @@ it.each(assistantScenarios)(
           questions: [
             {
               path: scenario.setupQuestionPaths[0],
-              text: "Please choose.",
+              text: "Please choose a starting requirement.",
+              answerType: "requirements",
               options:
                 scenario.setupQuestionPaths[0] === "devops.git_flavor"
                   ? ["Git100 — recommended", "Git10 — pilot"]

@@ -234,6 +234,9 @@ wiederverwendbare Template-Prinzipale von konkreten Projektmitgliedern. Deshalb
 brauchen Template-Rechteänderungen keine einzelnen Benutzeradressen. Neue Presets
 benötigen weiterhin einen bestätigten initialen Owner.
 
+
+Konkrete Katalogoptionen werden vor der semantischen Prüfung mit beobachteten Projekt-/Regionsdaten, nativen Defaults, aktuellen Werten und vorliegenden Quellen abgeglichen. Das gilt auch für technische Kennungen, die als Bedarfsfrage bezeichnet werden. Ein nicht verfügbarer Katalog muss zu einem hilfreichen nächsten Schritt führen, statt zu erfundenen Kennungen oder einer leeren Produktauswahl. Tatsächliche Produktauswahlen laden ihre Quelldaten vor der Prüfung; reine Bedarfsfragen lösen diesen Abruf nicht aus.
+
 ## Laufzeit von Abfragen und Antworten
 
 Der Editor-Dialog lädt Produktkataloge erst, wenn ein Katalogwerkzeug oder eine

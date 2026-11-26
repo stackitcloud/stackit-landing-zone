@@ -1043,8 +1043,10 @@ export class AssistantConversations {
       );
       stream?.onProgress?.("finishing");
       if (
-        validatedProposal.questions.some((question) =>
-          catalogueField(question.path),
+        validatedProposal.questions.some(
+          (question) =>
+            question.answerType !== "requirements" &&
+            catalogueField(question.path),
         )
       )
         await loadCatalogues();

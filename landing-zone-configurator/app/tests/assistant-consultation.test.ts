@@ -2156,3 +2156,145 @@ it("retains unmodified template candidates for review while scoping publication 
     "Second Corporate (second-corporate)",
   ]);
 });
+
+it("rejects an unverified technical question before semantic review and offers a grounded next step", async () => {
+  const fixture = assistantScenarioFixture(
+    assistantScenarios.find(
+      (entry) => entry.id === "catalogue-firewall-capacity-followup-en",
+    )!,
+  );
+  let reviews = 0;
+  const { client } = model(
+    [
+      () => ({
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: ["firewall-infrastructure"] }],
+      }),
+      () =>
+        final({
+          kind: "clarification",
+          references: ["firewall-infrastructure"],
+          questions: [
+            {
+              path: "connectivity.firewall.ha.backup_zone",
+              text: "Choose a common zone",
+              answerType: "requirements",
+              options: ["eu01-n", "eu01-d"],
+            },
+          ],
+        }),
+      (body) => {
+        expect(lastResult(body).answerValidation).toMatchObject({
+          code: "unverified_catalogue_question_choices",
+          unsupported: [
+            {
+              path: "connectivity.firewall.ha.backup_zone",
+              values: ["eu01-n", "eu01-d"],
+            },
+          ],
+        });
+        return final({
+          kind: "clarification",
+          references: ["firewall-infrastructure"],
+          questions: [
+            {
+              path: "connectivity.firewall.ha.backup_zone",
+              text: "The catalogue is unverified. How should we continue?",
+              answerType: "requirements",
+              options: [
+                "Retry the project catalogue",
+                "Provide an already-known approved zone",
+              ],
+            },
+          ],
+        });
+      },
+    ],
+    [
+      () => {
+        reviews++;
+        return { ready: true, findings: [] };
+      },
+    ],
+  );
+  const result = await client.converse(
+    selection,
+    fixture.values,
+    fixture.history,
+    "Keep current VM sizing provisional and clarify the remaining HA requirement.",
+    fixture.catalogues,
+  );
+  expect(reviews).toBe(1);
+  expect(result.changes).toEqual([]);
+  expect(result.questions[0]?.options).toEqual([
+    "Retry the project catalogue",
+    "Provide an already-known approved zone",
+  ]);
+});
+
+it("loads an actual selector once before review while leaving a business question on the same field lazy", async () => {
+  const fixture = assistantScenarioFixture(
+    assistantScenarios.find(
+      (entry) => entry.id === "editor-devops-sized-80-en",
+    )!,
+  );
+  for (const answerType of ["catalogue", "requirements"] as const) {
+    const loadCatalogues = vi.fn(async () => fixture.catalogues);
+    const { client } = model(
+      [
+        () => ({
+          action: "inspect",
+          requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+        }),
+        () =>
+          final({
+            kind: "clarification",
+            references: ["devops-git"],
+            questions: [
+              {
+                path: "devops.git_flavor",
+                text: "Which starting requirement?",
+                answerType,
+                options:
+                  answerType === "catalogue"
+                    ? []
+                    : ["Small team", "Company-wide"],
+              },
+            ],
+          }),
+      ],
+      [
+        (body) => {
+          const payload = JSON.parse(
+            body.messages.find((message) => message.role === "user")!.content,
+          );
+          const source = payload.inspectedEvidence.find(
+            (entry: { request: { automatic?: boolean } }) =>
+              entry.request?.automatic,
+          );
+          if (answerType === "catalogue")
+            expect(source.result.catalogue).toMatchObject({
+              source: "project-catalogue",
+              region: "eu01",
+            });
+          else expect(source).toBeUndefined();
+          return { ready: true, findings: [] };
+        },
+      ],
+    );
+    const result = await client.converse(
+      selection,
+      fixture.values,
+      [],
+      "Before changes, ask me a focused question.",
+      undefined,
+      [],
+      undefined,
+      { loadCatalogues },
+    );
+    expect(result.changes).toEqual([]);
+    expect(loadCatalogues).toHaveBeenCalledTimes(
+      answerType === "catalogue" ? 1 : 0,
+    );
+  }
+});

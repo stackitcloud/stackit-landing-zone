@@ -2,10 +2,15 @@ import {
   type AssistantCataloguePicker,
   type AssistantLanguage,
   assistantCataloguePickerSchema,
+  type CloudCatalogueField,
   catalogueChoiceMatches,
   catalogueField,
 } from "@lzc/contracts";
-import { type JsonValue, objectValue } from "@lzc/domain";
+import {
+  applicationProjectPermissionNames,
+  type JsonValue,
+  objectValue,
+} from "@lzc/domain";
 import { type Dialogue, dialogueSchema } from "./dialogue.js";
 import { assistantSourceNetworkQuestion } from "./editor.js";
 import type { AssistantCatalogueContext } from "./model-serving.js";
@@ -76,6 +81,87 @@ export function catalogueQuestionRegion(
     if (regions.length === 1) return regions[0];
   }
   return current.region === "eu02" ? "eu02" : "eu01";
+}
+
+// Identifier formats belong to the shared catalogue adapter, not conversational
+// routing. Described business choices remain free text; concrete native IDs need
+// an observed catalogue, current/default value or actually supplied source.
+const uuidChoice = /\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b/gi;
+const machineChoice = /\b[a-z][a-z0-9]*\d[a-z0-9]*\.[a-z0-9]+\b/gi;
+const zoneChoice = /\b(?:eu01|eu02)-[a-z0-9-]+\b/gi;
+const questionIdentifierPatterns: Record<CloudCatalogueField, RegExp> = {
+  gitFlavors: /\bgit-?\d+\b/gi,
+  vpnPlans: /\b(?:vpn[-_][a-z0-9_-]+|p\d+)\b/gi,
+  kubernetesVersions:
+    /(?<![.\d])\bv?\d+\.\d+(?:\.\d+)?(?:-[a-z0-9.-]+)?\b(?![%\d.])/gi,
+  machineTypes: machineChoice,
+  bastionMachineTypes: machineChoice,
+  machineImages: uuidChoice,
+  bastionImages: uuidChoice,
+  availabilityZones: zoneChoice,
+  bastionAvailabilityZones: zoneChoice,
+  volumeTypes: /\bstorage_[a-z0-9_]+\b/gi,
+  observabilityPlans: /\bObservability-[a-z0-9-]+\b/gi,
+  projectRoles: uuidChoice,
+  projectPermissions: /\b[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*){2,}\b/gi,
+};
+export function ungroundedCatalogueQuestionChoices(
+  dialogue: Dialogue,
+  current: Record<string, unknown>,
+  catalogues: AssistantCatalogueContext | undefined,
+  evidence: {
+    sourceTexts: string[];
+    readCurrent: (path: string) => unknown;
+    readDefault: (path: string) => unknown;
+  },
+) {
+  return dialogue.questions.flatMap((question) => {
+    const field = catalogueField(question.path);
+    if (!field) return [];
+    const identifiers = (text: string) =>
+      [...text.matchAll(new RegExp(questionIdentifierPatterns[field]))]
+        .map((match) => match[0].toLowerCase())
+        .filter((value) => !/^(?:tls|https?)\d/i.test(value));
+    const region = catalogueQuestionRegion(question.path, current);
+    const part = catalogues?.regions.find(
+      (snapshot) => snapshot.region === region,
+    )?.products[field];
+    const available = part?.status === "available" ? part.options : [];
+    const known = new Set([
+      ...(field === "projectPermissions"
+        ? applicationProjectPermissionNames
+        : []),
+      ...available.flatMap((option) => [
+        option.value.toLowerCase(),
+        option.label.toLowerCase(),
+        ...identifiers(option.value),
+      ]),
+      ...evidence.sourceTexts.flatMap(identifiers),
+      ...identifiers(JSON.stringify(evidence.readCurrent(question.path)) ?? ""),
+      ...identifiers(JSON.stringify(evidence.readDefault(question.path)) ?? ""),
+    ]);
+    const values = [
+      ...new Set(
+        (question.options ?? []).flatMap((option) => {
+          const found = identifiers(option);
+          // A bare native ID cannot gain provenance by extending a known ID.
+          if (found.length && !/\s/.test(option.trim()))
+            found.push(option.trim().toLowerCase());
+          return found.filter((value) => !known.has(value));
+        }),
+      ),
+    ];
+    if (
+      question.answerType !== "requirements" &&
+      (!part || part.status !== "available" || !part.options.length)
+    )
+      return [
+        { path: question.path, values, reason: "no_verified_picker_options" },
+      ];
+    return values.length
+      ? [{ path: question.path, values, reason: "unverified_identifier" }]
+      : [];
+  });
 }
 
 function planDescription(value: string, language: AssistantLanguage) {

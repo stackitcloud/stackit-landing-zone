@@ -12,6 +12,7 @@ import {
   ensureDraftNotice,
   groundCatalogueDialogue,
   resolveAssistantLanguage,
+  ungroundedCatalogueQuestionChoices,
   withoutCataloguePresentation,
 } from "../apps/api/src/assistant/catalogue-guidance.js";
 import {
@@ -655,4 +656,144 @@ it("retains a grounded Git network-choice question with reuse and deliberate sou
       "en",
     ).questions,
   ).toEqual([question]);
+});
+
+it("rejects invented zone, flavor and plan IDs even when labelled as requirements", () => {
+  for (const [path, values] of [
+    [
+      "connectivity.firewall.ha.backup_zone",
+      ["eu01-n", "Use eu01-d as a common zone"],
+    ],
+    ["connectivity.firewall.flavor", ["g9.999", "Try c9.999 for high traffic"]],
+    ["devops.git_flavor", ["git-999", "Git999"]],
+    ["connectivity.vpn.plan_id", ["vpn-imaginary-999", "Use p999"]],
+  ] as const) {
+    const answer = dialogue(path);
+    answer.questions[0]!.answerType = "requirements";
+    answer.questions[0]!.options = [...values];
+    expect(
+      ungroundedCatalogueQuestionChoices(
+        answer,
+        { region: "eu01" },
+        { regions: [] },
+        {
+          sourceTexts: [],
+          readCurrent: () => undefined,
+          readDefault: () => undefined,
+        },
+      ),
+    ).toHaveLength(1);
+  }
+});
+
+it("preserves real offering evidence and user/current/native sources without turning business choices into facts", () => {
+  const path = "connectivity.firewall.ha.backup_zone";
+  const answer = dialogue(path);
+  answer.questions[0]!.answerType = "requirements";
+  answer.questions[0]!.options = [
+    "eu01-n",
+    "eu01-d",
+    "eu01-e",
+    "eu01-i",
+    "Retry the verified catalogue",
+    "Provide my approved zone",
+  ];
+  const source = context("bastionAvailabilityZones");
+  source.regions[0]!.products.bastionAvailabilityZones!.options = [
+    { value: "eu01-n", label: "Verified zone" },
+  ];
+  const evidence = {
+    sourceTexts: ["The approved requirement uses eu01-d."],
+    readCurrent: () => "eu01-e",
+    readDefault: () => "eu01-i",
+  };
+  expect(
+    ungroundedCatalogueQuestionChoices(
+      answer,
+      { region: "eu01" },
+      source,
+      evidence,
+    ),
+  ).toEqual([]);
+  expect(
+    ungroundedCatalogueQuestionChoices(
+      answer,
+      { region: "eu02" },
+      source,
+      evidence,
+    )[0]?.values,
+  ).toContain("eu01-n");
+  answer.questions[0]!.options = ["eu01-n-unverified"];
+  expect(
+    ungroundedCatalogueQuestionChoices(
+      answer,
+      { region: "eu01" },
+      source,
+      evidence,
+    )[0]?.values,
+  ).toContain("eu01-n-unverified");
+  answer.questions[0]!.path = "connectivity.firewall.flavor";
+  answer.questions[0]!.options = [
+    "Low traffic",
+    "About 80 developers",
+    "Heavy TLS1.2 traffic",
+    "Keep sizing provisional",
+  ];
+  expect(
+    ungroundedCatalogueQuestionChoices(answer, { region: "eu01" }, undefined, {
+      sourceTexts: [],
+      readCurrent: () => undefined,
+      readDefault: () => undefined,
+    }),
+  ).toEqual([]);
+});
+
+it("rejects an empty unverified product picker without rejecting an unresolved business question", () => {
+  const answer = dialogue("devops.git_flavor");
+  answer.questions[0]!.options = [];
+  const evidence = {
+    sourceTexts: [],
+    readCurrent: () => undefined,
+    readDefault: () => undefined,
+  };
+  expect(
+    ungroundedCatalogueQuestionChoices(
+      answer,
+      { region: "eu01" },
+      undefined,
+      evidence,
+    ),
+  ).toMatchObject([
+    { path: "devops.git_flavor", reason: "no_verified_picker_options" },
+  ]);
+  answer.questions[0]!.answerType = "requirements";
+  answer.questions[0]!.options = ["A small team", "Company-wide repositories"];
+  expect(
+    ungroundedCatalogueQuestionChoices(
+      answer,
+      { region: "eu01" },
+      undefined,
+      evidence,
+    ),
+  ).toEqual([]);
+});
+
+it("recognizes official project permission names without granting invented permission identifiers", () => {
+  const answer = dialogue("landing_zones[*].custom_roles[*].permissions[*]");
+  answer.questions[0]!.answerType = "requirements";
+  answer.questions[0]!.options = [
+    "iaas.server.get",
+    "iam.role.imaginary-action",
+  ];
+  const failures = ungroundedCatalogueQuestionChoices(
+    answer,
+    { region: "eu01" },
+    undefined,
+    {
+      sourceTexts: [],
+      readCurrent: () => undefined,
+      readDefault: () => undefined,
+    },
+  );
+  expect(failures[0]?.values).toEqual(["iam.role.imaginary-action"]);
 });

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { isDeepStrictEqual } from "node:util";
-import { catalogueField } from "@lzc/contracts";
+import { assistantProposalValue, catalogueField } from "@lzc/contracts";
 import {
   applicationProjectPermissionNames,
   applicationServiceAccountKeyPermissions,
@@ -26,8 +26,12 @@ import {
   type MultiTemplatePermissionContext,
   multiTemplatePermissionHistoryText,
 } from "../apps/api/src/assistant/application-permission-dialogue.js";
-import { enrichCatalogueQuestions } from "../apps/api/src/assistant/catalogue-guidance.js";
+import {
+  enrichCatalogueQuestions,
+  ungroundedCatalogueQuestionChoices,
+} from "../apps/api/src/assistant/catalogue-guidance.js";
 import { consultationNativeDefault } from "../apps/api/src/assistant/consultation.js";
+import { reviewedServiceFacts } from "../apps/api/src/assistant/decision-support.js";
 import {
   applyAssistantChanges,
   type Dialogue,
@@ -2522,6 +2526,35 @@ export function validateAssistantScenario(
     assistantTemplateQuestionPaths(fixture.values),
   );
   const failures: string[] = [];
+  if (
+    ungroundedCatalogueQuestionChoices(
+      dialogue,
+      fixture.values,
+      fixture.catalogues,
+      {
+        sourceTexts: [
+          scenario.message,
+          ...(fixture.history ?? [])
+            .filter((turn) => turn.role === "user")
+            .map((turn) => turn.content),
+          ...knowledge.rules
+            .filter((rule) => dialogue.references.includes(rule.id))
+            .map((rule) => rule.text),
+          JSON.stringify(
+            Object.fromEntries(
+              dialogue.references
+                .filter((id) => reviewedServiceFacts[id])
+                .map((id) => [id, reviewedServiceFacts[id]]),
+            ),
+          ),
+        ],
+        readCurrent: (path) => assistantProposalValue(fixture.values, path),
+        readDefault: (path) =>
+          consultationNativeDefault(path, fixture.values).value,
+      },
+    ).length
+  )
+    failures.push("unverified_catalogue_question_choices");
   if (scenario.id === "audit-query-authentication-advice-en")
     failures.push(...assistantAuditQueryAuthenticationFailures(dialogue));
   if (scenario.id === "audit-disabled-archive-advice") {
