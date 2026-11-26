@@ -1,9 +1,13 @@
-import { assistantProposalFields } from "@lzc/contracts";
+import {
+  applicationExecutionCurrentRevision,
+  assistantProposalFields,
+} from "@lzc/contracts";
 import {
   type CommonConfiguration,
   createEditorConfiguration,
   editCommonInput,
 } from "@lzc/domain";
+import { englishMessages } from "../apps/web/src/locales/en";
 import { legacyAccessTemplate } from "../tests/fixtures/application-access-transition";
 import { expect, type Page, test } from "./fixtures";
 
@@ -201,25 +205,22 @@ test("Platform Owner edits the same saved configuration inline before platform b
     exact: true,
   });
   await expect(tabs.getByRole("tab")).toHaveText([
-    "Template-Entwürfe",
-    "Plattformanbindung",
-    "Veröffentlichung",
+    "Vorlagen",
     "Katalog",
     "Bestellungen",
-    "Archiv",
   ]);
   await expect(
-    tabs.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
+    tabs.getByRole("tab", { name: "Vorlagen", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   const drafts = page.getByRole("tabpanel", {
-    name: "Template-Entwürfe",
+    name: "Vorlagen",
     exact: true,
   });
   await expect(drafts).toContainText("Existing platform workflow");
   const templateName = drafts.getByLabel("Name des Templates", { exact: true });
   await expect(templateName).toHaveValue(legacyAccessTemplate.name);
   const next = drafts.getByRole("button", {
-    name: "Weiter: Plattformanbindung",
+    name: "Vorlagen bereitstellen",
     exact: true,
   });
   await expect(next).toBeEnabled();
@@ -240,18 +241,27 @@ test("Platform Owner edits the same saved configuration inline before platform b
   expect(state.executionWrites).toEqual([]);
   await page.reload();
   const restoredDrafts = page.getByRole("tabpanel", {
-    name: "Template-Entwürfe",
+    name: "Vorlagen",
     exact: true,
   });
   await expect(
     restoredDrafts.getByLabel("Name des Templates", { exact: true }),
   ).toHaveValue("Reviewed corporate template");
   const restoredNext = restoredDrafts.getByRole("button", {
-    name: "Weiter: Plattformanbindung",
+    name: "Vorlagen bereitstellen",
     exact: true,
   });
   await expect(restoredNext).toBeEnabled();
   await restoredNext.click();
+  await expect(
+    page.getByRole("region", { name: "Vorlage bereitstellen", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Erweiterte Einstellungen öffnen",
+      exact: true,
+    })
+    .click();
   await expect(
     page.getByRole("heading", {
       name: "2. Plattform anbinden und Ausführung einrichten",
@@ -593,7 +603,7 @@ test("template-draft Assistant uses the saved configuration and accepts locally 
     .getByRole("button", { name: "Application Landing Zones", exact: true })
     .click();
   const drafts = page.getByRole("tabpanel", {
-    name: "Template-Entwürfe",
+    name: "Vorlagen",
     exact: true,
   });
   const chat = drafts.getByRole("region", {
@@ -602,7 +612,7 @@ test("template-draft Assistant uses the saved configuration and accepts locally 
   });
   const templateName = drafts.getByLabel("Name des Templates", { exact: true });
   const next = drafts.getByRole("button", {
-    name: "Weiter: Plattformanbindung",
+    name: "Vorlagen bereitstellen",
     exact: true,
   });
   await expect(
@@ -670,3 +680,318 @@ test("template-draft Assistant uses the saved configuration and accepts locally 
   ).toBe(true);
   expect(state.executionWrites).toEqual([]);
 });
+
+for (const language of ["de", "en"] as const) {
+  test(`guided publication reviews the current saved configuration and retains advanced capabilities (${language})`, async ({
+    page,
+  }, testInfo) => {
+    const state = await mockWorkspace(page);
+    const message = (de: string) =>
+      language === "en" ? (englishMessages[de] ?? de) : de;
+    const applyId = "77777777-7777-4777-8777-777777777777";
+    const credentialId = "88888888-8888-4888-8888-888888888888";
+    const backendId = "99999999-9999-4999-8999-999999999999";
+    const source = {
+      applyRunId: applyId,
+      stateKey: "platform/current",
+      stateVersion: "4",
+      contractRevision,
+      documentSha256: "a".repeat(64),
+    };
+    const document = {
+      schema_version: 1,
+      tenant_id: tenantId,
+      organization_id: organizationId,
+      revision: contractRevision,
+      targets: {
+        corporate: {
+          folder_id: "folder-current",
+          region: "eu01",
+          corporate: true,
+          network_area_id: applyId,
+          firewall_next_hop_ip: "10.0.1.4",
+          ipv4_nameservers: null,
+        },
+      },
+    };
+    const writes: string[] = [];
+    let bindings: unknown[] = [];
+    let published: unknown[] = [];
+    let approved = false;
+    let failExecution = language === "en";
+    await page.route("**/api/v1/credentials", (route) =>
+      route.fulfill({
+        json: {
+          profiles: [
+            { id: credentialId, name: "Workshop automation", state: "stored" },
+          ],
+        },
+      }),
+    );
+    await page.route("**/api/v1/backends", (route) =>
+      route.fulfill({
+        json: {
+          backends: [
+            { id: backendId, descriptor: { bucket: "workshop-state" } },
+          ],
+        },
+      }),
+    );
+    await page.route("**/api/v1/applications/**", (route) => {
+      const request = route.request();
+      const path = new URL(request.url()).pathname.replace(
+        "/api/v1/applications/",
+        "",
+      );
+      if (request.method() === "POST") {
+        writes.push(path);
+        expect(request.headers()["x-lzc-csrf"]).toBe("csrf-workflow");
+        if (path === "applied-platforms/approve") {
+          expect(request.postDataJSON()).toEqual({
+            source,
+            confirmApproval: true,
+            credentialProfileId: credentialId,
+          });
+          approved = true;
+          return route.fulfill({
+            json: {
+              document,
+              approvedBy: userId,
+              approvedAt: "2026-11-26T00:00:00Z",
+            },
+          });
+        }
+        if (path === `platform-contracts/${contractRevision}/execution`) {
+          expect(request.postDataJSON()).toEqual({
+            enabled: true,
+            stateBackendId: backendId,
+            confirmExecution: true,
+          });
+          if (failExecution) {
+            failExecution = false;
+            return route.fulfill({
+              status: 503,
+              json: { error: "application_execution_resources_unavailable" },
+            });
+          }
+          bindings = [
+            {
+              id: backendId,
+              platformRevision: contractRevision,
+              backendId,
+              configuredBy: userId,
+            },
+          ];
+          return route.fulfill({ json: bindings[0] });
+        }
+        expect(path).toBe("templates");
+        const body = request.postDataJSON();
+        expect(body.template.id).toBe(legacyAccessTemplate.id);
+        expect(body.platformRevision).toBe(contractRevision);
+        expect(body.targetKey).toBe("corporate");
+        expect(body.acceleratorRevision).toBe(
+          applicationExecutionCurrentRevision,
+        );
+        expect(body.deploymentPolicy).toBe("approval-required");
+        published = [
+          {
+            id: applyId,
+            tenantId,
+            templateId: legacyAccessTemplate.id,
+            version: 1,
+            publishedBy: userId,
+            publishedAt: "2026-11-26T00:00:00Z",
+            acceleratorRevision: applicationExecutionCurrentRevision,
+            platformRevision: contractRevision,
+            targetKey: "corporate",
+            template: body.template,
+          },
+        ];
+        return route.fulfill({ json: published[0] });
+      }
+      if (path === "templates")
+        return route.fulfill({
+          json: {
+            versions: published,
+            appliedPlatformsEnabled: true,
+            deploymentPolicyEnabled: true,
+          },
+        });
+      if (path === "instances")
+        return route.fulfill({
+          json: {
+            instances: [],
+            executionDelegationEnabled: true,
+            execution: {
+              planEnabled: true,
+              applyEnabled: true,
+              acceleratorRevision: applicationExecutionCurrentRevision,
+            },
+          },
+        });
+      if (path === "platform-contracts")
+        return route.fulfill({
+          json: {
+            contracts: approved
+              ? [
+                  {
+                    document,
+                    approvedBy: userId,
+                    approvedAt: "2026-11-26T00:00:00Z",
+                  },
+                ]
+              : [],
+          },
+        });
+      if (path === "execution-bindings")
+        return route.fulfill({ json: { bindings } });
+      if (path === "applied-platforms")
+        return route.fulfill({
+          json: {
+            platforms: [
+              {
+                id: applyId,
+                stateKey: source.stateKey,
+                stateVersion: "4",
+                organizationId,
+                finishedAt: "2026-11-26T00:00:00Z",
+                configurationName: "Existing platform workflow",
+                configurationId,
+                configurationRevision: "1",
+              },
+              {
+                id: backendId,
+                stateKey: "platform/other",
+                stateVersion: "9",
+                organizationId,
+                finishedAt: "2026-11-26T01:00:00Z",
+                configurationName: "Unrelated newer platform",
+                configurationId: backendId,
+                configurationRevision: "9",
+              },
+            ],
+          },
+        });
+      expect(path).toBe(`applied-platforms/${applyId}/preview`);
+      return route.fulfill({ json: { document, source } });
+    });
+    await page.goto("/configurations");
+    await page
+      .getByRole("button", {
+        name: "Konfiguration öffnen: Existing platform workflow",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByRole("navigation", { name: "Hauptnavigation", exact: true })
+      .getByRole("button", { name: "Application Landing Zones", exact: true })
+      .click();
+    await expect(
+      page
+        .getByRole("tablist", {
+          name: "Application Landing Zones",
+          exact: true,
+        })
+        .getByRole("tab"),
+    ).toHaveText(["Vorlagen", "Katalog", "Bestellungen"]);
+    await page
+      .getByRole("button", { name: "Vorlagen bereitstellen", exact: true })
+      .click();
+    const guided = page.locator("#application-publication-guide");
+    await expect(guided.locator("#publication-platform")).toHaveValue(applyId);
+    await expect(guided).not.toContainText("Unrelated newer platform");
+    await expect(guided).not.toContainText("Freigegebene Runner-Revision");
+    expect(writes).toEqual([]);
+    await guided
+      .getByRole("button", { name: "Bereitstellung prüfen", exact: true })
+      .click();
+    const submit = guided.getByRole("button", {
+      name: "Vorlage bereitstellen",
+      exact: true,
+    });
+    await expect(submit).toBeDisabled();
+    expect(writes).toEqual([]);
+    await expect(guided).toContainText("corporate");
+    if (language === "en") {
+      await page
+        .getByRole("combobox", { name: "Sprache", exact: true })
+        .selectOption("en");
+      await expect(guided).toContainText("Review publication");
+      await expect(guided).not.toContainText("Bereitstellung prüfen");
+    }
+    await guided
+      .getByRole("checkbox", {
+        name: message(
+          "Zielbereich, Zugriff und Ausführung für diese Vorlage freigeben",
+        ),
+        exact: true,
+      })
+      .check();
+    await page.screenshot({
+      path: testInfo.outputPath("guided-publication-review.png"),
+      fullPage: true,
+    });
+    await guided
+      .getByRole("button", {
+        name: message("Vorlage bereitstellen"),
+        exact: true,
+      })
+      .click();
+    if (language === "en") {
+      await expect(guided.getByRole("alert")).toBeVisible();
+      expect(writes).toEqual([
+        "applied-platforms/approve",
+        `platform-contracts/${contractRevision}/execution`,
+      ]);
+      await expect(
+        guided.getByRole("checkbox", {
+          name: message(
+            "Zielbereich, Zugriff und Ausführung für diese Vorlage freigeben",
+          ),
+          exact: true,
+        }),
+      ).toBeChecked();
+      await expect(guided).toContainText("corporate");
+      await guided
+        .getByRole("button", {
+          name: message("Vorlage bereitstellen"),
+          exact: true,
+        })
+        .click();
+    }
+    await expect(
+      page.getByRole("heading", {
+        name: message("Veröffentlichung abgeschlossen"),
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(writes).toEqual([
+      ...(language === "en"
+        ? [
+            "applied-platforms/approve",
+            `platform-contracts/${contractRevision}/execution`,
+          ]
+        : []),
+      "applied-platforms/approve",
+      `platform-contracts/${contractRevision}/execution`,
+      "templates",
+    ]);
+    expect(
+      state.executionWrites.filter((path) =>
+        /\/(plan|apply|dispatch)$/.test(path),
+      ),
+    ).toEqual([]);
+    await page
+      .getByRole("button", { name: message("Erweitert"), exact: true })
+      .click();
+    await expect(
+      page.getByRole("tab", {
+        name: message("Plattformanbindung"),
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("tab", { name: message("Archiv"), exact: true }),
+    ).toBeVisible();
+  });
+}

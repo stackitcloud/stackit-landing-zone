@@ -1,4 +1,34 @@
 export const englishMessages: Record<string, string> = {
+  "Zurück zu den Vorlagen": "Back to templates",
+  "Zugang wählen": "Choose access profile",
+  "Neuen Zugang anlegen": "Add access profile",
+  Vorlagen: "Templates",
+  "Vorlage bereitstellen": "Make template available",
+  "Vorlagen bereitstellen": "Make templates available",
+  "Bereitstellung abschließen": "Complete publication",
+  Erweitert: "Advanced",
+  "Zurück zum einfachen Ablauf": "Back to guided workflow",
+  "Erweiterte Einstellungen öffnen": "Open advanced settings",
+  "Wähle eine gespeicherte Vorlage und prüfe, wo und für wen sie bestellbar wird.":
+    "Choose a saved template and review where and for whom it will be available to order.",
+  "Speicher für den Ausführungsstatus": "Execution state storage",
+  "Für diese Konfiguration ist noch keine bereitgestellte Plattform verfügbar. Wende zuerst die Plattformänderungen an oder prüfe die Zuordnung unter Erweitert.":
+    "No deployed platform is available for this configuration yet. Apply the platform changes first or review the association under Advanced.",
+  "Bestellungen ohne zusätzliche Freigabe zulassen":
+    "Allow orders without an additional approval",
+  "Bereitstellung prüfen": "Review publication",
+  Zielbereich: "Target area",
+  "Kein passendes Plattformziel für dieses Template. Wende die erforderlichen Plattformänderungen zuerst an.":
+    "No matching platform target is available for this template. Apply the required platform changes first.",
+  "Die Vorlage wird bestellbar. Bestehende Landing Zones bleiben auf ihrer bisherigen Version; neue Ressourcen entstehen erst nach Plan und Apply.":
+    "The template will be available to order. Existing landing zones retain their current version; new resources are created only after Plan and Apply.",
+  "Zielbereich, Zugriff und Ausführung für diese Vorlage freigeben":
+    "Approve the target area, access and execution for this template",
+  "Auswahl ändern": "Change selection",
+  "Bereitstellung konnte nicht vorbereitet werden.":
+    "Publication could not be prepared.",
+  "Definiere die bestellbaren Landing Zones, speichere deine Konfiguration und stelle die Vorlagen für dein Team bereit.":
+    "Define the landing zones that can be ordered, save your configuration and make the templates available to your team.",
   "Anfrage wird vorbereitet …": "Preparing your request …",
   "Aktuelle Service-Angebote werden abgerufen …":
     "Looking up current service offerings …",

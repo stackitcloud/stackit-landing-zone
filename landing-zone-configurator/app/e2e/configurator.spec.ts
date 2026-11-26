@@ -4670,7 +4670,7 @@ test.describe("explicit saved-plan approval", () => {
       .click();
     await expect(page).toHaveURL(/\/applications$/);
     await expect(
-      page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
+      page.getByRole("tab", { name: "Vorlagen", exact: true }),
     ).toHaveAttribute("aria-selected", "true");
     const beforeApplicationReload = configurationReads;
     // Exercise database restoration, rather than the independent login checkpoint path.
@@ -4691,7 +4691,7 @@ test.describe("explicit saved-plan approval", () => {
       .poll(() => configurationReads)
       .toBe(beforeApplicationReload + 1);
     await expect(
-      page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
+      page.getByRole("tab", { name: "Vorlagen", exact: true }),
     ).toHaveAttribute("aria-selected", "true");
     expect(saves).toBe(0);
     expect(cloudMutations).toEqual([]);

@@ -125,14 +125,16 @@ Instanzen werden bei Veröffentlichung einer neuen Version nicht stillschweigend
 <a id="retire-archive-and-delete-versions"></a>
 ### Ablauf für den Platform Owner
 
-Unter **Application Landing Zones** folgen die Reiter von links nach rechts:
+Unter **Application Landing Zones** stehen **Vorlagen**, **Katalog** und **Bestellungen** zur Verfügung:
 
-1. **Template-Entwürfe:** Plattformkonfiguration auswählen, Templates direkt hier bearbeiten und ausdrücklich speichern. Der Weiter-Button bleibt bei einem nicht gespeicherten oder geänderten Entwurf deaktiviert.
-2. **Plattformanbindung:** angewendeten Plattformvertrag prüfen und freigeben, danach seine Ausführungsbindung und das State-Backend für Applications einrichten. Fehlt ein passender erfolgreicher Plattform-Apply, müssen zuerst Plattform-Deployment und Identitätsnachweise abgeschlossen werden.
-3. **Veröffentlichung:** Template, freigegebenen Vertrag, passendes Ziel, Bestellerzugriff und Bereitstellungsrichtlinie auswählen und eine Version ausdrücklich veröffentlichen. Eine fehlende Ausführungsbindung wird hier mit Verweis auf den vorherigen Schritt angezeigt.
-4. **Katalog:** veröffentlichte Version und Sichtbarkeit prüfen. Bestellungen und Archiv bleiben separate Reiter nach dem Katalog.
+1. **Vorlagen:** Plattformkonfiguration auswählen, Templates bearbeiten und ausdrücklich speichern. **Vorlagen bereitstellen** bleibt bei ungespeicherten Änderungen deaktiviert.
+2. **Vorlage bereitstellen:** eine gespeicherte Vorlage wählen. Die geführte Prüfung bietet bereitgestellte Plattformen derselben gespeicherten Konfigurations-ID an. Plattform, Zugangsprofil, State-Speicher und kompatibles Ziel werden nur bei eindeutiger Auswahl vorbelegt. Namen dienen nicht zur Zuordnung; fremde Plattformen werden nicht automatisch ausgewählt. Fehlende Zugangsprofile lassen sich hier ohne Schrittwechsel anlegen.
+3. **Prüfen und freigeben:** Plattformrevision, Zielbereich, technischen Zugang, Bestellergruppen und Freigaberichtlinie prüfen. Eine ausdrückliche Freigabe führt die bisherigen Vertragsfreigaben, Ausführungseinrichtung und Veröffentlichung nacheinander aus. Sie startet weder Plan noch Apply. Bestehende Bestellungen behalten ihre Versionen und Bindungen. Nach der Veröffentlichung bleibt das optionale Anbieten eines Upgrades verfügbar.
+4. **Katalog / Bestellungen:** bestellbare Vorlagen prüfen und vorhandene Landing Zones verwalten.
 
-Konfigurationen und Application Landing Zones verwenden denselben kontrollierten Entwurf. Ein Schrittwechsel ist ausschließlich Navigation; Speichern, Vertragsfreigabe, Ausführungseinrichtung, Veröffentlichung, Plan und Apply bleiben getrennte ausdrückliche Aktionen. Application Owner starten direkt im Katalog und sehen die Plattform-Verwaltungsschritte nicht. Das Bestellkontingent gilt für den gesamten Arbeitsbereich und steht über diesen Reitern.
+**Erweitert** öffnet die vollständigen Funktionen für Plattformanbindung, Veröffentlichung und Archiv, einschließlich importierter Verträge, expliziter Ausführungsbindungen, State-Speicher und technischer Revisionen. Dieser Bereich dient besonderen Zuordnungen und der Diagnose. Die Rückkehr zum einfachen Ablauf verändert keine Bindung. Fehlt eine Plattform oder ein kompatibles Ziel, zuerst die nötigen Plattformänderungen anwenden; die geführte Bereitstellung veröffentlicht keine ungebundene ausführbare Vorlage.
+
+Konfigurationen und Template-Bearbeitung verwenden denselben kontrollierten Entwurf. Speichern bleibt ausdrücklich; die gemeinsame Freigabe umgeht keine serverseitigen Rechte-, State-, Versions- oder Ausführungsprüfungen. Ein Fehler in einem Folgeschritt nimmt bereits freigegebene Verträge oder Ausführungsbindungen nicht zurück; vor einem erneuten Versuch den angezeigten Status prüfen. Application Owner starten direkt im Katalog und erhalten keine Plattform-Verwaltungsrechte. Das Bestellkontingent gilt weiterhin für den ganzen Arbeitsbereich.
 
 ### Ausgerollte Application-Projektrechte wählen
 
@@ -191,6 +193,8 @@ erstellt eine neue Version und verwendet gelöschte Versionsnummern nicht erneut
 
 ### Veröffentlichte Templates an eine bereitgestellte Plattform binden
 
+Für reguläre Veröffentlichungen den geführten Ablauf oben verwenden. Die folgenden Details beschreiben die Expertenfunktionen unter **Erweitert**.
+
 Als Platform Engineer im selben Arbeitsbereich die gespeicherte Plattformkonfiguration
 öffnen. Die Veröffentlichung lädt deren Template-Entwürfe aus dieser geöffneten
 Konfiguration; Plattformverträge und State-Backends werden unabhängig davon geladen.
@@ -206,7 +210,7 @@ Audit-Anbindung angezeigt; seine UUID steht unter den technischen Vertragsdetail
 Dieselben Bezeichnungen gelten für Plattform-Ausführung, Template-Veröffentlichung
 und Plattform-Upgrade-Pfade.
 
-Unter **Veröffentlichung** Template, freigegebenen Vertrag, passendes Ziel und berechtigte
+Unter **Erweitert → Veröffentlichung** Template, freigegebenen Vertrag, passendes Ziel und berechtigte
 Application-Owner-Gruppen auswählen. Eine neue unveränderliche Version veröffentlichen;
 bestehende Versionen und Bestellungen werden nicht umgebunden. Der eingeladene Owner
 wählt diese Version im selben Arbeitsbereich. Public-Projekte unterstützen ein optionales

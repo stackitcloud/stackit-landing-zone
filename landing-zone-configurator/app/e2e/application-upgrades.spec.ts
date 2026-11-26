@@ -1,3 +1,4 @@
+import { openExpertApplicationTab } from "./editor-navigation";
 import { expect, type Page, test } from "./fixtures";
 
 const user = "11111111-1111-4111-8111-111111111111",
@@ -816,9 +817,7 @@ test("Platform Owner publishes only same-family upgrade path without changing an
   page,
 }) => {
   const { mutations } = await setup(page, false, false, true);
-  await page
-    .getByRole("tab", { name: "Veröffentlichung", exact: true })
-    .click();
+  await openExpertApplicationTab(page, "Veröffentlichung");
   await page
     .getByText("Bestehende Template-Upgrade-Pfade verwalten", { exact: true })
     .click();
@@ -945,9 +944,7 @@ test("Platform Owner publishes a path between actual approved platform contracts
   page,
 }) => {
   const { mutations } = await setup(page, false, false, true);
-  await page
-    .getByRole("tab", { name: "Veröffentlichung", exact: true })
-    .click();
+  await openExpertApplicationTab(page, "Veröffentlichung");
   await page
     .getByText("Separate Plattform-Upgrade-Pfade verwalten", { exact: true })
     .click();
@@ -1251,9 +1248,7 @@ test("saved publication paths show every family independently of the selected fo
     false,
     { saved: true },
   );
-  await page
-    .getByRole("tab", { name: "Veröffentlichung", exact: true })
-    .click();
+  await openExpertApplicationTab(page, "Veröffentlichung");
   await page
     .getByText("Bestehende Template-Upgrade-Pfade verwalten", { exact: true })
     .click();
@@ -1334,9 +1329,7 @@ test("approval-required versions can select self-service and retain saved famili
     false,
     { sourceApproval: true, saved: true, reject: true },
   );
-  await page
-    .getByRole("tab", { name: "Veröffentlichung", exact: true })
-    .click();
+  await openExpertApplicationTab(page, "Veröffentlichung");
   await page
     .getByText("Bestehende Template-Upgrade-Pfade verwalten", { exact: true })
     .click();
@@ -1830,9 +1823,7 @@ test("edits a published path policy without changing existing orders", async ({
     false,
     { saved: true },
   );
-  await page
-    .getByRole("tab", { name: "Veröffentlichung", exact: true })
-    .click();
+  await openExpertApplicationTab(page, "Veröffentlichung");
   await page
     .getByText("Bestehende Template-Upgrade-Pfade verwalten", { exact: true })
     .click();
@@ -1969,9 +1960,7 @@ test("editing a platform path opens and focuses its policy form", async ({
       platformSaved: true,
     },
   );
-  await page
-    .getByRole("tab", { name: "Veröffentlichung", exact: true })
-    .click();
+  await openExpertApplicationTab(page, "Veröffentlichung");
   await page
     .getByText("Separate Plattform-Upgrade-Pfade verwalten", { exact: true })
     .click();
@@ -2275,9 +2264,7 @@ test("platform binding contract selectors show the applied configuration and rev
     false,
     { bindings: true },
   );
-  await page
-    .getByRole("tab", { name: "Plattformanbindung", exact: true })
-    .click();
+  await openExpertApplicationTab(page, "Plattformanbindung");
   const select = page.getByLabel("Plattformvertrag für Ausführung", {
     exact: true,
   });

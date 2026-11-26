@@ -1282,6 +1282,7 @@ function App() {
                 onSelectConfiguration={() => setView("repositories")}
                 configurationDirty={draftDirty}
                 configurationSaved={!!configurationBinding && !draftDirty}
+                configurationId={configurationBinding?.id ?? null}
                 onEditTemplates={() => setView("editor", "projects")}
                 onTemplateEditingChange={setApplicationTemplateEditing}
                 templateEditor={

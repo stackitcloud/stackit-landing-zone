@@ -561,12 +561,12 @@ for (const context of ["configuration", "inline templates"] as const) {
         .getByRole("button", { name: "Application Landing Zones", exact: true })
         .click();
       await expect(
-        page.getByRole("tab", { name: "Template-Entwürfe", exact: true }),
+        page.getByRole("tab", { name: "Vorlagen", exact: true }),
       ).toHaveAttribute("aria-selected", "true");
     }
     const editor =
       context === "inline templates"
-        ? page.getByRole("tabpanel", { name: "Template-Entwürfe", exact: true })
+        ? page.getByRole("tabpanel", { name: "Vorlagen", exact: true })
         : page.locator("main");
     const source = editor.getByLabel("Quelle für den initialen Projekt-Owner", {
       exact: true,
