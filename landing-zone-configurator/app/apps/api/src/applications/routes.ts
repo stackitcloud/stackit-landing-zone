@@ -226,6 +226,7 @@ export function registerApplications(
         | "approveJobBackend"
         | "dispatchJob"
         | "startPlan"
+        | "retryApply"
         | "previewPlan"
         | "outputJob"
         | "waitForOutput"
@@ -306,6 +307,9 @@ export function registerApplications(
             "application_execution_source_withdrawn",
             "application_execution_package_unavailable",
             "application_apply_plan_unavailable",
+            "application_apply_retry_unavailable",
+            "application_apply_retry_checkpoint_required",
+            "application_apply_retry_state_changed",
             "application_apply_package_changed",
             "application_recovery_fresh_plan_required",
             "application_recovery_replan_changed",
@@ -839,6 +843,25 @@ export function registerApplications(
         return reply
           .code(202)
           .send(await applications.startPlan(session, id, input));
+      },
+    );
+    routes.post(
+      "/api/v1/applications/jobs/:id/retry-apply",
+      { bodyLimit: 1024 },
+      async (request, reply) => {
+        const session = sessions.get(request);
+        if (!session) return reply.code(401).send();
+        if (!applications.retryApply)
+          return reply
+            .code(503)
+            .send({ error: "application_dispatch_disabled" });
+        const { id } = z.strictObject({ id: z.uuid() }).parse(request.params);
+        const input = z
+          .strictObject({ idempotencyKey: z.uuid() })
+          .parse(request.body);
+        return reply
+          .code(202)
+          .send(await applications.retryApply(session, id, input));
       },
     );
     routes.get(

@@ -906,6 +906,22 @@ for (const scenario of [
           },
         });
       }
+      if (path === `jobs/${reviewJobId}/retry-apply`) {
+        expect(replan && !engineer).toBe(true);
+        expect(request.postDataJSON().idempotencyKey).toMatch(
+          /^[a-f0-9-]{36}$/,
+        );
+        if (scenario === "replan-conflict")
+          return route.fulfill({
+            status: 409,
+            json: { error: "application_recovery_replan_changed" },
+          });
+        replanApproved = true;
+        return route.fulfill({
+          status: 202,
+          json: { jobId, dispatched: true },
+        });
+      }
       if (path === `jobs/${reviewJobId}/recovery-replan/check`) {
         expect(replan).toBe(true);
         expect(request.postDataJSON()).toEqual({});
@@ -1620,6 +1636,38 @@ for (const scenario of [
       ).toBeVisible();
       await expect(plan.locator(".application-plan-job")).toHaveCount(1);
       if (replan) {
+        if (!engineer) {
+          const retry = plan.getByRole("button", {
+            name: "Apply erneut versuchen",
+            exact: true,
+          });
+          await expect(retry).toBeVisible();
+          await expect(
+            plan.getByRole("button", {
+              name: "Application-Checkpoint prüfen",
+              exact: true,
+            }),
+          ).toBeHidden();
+          await expect(
+            plan.getByRole("checkbox", {
+              name: /Ich möchte dieselbe Bestellung/,
+            }),
+          ).toBeHidden();
+          await retry.click();
+          if (scenario === "replan-conflict")
+            await expect(
+              plan.getByRole("alert").filter({ hasText: "erneut prüfen" }),
+            ).toBeVisible();
+          else
+            await expect(
+              tabs.getByRole("tab", { name: "Plan", exact: true }),
+            ).toHaveAttribute("aria-selected", "true");
+          expect(mutations).toEqual([`jobs/${reviewJobId}/retry-apply`]);
+          return;
+        }
+        await plan
+          .getByText("Erweiterte Fehlerdiagnose", { exact: true })
+          .click();
         const check = plan.getByRole("region", {
           name: "Neuen Plan nach Apply-Fehler ermöglichen",
           exact: true,
@@ -1695,7 +1743,7 @@ for (const scenario of [
         await page.getByLabel("Sprache").selectOption("en");
         if (scenario !== "replan-conflict")
           await expect(
-            page.getByText(/A new Plan for the same order is available/),
+            page.getByText(/A fresh Plan for the same order is available/),
           ).toBeVisible();
         expect(
           await page.evaluate(

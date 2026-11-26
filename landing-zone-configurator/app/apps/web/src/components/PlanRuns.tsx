@@ -423,7 +423,53 @@ function CheckpointReview({
       if (action === "checkpoint") {
         failure =
           "Die Checkpoint-Antwort konnte nicht sicher ausgewertet werden. Lade die Seite neu; keinen erneuten Apply starten.";
-        setCheckpoint(platformCheckpointSchema.parse(result));
+        const inspected = platformCheckpointSchema.parse(result);
+        setCheckpoint(inspected);
+        if (
+          retry &&
+          inspected.canResume &&
+          !inspected.lockHeld &&
+          !inspected.pendingMigration &&
+          !inspected.recoveryAvailable &&
+          !inspected.migration
+        ) {
+          const cleared = await fetch(
+            `/api/v1/plans/${encodeURIComponent(runId)}/reconcile`,
+            {
+              method: "POST",
+              credentials: "same-origin",
+              cache: "no-store",
+              signal: controller.signal,
+              headers: {
+                "content-type": "application/json",
+                "x-lzc-csrf": session.csrfToken,
+                "x-lzc-tenant": session.tenant?.id ?? "",
+              },
+              body: JSON.stringify({
+                ...(inspected.remoteIdentity
+                  ? {
+                      confirmRemoteState: true,
+                      remoteIdentity: inspected.remoteIdentity,
+                    }
+                  : { confirmRetainState: true }),
+                stateVersion: inspected.stateVersion,
+                checkpointSha256: inspected.checkpointSha256,
+              }),
+            },
+          );
+          const receipt = await cleared.json();
+          if (
+            !cleared.ok ||
+            receipt.id !== runId ||
+            receipt.reconciled !== true
+          ) {
+            failure =
+              checkpointFailures[receipt.error] ??
+              "Der erneute Versuch konnte noch nicht vorbereitet werden. Aktualisiere den Ausführungsstatus und versuche es erneut.";
+            throw new Error(failure);
+          }
+          if (!controller.signal.aborted) await onReconciled();
+        }
       } else {
         if (result.id !== runId || result.reconciled !== true)
           throw new Error("Checkpoint-Prüfung oder Freigabe fehlgeschlagen.");
@@ -443,7 +489,7 @@ function CheckpointReview({
   useEffect(() => {
     if (retry) void perform("checkpoint");
   }, []);
-  return (
+  const diagnostics = (
     <section aria-label={t("Recovery-Abgleich")}>
       <h5>{t("Recovery-Abgleich")}</h5>
       <button
@@ -558,6 +604,30 @@ function CheckpointReview({
         </>
       )}
     </section>
+  );
+  if (!retry) return diagnostics;
+  return (
+    <>
+      {busy && <p role="status">{t("Erneuter Versuch wird vorbereitet …")}</p>}
+      {error && <p role="alert">{t(error)}</p>}
+      {!busy &&
+        checkpoint &&
+        (!checkpoint.canResume ||
+          checkpoint.lockHeld ||
+          checkpoint.pendingMigration ||
+          checkpoint.recoveryAvailable ||
+          checkpoint.migration) && (
+          <p role="status">
+            {t(
+              "Der erneute Versuch konnte noch nicht vorbereitet werden. Aktualisiere den Ausführungsstatus und versuche es erneut.",
+            )}
+          </p>
+        )}
+      <details>
+        <summary>{t("Erweiterte Fehlerdiagnose")}</summary>
+        {diagnostics}
+      </details>
+    </>
   );
 }
 

@@ -110,3 +110,23 @@ Recovery-Fences bleiben verbindlich. [Plan-Ausführung](plan-execution.de.md)
 beschreibt die Vertrauensgrenzen für Ausführung und Recovery.
 
 Template- und Plattform-Upgrades verwenden den separaten [versionierten Upgrade-Ablauf](application-upgrades.de.md).
+
+
+## Fehlgeschlagenen Apply erneut versuchen
+
+**Apply erneut versuchen** startet einen neuen regulären Plan derselben Bestellung
+mit dem ursprünglichen Backend-Deskriptor und State-Schlüssel des fehlgeschlagenen
+Apply. Der alte gespeicherte Plan wird nicht wiederholt, Apply nicht automatisch
+freigegeben. Der Besteller prüft den neuen Plan und gibt Apply erneut frei. Bei einem
+gemeldeten abgeschlossenen Fehler prüft die App Checkpoint und State nach dem
+Retry-Klick intern. Benutzer müssen weder Runner-Details prüfen noch einen weiteren
+technischen Schritt freigeben. Unklare Abschlüsse bleiben bis zur Klärung gesperrt;
+technische Recovery-Funktionen liegen unter der erweiterten Fehlerdiagnose. Aktive
+Runner, offene Recovery oder eine fehlgeschlagene State-Veröffentlichung sperren
+den erneuten Versuch weiterhin. Scheiterte der Lauf,
+bevor eine Ausführungsberechtigung beansprucht wurde, ist direkt ein neuer Plan
+möglich. Arbeitsbereichsrechte, aktive Bestellungen, gebundene Ausführungsquellen
+und Upgrade-Freigaben gelten unverändert. Neuer Plan und sein Apply können das
+ursprüngliche State-Backend nicht wechseln. Gibt es einen neueren Apply, dient ein
+älterer Fehlerlauf nicht mehr als Retry-Quelle. Wiederholte Anfragen mit demselben
+Anfrageschlüssel starten keine zusätzlichen Jobs.

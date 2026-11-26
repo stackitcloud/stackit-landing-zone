@@ -318,7 +318,7 @@ for (const viaDeployments of [false, true])
     ]);
   });
 for (const locked of [false, true])
-  test(`Apply retry ${locked ? "requires explicit checkpoint reconciliation" : "creates a fresh Plan without replaying an old Apply"}`, async ({
+  test(`Apply retry ${locked ? "automatically reconciles a verified retained State" : "creates a fresh Plan without replaying an old Apply"}`, async ({
     page,
   }) => {
     const state = await setup(page, { failedApply: true, locked });
@@ -330,7 +330,7 @@ for (const locked of [false, true])
           stateVersion: "1",
           checkpointSha256: "a".repeat(64),
           serial: 1,
-          lockHeld: true,
+          lockHeld: false,
           pendingMigration: false,
           recoveryAvailable: false,
           canResume: true,
@@ -351,23 +351,6 @@ for (const locked of [false, true])
     await page
       .getByRole("button", { name: "Apply erneut versuchen", exact: true })
       .click();
-    if (locked) {
-      const review = page.getByRole("region", {
-        name: "Recovery-Abgleich",
-        exact: true,
-      });
-      await expect(
-        review.getByText("State-Version", { exact: true }),
-      ).toBeVisible();
-      expect(state.mutations).toEqual([]);
-      expect(recovery).toEqual(["checkpoint"]);
-      await review
-        .getByRole("checkbox", { name: /Ich habe den Checkpoint geprüft/ })
-        .check();
-      await review
-        .getByRole("button", { name: "Erneute Planung freigeben", exact: true })
-        .click();
-    }
     const dialog = page.getByRole("dialog", {
       name: "Apply erneut versuchen",
       exact: true,
@@ -421,5 +404,47 @@ test("Apply retry requires a deliberate credential choice when the previous prof
   await expect(
     dialog.getByRole("button", { name: "Plan erstellen", exact: true }),
   ).toBeEnabled();
+  expect(state.mutations).toEqual([]);
+});
+
+test("Apply retry keeps a locked State blocked without technical confirmation in the normal flow", async ({
+  page,
+}) => {
+  const state = await setup(page, { failedApply: true, locked: true });
+  let reconciled = false;
+  await page.route(`**/api/v1/plans/${runId}/checkpoint`, (route) =>
+    route.fulfill({
+      json: {
+        stateVersion: "1",
+        checkpointSha256: "a".repeat(64),
+        serial: 1,
+        lockHeld: true,
+        pendingMigration: false,
+        recoveryAvailable: false,
+        canResume: false,
+        resources: [],
+      },
+    }),
+  );
+  await page.route(`**/api/v1/plans/${runId}/reconcile`, (route) => {
+    reconciled = true;
+    return route.fulfill({ status: 409, json: { error: "state_locked" } });
+  });
+  await page.goto("/deployments/apply");
+  await page
+    .getByRole("button", { name: "Apply erneut versuchen", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "Aktualisiere den Ausführungsstatus" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Apply erneut versuchen", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("checkbox", { name: /Ich habe den Checkpoint geprüft/ }),
+  ).toBeHidden();
+  expect(reconciled).toBe(false);
   expect(state.mutations).toEqual([]);
 });
