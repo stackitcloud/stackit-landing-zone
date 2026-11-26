@@ -32,8 +32,17 @@ export function registerOrganisations(
         return reply.code(400).send({ error: "invalid_organisation_request" });
       if (code === "23505")
         return reply.code(409).send({ error: "organisation_already_exists" });
-      if (code === "55000")
-        return reply.code(409).send({ error: "organisation_not_empty_draft" });
+      if (code === "55000") {
+        const message = (error as Error).message;
+        return reply.code(409).send({
+          error: [
+            "workspace_execution_active",
+            "workspace_instance_exists",
+          ].includes(message)
+            ? message
+            : "organisation_not_empty_draft",
+        });
+      }
       if (code === "40001")
         return reply.code(409).send({ error: "stale_tenant_context" });
       if (code === "42501")

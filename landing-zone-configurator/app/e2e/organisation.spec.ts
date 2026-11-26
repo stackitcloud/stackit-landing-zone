@@ -4617,7 +4617,7 @@ for (const manager of [true, false]) {
         .getByRole("button", { name: "Arbeitsbereich löschen", exact: true })
         .click();
       await expect(page.getByRole("alert")).toContainText(
-        "Nur leere, unbestätigte Arbeitsbereiche",
+        "alle Landing Zones vollständig zurückgebaut",
       );
       expect(deletionCalled).toBe(true);
     } else

@@ -35,6 +35,17 @@ Historische Arbeitsplatzübergaben und laufbezogene Abnahmeprotokolle gehören n
 zur gepflegten Dokumentation.
 
 <a id="account-and-workspace-boundaries"></a>
+Das Löschen von Konfigurationen und das Archivieren von Arbeitsbereichen verwenden
+dieselbe Datenbanksperre wie Runner-Claims und Dispatch. Migration
+`109_configuration_deletion.sql` prüft alle Eigentümer im Arbeitsbereich,
+State-Aliase, offene Ausführungen und tatsächliche Application-Destroy-Ergebnisse.
+Ein Archivierungsvermerk allein belegt keinen Ressourcenabbau. Ein abgeschlossener
+Plattform-Rückbau erlaubt das Löschen gespeicherter Entwürfe; State und unveränderliche
+Ausführungsnachweise bleiben erhalten. Die Workspace-Archivierung löscht alle
+gespeicherten Konfigurationen, widerruft offene Einladungen und entfernt den aktiven
+Arbeitsbereich aus allen Sitzungen. Die serverseitige Prüfung bleibt maßgeblich,
+auch wenn das UI bereits einen Löschbutton deaktiviert.
+
 ## Konto- und Arbeitsbereichsgrenzen
 
 Migration `097_explicit_workspaces.sql` beendet automatisch erzeugte persönliche

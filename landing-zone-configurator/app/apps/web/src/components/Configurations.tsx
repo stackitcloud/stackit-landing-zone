@@ -13,7 +13,12 @@ import type { Session } from "./Account";
 import type { DeploymentSelection } from "./Deployments";
 
 export type ConfigurationBinding = { id: string; revision: number };
-type Summary = ConfigurationBinding & { name: string; updatedAt: string };
+type Summary = ConfigurationBinding & {
+  name: string;
+  updatedAt: string;
+  canDelete?: boolean;
+  deletionBlocker?: string | null;
+};
 type StoredConfiguration = Summary & { draft: EditorDraft };
 
 export function configurationDeploymentSelection(
@@ -47,6 +52,10 @@ const messages: Record<string, string> = {
   authentication_required: "Bitte melde dich erneut an.",
   invalid_request_origin_or_csrf:
     "Deine Sitzung ist nicht mehr aktuell. Bitte lade die Seite neu.",
+  configuration_instance_exists:
+    "Diese Konfiguration gehört zu einer noch bestehenden Landing Zone. Baue die Instanz zuerst vollständig zurück.",
+  configuration_execution_active:
+    "Für diese Konfiguration läuft noch eine Ausführung oder eine Wiederherstellung ist offen. Schließe diese zuerst ab.",
   configuration_changed:
     "Die gespeicherte Konfiguration wurde inzwischen geändert. Öffne den aktuellen Stand oder speichere deinen Entwurf als neue Kopie.",
   configuration_not_found:
@@ -269,6 +278,39 @@ export function Configurations({
     });
   }
 
+  function remove(item: Summary) {
+    if (
+      !session ||
+      !window.confirm(
+        t(
+          "Konfiguration „{{value0}}“ endgültig löschen? Der gespeicherte Stand und der zugehörige Chat werden entfernt. Der aktuelle Entwurf bleibt erhalten.",
+          { value0: item.name },
+        ),
+      )
+    )
+      return;
+    void perform(async () => {
+      await checked(
+        await fetch(`/api/v1/configurations/${item.id}`, {
+          method: "DELETE",
+          signal: controller.current?.signal ?? null,
+          headers: {
+            "Content-Type": "application/json",
+            "X-LZC-CSRF": session.csrfToken,
+          },
+          body: JSON.stringify({ revision: item.revision }),
+        }),
+      );
+      if (controller.current?.signal.aborted) return;
+      if (binding?.id === item.id) onSaved(null);
+      setNotice(
+        "Gespeicherte Konfiguration gelöscht. Der aktuelle Entwurf bleibt erhalten.",
+      );
+      await refresh();
+    });
+  }
+  const selected = configurations.find((item) => item.id === binding?.id);
+
   if (compact)
     return (
       <section
@@ -314,7 +356,33 @@ export function Configurations({
           >
             {t("Als neue Kopie speichern")}
           </button>
+          {selected && (
+            <button
+              type="button"
+              className="text-button"
+              disabled={busy || selected.canDelete === false}
+              title={
+                selected.deletionBlocker
+                  ? t(
+                      messages[`configuration_${selected.deletionBlocker}`] ??
+                        "Löschen derzeit nicht möglich.",
+                    )
+                  : undefined
+              }
+              onClick={() => remove(selected)}
+            >
+              {t("Konfiguration löschen")}
+            </button>
+          )}
         </div>
+        {selected?.deletionBlocker && (
+          <p className="muted">
+            {t(
+              messages[`configuration_${selected.deletionBlocker}`] ??
+                "Löschen derzeit nicht möglich.",
+            )}
+          </p>
+        )}
         {error && <p role="alert">{t(error)}</p>}
         {notice && <p role="status">{t(notice)}</p>}
       </section>
@@ -473,42 +541,30 @@ export function Configurations({
               <button
                 type="button"
                 className="button secondary"
-                disabled={busy}
+                disabled={busy || item.canDelete === false}
                 aria-label={t("Konfiguration löschen: {{value0}}", {
                   value0: item.name,
                 })}
-                onClick={() => {
-                  if (
-                    !window.confirm(
-                      t(
-                        "Gespeicherte Konfiguration aus der Datenbank löschen? Der aktuelle Entwurf bleibt erhalten.",
-                      ),
-                    )
-                  )
-                    return;
-                  void perform(async () => {
-                    await checked(
-                      await fetch(`/api/v1/configurations/${item.id}`, {
-                        method: "DELETE",
-                        signal: controller.current?.signal ?? null,
-                        headers: {
-                          "Content-Type": "application/json",
-                          "X-LZC-CSRF": session.csrfToken,
-                        },
-                        body: JSON.stringify({ revision: item.revision }),
-                      }),
-                    );
-                    if (controller.current?.signal.aborted) return;
-                    if (binding?.id === item.id) onSaved(null);
-                    setNotice(
-                      "Gespeicherte Konfiguration gelöscht. Der aktuelle Entwurf bleibt erhalten.",
-                    );
-                    await refresh();
-                  });
-                }}
+                title={
+                  item.deletionBlocker
+                    ? t(
+                        messages[`configuration_${item.deletionBlocker}`] ??
+                          "Löschen derzeit nicht möglich.",
+                      )
+                    : undefined
+                }
+                onClick={() => remove(item)}
               >
                 {t("Löschen")}
               </button>
+              {item.deletionBlocker && (
+                <p className="muted">
+                  {t(
+                    messages[`configuration_${item.deletionBlocker}`] ??
+                      "Löschen derzeit nicht möglich.",
+                  )}
+                </p>
+              )}
             </div>
           ))}
         </>

@@ -4614,9 +4614,12 @@ describe("real PostgreSQL session and tenant boundaries", () => {
       });
       await organisations.switch(bob, bob.tenantId);
       await organisations.editMember(engineer, bob.userId, [], false, true);
-      await expect(
-        organisations.archive(alice, tenantId),
-      ).rejects.toMatchObject({ code: "55000" });
+      await organisations.archive(alice, tenantId);
+      expect(
+        (await organisations.overview(alice)).tenants.some(
+          (t) => t.id === tenantId,
+        ),
+      ).toBe(false);
     } finally {
       await organisations.switch(alice, alice.tenantId);
       await organisations.switch(bob, bob.tenantId);
@@ -11388,6 +11391,8 @@ describe("organisation draft workspaces", () => {
         name: stored.name,
         revision: 1,
         updatedAt: stored.updatedAt,
+        canDelete: true,
+        deletionBlocker: null,
       });
       expect(await configurations.get(collaborator, stored.id)).toEqual(stored);
 
@@ -11722,22 +11727,12 @@ describe("organisation draft workspaces", () => {
       await organisations.switch(bob, bob.tenantId);
     }
   });
-  it("archives only the creator's empty unverified draft and preserves its audit", async () => {
-    const organizationId = randomUUID();
+  it("archives a verified workspace with members and deletes all saved configurations and chats", async () => {
     const id = await organisations.create(
       alice,
-      "Accidental duplicate",
-      organizationId,
+      "Team no longer needed",
+      randomUUID(),
     );
-    await expect(
-      organisations.create(alice, " accidental duplicate ", organizationId),
-    ).rejects.toMatchObject({ code: "23505" });
-    const unrelated = await organisations.create(
-      bob,
-      "Accidental duplicate",
-      organizationId,
-    );
-    await organisations.archive(bob, unrelated);
     await expect(organisations.archive(bob, id)).rejects.toMatchObject({
       code: "42501",
     });
@@ -11745,51 +11740,65 @@ describe("organisation draft workspaces", () => {
       organisations.archive(alice, alice.tokenTenantId!),
     ).rejects.toMatchObject({ code: "42501" });
     await organisations.switch(alice, id);
-    await inviteMember(
-      { ...alice, tenantId: id },
-      bob,
-      ["application-owner"],
-      false,
+    const owner = { ...alice, tenantId: id };
+    await inviteMember(owner, bob, ["platform-engineer"], false);
+    await organisations.switch(bob, id);
+    const colleague = { ...bob, tenantId: id };
+    const configurations = new Configurations(pool);
+    const first = await configurations.create(
+      owner,
+      createEditorConfiguration("standalone", randomUUID()),
     );
-    await expect(organisations.archive(alice, id)).rejects.toMatchObject({
-      code: "55000",
-    });
-    await organisations.editMember(
-      { ...alice, tenantId: id },
-      bob.userId,
-      [],
-      false,
-      true,
+    await configurations.create(
+      colleague,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    await withTenant(pool, colleague, (c) =>
+      c.query(
+        "INSERT INTO lzc.assistant_conversations(id,configuration_id,tenant_id,created_by,base_revision,knowledge_hash) VALUES($1,$2,$3,$4,1,$5)",
+        [
+          randomUUID(),
+          first.id,
+          id,
+          bob.userId,
+          buildAssistantKnowledge().sha256,
+        ],
+      ),
     );
     await migration.query(
       "UPDATE lzc.tenants SET organization_verified=true WHERE id=$1",
       [id],
     );
-    await expect(organisations.archive(alice, id)).rejects.toMatchObject({
-      code: "55000",
-    });
-    await migration.query(
-      "UPDATE lzc.tenants SET organization_verified=false WHERE id=$1",
-      [id],
-    );
-    await migration.query(
-      "INSERT INTO lzc.configurations(tenant_id,created_by,name,document) VALUES($1,$2,'keep','{}')",
-      [id, alice.userId],
-    );
-    await expect(organisations.archive(alice, id)).rejects.toMatchObject({
-      code: "55000",
-    });
-    await migration.query("DELETE FROM lzc.configurations WHERE tenant_id=$1", [
-      id,
-    ]);
-    await organisations.archive(alice, id);
-    const overview = await organisations.overview(alice);
-    expect(overview.activeTenantId).toBeNull();
-    expect(overview.tenants.some((t) => t.id === id)).toBe(false);
-    await expect(organisations.switch(alice, id)).rejects.toMatchObject({
-      code: "42501",
-    });
-    await expect(organisations.archive(alice, id)).rejects.toMatchObject({
+    expect(
+      (await organisations.overview(owner)).tenants.find((t) => t.id === id)
+        ?.canArchive,
+    ).toBe(true);
+    await organisations.archive(owner, id);
+    expect((await organisations.overview(owner)).activeTenantId).toBeNull();
+    expect((await organisations.overview(colleague)).activeTenantId).toBeNull();
+    expect(
+      (
+        await migration.query(
+          "SELECT id FROM lzc.configurations WHERE tenant_id=$1",
+          [id],
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(
+      (
+        await migration.query(
+          "SELECT id FROM lzc.assistant_conversations WHERE tenant_id=$1",
+          [id],
+        )
+      ).rowCount,
+    ).toBe(0);
+    await expect(
+      configurations.create(
+        colleague,
+        createEditorConfiguration("standalone", randomUUID()),
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(organisations.switch(owner, id)).rejects.toMatchObject({
       code: "42501",
     });
     expect(
@@ -11955,5 +11964,224 @@ describe("single-use membership invitations", () => {
       invitations.use(bob, invite.token, true),
     ).rejects.toMatchObject({ code: "22023" });
     await organisations.switch(alice, alice.tenantId);
+  });
+});
+
+describe("configuration deletion lifecycle", () => {
+  let alice: Session, bob: Session;
+  beforeAll(async () => {
+    const create = async (githubId: number) => {
+      const token = newSessionToken();
+      return inWorkspace(
+        pool,
+        await store.createSession({
+          githubId,
+          login: `deletion-${githubId}`,
+          id: randomUUID(),
+          hash: token.hash,
+          csrfToken: randomBytes(32).toString("base64url"),
+          expiresAt: new Date(Date.now() + 3600000),
+        }),
+      );
+    };
+    alice = await create(1201);
+    bob = await create(1202);
+  });
+  const organisations = new PostgresOrganisations(pool);
+  const configurations = new Configurations(pool);
+  async function fixture() {
+    const id = await organisations.create(
+      alice,
+      `Deletion ${randomUUID()}`,
+      randomUUID(),
+    );
+    await organisations.switch(alice, id);
+    const owner = { ...alice, tenantId: id };
+    const config = await configurations.create(
+      owner,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    return { owner, config };
+  }
+  async function state(owner: Session, configurationId: string, version = 1) {
+    const key = `platform/${randomUUID()}`;
+    await migration.query(
+      "INSERT INTO lzc.platform_states(state_key,tenant_id,owner_user_id,configuration_id,version,ciphertext) VALUES($1,$2,$3,$4,$5,$6)",
+      [
+        key,
+        owner.tenantId,
+        owner.userId,
+        configurationId,
+        version,
+        version ? Buffer.alloc(32) : null,
+      ],
+    );
+    return key;
+  }
+  it("blocks a configuration backed by another user's State, protects aliases, and allows a copied draft", async () => {
+    const { owner, config } = await fixture();
+    await inviteMember(owner, bob, ["platform-engineer"], false);
+    const key = await state(owner, config.id);
+    await migration.query(
+      "UPDATE lzc.platform_states SET owner_user_id=$2 WHERE state_key=$1",
+      [key, bob.userId],
+    );
+    const copy = await configurations.create(owner, config.draft);
+    const alias = await configurations.create(owner, {
+      ...config.draft,
+      name: "Alias",
+    });
+    await migration.query(
+      "INSERT INTO lzc.state_configuration_aliases(tenant_id,configuration_id,state_key) VALUES($1,$2,$3)",
+      [owner.tenantId, alias.id, key],
+    );
+    for (const item of [config, alias]) {
+      expect(
+        (await configurations.list(owner)).find((c) => c.id === item.id),
+      ).toMatchObject({ canDelete: false, deletionBlocker: "instance_exists" });
+      await expect(
+        configurations.remove(owner, item.id, 1),
+      ).rejects.toMatchObject({
+        code: "55000",
+        message: "configuration_instance_exists",
+      });
+    }
+    await configurations.remove(owner, copy.id, 1);
+    await expect(
+      organisations.archive(owner, owner.tenantId),
+    ).rejects.toMatchObject({
+      code: "55000",
+      message: "workspace_instance_exists",
+    });
+    expect((await configurations.list(owner)).length).toBe(2);
+  });
+  it("allows deletion after completed retirement while retaining State and execution evidence", async () => {
+    const { owner, config } = await fixture();
+    const key = await state(owner, config.id);
+    await migration.query(
+      "INSERT INTO lzc.platform_retirements(tenant_id,state_key,organization_id,created_by,name,reason,phase,not_before,applications) VALUES($1,$2,$3,$4,'Retired fixture','Test','COMPLETE',now(),'[]')",
+      [owner.tenantId, key, randomUUID(), owner.userId],
+    );
+    await configurations.remove(owner, config.id, 1);
+    await organisations.archive(owner, owner.tenantId);
+    expect(
+      (
+        await migration.query(
+          "SELECT state_key FROM lzc.platform_states WHERE state_key=$1",
+          [key],
+        )
+      ).rowCount,
+    ).toBe(1);
+  });
+  it("blocks running Plans, allows failed Plan history and prevents replay after deletion", async () => {
+    const { owner, config } = await fixture();
+    const preparation = randomUUID(),
+      run = randomUUID();
+    await migration.query(
+      "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,name,manifest) VALUES($1,$2,$3,'Test',$4)",
+      [
+        preparation,
+        owner.tenantId,
+        owner.userId,
+        JSON.stringify({
+          source: { kind: "database", configurationId: config.id },
+        }),
+      ],
+    );
+    await migration.query(
+      "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,status,ticket_hash) VALUES($1,$2,$3,$4,'planning',$5)",
+      [run, owner.tenantId, owner.userId, preparation, randomUUID()],
+    );
+    await expect(
+      configurations.remove(owner, config.id, 1),
+    ).rejects.toMatchObject({
+      code: "55000",
+      message: "configuration_execution_active",
+    });
+    await expect(
+      organisations.archive(owner, owner.tenantId),
+    ).rejects.toMatchObject({
+      code: "55000",
+      message: "workspace_execution_active",
+    });
+    await migration.query(
+      "UPDATE lzc.plan_runs SET status='failed',finished_at=now(),cleaned=true WHERE id=$1",
+      [run],
+    );
+    await expect(
+      configurations.remove(owner, config.id, 2),
+    ).rejects.toMatchObject({ status: 409, code: "configuration_changed" });
+    await configurations.remove(owner, config.id, 1);
+    await expect(
+      migration.query(
+        "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,status,ticket_hash) VALUES($1,$2,$3,$4,'starting',$5)",
+        [randomUUID(), owner.tenantId, owner.userId, preparation, randomUUID()],
+      ),
+    ).rejects.toMatchObject({
+      code: "55000",
+      message: "configuration_not_found",
+    });
+    await organisations.archive(owner, owner.tenantId);
+    expect(
+      (await migration.query("SELECT id FROM lzc.plan_runs WHERE id=$1", [run]))
+        .rowCount,
+    ).toBe(1);
+  });
+  it("serializes deletion against a concurrent Plan and rolls back without losing the draft", async () => {
+    const { owner, config } = await fixture();
+    const preparation = randomUUID();
+    await migration.query(
+      "INSERT INTO lzc.deployment_preparations(id,tenant_id,owner_user_id,name,manifest) VALUES($1,$2,$3,'Test',$4)",
+      [
+        preparation,
+        owner.tenantId,
+        owner.userId,
+        JSON.stringify({
+          source: { kind: "database", configurationId: config.id },
+        }),
+      ],
+    );
+    const concurrent = new pg.Client(migrationConfig);
+    await concurrent.connect();
+    try {
+      await concurrent.query("BEGIN");
+      await concurrent.query(
+        "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,status,ticket_hash) VALUES($1,$2,$3,$4,'planning',$5)",
+        [randomUUID(), owner.tenantId, owner.userId, preparation, randomUUID()],
+      );
+      await expect(
+        organisations.archive(owner, owner.tenantId),
+      ).rejects.toMatchObject({
+        code: "55000",
+        message: "workspace_execution_active",
+      });
+      const runtimePid = (await pool.query("SELECT pg_backend_pid() AS pid"))
+        .rows[0].pid;
+      const deletion = configurations.remove(owner, config.id, 1).then(
+        () => null,
+        (e) => e,
+      );
+      let waiting = false;
+      for (let attempt = 0; attempt < 100 && !waiting; attempt++) {
+        waiting =
+          (
+            await admin.query(
+              "SELECT 1 FROM pg_locks WHERE pid=$1 AND locktype='advisory' AND NOT granted",
+              [runtimePid],
+            )
+          ).rowCount === 1;
+        if (!waiting) await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(waiting).toBe(true);
+      await concurrent.query("COMMIT");
+      expect(await deletion).toMatchObject({
+        code: "55000",
+        message: "configuration_execution_active",
+      });
+      expect((await configurations.get(owner, config.id)).id).toBe(config.id);
+    } finally {
+      await concurrent.query("ROLLBACK");
+      await concurrent.end();
+    }
   });
 });

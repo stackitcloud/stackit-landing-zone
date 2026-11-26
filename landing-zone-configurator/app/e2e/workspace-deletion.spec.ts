@@ -1,7 +1,13 @@
 import { expect, test } from "./fixtures";
 
 test.use({ locale: "en-US" });
-for (const result of ["success", "not-empty", "unavailable"] as const) {
+for (const result of [
+  "success",
+  "not-empty",
+  "instance-exists",
+  "execution-active",
+  "unavailable",
+] as const) {
   test(`workspace deletion sends no empty JSON body and reports ${result} clearly`, async ({
     page,
   }) => {
@@ -51,6 +57,16 @@ for (const result of ["success", "not-empty", "unavailable"] as const) {
         expect(route.request().headers()["x-lzc-csrf"]).toBe("c".repeat(43));
         expect(route.request().headers()["x-lzc-tenant"]).toBe(tenantId);
         deletes++;
+        if (result === "instance-exists" || result === "execution-active")
+          return route.fulfill({
+            status: 409,
+            json: {
+              error:
+                result === "instance-exists"
+                  ? "workspace_instance_exists"
+                  : "workspace_execution_active",
+            },
+          });
         if (result === "not-empty")
           return route.fulfill({
             status: 409,
@@ -85,8 +101,12 @@ for (const result of ["success", "not-empty", "unavailable"] as const) {
     else {
       await expect(page.getByRole("alert")).toContainText(
         result === "not-empty"
-          ? "Only empty"
-          : "The change could not be saved. Please try again later.",
+          ? "Complete retirement"
+          : result === "instance-exists"
+            ? "still contains existing Landing Zones"
+            : result === "execution-active"
+              ? "execution or recovery is still pending"
+              : "The change could not be saved. Please try again later.",
       );
       await expect(page.getByRole("alert")).not.toContainText(
         "at least one member",

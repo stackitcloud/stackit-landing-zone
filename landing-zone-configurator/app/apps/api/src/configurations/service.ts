@@ -21,6 +21,7 @@ type Row = {
   revision: number;
   updated_at: Date;
   document: unknown;
+  deletion_blocker?: string | null;
 };
 
 function summary(row: Row) {
@@ -29,6 +30,8 @@ function summary(row: Row) {
     name: row.name,
     revision: row.revision,
     updatedAt: row.updated_at.toISOString(),
+    canDelete: !row.deletion_blocker,
+    deletionBlocker: row.deletion_blocker ?? null,
   };
 }
 
@@ -61,7 +64,7 @@ export class Configurations {
   list(session: Session) {
     return this.work(session, async (client) => {
       const result = await client.query<Row>(
-        "SELECT id,name,revision,updated_at FROM lzc.configurations ORDER BY updated_at DESC,id DESC LIMIT 200",
+        "SELECT id,name,revision,updated_at,lzc.configuration_deletion_blocker(id) AS deletion_blocker FROM lzc.configurations ORDER BY updated_at DESC,id DESC LIMIT 200",
       );
       return result.rows.map(summary);
     });
@@ -70,7 +73,7 @@ export class Configurations {
   get(session: Session, id: string) {
     return this.work(session, async (client) => {
       const result = await client.query<Row>(
-        "SELECT * FROM lzc.configurations WHERE id=$1",
+        "SELECT *,lzc.configuration_deletion_blocker(id) AS deletion_blocker FROM lzc.configurations WHERE id=$1",
         [z.uuid().parse(id)],
       );
       const row = result.rows[0];
@@ -144,6 +147,7 @@ export class Configurations {
     z.uuid().parse(id);
     z.number().int().positive().parse(revision);
     return this.work(session, async (client) => {
+      await client.query("SELECT lzc.lock_configuration_deletion()");
       const result = await client.query(
         "DELETE FROM lzc.configurations WHERE id=$1 AND revision=$2 RETURNING id",
         [id, revision],

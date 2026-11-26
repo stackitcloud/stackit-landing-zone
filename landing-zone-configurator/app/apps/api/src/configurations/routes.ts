@@ -33,6 +33,16 @@ export function registerConfigurations(
         return reply.code(error.status).send({ error: error.code });
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_configuration_request" });
+      if ((error as { code?: string }).code === "55000") {
+        const code = (error as Error).message;
+        if (
+          [
+            "configuration_execution_active",
+            "configuration_instance_exists",
+          ].includes(code)
+        )
+          return reply.code(409).send({ error: code });
+      }
       if ((error as { code?: string }).code === "42501")
         return reply.code(403).send({ error: "configuration_access_denied" });
       if ((error as { statusCode?: number }).statusCode === 413)

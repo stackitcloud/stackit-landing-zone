@@ -4,6 +4,32 @@
 [English](user-guide.md) | [Deutsch](user-guide.de.md)
 
 <a id="access-and-roles"></a>
+## Konfigurationen und Arbeitsbereiche löschen
+
+Lösche eine gespeicherte Konfiguration unter **Konfigurationen → Löschen** oder
+über **Konfiguration löschen** neben den Speicheraktionen im Editor. Bestätige
+den Konfigurationsnamen im Dialog. Der gespeicherte Stand und der zugehörige
+Assistant-Chat werden entfernt; der aktuell geöffnete Entwurf bleibt als nicht
+gespeicherter Entwurf erhalten.
+
+Eine Konfiguration lässt sich erst löschen, wenn ihre ausgerollte Landing Zone
+vollständig zurückgebaut wurde. Laufende Ausführungen, offene Wiederherstellungen
+und mögliche Ressourcen eines fehlgeschlagenen Apply verhindern das Löschen
+ebenfalls. Die Prüfung berücksichtigt den gesamten Arbeitsbereich, einschließlich
+Ausführungen anderer Platform Engineers und State-Aliase. Ein gespeicherter
+Entwurf, ein abgeschlossener Plan oder historische Ausführungsnachweise allein
+verhindern das Löschen nicht.
+
+Workspace-Verantwortliche können unter **Arbeitsbereiche** einen Arbeitsbereich
+löschen, sobald alle Platform und Application Landing Zones vollständig
+zurückgebaut und alle Ausführungen abgeschlossen sind. Alle gespeicherten
+Konfigurationen und ihre Chats werden gemeinsam gelöscht. Mitglieder verlieren
+den Zugriff; offene Einladungen werden widerrufen. Die Organisationsbestätigung,
+weitere Mitglieder, ungenutzte Zugänge und unveröffentlichte Entwürfe verhindern
+dies nicht. State und unveränderliche Ausführungsnachweise bleiben für Audits
+erhalten. Das Löschen von Konfigurationen oder Arbeitsbereichen zerstört keine
+STACKIT-Ressourcen.
+
 ## Zugang und Rollen
 
 Melde dich mit STACKIT an. Die Authentifizierung allein gewährt weder Zugriff auf eine

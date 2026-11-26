@@ -3989,4 +3989,20 @@ export const englishMessages: Record<string, string> = {
     "The current execution version is not approved for new plans. Ask the operator to check the runner configuration.",
   "Der Plan-Auftrag enthält ungültige oder zur aktuellen API-Version unpassende Angaben. Lade die Seite neu und öffne die gespeicherte Konfiguration erneut.":
     "The plan request contains invalid or incompatible API fields. Reload the page and reopen the saved configuration.",
+  "Diese Konfiguration gehört zu einer noch bestehenden Landing Zone. Baue die Instanz zuerst vollständig zurück.":
+    "This configuration belongs to an existing Landing Zone. Complete its retirement before deleting the configuration.",
+  "Für diese Konfiguration läuft noch eine Ausführung oder eine Wiederherstellung ist offen. Schließe diese zuerst ab.":
+    "An execution or recovery is still pending for this configuration. Complete it before deleting the configuration.",
+  "Löschen derzeit nicht möglich.": "Deletion is currently unavailable.",
+  "Konfiguration „{{value0}}“ endgültig löschen? Der gespeicherte Stand und der zugehörige Chat werden entfernt. Der aktuelle Entwurf bleibt erhalten.":
+    "Permanently delete configuration “{{value0}}”? Its saved contents and conversation will be removed. The current draft is retained.",
+  "Konfiguration löschen": "Delete configuration",
+  "Der Arbeitsbereich kann erst gelöscht werden, wenn alle Landing Zones vollständig zurückgebaut und alle Ausführungen abgeschlossen sind.":
+    "Complete retirement of all Landing Zones and finish all executions before deleting this workspace.",
+  "Arbeitsbereich „{{value0}}“ endgültig löschen? Alle gespeicherten Konfigurationen und Chats werden gelöscht. Mitglieder verlieren den Zugriff. Bestehende Landing Zones müssen zuerst vollständig zurückgebaut werden.":
+    "Permanently delete workspace “{{value0}}”? All saved configurations and conversations will be deleted. Members will lose access. Existing Landing Zones must be fully retired first.",
+  "Der Arbeitsbereich enthält noch bestehende Landing Zones. Baue diese zuerst vollständig zurück.":
+    "This workspace still contains existing Landing Zones. Complete their retirement first.",
+  "Im Arbeitsbereich läuft noch eine Ausführung oder eine Wiederherstellung ist offen. Schließe diese zuerst ab.":
+    "An execution or recovery is still pending in this workspace. Complete it before deleting the workspace.",
 };

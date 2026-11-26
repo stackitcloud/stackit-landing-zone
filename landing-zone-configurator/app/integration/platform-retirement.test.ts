@@ -16,6 +16,7 @@ import { createEditorConfiguration, editCommonInput } from "@lzc/domain";
 import pg from "pg";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
+import { Configurations } from "../apps/api/src/configurations/service.js";
 import { Backends } from "../apps/api/src/deployments/backends.js";
 import { ArtifactCrypto } from "../apps/api/src/plans/crypto.js";
 import { RetirementCapture } from "../apps/api/src/retirements/capture.js";
@@ -1467,4 +1468,99 @@ it("transfers only a captured same-State scope to independent encrypted custody 
       .filter((call) => call.method !== "GET")
       .every((call) => new URL(call.url).hostname === "accounts.stackit.cloud"),
   ).toBe(true);
+});
+
+it("keeps a retired platform configuration until its archived Application resources have actually been destroyed", async () => {
+  const f = await fixture();
+  const configurations = new Configurations(runtime);
+  const saved = await configurations.create(
+    owner,
+    createEditorConfiguration("standalone", randomUUID()),
+  );
+  await imported(async () => {
+    await admin.query(
+      "UPDATE lzc.platform_states SET configuration_id=$2 WHERE state_key=$1",
+      [f.stateKey, saved.id],
+    );
+    await admin.query(
+      "INSERT INTO lzc.platform_retirements(tenant_id,state_key,organization_id,created_by,name,reason,phase,not_before,applications) SELECT tenant_id,state_key,(SELECT organization_id FROM lzc.tenants WHERE id=$1),$3,'Completed fixture','Test','COMPLETE',now(),'[]' FROM lzc.platform_states WHERE state_key=$2",
+      [owner.tenantId, f.stateKey, owner.userId],
+    );
+  });
+  const apply = async (
+    purpose: "standard" | "destroy",
+    status: "failed" | "succeeded",
+  ) => {
+    const plan = randomUUID(),
+      job = randomUUID();
+    await imported(async () => {
+      for (const [id, operation] of [
+        [plan, "plan"],
+        [job, "apply"],
+      ] as const) {
+        await admin.query(
+          "INSERT INTO lzc.application_jobs(id,tenant_id,instance_id,owner_user_id,issuer_session_id,idempotency_key,operation,inputs,binding_sha256,expires_at,plan_id,artifact_sha256) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,now()+interval '1 hour',$10,$11)",
+          [
+            id,
+            owner.tenantId,
+            f.instance,
+            owner.userId,
+            owner.id,
+            randomUUID(),
+            operation,
+            { purpose },
+            "a".repeat(64),
+            operation === "apply" ? plan : null,
+            operation === "apply" ? "a".repeat(64) : null,
+          ],
+        );
+      }
+      await admin.query(
+        "INSERT INTO lzc.application_job_grants(job_id,tenant_id,owner_user_id,instance_id,version_id,platform_revision,approved_by,organization_id,credential_profile_id,credential_version,credential_key_id,accelerator_revision,state_key,operation,binding_sha256,expires_at) SELECT $1,tenant_id,$2,$3,$4,revision,$2,organization_id,credential_profile_id,credential_version,credential_key_id,'08ac257de1548c8ec5e83dae1a79373711c3d644',$5,'apply',$6,now()-interval '1 minute' FROM lzc.application_platform_contracts WHERE revision=$7",
+        [
+          job,
+          owner.userId,
+          f.instance,
+          f.version,
+          `applications/${owner.tenantId}/${f.instance}/terraform.tfstate`,
+          "a".repeat(64),
+          f.revision,
+        ],
+      );
+      await admin.query(
+        "INSERT INTO lzc.application_dispatches(job_id,tenant_id,instance_id,owner_user_id,approved_by,approval_session_id,status,finished_at) VALUES($1,$2,$3,$4,$4,$5,$6,now())",
+        [job, owner.tenantId, f.instance, owner.userId, owner.id, status],
+      );
+    });
+  };
+  await apply("standard", "failed");
+  await imported(() =>
+    admin
+      .query(
+        "INSERT INTO lzc.application_order_deletions(instance_id,tenant_id,deleted_by) VALUES($1,$2,$3)",
+        [f.instance, owner.tenantId, owner.userId],
+      )
+      .then(() => {}),
+  );
+  expect((await configurations.get(owner, saved.id)).deletionBlocker).toBe(
+    "instance_exists",
+  );
+  await expect(configurations.remove(owner, saved.id, 1)).rejects.toMatchObject(
+    { code: "55000", message: "configuration_instance_exists" },
+  );
+  await apply("destroy", "failed");
+  await expect(configurations.remove(owner, saved.id, 1)).rejects.toMatchObject(
+    { code: "55000", message: "configuration_instance_exists" },
+  );
+  await apply("destroy", "succeeded");
+  expect((await configurations.get(owner, saved.id)).canDelete).toBe(true);
+  await configurations.remove(owner, saved.id, 1);
+  expect(
+    (
+      await admin.query(
+        "SELECT id FROM lzc.application_instances WHERE id=$1",
+        [f.instance],
+      )
+    ).rowCount,
+  ).toBe(1);
 });

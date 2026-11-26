@@ -10,6 +10,7 @@ export type OrganisationOverview = {
     kind: "personal" | "organisation";
     organizationId: string | null;
     organizationVerified: boolean;
+    canArchive?: boolean;
     roles: ProductRole[];
     manageMembers: boolean;
   }[];
