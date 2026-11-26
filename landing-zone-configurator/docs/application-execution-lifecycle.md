@@ -98,3 +98,20 @@ State locks and recovery fences remain mandatory. See [Plan execution](plan-exec
 for the execution and recovery trust boundaries.
 
 Template and platform upgrades use the separate [versioned upgrade flow](application-upgrades.md).
+
+
+## Retry a failed Apply
+
+**Retry Apply** starts a fresh standard Plan of the same order against the failed
+Apply's original backend descriptor and State key. It never replays the old saved
+Plan or grants Apply implicitly. The requester reviews the new Plan and approves
+Apply again. For a reported completed failure, the app performs the existing checkpoint
+and State checks internally after the retry click. It does not ask users to inspect
+Runner details or grant another technical approval. An ambiguous outcome remains
+blocked until resolved; technical recovery controls remain under advanced diagnostics.
+An active runner, unresolved recovery or failed State publication continues to block a retry. A failure before any execution capability was claimed can start
+a fresh Plan directly. Tenant access, active-order rules, pinned execution sources
+and upgrade approvals continue to apply. The new Plan and its Apply cannot switch
+the original State backend. Older failed Applies are not retry sources after a
+newer Apply exists. Repeated submissions with the same request key do not start
+additional jobs.

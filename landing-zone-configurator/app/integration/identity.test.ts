@@ -56,7 +56,10 @@ import {
 import { Configurations } from "../apps/api/src/configurations/service.js";
 import type { CloudCatalogue } from "../apps/api/src/credentials/catalogues.js";
 import { PostgresCredentialProfiles } from "../apps/api/src/credentials/profiles.js";
-import type { Backends } from "../apps/api/src/deployments/backends.js";
+import {
+  type Backends,
+  stateDocument,
+} from "../apps/api/src/deployments/backends.js";
 import { Preparations } from "../apps/api/src/deployments/preparations.js";
 import { Invitations } from "../apps/api/src/organisation/invitations.js";
 import { PostgresOrganisations } from "../apps/api/src/organisation/service.js";
@@ -8892,6 +8895,16 @@ describe("real PostgreSQL session and tenant boundaries", () => {
             }
             reviewed = await context(reviewer);
             expect(await approved(owner)).toBe(false);
+            await expect(
+              delegatedApplications.retryApply(owner, partialApply.jobId, {
+                idempotencyKey: randomUUID(),
+              }),
+            ).rejects.toBeDefined();
+            await expect(
+              delegatedApplications.retryApply(bob, partialApply.jobId, {
+                idempotencyKey: randomUUID(),
+              }),
+            ).rejects.toBeDefined();
             expect(await approved(bob)).toBe(false);
             expect(reviewed).toMatchObject({
               stateKey: resumable.ordered.stateKey,
@@ -9083,11 +9096,84 @@ describe("real PostgreSQL session and tenant boundaries", () => {
               [partialApply.jobId],
             );
             await admin.query("COMMIT");
-            const nextPlan = await delegatedApplications.startPlan(
+            const retryKey = randomUUID();
+            const nextPlan = await delegatedApplications.retryApply(
               owner,
-              resumable.ordered.id,
-              { idempotencyKey: randomUUID() },
+              partialApply.jobId,
+              { idempotencyKey: retryKey },
             );
+            expect(
+              await delegatedApplications.retryApply(
+                owner,
+                partialApply.jobId,
+                { idempotencyKey: retryKey },
+              ),
+            ).toEqual({ jobId: nextPlan.jobId, dispatched: false });
+            await expect(
+              delegatedApplications.startPlan(owner, resumable.ordered.id, {
+                idempotencyKey: retryKey,
+              }),
+            ).rejects.toMatchObject({ code: "idempotency_conflict" });
+            const retryBinding = (
+              await migration.query(
+                "SELECT * FROM lzc.application_apply_retries WHERE plan_job_id=$1",
+                [nextPlan.jobId],
+              )
+            ).rows[0];
+            expect(retryBinding).toMatchObject({
+              source_apply_id: partialApply.jobId,
+              backend_id: delegatedBackendId,
+              state_key: resumable.ordered.stateKey,
+            });
+            expect(retryBinding.backend_descriptor).toMatchObject({
+              key: resumable.ordered.stateKey,
+            });
+            for (const gate of [
+              "application_job_credential_context",
+              "application_runner_input_context",
+              "claim_application_job_grant",
+              "reserve_application_dispatch",
+            ]) {
+              await expect(
+                withTenant(pool, owner, (client) =>
+                  client.query(`SELECT lzc_auth.${gate}($1,$2)`, [
+                    owner.id,
+                    partialApply.jobId,
+                  ]),
+                ),
+              ).rejects.toMatchObject({
+                code: "42501",
+                message: "application_apply_superseded",
+              });
+            }
+            const oldSecretReads = applicationSecrets.get.mock.calls.length;
+            await expect(
+              delegatedApplications.runnerInput(partialTicket, ticketPackage),
+            ).rejects.toBeDefined();
+            await expect(
+              delegatedApplications.releaseRunnerCredential(
+                partialTicket,
+                ticketPackage,
+              ),
+            ).rejects.toBeDefined();
+            expect(applicationSecrets.get.mock.calls.length).toBe(
+              oldSecretReads,
+            );
+
+            await expect(
+              withTenant(pool, owner, (client) =>
+                client.query(
+                  "DELETE FROM lzc.application_apply_retries WHERE plan_job_id=$1",
+                  [nextPlan.jobId],
+                ),
+              ),
+            ).rejects.toMatchObject({ code: "42501" });
+            await expect(
+              migration.query(
+                "UPDATE lzc.application_job_backends SET descriptor=jsonb_set(descriptor,'{bucket}','\"wrong-retry-bucket\"'::jsonb) WHERE job_id=$1",
+                [nextPlan.jobId],
+              ),
+            ).rejects.toBeDefined();
             expect(nextPlan.jobId).not.toBe(resumable.id);
             const nextTicket = delegatedTicket;
             await delegatedApplications.runnerInput(nextTicket, ticketPackage);
@@ -9125,6 +9211,16 @@ describe("real PostgreSQL session and tenant boundaries", () => {
               { artifactSha256: artifact.sha256 },
             );
             expect(nextApply.jobId).not.toBe(partialApply.jobId);
+            const appliedBackend = (
+              await migration.query(
+                "SELECT backend_id,descriptor FROM lzc.application_job_backends WHERE job_id=$1",
+                [nextApply.jobId],
+              )
+            ).rows[0];
+            expect(appliedBackend).toEqual({
+              backend_id: retryBinding.backend_id,
+              descriptor: retryBinding.backend_descriptor,
+            });
             const nextApplyTicket = delegatedTicket;
             await delegatedApplications.runnerInput(
               nextApplyTicket,
@@ -9136,6 +9232,15 @@ describe("real PostgreSQL session and tenant boundaries", () => {
                 ticketPackage,
                 { stage },
               );
+            if (selfService)
+              await delegatedApplications.runnerOutput(
+                nextApplyTicket,
+                ticketPackage,
+                {
+                  text: "Synthetic completed command failure",
+                  truncated: false,
+                },
+              );
             await delegatedApplications.runnerResult(
               nextApplyTicket,
               ticketPackage,
@@ -9146,6 +9251,67 @@ describe("real PostgreSQL session and tenant boundaries", () => {
                 idempotencyKey: randomUUID(),
               }),
             ).rejects.toMatchObject({ code: "40001" });
+            if (selfService) {
+              const bytes = Buffer.from(
+                JSON.stringify({
+                  version: 4,
+                  serial: 4,
+                  lineage: randomUUID(),
+                  outputs: {},
+                  resources: [
+                    {
+                      mode: "managed",
+                      type: "terraform_data",
+                      name: "contract",
+                      instances: [
+                        { attributes: { input: resumable.ordered.id } },
+                      ],
+                    },
+                  ],
+                }),
+              );
+              const current = vi.fn<Backends["current"]>(async () => ({
+                bytes,
+                identity: "synthetic-current-state",
+                document: stateDocument(bytes),
+              }));
+              const automatic = new Applications(
+                pool,
+                delegatedTechnical,
+                applicationSecrets,
+                { ...applicationBackends, current },
+                { runner: delegatedRunner, origin: "http://127.0.0.1:3000" },
+                applicationCrypto,
+                undefined,
+                { recoveryReviewsEnabled: true },
+              );
+              const retry = await automatic.retryApply(owner, nextApply.jobId, {
+                idempotencyKey: randomUUID(),
+              });
+              expect(retry.dispatched).toBe(true);
+              expect(current).toHaveBeenCalledTimes(4);
+              expect(
+                (
+                  await migration.query(
+                    "SELECT mode,state_key FROM lzc.application_recovery_replans WHERE job_id=$1",
+                    [nextApply.jobId],
+                  )
+                ).rows[0],
+              ).toEqual({
+                mode: "reported-failure",
+                state_key: resumable.ordered.stateKey,
+              });
+              const freshTicket = delegatedTicket;
+              await automatic.runnerInput(freshTicket, ticketPackage);
+              for (const stage of ["initializing", "validating", "planning"])
+                await automatic.runnerStage(freshTicket, ticketPackage, {
+                  stage,
+                });
+              await automatic.runnerResult(freshTicket, ticketPackage, {
+                status: "failed",
+                errorCode: "plan_failed",
+              });
+            }
             expect(
               (
                 await migration.query(

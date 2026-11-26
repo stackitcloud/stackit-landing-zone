@@ -1,4 +1,34 @@
 export const englishMessages: Record<string, string> = {
+  "Der Ausführungsstatus hat sich geändert. Bitte aktualisieren und erneut prüfen.":
+    "Execution status changed. Refresh and check again.",
+  "Die App konnte den fehlgeschlagenen Lauf noch nicht abschließend prüfen. Aktualisiere den Status und versuche es erneut.":
+    "The app could not finish checking the failed execution yet. Refresh status and try again.",
+
+  "Der erneute Versuch konnte noch nicht vorbereitet werden. Aktualisiere den Ausführungsstatus und versuche es erneut.":
+    "Another attempt could not be prepared yet. Refresh execution status and try again.",
+
+  "Ein vorheriger Apply ist fehlgeschlagen. Wähle in der Apply-Ansicht „Apply erneut versuchen“. Die App bereitet den neuen Plan vor.":
+    "A previous Apply failed. Select Retry Apply in the Apply view. The app prepares the fresh Plan.",
+  "Ein neuer Plan derselben Bestellung ist möglich. Prüfe den neuen Plan und gib Apply erneut frei.":
+    "A fresh Plan for the same order is available. Review the fresh Plan and approve Apply again.",
+
+  "Erweiterte Fehlerdiagnose": "Advanced failure diagnostics",
+  "Die App bereitet einen neuen Plan mit dem vorhandenen State vor. Prüfe ihn anschließend und gib Apply erneut frei.":
+    "The app prepares a fresh Plan using the existing state. Review it and approve Apply again afterwards.",
+  "Erneuter Versuch wird vorbereitet …": "Preparing another attempt …",
+
+  "Prüfen und neuen Plan starten": "Review and start a fresh Plan",
+  "Ein neuer Plan derselben Bestellung wird mit dem vorhandenen State erstellt. Prüfe ihn und gib Apply danach erneut frei.":
+    "A fresh Plan of the same order will use the existing state. Review it and approve Apply again afterwards.",
+  "Neuen Plan für den erneuten Apply starten":
+    "Start a fresh Plan for retrying Apply",
+  "Dieser Apply kann noch nicht erneut versucht werden. Prüfe den Ausführungsstatus und den State-Abgleich.":
+    "This Apply cannot be retried yet. Check its execution status and state reconciliation.",
+  "Prüfe zuerst den Checkpoint des fehlgeschlagenen Apply. Erst danach kann ein neuer Plan gestartet werden.":
+    "Review the failed Apply checkpoint first. A fresh Plan can then be started.",
+  "Die State-Zuordnung hat sich geändert. Der erneute Versuch benötigt den ursprünglichen State; bitte den Platform Owner kontaktieren.":
+    "The state association has changed. Retrying requires the original state; contact the Platform Owner.",
+
   "Zurück zu den Vorlagen": "Back to templates",
   "Zugang wählen": "Choose access profile",
   "Neuen Zugang anlegen": "Add access profile",

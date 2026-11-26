@@ -69,6 +69,7 @@ import {
   checkRecoveryReplan,
   type RecoveryReplanBackends,
 } from "./recovery-replan.js";
+import { prepareApplyRetryRecovery } from "./retry-apply.js";
 import { checkRunnerStart } from "./runner-start.js";
 import {
   ApplicationStateRecoveries,
@@ -2339,7 +2340,46 @@ export class Applications {
     return this.dispatchJob(session, job.id, { confirmPlan: true });
   }
 
+  async retryApply(session: Session, applyId: string, input: unknown) {
+    const sourceId = z.uuid().parse(applyId);
+    const request = z.strictObject({ idempotencyKey: z.uuid() }).parse(input);
+    const source = await this.work(
+      session,
+      "order",
+      async (client) =>
+        (
+          await client.query<{
+            instance_id: string;
+            status: string;
+            reviewed: boolean;
+          }>(
+            "SELECT j.instance_id,d.status,lzc_auth.application_recovery_replan_approved(j.id) AS reviewed FROM lzc.application_jobs j JOIN lzc.application_dispatches d ON d.job_id=j.id WHERE j.id=$1 AND j.tenant_id=$2 AND j.owner_user_id=$3 AND j.operation='apply'",
+            [sourceId, session.tenantId, session.userId],
+          )
+        ).rows[0],
+    );
+    if (!source)
+      throw new ApplicationError(404, "application_apply_retry_unavailable");
+    if (source.status === "reconciliation_required" && !source.reviewed) {
+      await prepareApplyRetryRecovery({
+        check: () => this.checkRecoveryReplan(session, sourceId),
+        approve: (input) =>
+          this.approveRecoveryReplan(session, sourceId, input),
+      });
+    }
+    return this.startPlanFor(session, source.instance_id, request, sourceId);
+  }
+
   async startPlan(session: Session, instanceId: string, input: unknown) {
+    return this.startPlanFor(session, instanceId, input);
+  }
+
+  private async startPlanFor(
+    session: Session,
+    instanceId: string,
+    input: unknown,
+    retrySource?: string,
+  ) {
     const id = z.uuid().parse(instanceId);
     const request = z
       .strictObject({
@@ -2352,23 +2392,41 @@ export class Applications {
     const existing = await this.work(session, "order", async (client) => {
       await this.requireActiveOrder(client, session, id);
       return (
-        await client.query<{ id: string; purpose: string }>(
-          "SELECT j.id,coalesce(j.inputs->>'purpose','standard') AS purpose FROM lzc.application_jobs j JOIN lzc.application_dispatches d ON d.job_id=j.id WHERE j.instance_id=$1 AND j.owner_user_id=$2 AND j.idempotency_key=$3 AND j.operation='plan'",
+        await client.query<{
+          id: string;
+          purpose: string;
+          retry_source: string | null;
+        }>(
+          "SELECT j.id,coalesce(j.inputs->>'purpose','standard') AS purpose,retry.source_apply_id AS retry_source FROM lzc.application_jobs j JOIN lzc.application_dispatches d ON d.job_id=j.id LEFT JOIN lzc.application_apply_retries retry ON retry.plan_job_id=j.id WHERE j.instance_id=$1 AND j.owner_user_id=$2 AND j.idempotency_key=$3 AND j.operation='plan'",
           [id, session.userId, request.idempotencyKey],
         )
       ).rows[0];
     });
-    if (existing && existing.purpose !== request.purpose)
+    if (
+      existing &&
+      (existing.purpose !== request.purpose ||
+        (existing.retry_source ?? null) !== (retrySource ?? null))
+    )
       throw new ApplicationError(409, "idempotency_conflict");
     if (existing) return { jobId: existing.id, dispatched: false };
-    const job = await this.prepareJob(session, id, {
-      ...request,
-      confirmPlan: true,
-    });
+    const job = await this.prepareJob(
+      session,
+      id,
+      {
+        ...request,
+        confirmPlan: true,
+      },
+      retrySource,
+    );
     return this.dispatchJob(session, job.id, { confirmPlan: true });
   }
 
-  prepareJob(session: Session, instanceId: string, input: unknown) {
+  prepareJob(
+    session: Session,
+    instanceId: string,
+    input: unknown,
+    retrySource?: string,
+  ) {
     const id = z.uuid().parse(instanceId);
     const request = z
       .strictObject({
@@ -2416,16 +2474,19 @@ export class Applications {
         expires_at: Date;
         revoked_at: Date | null;
         claimed_at: Date | null;
+        retry_source: string | null;
       };
       const existing = (
         await client.query<JobRow>(
-          "SELECT j.*,g.revoked_at,c.claimed_at FROM lzc.application_jobs j JOIN lzc.application_job_grants g ON g.job_id=j.id LEFT JOIN lzc.application_job_claims c ON c.job_id=j.id WHERE j.tenant_id=$1 AND j.owner_user_id=$2 AND j.idempotency_key=$3",
+          "SELECT j.*,g.revoked_at,c.claimed_at,retry.source_apply_id AS retry_source FROM lzc.application_jobs j JOIN lzc.application_job_grants g ON g.job_id=j.id LEFT JOIN lzc.application_job_claims c ON c.job_id=j.id LEFT JOIN lzc.application_apply_retries retry ON retry.plan_job_id=j.id WHERE j.tenant_id=$1 AND j.owner_user_id=$2 AND j.idempotency_key=$3",
           [session.tenantId, session.userId, request.idempotencyKey],
         )
       ).rows[0];
       if (
         existing &&
-        (existing.instance_id !== id || existing.binding_sha256 !== bindingHash)
+        (existing.instance_id !== id ||
+          existing.binding_sha256 !== bindingHash ||
+          (existing.retry_source ?? null) !== (retrySource ?? null))
       )
         throw new ApplicationError(409, "idempotency_conflict");
       if (
@@ -2455,6 +2516,11 @@ export class Applications {
         ).rows[0];
       if (!job)
         throw new ApplicationError(403, "application_job_identity_unavailable");
+      if (retrySource)
+        await client.query(
+          "SELECT lzc_auth.bind_application_apply_retry($1,$2,$3)",
+          [session.id, retrySource, job.id],
+        );
       if (!existing)
         await client.query(
           "SELECT lzc_auth.bind_application_job_execution($1,$2)",

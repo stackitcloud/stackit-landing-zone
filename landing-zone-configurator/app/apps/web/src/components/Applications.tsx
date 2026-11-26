@@ -75,6 +75,12 @@ import {
 import { templateObservabilityConfigurable } from "./TemplateParameters";
 
 const errors: Record<string, string> = {
+  application_apply_retry_unavailable:
+    "Dieser Apply kann noch nicht erneut versucht werden. Prüfe den Ausführungsstatus und den State-Abgleich.",
+  application_apply_retry_checkpoint_required:
+    "Die App konnte den fehlgeschlagenen Lauf noch nicht abschließend prüfen. Aktualisiere den Status und versuche es erneut.",
+  application_apply_retry_state_changed:
+    "Die State-Zuordnung hat sich geändert. Der erneute Versuch benötigt den ursprünglichen State; bitte den Platform Owner kontaktieren.",
   application_recovery_source_unavailable:
     "Die ursprüngliche Recovery-Quelle wurde zurückgezogen oder ihr geprüftes Paket fehlt. Ein Operator muss ein geprüftes kompatibles Recovery-Paket bereitstellen. Bestellung, State und Sperre bleiben erhalten; Upgrade und Apply sind bis zum Abgleich gesperrt.",
   application_execution_source_withdrawn:
@@ -134,7 +140,7 @@ const errors: Record<string, string> = {
   application_recovery_fresh_plan_required:
     "Nach der Checkpoint-Prüfung ist ein neuer Plan erforderlich. Bitte dieselbe Bestellung neu planen und den neuen Plan prüfen.",
   application_recovery_replan_changed:
-    "Der Checkpoint oder Prüfkontext hat sich geändert oder ist abgelaufen. Bitte erneut prüfen.",
+    "Der Ausführungsstatus hat sich geändert. Bitte aktualisieren und erneut prüfen.",
   application_recovery_replan_unavailable:
     "Dieser Apply ist noch nicht für einen neuen Plan freigebbar. Ausführung, Berechtigungen und Recovery-State müssen vom Platform Owner geprüft werden.",
   application_recovery_replan_state_locked:
@@ -862,10 +868,12 @@ function RecoveryReplan({
   session,
   jobId,
   onApproved,
+  retry = false,
 }: {
   session: Session;
   jobId: string;
   onApproved: () => Promise<void>;
+  retry?: boolean;
 }) {
   const [checkpoint, setCheckpoint] = useState<z.infer<
     typeof applicationRecoveryReplanCheckSchema
@@ -931,8 +939,20 @@ function RecoveryReplan({
     }
   }
   return (
-    <section aria-label={t("Neuen Plan nach Apply-Fehler ermöglichen")}>
-      <h4>{t("Neuen Plan nach Apply-Fehler ermöglichen")}</h4>
+    <section
+      aria-label={t(
+        retry
+          ? "Apply erneut versuchen"
+          : "Neuen Plan nach Apply-Fehler ermöglichen",
+      )}
+    >
+      <h4>
+        {t(
+          retry
+            ? "Apply erneut versuchen"
+            : "Neuen Plan nach Apply-Fehler ermöglichen",
+        )}
+      </h4>
       <p>
         {t(
           "Bei regulär gemeldetem Apply-Fehler prüft der Server den gespeicherten State für einen neuen Plan. Nur unklare Abschlüsse benötigen einen externen Operator-Abgleich.",
@@ -1030,7 +1050,11 @@ function RecoveryReplan({
               }
               onClick={() => void approve()}
             >
-              {t("Neuen Plan ermöglichen")}
+              {t(
+                retry
+                  ? "Prüfen und neuen Plan starten"
+                  : "Neuen Plan ermöglichen",
+              )}
             </button>
           </fieldset>
         </>
@@ -1101,6 +1125,7 @@ function ApplicationPlanControls({
   currentView.current = view;
   const terminalRefreshed = useRef(false);
   const [busy, setBusy] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [output, setOutput] = useState<{
@@ -1385,6 +1410,7 @@ function ApplicationPlanControls({
   }, [running, refresh]);
   async function mutate(path: string, body: unknown) {
     setBusy(true);
+    setRetrying(path.endsWith("/retry-apply"));
     setError("");
     setInterruptedPlanCompleted(false);
     setInterruptedApplyRecorded(false);
@@ -1397,7 +1423,10 @@ function ApplicationPlanControls({
         applicationInterruptedApplyReceiptSchema.parse(response);
       if (path.endsWith("/check-runner-start"))
         applicationRunnerStartCheckReceiptSchema.parse(response);
-      if (path === `instances/${instance.id}/plan`)
+      if (
+        path === `instances/${instance.id}/plan` ||
+        path.endsWith("/retry-apply")
+      )
         preparedJob.current = z
           .object({ jobId: z.uuid() })
           .parse(response).jobId;
@@ -1424,6 +1453,7 @@ function ApplicationPlanControls({
       );
     } finally {
       setBusy(false);
+      setRetrying(false);
     }
   }
   const pending = jobs.some(
@@ -1531,7 +1561,7 @@ function ApplicationPlanControls({
         ) && (
           <p role="status">
             {t(
-              "Ein vorheriger Apply ist fehlgeschlagen. Prüfe in der Apply-Ansicht den Application-Checkpoint, um dieselbe Bestellung neu zu planen. Nur bei unklarem Abschluss ist ein Operator-Abgleich nötig.",
+              "Ein vorheriger Apply ist fehlgeschlagen. Wähle in der Apply-Ansicht „Apply erneut versuchen“. Die App bereitet den neuen Plan vor.",
             )}
           </p>
         )}
@@ -1872,7 +1902,7 @@ function ApplicationPlanControls({
             {job.recoveryReplanApproved && (
               <p role="status">
                 {t(
-                  "Der Checkpoint wurde geprüft. Ein neuer Plan derselben Bestellung ist möglich; der alte Plan bleibt für Apply gesperrt.",
+                  "Ein neuer Plan derselben Bestellung ist möglich. Prüfe den neuen Plan und gib Apply erneut frei.",
                 )}
               </p>
             )}
@@ -1882,12 +1912,59 @@ function ApplicationPlanControls({
               job.operation === "apply" &&
               job.status === "reconciliation_required" &&
               !job.recoveryReplanApproved && (
-                <RecoveryReplan
-                  key={`replan:${session.tenant?.id}:${session.user.id}:${job.id}`}
-                  session={session}
-                  jobId={job.id}
-                  onApproved={() => refresh()}
-                />
+                <details>
+                  <summary>{t("Erweiterte Fehlerdiagnose")}</summary>
+                  <RecoveryReplan
+                    key={`replan:${session.tenant?.id}:${session.user.id}:${job.id}`}
+                    session={session}
+                    jobId={job.id}
+                    retry={job.requestedBy === session.user.id}
+                    onApproved={async () => {
+                      if (job.requestedBy === session.user.id) {
+                        await request(`jobs/${job.id}/retry-apply`, session, {
+                          idempotencyKey: jobKey,
+                        });
+                        onViewChange("plan");
+                      }
+                      await refresh();
+                    }}
+                  />
+                </details>
+              )}
+            {job.operation === "apply" &&
+              job.purpose === "standard" &&
+              job.requestedBy === session.user.id &&
+              ["failed", "reconciliation_required"].includes(job.status) &&
+              !jobs.some(
+                (other) =>
+                  other.operation === "apply" &&
+                  new Date(other.createdAt).getTime() >
+                    new Date(job.createdAt).getTime(),
+              ) && (
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void mutate(`jobs/${job.id}/retry-apply`, {
+                        idempotencyKey: jobKey,
+                      })
+                    }
+                  >
+                    {t("Apply erneut versuchen")}
+                  </button>
+                  <p>
+                    {t(
+                      "Die App bereitet einen neuen Plan mit dem vorhandenen State vor. Prüfe ihn anschließend und gib Apply erneut frei.",
+                    )}
+                  </p>
+                  {retrying && (
+                    <p role="status">
+                      {t("Erneuter Versuch wird vorbereitet …")}
+                    </p>
+                  )}
+                </div>
               )}
             {recoveryReviewsEnabled &&
               isEngineer &&
