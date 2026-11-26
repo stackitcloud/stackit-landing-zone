@@ -107,7 +107,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE actor uuid; blocker text;
 BEGIN
  SELECT user_id INTO STRICT actor FROM lzc_auth.sessions WHERE id=p_session AND expires_at>now();
- PERFORM 1 FROM lzc.tenants WHERE id=p_tenant AND kind='organisation' AND archived_at IS NULL FOR UPDATE;
+ PERFORM 1 FROM lzc.tenants WHERE id=p_tenant AND kind='organisation' AND archived_at IS NULL FOR NO KEY UPDATE;
  IF NOT FOUND OR NOT EXISTS(SELECT 1 FROM lzc.memberships WHERE tenant_id=p_tenant AND user_id=actor AND manage_members AND 'platform-engineer'=ANY(product_roles)) THEN
   RAISE EXCEPTION 'organisation_archive_forbidden' USING ERRCODE='42501'; END IF;
  -- Do not wait for an admitted writer while holding the tenant row: its
