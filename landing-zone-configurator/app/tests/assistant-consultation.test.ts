@@ -1988,3 +1988,71 @@ it.each(["en", "de"] as const)(
     expect(original.apps.name).toBe("existing-apps");
   },
 );
+
+it.each(["cancel", "deadline"] as const)(
+  "releases a %s consultation while a shared catalogue read is still pending",
+  async (mode) => {
+    const fixture = assistantScenarioFixture(
+      assistantScenarios.find(
+        (entry) => entry.id === "editor-devops-sized-80-en",
+      )!,
+    );
+    const controller = new AbortController();
+    const originalTimeout = AbortSignal.timeout;
+    const timeout =
+      mode === "deadline"
+        ? vi
+            .spyOn(AbortSignal, "timeout")
+            .mockImplementation((ms) =>
+              ms === 180_000 ? controller.signal : originalTimeout(ms),
+            )
+        : undefined;
+    const { client, request } = model([
+      () => ({
+        action: "inspect",
+        requests: [{ tool: "knowledge", topics: ["devops-git"] }],
+      }),
+      () => ({
+        action: "inspect",
+        requests: [
+          { tool: "catalogue", path: "devops.git_flavor", region: "eu01" },
+        ],
+      }),
+    ]);
+    const onText = vi.fn();
+    const loadCatalogues = vi.fn(() => {
+      controller.abort();
+      return new Promise<AssistantCatalogueContext>(() => {});
+    });
+    const work = client.converse(
+      selection,
+      fixture.values,
+      [],
+      "Please add company Git100.",
+      undefined,
+      [],
+      { ...(mode === "cancel" ? { signal: controller.signal } : {}), onText },
+      { loadCatalogues },
+    );
+    let timer: ReturnType<typeof setTimeout>;
+    const bound = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(
+        () => reject(new Error("catalogue_cancellation_still_pending")),
+        250,
+      );
+    });
+    try {
+      await expect(Promise.race([work, bound])).rejects.toMatchObject(
+        mode === "cancel"
+          ? { name: "AbortError" }
+          : { reason: "consultation_timeout" },
+      );
+      expect(loadCatalogues).toHaveBeenCalledOnce();
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(onText).not.toHaveBeenCalled();
+    } finally {
+      clearTimeout(timer!);
+      timeout?.mockRestore();
+    }
+  },
+);
