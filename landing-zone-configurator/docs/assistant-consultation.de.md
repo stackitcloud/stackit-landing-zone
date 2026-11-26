@@ -243,7 +243,7 @@ nächsten Nachricht erneut im Projektzugriff des aktuellen Benutzers gelesen.
 Übergreifend zwischengespeichert werden ausschließlich öffentliche PIM-Metadaten:
 maximal 60 Sekunden pro Region, mit ursprünglichem Abrufzeitpunkt. Fehler werden
 nicht gespeichert und veraltete Daten nicht ersatzweise ausgeliefert. Jeder
-Aufrufer erhält eine unabhängige Kopie.
+Aufrufer erhält eine unabhängige Kopie. Bei Abbruch oder Erreichen der Dialogfrist endet das Warten auf einen Katalogabruf sofort; ein bereits gemeinsam genutzter öffentlicher Abruf darf für andere Aufrufer fertiglaufen.
 
 Für Konfigurationsaufgaben kann `read_knowledge` mit `includeConfiguration` die
 bearbeitbaren Konfigurationswurzeln und tatsächlichen nativen Defaults der

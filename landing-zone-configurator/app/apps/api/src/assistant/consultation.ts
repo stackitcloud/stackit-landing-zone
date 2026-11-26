@@ -108,6 +108,28 @@ export function reportConsultationTiming(
     /* Observability must not affect validation or the answer. */
   }
 }
+async function awaitCatalogue<T>(
+  signal: AbortSignal,
+  read: () => Promise<T>,
+): Promise<T> {
+  signal.throwIfAborted();
+  let onAbort = () => {};
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => {
+        signal.throwIfAborted();
+        return read();
+      }),
+      cancelled,
+    ]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
+}
 export type ConsultationOptions = {
   loadCatalogues?: (
     region?: "eu01" | "eu02",
@@ -1187,8 +1209,9 @@ export async function runConsultation(input: {
               const started = performance.now();
               let loaded = false;
               try {
-                const snapshot = await input.options.loadCatalogues(
-                  request.region ?? undefined,
+                const load = input.options.loadCatalogues;
+                const snapshot = await awaitCatalogue(turnSignal, () =>
+                  load(request.region ?? undefined),
                 );
                 turnSignal.throwIfAborted();
                 catalogues = {
@@ -1211,6 +1234,11 @@ export async function runConsultation(input: {
             }
             return { request, result: inspect(request) };
           } catch (error) {
+            if (turnSignal.aborted) {
+              if (turnDeadline.aborted && !input.stream?.signal?.aborted)
+                throw new AssistantInferenceError("consultation_timeout");
+              throw error;
+            }
             input.options?.onEvent?.({
               round,
               action: "tool-result",

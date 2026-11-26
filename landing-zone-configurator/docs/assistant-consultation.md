@@ -93,7 +93,7 @@ in-flight lookup within that turn. Authenticated offerings are read again on the
 next turn and remain scoped to the current user's project access. Only public
 PIM metadata is cached across turns: at most 60 seconds, by region, with its
 original fetch timestamp. Failed public lookups are not cached or served stale;
-each consumer receives an independent copy.
+each consumer receives an independent copy. Cancelling a turn or reaching its deadline stops waiting for a catalogue read immediately; an already shared public fetch may finish for other consumers.
 
 For configuration work, `read_knowledge` can request `includeConfiguration` to
 receive the selected topics' editable roots and authoritative native defaults
