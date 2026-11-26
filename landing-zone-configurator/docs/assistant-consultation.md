@@ -100,7 +100,7 @@ receive the selected topics' editable roots and authoritative native defaults
 alongside their knowledge. Advice-only reads omit that bundle. Bounded bundles
 explicitly list remaining paths for further reads. Independent reads run together;
 validation and dependent writes still wait for their actual inputs. Bundled values
-and default provenance also reach the semantic reviewer. Its output should cite
+and default provenance also reach the semantic reviewer. The full template key/name/kind roster stays available even when publication readiness is limited to affected templates; otherwise an omitted alternative could make a target look unambiguous. Question labels/options are reviewed as factual claims too, and unavailable catalogues must offer a useful next decision rather than an empty picker. Its output should cite
 specific evidence rather than repeat whole documents; its completeness, intent,
 language and boundary checks remain mandatory. Folder proposals include a localized
 summary of the exact validated folder names before review.
@@ -127,6 +127,8 @@ The shared evaluator compares them with reviewed numeric ceilings and matched
 catalogue facts. It distinguishes eligible, excluded and unknown offerings. Known
 Git user limits and supplied VM/VPN characteristics use the same evaluator; unknown
 capacity or unverified RAM units cannot become a performance claim.
+
+Concrete catalogue options are checked against observed project/region data, native defaults, current values and supplied source evidence before semantic review. This also applies when a technical identifier is labelled as a business requirement. An unavailable catalogue must produce a useful next step, rather than invented identifiers or an empty product picker. Actual product selectors load their source facts before review; business requirement questions do not trigger that lookup.
 
 The native validator exposes optional `nativeDefaults` evidence only for actual
 native variable defaults. Literal values, catalogue selections and registered presets

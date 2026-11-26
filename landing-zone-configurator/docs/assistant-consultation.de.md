@@ -234,6 +234,9 @@ wiederverwendbare Template-Prinzipale von konkreten Projektmitgliedern. Deshalb
 brauchen Template-Rechteänderungen keine einzelnen Benutzeradressen. Neue Presets
 benötigen weiterhin einen bestätigten initialen Owner.
 
+
+Konkrete Katalogoptionen werden vor der semantischen Prüfung mit beobachteten Projekt-/Regionsdaten, nativen Defaults, aktuellen Werten und vorliegenden Quellen abgeglichen. Das gilt auch für technische Kennungen, die als Bedarfsfrage bezeichnet werden. Ein nicht verfügbarer Katalog muss zu einem hilfreichen nächsten Schritt führen, statt zu erfundenen Kennungen oder einer leeren Produktauswahl. Tatsächliche Produktauswahlen laden ihre Quelldaten vor der Prüfung; reine Bedarfsfragen lösen diesen Abruf nicht aus.
+
 ## Laufzeit von Abfragen und Antworten
 
 Der Editor-Dialog lädt Produktkataloge erst, wenn ein Katalogwerkzeug oder eine
@@ -250,7 +253,7 @@ bearbeitbaren Konfigurationswurzeln und tatsächlichen nativen Defaults der
 gewählten Themen gemeinsam abrufen. Reine Beratung benötigt dieses Bündel nicht.
 Begrenzte Bündel nennen verbleibende Pfade ausdrücklich. Unabhängige Abfragen
 laufen gemeinsam; Validierung und abhängige Änderungen warten weiterhin auf ihre
-Eingaben. Die fachliche Prüfung erhält auch gebündelte Werte und Default-Quellen.
+Eingaben. Die fachliche Prüfung erhält auch gebündelte Werte und Default-Quellen. Die vollständige Liste der Template-Schlüssel, -Namen und -Arten bleibt erhalten, auch wenn die Veröffentlichungsbereitschaft nur betroffene Templates umfasst; fehlende Alternativen dürfen keine scheinbar eindeutige Auswahl erzeugen. Auch Fragetexte und Auswahloptionen werden fachlich geprüft. Nicht abrufbare Kataloge benötigen einen hilfreichen nächsten Entscheidungsschritt statt einer leeren Auswahl.
 Ihr Ergebnis soll konkrete Nachweise referenzieren, statt ganze Dokumente zu
 wiederholen. Vollständigkeits-, Absichts-, Sprach- und Grenzprüfungen bleiben
 verpflichtend. Ordnervorschläge enthalten vor der Prüfung eine lokalisierte

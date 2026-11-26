@@ -868,6 +868,40 @@ describe("real PostgreSQL session and tenant boundaries", () => {
     await configurations.remove(alice, stored.id, 1);
   });
 
+  it("does not fetch product catalogues just to present a business requirement on a catalogue-backed field", async () => {
+    const configurations = new Configurations(pool);
+    const stored = await configurations.create(
+      alice,
+      createEditorConfiguration("standalone", randomUUID()),
+    );
+    onTestFinished(() => configurations.remove(alice, stored.id, 1));
+    const catalogues = { automatic: vi.fn(), pim: vi.fn() };
+    const model = {
+      converse: vi.fn<AssistantModelServing["converse"]>(async () => ({
+        explanation: "Which traffic level should we plan for? Nothing saved.",
+        references: ["firewall-infrastructure"],
+        changes: [],
+        questions: [
+          {
+            path: "connectivity.firewall.flavor",
+            text: "Expected traffic?",
+            answerType: "requirements",
+            options: ["Modest traffic", "Heavy internet egress"],
+          },
+        ],
+      })),
+    };
+    const result = await new AssistantConversations(
+      pool,
+      model,
+      catalogues,
+    ).send(alice, stored.id, 1, "Help me estimate firewall requirements.");
+    expect(catalogues.automatic).not.toHaveBeenCalled();
+    expect(catalogues.pim).not.toHaveBeenCalled();
+    expect(result.proposal?.questions[0]?.catalogue).toBeUndefined();
+    expect(result.proposal?.questions[0]?.answerType).toBe("requirements");
+  });
+
   it("loads fresh owner-scoped product catalogues for chat and advice without leaking access metadata", async () => {
     const configurations = new Configurations(pool);
     const stored = await configurations.create(
