@@ -55,6 +55,15 @@ Bodyless DELETE requests must omit `Content-Type: application/json`; an empty
 JSON body is rejected before workspace or membership authorization. Browser
 checks cover the actual headers as well as successful deletion and domain errors.
 
+Configuration deletion and workspace archival share the database admission fence
+with Runner claims and dispatch. Migration `109_configuration_deletion.sql` checks
+all workspace owners, State aliases, unfinished executions and actual Application
+Destroy outcomes; archival markers alone do not prove resource removal. Completed
+platform retirement permits removing saved drafts without deleting retained State
+or immutable execution history. Workspace archival deletes every saved configuration,
+revokes pending invitations and clears all active workspace sessions. Keep server-side
+checks authoritative even when the UI disables a delete button.
+
 ## Interface localization
 
 Use `t()` for interface headings, navigation, buttons, hints, accessible labels

@@ -1,6 +1,16 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.3.0": {
+  introduction:"Simpler planning, reviewed Apply retries and safe configuration cleanup.",
+  changes:[
+   "Start a Plan from the current configuration and create missing credentials inline; guide Application template publication while keeping expert controls under Advanced.",
+   "Retry failed Platform and Application Applies through a fresh Plan against the existing State, with internal execution checks and renewed Apply approval.",
+   "Delete saved configurations from the list or editor; delete all workspace configurations together once deployed Landing Zones are fully retired.",
+   "Reduce Assistant catalogue and tool overhead, cache public product data and show progress while responses are reviewed.",
+  ],
+  limitations:"Assistant quality checks remain enabled. Combined requests can still exceed the response deadline; full multi-topic qualification remains incomplete (#275), and intermittent serving errors are tracked in #225.",
+ },
  "v2.2.7": {
   introduction:"Restore first-time Application Landing Zone planning.",
   changes:[

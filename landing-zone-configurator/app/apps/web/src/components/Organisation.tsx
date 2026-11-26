@@ -51,8 +51,12 @@ function workspaceDestination(tenant: Tenant) {
 const messages: Record<string, string> = {
   organisation_already_exists:
     "Ein zugänglicher Arbeitsbereich mit diesem Namen und dieser Organisations-ID existiert bereits. Bitte wähle ihn in der Liste aus.",
+  workspace_instance_exists:
+    "Der Arbeitsbereich enthält noch bestehende Landing Zones. Baue diese zuerst vollständig zurück.",
+  workspace_execution_active:
+    "Im Arbeitsbereich läuft noch eine Ausführung oder eine Wiederherstellung ist offen. Schließe diese zuerst ab.",
   organisation_not_empty_draft:
-    "Nur leere, unbestätigte Arbeitsbereiche ohne weitere Mitglieder können gelöscht werden. Entferne zunächst weitere Mitglieder. Konfigurationen, Zugänge oder Deployment-Daten verhindern das Löschen.",
+    "Der Arbeitsbereich kann erst gelöscht werden, wenn alle Landing Zones vollständig zurückgebaut und alle Ausführungen abgeschlossen sind.",
   organisation_operation_failed:
     "Die Änderung konnte nicht gespeichert werden. Bitte versuche es später erneut.",
   stale_tenant_context:
@@ -377,7 +381,7 @@ export function Organisation({
                       (tenant.id !== data.activeTenantId || beforeSwitch()) &&
                       window.confirm(
                         t(
-                          "Arbeitsbereich „{{value0}}“ löschen? Das ist nur für leere, unbestätigte Entwürfe ohne weitere Mitglieder möglich. STACKIT-Ressourcen werden nicht verändert.",
+                          "Arbeitsbereich „{{value0}}“ endgültig löschen? Alle gespeicherten Konfigurationen und Chats werden gelöscht. Mitglieder verlieren den Zugriff. Bestehende Landing Zones müssen zuerst vollständig zurückgebaut werden.",
                           { value0: tenant.name },
                         ),
                       )

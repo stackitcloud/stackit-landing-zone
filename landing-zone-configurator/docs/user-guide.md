@@ -2,6 +2,28 @@
 
 [English](user-guide.md) | [Deutsch](user-guide.de.md)
 
+## Delete configurations and workspaces
+
+Delete a saved configuration from **Configurations → Delete** or use **Delete
+configuration** beside the save controls in the editor. Confirm the configuration
+name in the dialog. Its saved contents and associated Assistant conversation are
+removed; the currently open draft remains available as an unsaved draft.
+
+A configuration can only be deleted after its deployed Landing Zone has been
+fully retired. Running executions, unresolved recovery and possible resources
+from a failed Apply also prevent deletion. The check covers the entire workspace,
+including deployments started by other Platform Engineers and State aliases.
+A saved draft, a completed Plan or historical execution evidence alone does not
+prevent deletion.
+
+Workspace managers can delete a workspace from **Workspaces** after all Platform
+and Application Landing Zones have been fully retired and executions have ended.
+All saved configurations and their conversations are deleted together. Members
+lose access and pending invitations are revoked. Organization verification,
+additional members, unused credentials and unpublished drafts do not prevent
+this action. State and immutable execution evidence remain retained for audit;
+deleting a configuration or workspace never destroys STACKIT resources.
+
 ## Access and roles
 
 Sign in with STACKIT. Authentication does not by itself grant access to an

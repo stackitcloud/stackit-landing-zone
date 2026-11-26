@@ -85,7 +85,7 @@ for (const result of ["success", "not-empty", "unavailable"] as const) {
     else {
       await expect(page.getByRole("alert")).toContainText(
         result === "not-empty"
-          ? "Only empty"
+          ? "Complete retirement"
           : "The change could not be saved. Please try again later.",
       );
       await expect(page.getByRole("alert")).not.toContainText(

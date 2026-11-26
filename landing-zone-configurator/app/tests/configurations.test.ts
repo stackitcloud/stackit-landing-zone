@@ -109,6 +109,55 @@ it("protects database configurations without requiring GitHub, rejects CSRF and 
         })
       ).statusCode,
     ).toBe(200);
+    const id = randomUUID();
+    const url = `/api/v1/configurations/${id}`;
+    expect(
+      (
+        await app.inject({
+          method: "DELETE",
+          url,
+          headers: { ...headers, "x-lzc-csrf": "invalid" },
+          payload: { revision: 1 },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(configurations.remove).not.toHaveBeenCalled();
+    for (const code of [
+      "configuration_execution_active",
+      "configuration_instance_exists",
+    ]) {
+      configurations.remove.mockRejectedValueOnce(
+        Object.assign(new Error(code), { code: "55000" }),
+      );
+      const response = await app.inject({
+        method: "DELETE",
+        url,
+        headers,
+        payload: { revision: 1 },
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toEqual({ error: code });
+    }
+    expect(
+      (
+        await app.inject({
+          method: "DELETE",
+          url,
+          headers,
+          payload: { revision: 0 },
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (
+        await app.inject({
+          method: "DELETE",
+          url,
+          headers,
+          payload: { revision: 1 },
+        })
+      ).statusCode,
+    ).toBe(204);
     session.tenantKind = "organisation";
     session.productRoles = ["application-owner"];
     expect(
