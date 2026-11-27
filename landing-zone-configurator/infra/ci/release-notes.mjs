@@ -1,6 +1,16 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.3.1": {
+  introduction:"Retire applied platform Landing Zones directly from the platform workflow.",
+  changes:[
+   "Select a successful current platform Apply without creating an Application platform binding or publishing templates.",
+   "Read native folder scope from the existing State and freeze new admissions before staged retirement.",
+   "Accept verified completed S3 backend migrations while retaining checks for open or inconsistent migrations.",
+   "Preserve CF runtime toggles for Retirement, Assistant and MailOut across deployments.",
+  ],
+  limitations:"Assistant behavior is unchanged: combined requests can still exceed the response deadline; full multi-topic qualification remains incomplete (#275), and intermittent serving errors are tracked in #225.",
+ },
  "v2.3.0": {
   introduction:"Simpler planning, reviewed Apply retries and safe configuration cleanup.",
   changes:[

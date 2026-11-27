@@ -11,6 +11,15 @@ receipt, and production activation is a separate decision.
 
 ## Owner workflow
 
+Retirement is available directly after a successful platform Apply. It requires
+neither an Application platform binding nor published Application templates.
+The selection uses the current, unlocked State and its successful Apply in the
+active workspace. Native folders are read from that State before the announcement
+and fenced with the existing Application scopes. A verified completed S3 backend
+switch remains valid even though its migration markers are retained as evidence;
+open, mismatched or unproven switches remain blocked. Reading this evidence does
+not run another Plan/Apply or change cloud resources.
+
 1. Open **Deployments → Retire** (`/deployments/retire`), select the exact applied
    platform and announce retirement. This dedicated tab contains retirement
    announcements, execution approvals and purge-wait status; history remains separate.
