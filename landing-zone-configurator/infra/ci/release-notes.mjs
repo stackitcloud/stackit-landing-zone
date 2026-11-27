@@ -1,6 +1,14 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.3.5": {
+  introduction:"A guided retirement workflow with clear current actions and read-only history.",
+  changes:[
+   "Keep the current retirement, its phase, plan output and deletion approval together; move cancelled attempts and superseded runs into collapsed history.",
+   "Show actionable steps first, preserve unresolved recovery work, and separate pause/cancel controls from the normal workflow.",
+  ],
+  limitations:"Assistant behavior is unchanged: combined requests can still exceed the response deadline; full multi-topic qualification remains incomplete (#275), and intermittent serving errors are tracked in #225.",
+ },
  "v2.3.4": {
   introduction:"Retirement completion checks now run automatically.",
   changes:[

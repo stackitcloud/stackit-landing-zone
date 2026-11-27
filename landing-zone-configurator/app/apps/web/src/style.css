@@ -2627,3 +2627,97 @@ button.template-node:hover {
   max-width: 100%;
   white-space: normal;
 }
+
+.retirement-current-list,
+.retirement-history,
+.retirement-run-history {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.retirement-current-list > h3 {
+  margin-bottom: 0;
+}
+.retirement-panel .retirement-current {
+  margin-top: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+.retirement-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding-block: 0.65rem;
+}
+.retirement-panel .retirement-archived {
+  margin-top: 0;
+  padding: 0.75rem;
+  border-top: 0;
+}
+.retirement-execution .retirement-scope {
+  gap: 1rem;
+}
+.retirement-eyebrow {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0;
+}
+.retirement-scope > h4,
+.retirement-scope > h5,
+.retirement-next-action > h5 {
+  margin: 0;
+}
+.retirement-scope > ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  list-style-position: inside;
+  padding: 0;
+  margin: 0;
+}
+.retirement-scope > ol li {
+  padding: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.35rem;
+  font-size: 0.9rem;
+}
+.retirement-scope > ol li[aria-current="step"] {
+  background: var(--nds-mode-color-background-neutral-surface-selected-rest);
+  border-color: var(--nds-mode-color-foreground-neutral-selected);
+  font-weight: 600;
+}
+.retirement-next-action {
+  padding: 1rem;
+  background: var(--nds-mode-color-background-neutral-surface-sunken-rest);
+  border-left: 3px solid var(--nds-mode-color-foreground-neutral-selected);
+}
+.retirement-next-action p {
+  margin-block: 0.65rem;
+}
+.retirement-run-history > .retirement-job {
+  margin-top: 0.75rem;
+}
+@media (max-width: 640px) {
+  .retirement-panel {
+    padding: 0.75rem;
+  }
+  .retirement-panel .retirement-current {
+    padding: 0.75rem;
+  }
+  .retirement-scope > ol {
+    grid-template-columns: 1fr;
+  }
+}
+.retirement-current > h3,
+.retirement-current > p,
+.retirement-execution p,
+.retirement-job > h4 {
+  margin: 0;
+}
+.retirement-current .retirement-execution {
+  margin: 0;
+}
+.retirement-scope > ol li[data-completed] {
+  background: var(--nds-mode-color-background-neutral-surface-sunken-rest);
+  color: var(--nds-mode-color-foreground-neutral-selected);
+}

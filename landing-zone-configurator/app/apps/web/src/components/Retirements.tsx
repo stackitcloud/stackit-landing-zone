@@ -45,6 +45,8 @@ export function RetirementPanel({
   standalone?: boolean;
 }) {
   const [rows, setRows] = useState<Retirement[]>([]);
+  const [newRetirementOpen, setNewRetirementOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState<Record<string, boolean>>({});
   const [candidates, setCandidates] = useState<
     z.infer<typeof retirementCandidateSchema>[]
   >([]);
@@ -90,6 +92,8 @@ export function RetirementPanel({
     const abort = new AbortController();
     const requestedIdentity = identity;
     setRows([]);
+    setHistoryOpen({});
+    setNewRetirementOpen(true);
     setCandidates([]);
     setAvailable(false);
     setDisabled(false);
@@ -114,6 +118,7 @@ export function RetirementPanel({
         if (abort.signal.aborted || current.current !== requestedIdentity)
           return;
         setRows(result);
+        setNewRetirementOpen(result.length === 0);
         setAvailable(true);
         if (manage) {
           const choices = z
@@ -145,6 +150,11 @@ export function RetirementPanel({
       setRows(result);
       setCandidates(choices);
       setConfirmed(false);
+      if (path === "") {
+        setNewRetirementOpen(false);
+        setSelected("");
+        setReason("");
+      }
     } catch (cause) {
       if (current.current === owner)
         setError(
@@ -155,6 +165,156 @@ export function RetirementPanel({
       if (current.current === owner) setPending(false);
     }
   }
+  const activeRows = rows
+    .filter((row) => !["CANCELLED", "COMPLETE"].includes(row.phase))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const historyRows = rows
+    .filter((row) => ["CANCELLED", "COMPLETE"].includes(row.phase))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const renderRetirement = (row: Retirement, archived = false) => (
+    <article
+      className={archived ? "retirement-archived" : "retirement-current"}
+      key={row.id}
+    >
+      <h3>{row.name}</h3>
+      <p role="status">{t(phases[row.phase])}</p>
+      {!archived && Date.parse(row.notBefore) > Date.now() && (
+        <p>
+          {t("Löschung frühestens ab:")}{" "}
+          {new Date(row.notBefore).toLocaleString(currentLanguage())}
+        </p>
+      )}
+      <details className="retirement-announcement">
+        <summary>{t("Ankündigung und betroffene Landing Zones")}</summary>
+        <p>{row.reason}</p>
+        <p>
+          {t("Löschung frühestens ab:")}{" "}
+          {new Date(row.notBefore).toLocaleString(currentLanguage())}
+        </p>
+        <ul>
+          {row.applications.map((item) => (
+            <li key={item.id}>{item.name}</li>
+          ))}
+        </ul>
+      </details>
+      {row.blockers.length > 0 && !archived && (
+        <ul>
+          {row.blockers.map((code) => (
+            <li key={code}>
+              {t(messages[code] ?? "Eine Rückbauvoraussetzung ist noch offen.")}
+            </li>
+          ))}
+        </ul>
+      )}
+      {manage &&
+        !archived &&
+        row.phase !== "PAUSED" &&
+        row.blockers.some(
+          (code) => code !== "retirement-preparation-window",
+        ) && (
+          <button
+            type="button"
+            className="button primary"
+            disabled={pending}
+            onClick={() =>
+              void mutate(`/${row.id}`, {
+                generation: row.generation,
+                action: "inspect",
+              })
+            }
+          >
+            {t("Voraussetzungen erneut prüfen")}
+          </button>
+        )}
+      {manage && !archived && row.phase === "PAUSED" && (
+        <button
+          type="button"
+          className="button primary"
+          disabled={pending}
+          onClick={() =>
+            void mutate(`/${row.id}`, {
+              generation: row.generation,
+              action: "resume",
+            })
+          }
+        >
+          {t("Rückbau wiederaufnehmen")}
+        </button>
+      )}
+      {manage && (
+        <RetirementExecutionPanel
+          readOnly={archived}
+          paused={row.phase === "PAUSED"}
+          key={`${identity}:${row.id}`}
+          session={session}
+          retirement={row}
+          onChanged={async () => {
+            const owner = identity;
+            const result = z.array(retirementSchema).parse(await call(""));
+            if (current.current === owner) setRows(result);
+          }}
+        />
+      )}
+      {manage && !archived && (
+        <details className="retirement-management">
+          <summary>{t("Rückbau verwalten")}</summary>
+          <div className="actions">
+            <button
+              type="button"
+              className="button secondary"
+              disabled={pending}
+              onClick={() =>
+                void mutate(`/${row.id}`, {
+                  generation: row.generation,
+                  action: "inspect",
+                })
+              }
+            >
+              {t("Status prüfen")}
+            </button>
+            {row.phase !== "PAUSED" && (
+              <button
+                type="button"
+                className="button secondary"
+                disabled={pending}
+                onClick={() =>
+                  void mutate(`/${row.id}`, {
+                    generation: row.generation,
+                    action: "pause",
+                  })
+                }
+              >
+                {t("Rückbau pausieren")}
+              </button>
+            )}
+            {row.canCancel === true && (
+              <button
+                type="button"
+                className="button secondary"
+                disabled={pending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `${row.name}\n` +
+                        t(
+                          "Rückbau abbrechen und Neuanlagen nach Prüfung wieder zulassen? Bereits gelöschte Ressourcen werden nicht wiederhergestellt.",
+                        ),
+                    )
+                  )
+                    void mutate(`/${row.id}`, {
+                      generation: row.generation,
+                      action: "cancel",
+                    });
+                }}
+              >
+                {t("Rückbau abbrechen")}
+              </button>
+            )}
+          </div>
+        </details>
+      )}
+    </article>
+  );
   if (standalone && disabled)
     return (
       <p role="status">
@@ -184,179 +344,133 @@ export function RetirementPanel({
           </p>
         )}
       {manage && candidates.length > 0 && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!confirmed || !selected || !reason.trim()) return;
-            void mutate("", {
-              stateKey: selected,
-              reason: reason.trim(),
-              notBefore: new Date(`${date}Z`).toISOString(),
-              confirmRetirement: true,
-            });
-          }}
+        <details
+          className="retirement-new"
+          open={newRetirementOpen}
+          onToggle={(event) => setNewRetirementOpen(event.currentTarget.open)}
         >
-          <p>
-            {t(
-              "Mit dem Rückbaustart werden neue Bestellungen und Erweiterungen gesperrt. Betroffene Besteller werden vorab informiert und können ihre Daten sichern oder selbst bereinigen.",
-            )}
-          </p>
-          <label>
-            {t("Plattform auswählen")}
-            <select
-              value={selected}
-              onChange={(event) => {
-                setSelected(event.target.value);
-                setConfirmed(false);
-              }}
-              required
-            >
-              <option value="">{t("Bitte auswählen")}</option>
-              {candidates.map((item) => (
-                <option key={item.stateKey} value={item.stateKey}>
-                  {item.name} · {item.applicationCount} {t("Applications")}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t("Grund für den Rückbau")}
-            <textarea
-              value={reason}
-              onChange={(event) => {
-                setReason(event.target.value);
-                setConfirmed(false);
-              }}
-              maxLength={1000}
-              required
-            />
-          </label>
-          <label>
-            {t("Löschung frühestens ab (UTC)")}
-            <input
-              type="datetime-local"
-              value={date}
-              onChange={(event) => {
-                setDate(event.target.value);
-                setConfirmed(false);
-              }}
-              required
-            />
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(event) => setConfirmed(event.target.checked)}
-            />
-            {t(
-              "Ich bestätige die Stilllegung der ausgewählten Plattform und die Information der betroffenen Besteller.",
-            )}
-          </label>
-          <button
-            type="submit"
-            className="button"
-            disabled={pending || !confirmed || !selected || !reason.trim()}
+          <summary>{t("Neuen Rückbau ankündigen")}</summary>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!confirmed || !selected || !reason.trim()) return;
+              void mutate("", {
+                stateKey: selected,
+                reason: reason.trim(),
+                notBefore: new Date(`${date}Z`).toISOString(),
+                confirmRetirement: true,
+              });
+            }}
           >
-            {t("Rückbau ankündigen und Neuanlagen sperren")}
-          </button>
-        </form>
-      )}
-      {rows.map((row) => (
-        <article key={row.id}>
-          <h3>{row.name}</h3>
-          <p role="status">{t(phases[row.phase])}</p>
-          <p>{row.reason}</p>
-          <p>
-            {t("Löschung frühestens ab:")}{" "}
-            {new Date(row.notBefore).toLocaleString(currentLanguage())}
-          </p>
-          <ul>
-            {row.applications.map((item) => (
-              <li key={item.id}>{item.name}</li>
-            ))}
-          </ul>
-          {row.blockers.length > 0 && (
-            <ul>
-              {row.blockers.map((code) => (
-                <li key={code}>
-                  {t(
-                    messages[code] ??
-                      "Eine Rückbauvoraussetzung ist noch offen.",
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          {manage && (
-            <RetirementExecutionPanel
-              key={`${identity}:${row.id}`}
-              session={session}
-              retirement={row}
-              onChanged={async () => {
-                const owner = identity;
-                const result = z.array(retirementSchema).parse(await call(""));
-                if (current.current === owner) setRows(result);
-              }}
-            />
-          )}
-          {manage && !["COMPLETE", "CANCELLED"].includes(row.phase) && (
-            <div className="actions">
-              <button
-                type="button"
-                className="button secondary"
-                disabled={pending}
-                onClick={() =>
-                  void mutate(`/${row.id}`, {
-                    generation: row.generation,
-                    action: "inspect",
-                  })
-                }
-              >
-                {t("Status prüfen")}
-              </button>
-              <button
-                type="button"
-                className="button secondary"
-                disabled={pending}
-                onClick={() =>
-                  void mutate(`/${row.id}`, {
-                    generation: row.generation,
-                    action: row.phase === "PAUSED" ? "resume" : "pause",
-                  })
-                }
-              >
-                {t(
-                  row.phase === "PAUSED"
-                    ? "Rückbau wiederaufnehmen"
-                    : "Rückbau pausieren",
-                )}
-              </button>
-              <button
-                type="button"
-                className="button secondary"
-                disabled={pending || row.canCancel !== true}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `${row.name}\n` +
-                        t(
-                          "Rückbau abbrechen und Neuanlagen nach Prüfung wieder zulassen? Bereits gelöschte Ressourcen werden nicht wiederhergestellt.",
-                        ),
-                    )
-                  )
-                    void mutate(`/${row.id}`, {
-                      generation: row.generation,
-                      action: "cancel",
-                    });
+            <p>
+              {t(
+                "Mit dem Rückbaustart werden neue Bestellungen und Erweiterungen gesperrt. Betroffene Besteller werden vorab informiert und können ihre Daten sichern oder selbst bereinigen.",
+              )}
+            </p>
+            <label>
+              {t("Plattform auswählen")}
+              <select
+                value={selected}
+                onChange={(event) => {
+                  setSelected(event.target.value);
+                  setConfirmed(false);
                 }}
+                required
               >
-                {t("Rückbau abbrechen")}
-              </button>
-            </div>
-          )}
-        </article>
-      ))}
+                <option value="">{t("Bitte auswählen")}</option>
+                {candidates.map((item) => (
+                  <option key={item.stateKey} value={item.stateKey}>
+                    {item.name} · {item.applicationCount} {t("Applications")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t("Grund für den Rückbau")}
+              <textarea
+                value={reason}
+                onChange={(event) => {
+                  setReason(event.target.value);
+                  setConfirmed(false);
+                }}
+                maxLength={1000}
+                required
+              />
+            </label>
+            <label>
+              {t("Löschung frühestens ab (UTC)")}
+              <input
+                type="datetime-local"
+                value={date}
+                onChange={(event) => {
+                  setDate(event.target.value);
+                  setConfirmed(false);
+                }}
+                required
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
+              />
+              {t(
+                "Ich bestätige die Stilllegung der ausgewählten Plattform und die Information der betroffenen Besteller.",
+              )}
+            </label>
+            <button
+              type="submit"
+              className="button primary"
+              disabled={pending || !confirmed || !selected || !reason.trim()}
+            >
+              {t("Rückbau ankündigen und Neuanlagen sperren")}
+            </button>
+          </form>
+        </details>
+      )}
+      {activeRows.length > 0 && (
+        <div className="retirement-current-list">
+          <h3>{t("Aktueller Rückbau")}</h3>
+          {activeRows.map((row) => renderRetirement(row))}
+        </div>
+      )}
+      {rows.length > 0 && activeRows.length === 0 && (
+        <p>
+          {t("Kein laufender Rückbau. Frühere Versuche findest du im Verlauf.")}
+        </p>
+      )}
+      {historyRows.length > 0 && (
+        <details className="retirement-history">
+          <summary>
+            {t("Rückbauverlauf")} ({historyRows.length})
+          </summary>
+          <p>
+            {t(
+              "Abgebrochene und abgeschlossene Rückbauten. Diese Einträge sind nur zur Einsicht und erfordern keine Aktion.",
+            )}
+          </p>
+          {historyRows.map((row) => (
+            <details
+              key={row.id}
+              onToggle={(event) => {
+                const open = event.currentTarget.open;
+                setHistoryOpen((previous) =>
+                  previous[row.id] === open
+                    ? previous
+                    : { ...previous, [row.id]: open },
+                );
+              }}
+            >
+              <summary>
+                {row.name} · {t(phases[row.phase])} ·{" "}
+                {new Date(row.createdAt).toLocaleString(currentLanguage())}
+              </summary>
+              {historyOpen[row.id] && renderRetirement(row, true)}
+            </details>
+          ))}
+        </details>
+      )}
     </section>
   );
 }
