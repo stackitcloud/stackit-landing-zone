@@ -140,7 +140,11 @@ angefordert. Pausieren, Abbrechen und ausdrückliche Statusprüfungen stehen unt
 die primäre Aktion. Status, Ausgabe und ungeklärte Arbeit bleiben sichtbar;
 Ausführung und automatische Abschlussprüfungen pausieren bis zur Wiederaufnahme.
 Die erneute Bestätigung des Rückbauzugangs bleibt in optionalen eingeklappten
-Details erreichbar.
+Details erreichbar. Stammt ein gemeldeter Lauf aus der Zeit vor Pause und
+Wiederaufnahme, kann sein ausführender Owner den Abschluss ausdrücklich prüfen.
+Über Generationen hinweg erfolgt kein automatischer Abgleich; der alte Plan
+wird nicht mehr zur Löschfreigabe angeboten. Nach Klärung des Laufs einen neuen
+Plan erstellen.
 
 Lasse die Rückbauschritte geöffnet, um den aktiven Auftrag zu verfolgen. Status und
 OpenTofu-Ausgabe aktualisieren sich automatisch. Jeder Auftrag behält seine eigene

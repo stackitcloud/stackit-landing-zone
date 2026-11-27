@@ -1242,3 +1242,138 @@ test("keeps the current retirement and its approval together while older attempt
     fullPage: true,
   });
 });
+
+test("offers explicit completion of a pre-pause run after resume without replaying execution", async ({
+  page,
+}) => {
+  await mockEmptyApplicationLists(page);
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { stackit: true, github: false, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/backends", (route) =>
+    route.fulfill({ json: { backends: [] } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: user, login: "owner@example.test" },
+        tenant: {
+          id: tenant,
+          name: "Resumed retirement",
+          kind: "organisation",
+          roles: ["platform-engineer"],
+          manageMembers: true,
+        },
+        csrfToken: "retirement-csrf",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        stackitVerified: true,
+      },
+    }),
+  );
+  const jobId = "77777777-7777-4777-8777-777777777777";
+  const scopeId = "66666666-6666-4666-8666-666666666666";
+  const current = {
+    id,
+    name: "Resumed retirement",
+    stateKey,
+    organizationId: "44444444-4444-4444-8444-444444444444",
+    createdBy: user,
+    reason: "Resume after a pause",
+    notBefore: new Date(Date.now() - 60000).toISOString(),
+    createdAt: new Date().toISOString(),
+    phase: "PREPARED",
+    generation: 3,
+    applications: [],
+    blockers: [],
+  };
+  let completed = false,
+    reads = 0;
+  const mutations: string[] = [];
+  const review = () => ({
+    retirementId: id,
+    generation: 3,
+    hasHandoff: true,
+    prepared: true,
+    canPrepare: false,
+    scopes: [
+      {
+        id: scopeId,
+        name: current.name,
+        instanceId: null,
+        stage: "private_workloads",
+        stateVersion: "1",
+        canPlan: completed,
+      },
+    ],
+    jobs: [
+      {
+        id: jobId,
+        scopeId,
+        operatorId: user,
+        generation: 1,
+        operation: "plan",
+        phase: "private_workloads",
+        status: completed ? "succeeded" : "recovery_required",
+        nativeStatus: "succeeded",
+        createdAt: current.createdAt,
+        sourceRevision: "a".repeat(40),
+        providerLockSha256: "b".repeat(64),
+        artifactSha256: "c".repeat(64),
+        deleteCount: 2,
+        canApply: false,
+        canInspect: !completed,
+        recoveryAvailable: false,
+        recoveryPending: false,
+        errorCode: null,
+      },
+    ],
+  });
+  await page.route("**/api/v1/retirements**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (route.request().method() === "POST") {
+      mutations.push(path);
+      expect(path).toBe(`/api/v1/retirements/${id}/jobs/${jobId}/inspect`);
+      expect(route.request().postDataJSON()).toEqual({ generation: 3 });
+      expect(route.request().headers()["x-lzc-tenant"]).toBe(tenant);
+      expect(route.request().headers()["x-lzc-csrf"]).toBe("retirement-csrf");
+      completed = true;
+      return route.fulfill({ json: review() });
+    }
+    if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
+    if (path.endsWith("/execution")) {
+      reads++;
+      return route.fulfill({ json: review() });
+    }
+    if (path.endsWith("/output"))
+      return route.fulfill({
+        json: { text: "Completed before the pause", truncated: false },
+      });
+    return route.fulfill({ json: [current] });
+  });
+  await page.goto("/deployments/retire");
+  await expect.poll(() => reads, { timeout: 7000 }).toBeGreaterThanOrEqual(2);
+  expect(mutations).toEqual([]);
+  await expect(
+    page.getByText(
+      "A previous run is unresolved. Check its completion to continue retirement.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create retirement plan", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Review deletions", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Check completion again", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Create retirement plan", exact: true }),
+  ).toBeEnabled();
+  expect(mutations).toHaveLength(1);
+  await expect(
+    page.getByRole("button", { name: "Apply reviewed retirement plan" }),
+  ).toHaveCount(0);
+});

@@ -600,6 +600,17 @@ export function RetirementExecutionPanel({
             "Prüfung erforderlich",
         )}
       </p>
+      {!historical &&
+        !paused &&
+        unresolved(job) &&
+        job.operatorId === session.user.id &&
+        job.generation < retirement.generation && (
+          <p role="status">
+            {t(
+              "Ein früherer Lauf ist noch ungeklärt. Prüfe seinen Abschluss, um den Rückbau fortzusetzen.",
+            )}
+          </p>
+        )}
       {!historical && unresolved(job) && job.operatorId !== session.user.id && (
         <p role="status">
           {t(
@@ -635,6 +646,7 @@ export function RetirementExecutionPanel({
       {!historical &&
         !paused &&
         job.operation === "plan" &&
+        job.generation === retirement.generation &&
         job.artifactSha256 &&
         preview?.id !== job.id &&
         (job.canApply || job.canInspect) && (
@@ -671,7 +683,8 @@ export function RetirementExecutionPanel({
         job.canInspect &&
         (!job.nativeStatus ||
           completionErrors[job.id] ||
-          job.recoveryAvailable) && (
+          job.recoveryAvailable ||
+          job.generation < retirement.generation) && (
           <button
             type="button"
             className="button secondary"

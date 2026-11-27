@@ -122,7 +122,10 @@ Pause, cancellation and explicit status checks are under **Manage retirement**;
 a paused retirement presents **Resume retirement** as its primary action. Its
 status, output and unresolved work remain visible, with execution and automatic
 completion checks suspended until resume. Credential renewal remains available
-under collapsed optional details.
+under collapsed optional details. If a reported run predates a pause/resume,
+its owner can explicitly check its completion. It is never reconciled automatically
+across generations, and its old Plan is not offered for deletion approval; create
+a fresh Plan after the unresolved run has been closed.
 
 Keep the retirement steps open to follow the active job. Status and OpenTofu
 output refresh automatically. Each job retains its own bounded, redacted output;
