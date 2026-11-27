@@ -7,6 +7,62 @@ Secrets Manager, model token, storage buckets, CF organizations and GitHub
 Environments. Its public origin is `https://app.landing-zone.runs.onstackit.cloud`.
 The native Accelerator in `src/` remains independently usable.
 
+## Runtime feature toggles
+
+Operators can switch provisioned optional features through CF app environment
+variables. No new application build, GitHub Release or deployment pipeline is
+needed. Values are the literal strings `true` and `false`.
+
+| Variable | Feature |
+| --- | --- |
+| `LZC_RETIREMENTS_ENABLED` | Staged Platform Landing Zone retirement and its authenticated API |
+| `LZC_ASSISTANT_ENABLED` | Configuration Assistant and template consultation |
+| `LZC_MAILOUT_ENABLED` | Outbound transactional email; preferences and the inbox remain available |
+
+For example, on an idle, fully deployed production app:
+
+```sh
+cf target -o lzc-prod -s configurator
+cf set-env landing-zone-configurator LZC_RETIREMENTS_ENABLED true
+cf restart landing-zone-configurator --strategy rolling --max-in-flight 1
+```
+
+Set the value to `false` to disable it. CF environment changes take effect when
+processes restart; they are not hot-reloaded. Use a rolling restart to retain
+availability. Before restarting, ensure no release pipeline or CF deployment is
+active and no newer unstaged package is pending: the CF CLI can otherwise stage
+that package instead of restarting the current droplet. When in doubt, explicitly
+pin the current droplet using a rolling CF V3 deployment, as the release activator
+does. This operation enables the feature; it does not start a Landing Zone teardown.
+
+Drain or pause active retirement executions before disabling Retirement; this
+startup switch is not a stop button for an already dispatched cloud job.
+
+Each deployment snapshots the existing app's three feature values after scoped
+CF login and before staging starts. Explicit `false` is preserved as well as
+`true`. GitHub settings provide bootstrap defaults only where a CF value is
+absent. The reviewed release remains authoritative for authentication, execution
+permissions, origins and credentials. Enabled features still require their
+provisioned dependencies; missing dependencies or malformed values stop the
+release before staging. Do not change toggles during an active release pipeline.
+
+Retirement also needs `LZC_RETIREMENT_CONTROL_PROJECT_IDS`. Deployment always adds
+the Configurator's operator project to this protection list, including while
+retirement is disabled, and retains additional protected projects. Changing a
+normal feature toggle must not remove these project protections. Human roles,
+organization proof and Plan/Apply approval remain required.
+
+During staging, all three optional features and cloud execution are temporarily
+disabled in the staged configuration; the captured operator choices are restored
+only at the gated activation. The existing processes retain their running settings
+until activation. The policy is embedded in the current workflows, so redeploying
+an older compatible application release also preserves current CF choices.
+
+Maintainers edit `infra/ci/runtime-features.mjs`, then run
+`node infra/ci/embed-runtime-features.mjs` and
+`node --test infra/ci/runtime-features.test.mjs`. The latter checks both workflow
+copies, bootstrap, disabled values, secret isolation and staging suspension.
+
 ## Deployment and availability
 
 The reviewed `lzc-prod` stage defines three web/API instances, two shared warm

@@ -8,6 +8,67 @@ GitHub-Environments. Die öffentliche Origin lautet
 `https://app.landing-zone.runs.onstackit.cloud`. Der native Accelerator in `src/`
 bleibt unabhängig nutzbar.
 
+## Feature-Toggles zur Laufzeit
+
+Betreiber können bereitgestellte optionale Funktionen über CF-Umgebungsvariablen
+der App schalten. Dafür sind weder ein neuer App-Build noch ein GitHub Release
+oder eine Deployment-Pipeline nötig. Zulässige Werte sind die Zeichenfolgen
+`true` und `false`.
+
+| Variable | Funktion |
+| --- | --- |
+| `LZC_RETIREMENTS_ENABLED` | Gestufter Rückbau von Platform Landing Zones und seine authentifizierte API |
+| `LZC_ASSISTANT_ENABLED` | Konfigurations-Assistant und Template-Beratung |
+| `LZC_MAILOUT_ENABLED` | Ausgehende transaktionale E-Mails; Einstellungen und Posteingang bleiben verfügbar |
+
+Beispiel für eine ruhende, vollständig ausgerollte Produktions-App:
+
+```sh
+cf target -o lzc-prod -s configurator
+cf set-env landing-zone-configurator LZC_RETIREMENTS_ENABLED true
+cf restart landing-zone-configurator --strategy rolling --max-in-flight 1
+```
+
+Mit `false` wird die Funktion deaktiviert. Geänderte CF-Variablen wirken erst beim
+Neustart der Prozesse; sie werden nicht im laufenden Prozess neu geladen. Ein
+Rolling Restart erhält die Verfügbarkeit. Vorher sicherstellen, dass keine
+Release-Pipeline oder CF-Bereitstellung läuft und kein neueres, noch ungestagtes
+Package ansteht: Die CF-CLI kann sonst dieses Package stagen, statt den bisherigen
+Droplet neu zu starten. Im Zweifel den aktuellen Droplet ausdrücklich über eine
+rollierende CF-V3-Bereitstellung angeben, wie im Release-Aktivator. Diese Aktion
+aktiviert die Funktion; sie startet keinen Rückbau einer Landing Zone.
+
+Aktive Retirement-Ausführungen vor dem Abschalten geordnet beenden oder pausieren.
+Der Startschalter ist kein Stop-Button für bereits gestartete Cloud-Jobs.
+
+Jedes Deployment übernimmt die drei bestehenden CF-Schalter nach dem gezielten
+CF-Login und vor dem Staging. Ein ausdrückliches `false` bleibt ebenso erhalten
+wie `true`. GitHub-Einstellungen liefern nur Initialwerte, wenn die betreffende
+CF-Variable fehlt. Authentifizierung, Ausführungsberechtigungen, Origins und
+Zugangsdaten stammen weiterhin aus dem geprüften Release. Aktivierte Funktionen
+benötigen ihre bereitgestellten Abhängigkeiten; fehlende Voraussetzungen oder
+ungültige Werte stoppen das Deployment vor dem Staging. Toggles nicht während
+einer laufenden Release-Pipeline ändern.
+
+Retirement benötigt außerdem `LZC_RETIREMENT_CONTROL_PROJECT_IDS`. Das Deployment
+fügt das Operator-Projekt des Configurators immer dieser Schutzliste hinzu, auch
+bei deaktiviertem Retirement, und erhält weitere geschützte Projekte. Beim
+normalen Schalten einer Funktion dürfen diese Schutzwerte nicht entfernt werden.
+Benutzerrollen, Organisationsnachweis und Plan-/Apply-Freigabe bleiben erforderlich.
+
+Während des Stagings werden alle drei optionalen Funktionen und Cloud-Ausführungen
+in der Staging-Konfiguration vorübergehend deaktiviert. Erst die freigegebene
+Aktivierung stellt die übernommenen Betreiberwerte wieder her. Bestehende Prozesse
+behalten bis dahin ihre laufenden Einstellungen. Die aktuelle Workflow-Version
+enthält die Richtlinie direkt; dadurch bleiben CF-Entscheidungen auch beim
+erneuten Deployment eines älteren kompatiblen App-Releases erhalten.
+
+Maintainer ändern `infra/ci/runtime-features.mjs` und führen danach
+`node infra/ci/embed-runtime-features.mjs` sowie
+`node --test infra/ci/runtime-features.test.mjs` aus. Die Tests prüfen beide
+Workflow-Kopien, Initialwerte, deaktivierte Funktionen, Geheimnis-Isolation und
+das Abschalten während des Stagings.
+
 ## Bereitstellung und Verfügbarkeit
 
 Die geprüfte Stage `lzc-prod` definiert drei Web/API-Instanzen, zwei gemeinsam
