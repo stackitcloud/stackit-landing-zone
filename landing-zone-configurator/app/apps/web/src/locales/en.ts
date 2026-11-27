@@ -1,4 +1,6 @@
 export const englishMessages: Record<string, string> = {
+  "Ein früherer Lauf ist noch ungeklärt. Prüfe seinen Abschluss, um den Rückbau fortzusetzen.":
+    "A previous run is unresolved. Check its completion to continue retirement.",
   "Schritt abgeschlossen": "Completed",
   "Die Abschlussprüfung muss vom Benutzer durchgeführt werden, der den Lauf gestartet hat.":
     "The user who started this run must complete its final review.",
