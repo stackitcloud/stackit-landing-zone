@@ -14,7 +14,7 @@ import {
 } from "@lzc/contracts/recovery";
 import { createEditorConfiguration, editCommonInput } from "@lzc/domain";
 import pg from "pg";
-import { afterAll, beforeAll, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it, vi } from "vitest";
 import { PostgresAuthStore, type Session } from "../apps/api/src/auth/store.js";
 import { Configurations } from "../apps/api/src/configurations/service.js";
 import { Backends } from "../apps/api/src/deployments/backends.js";
@@ -23,6 +23,7 @@ import { RetirementCapture } from "../apps/api/src/retirements/capture.js";
 import { RetirementExecution } from "../apps/api/src/retirements/execution.js";
 import { RetirementPreparation } from "../apps/api/src/retirements/preparation.js";
 import { Retirements } from "../apps/api/src/retirements/service.js";
+import { RetirementStartSource } from "../apps/api/src/retirements/start-source.js";
 import { withTenant } from "../apps/api/src/storage/database.js";
 import { migrate } from "../apps/api/src/storage/migrations.js";
 import { StackitRetirementCloud } from "../packages/contracts/src/recovery/retirement-cloud.js";
@@ -186,6 +187,293 @@ afterAll(async () => {
   await runtime.end();
   await migration.end();
   await admin.end();
+});
+
+async function standalonePlatform() {
+  const f = await fixture();
+  const crypto = new ArtifactCrypto(randomBytes(32).toString("base64"));
+  const apply = randomUUID();
+  const document = Buffer.from(
+    JSON.stringify({
+      version: 4,
+      serial: 1,
+      lineage: randomUUID(),
+      resources: [
+        {
+          module: "module.governance",
+          mode: "managed",
+          type: "stackit_resourcemanager_folder",
+          name: "this",
+          provider: 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+          instances: [
+            { index_key: "platform", attributes: { folder_id: f.folder } },
+          ],
+        },
+      ],
+    }),
+  );
+  await imported(async () => {
+    await admin.query("DELETE FROM lzc.application_instances WHERE id=$1", [
+      f.instance,
+    ]);
+    await admin.query(
+      "DELETE FROM lzc.application_template_versions WHERE id=$1",
+      [f.version],
+    );
+    await admin.query(
+      "DELETE FROM lzc.application_platform_sources WHERE revision=$1",
+      [f.revision],
+    );
+    await admin.query(
+      "DELETE FROM lzc.application_platform_contracts WHERE revision=$1",
+      [f.revision],
+    );
+    await admin.query(
+      "UPDATE lzc.platform_states SET ciphertext=$2,stable_aad=true WHERE state_key=$1",
+      [
+        f.stateKey,
+        crypto.encrypt(
+          document,
+          owner.tenantId,
+          f.stateKey,
+          `state:${f.stateKey}`,
+        ),
+      ],
+    );
+    await admin.query(
+      "INSERT INTO lzc.plan_runs(id,tenant_id,owner_user_id,preparation_id,ticket_hash,status,mode,operation,plan_id,artifact_sha256,state_key,state_version,applied_state_version,cleaned,finished_at) VALUES($1,$2,$3,$4,$5,'succeeded','platform-apply','apply',$6,$7,$8,1,1,true,now())",
+      [
+        apply,
+        owner.tenantId,
+        owner.userId,
+        f.preparation,
+        randomUUID(),
+        f.run,
+        "a".repeat(64),
+        f.stateKey,
+      ],
+    );
+  });
+  const backends = new Backends(runtime, crypto);
+  const source = new RetirementStartSource(runtime, crypto, backends);
+  return {
+    ...f,
+    apply,
+    crypto,
+    document,
+    source,
+    backends,
+    retirements: new Retirements(runtime, source),
+  };
+}
+
+it("retires an applied platform without Application binding or contract outputs and freezes its native folders", async () => {
+  const f = await standalonePlatform();
+  expect(
+    (await f.retirements.candidates(owner)).some(
+      (c) => c.stateKey === f.stateKey,
+    ),
+  ).toBe(true);
+  await expect(f.source.read(outsider, f.stateKey)).rejects.toMatchObject({
+    code: "42501",
+  });
+  const entry = await f.retirements.start(owner, {
+    stateKey: f.stateKey,
+    reason: "Platform-only retirement",
+    confirmRetirement: true,
+  });
+  expect(entry.applications).toEqual([]);
+  expect(
+    (await f.retirements.candidates(owner)).some(
+      (c) => c.stateKey === f.stateKey,
+    ),
+  ).toBe(false);
+  expect(
+    (
+      await admin.query(
+        "SELECT identity FROM lzc.retirement_scopes WHERE retirement_id=$1 AND kind='parent'",
+        [entry.id],
+      )
+    ).rows,
+  ).toEqual([{ identity: f.folder }]);
+  await expect(
+    admin.query(
+      "INSERT INTO lzc.application_platform_contracts(revision,tenant_id,organization_id,approved_by,credential_profile_id,credential_version,credential_key_id,credential_checked_at,document) SELECT $1,id,organization_id,$2,$3,1,'fixture',now(),$4 FROM lzc.tenants WHERE id=$5",
+      [
+        randomUUID(),
+        owner.userId,
+        randomUUID(),
+        { targets: { public: { folder_id: f.folder } } },
+        owner.tenantId,
+      ],
+    ),
+  ).rejects.toMatchObject({ message: "retirement_admission_closed" });
+  expect(
+    await new RetirementCapture(runtime, f.crypto, f.backends).capture(
+      owner,
+      entry.id,
+      entry.generation,
+    ),
+  ).toMatchObject({ scopeCount: 1 });
+  expect(
+    (
+      await admin.query(
+        "SELECT count(*)::int count FROM lzc.application_platform_sources WHERE state_key=$1",
+        [f.stateKey],
+      )
+    ).rows[0].count,
+  ).toBe(0);
+});
+
+it("accepts a verified completed S3 migration marker but rejects unproven or mismatched migrations", async () => {
+  const f = await standalonePlatform(),
+    backend = randomUUID();
+  await imported(async () => {
+    await admin.query(
+      "INSERT INTO lzc.state_backends(id,tenant_id,descriptor,identity_sha256,credentials_ciphertext) VALUES($1,$2,'{}',$3,$4)",
+      [backend, owner.tenantId, randomUUID(), Buffer.alloc(29)],
+    );
+    await admin.query(
+      "UPDATE lzc.platform_states SET backend_id=$2,pending_backend_id=$2,migration_run_id=$3,migration_version=0,migration_sha256=$4,ciphertext=NULL,remote_identity=$4 WHERE state_key=$1",
+      [f.stateKey, backend, f.apply, "a".repeat(64)],
+    );
+  });
+  const runner = vi
+    .spyOn(f.backends, "runner")
+    .mockResolvedValue({} as Awaited<ReturnType<Backends["runner"]>>);
+  const remote = vi
+    .spyOn(f.backends, "current")
+    .mockResolvedValue({ bytes: f.document, identity: "version-1" } as Awaited<
+      ReturnType<Backends["current"]>
+    >);
+  const entry = await f.retirements.start(owner, {
+    stateKey: f.stateKey,
+    reason: "Completed migration",
+    confirmRetirement: true,
+  });
+  expect(runner).toHaveBeenCalledWith(expect.anything(), owner, backend);
+  expect(remote).toHaveBeenCalledTimes(2);
+  expect(
+    await new RetirementCapture(runtime, f.crypto, f.backends).capture(
+      owner,
+      entry.id,
+      entry.generation,
+    ),
+  ).toMatchObject({ scopeCount: 1 });
+  const context = () =>
+    withTenant(
+      runtime,
+      owner,
+      async (client) =>
+        (
+          await client.query(
+            "SELECT lzc_auth.retirement_capture_context($1,$2,$3) AS value",
+            [owner.id, entry.id, entry.generation],
+          )
+        ).rows[0].value,
+    );
+  expect((await context()).root.backendId).toBe(backend);
+  runner.mockRestore();
+  remote.mockRestore();
+  await imported(() =>
+    admin
+      .query(
+        "UPDATE lzc.platform_states SET migration_sha256=NULL WHERE state_key=$1",
+        [f.stateKey],
+      )
+      .then(() => {}),
+  );
+  await expect(context()).rejects.toMatchObject({
+    message: "retirement_state_unavailable",
+  });
+  await imported(() =>
+    admin
+      .query(
+        "UPDATE lzc.platform_states SET migration_sha256=$2,pending_backend_id=NULL WHERE state_key=$1",
+        [f.stateKey, "a".repeat(64)],
+      )
+      .then(() => {}),
+  );
+  await expect(context()).rejects.toMatchObject({
+    message: "retirement_state_unavailable",
+  });
+});
+
+it("excludes failed, stale and locked Applies and revalidates the State after the server-side read", async () => {
+  const f = await standalonePlatform();
+  for (const change of ["status='failed'", "applied_state_version=2"]) {
+    await imported(() =>
+      admin
+        .query(`UPDATE lzc.plan_runs SET ${change} WHERE id=$1`, [f.apply])
+        .then(() => {}),
+    );
+    expect(
+      (await f.retirements.candidates(owner)).some(
+        (c) => c.stateKey === f.stateKey,
+      ),
+    ).toBe(false);
+    await expect(f.source.read(owner, f.stateKey)).rejects.toMatchObject({
+      message: "retirement_state_unavailable",
+    });
+    await imported(() =>
+      admin
+        .query(
+          "UPDATE lzc.plan_runs SET status='succeeded',applied_state_version=1 WHERE id=$1",
+          [f.apply],
+        )
+        .then(() => {}),
+    );
+  }
+  await imported(() =>
+    admin
+      .query(
+        "UPDATE lzc.platform_states SET lock_run_id=$2,lock_id='held' WHERE state_key=$1",
+        [f.stateKey, f.apply],
+      )
+      .then(() => {}),
+  );
+  expect(
+    (await f.retirements.candidates(owner)).some(
+      (c) => c.stateKey === f.stateKey,
+    ),
+  ).toBe(false);
+  await imported(() =>
+    admin
+      .query(
+        "UPDATE lzc.platform_states SET lock_run_id=NULL,lock_id=NULL WHERE state_key=$1",
+        [f.stateKey],
+      )
+      .then(() => {}),
+  );
+  const racing = new Retirements(runtime, {
+    read: async (session, key) => {
+      const result = await f.source.read(session, key);
+      await imported(() =>
+        admin
+          .query(
+            "UPDATE lzc.platform_states SET version=2 WHERE state_key=$1",
+            [key],
+          )
+          .then(() => {}),
+      );
+      return result;
+    },
+  });
+  await expect(
+    racing.start(owner, {
+      stateKey: f.stateKey,
+      reason: "Racing writer",
+      confirmRetirement: true,
+    }),
+  ).rejects.toMatchObject({ message: "retirement_state_unavailable" });
+  expect(
+    (
+      await admin.query(
+        "SELECT count(*)::int count FROM lzc.platform_retirements WHERE state_key=$1",
+        [f.stateKey],
+      )
+    ).rows[0].count,
+  ).toBe(0);
 });
 it("persists scope, seven-day notice and recipient; does not expose another workspace", async () => {
   const f = await fixture(),

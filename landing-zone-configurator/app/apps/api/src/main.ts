@@ -42,6 +42,7 @@ import { Plans } from "./plans/service.js";
 import { RetirementExecution } from "./retirements/execution.js";
 import { RetirementPreparation } from "./retirements/preparation.js";
 import { Retirements } from "./retirements/service.js";
+import { RetirementStartSource } from "./retirements/start-source.js";
 import { databaseConfig } from "./storage/database.js";
 import { VaultConnection } from "./storage/vault.js";
 
@@ -344,9 +345,16 @@ const delivery =
       )
     : undefined;
 const app = buildApp({
-  ...(pool && executionEnabled && process.env.LZC_RETIREMENTS_ENABLED === "true"
+  ...(pool &&
+  artifactCrypto &&
+  backends &&
+  executionEnabled &&
+  process.env.LZC_RETIREMENTS_ENABLED === "true"
     ? {
-        retirements: new Retirements(pool),
+        retirements: new Retirements(
+          pool,
+          new RetirementStartSource(pool, artifactCrypto, backends),
+        ),
         ...(retirementExecution ? { retirementExecution } : {}),
         ...(retirementPreparation ? { retirementPreparation } : {}),
       }

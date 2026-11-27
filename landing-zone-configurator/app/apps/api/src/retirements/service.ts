@@ -8,9 +8,13 @@ import type pg from "pg";
 import { z } from "zod";
 import type { Session } from "../auth/store.js";
 import { withTenant } from "../storage/database.js";
+import type { RetirementStartSource } from "./start-source.js";
 
 export class Retirements {
-  constructor(private readonly pool: pg.Pool) {}
+  constructor(
+    private readonly pool: pg.Pool,
+    private readonly source?: Pick<RetirementStartSource, "read">,
+  ) {}
   async candidates(session: Session) {
     return withTenant(this.pool, session, async (client) => {
       const result = await client.query(
@@ -31,10 +35,19 @@ export class Retirements {
   }
   async start(session: Session, raw: unknown) {
     const input = retirementStartSchema.parse(raw);
+    const source = await this.source?.read(session, input.stateKey);
     return withTenant(this.pool, session, async (client) => {
       const result = await client.query(
-        "SELECT lzc_auth.retirement_start($1,$2,$3,$4) AS value",
-        [session.id, input.stateKey, input.reason, input.notBefore ?? null],
+        source
+          ? "SELECT lzc_auth.retirement_start($1,$2,$3,$4,$5,$6::uuid[]) AS value"
+          : "SELECT lzc_auth.retirement_start($1,$2,$3,$4) AS value",
+        [
+          session.id,
+          input.stateKey,
+          input.reason,
+          input.notBefore ?? null,
+          ...(source ? [source.applyRunId, source.folders] : []),
+        ],
       );
       return retirementSchema.parse(result.rows[0].value);
     });

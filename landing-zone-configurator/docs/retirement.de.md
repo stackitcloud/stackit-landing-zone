@@ -12,6 +12,16 @@ eine Aktivierung in Produktion ist eine gesonderte Entscheidung.
 
 ## Ablauf für den Platform Owner
 
+Der Rückbau ist direkt nach einem erfolgreichen Plattform-Apply verfügbar. Weder
+eine Application-Plattformanbindung noch veröffentlichte Application-Templates
+sind dafür erforderlich. Die Auswahl verwendet den aktuellen, entsperrten State
+und dessen erfolgreichen Apply im aktiven Workspace. Vor der Ankündigung werden
+die nativen Ordner aus diesem State gelesen und zusammen mit den bestehenden
+Application-Bereichen gesperrt. Ein nachweislich abgeschlossener S3-Backend-Wechsel
+bleibt gültig, auch wenn seine Migrationsmarker als Nachweis erhalten bleiben.
+Offene, widersprüchliche oder unbelegte Wechsel bleiben blockiert. Das Lesen
+dieser Nachweise startet keinen weiteren Plan/Apply und ändert keine Cloud-Ressourcen.
+
 1. Unter **Deployments → Stilllegen** (`/deployments/retire`) die genaue angewendete
    Plattform auswählen und den Rückbau mit Grund und Löschtermin ankündigen.
    Der eigene Reiter enthält Ankündigungen, Ausführungsfreigaben und den Wartezustand
