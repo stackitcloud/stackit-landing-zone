@@ -48,6 +48,36 @@ function fixture(work) {
     work(directory);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 }
+function workflowPolicy(name) {
+  const workflow=readFileSync(new URL(`../../../.github/workflows/${name}`,import.meta.url),"utf8");
+  const block=workflow.match(/node (--input-type=module(?: -)?) <<'LZC_RUNTIME_FEATURES'\n([\s\S]*?)\n          LZC_RUNTIME_FEATURES/);
+  assert.ok(block,"workflow contains the feature policy entry point");
+  return {args:block[1].split(" "),source:block[2].split("\n").map(line=>line.slice(10)).join("\n")};
+}
+test("the actual workflow stdin commands execute the policy and retain the CF operator choices",()=>{
+  for(const name of ["configurator-release.yml","configurator-production.yml"]) fixture(directory=>{
+    const apps={resources:[{guid:app,name:"landing-zone-configurator",relationships:{space:{data:{guid:space}}}}]};
+    const environment={var:{LZC_RETIREMENTS_ENABLED:"true",LZC_ASSISTANT_ENABLED:"false",LZC_MAILOUT_ENABLED:"false"}};
+    writeFileSync(join(directory,"cf"),`#!${process.execPath}\nprocess.stdout.write(JSON.stringify(process.argv[3].includes("environment_variables")?${JSON.stringify(environment)}:${JSON.stringify(apps)}));\n`,{mode:0o700});
+    const command=workflowPolicy(name);
+    const result=spawnSync(process.execPath,command.args,{input:command.source,encoding:"utf8",env:{...process.env,PATH:`${directory}:${process.env.PATH}`,LZC_PRIVATE:directory,LZC_CF_SPACE_ID:space,LZC_FEATURE_OPERATOR_PROJECT_ID:project}});
+    assert.equal(result.status,0,result.stderr);
+    assert.match(result.stdout,/runtime_features_preserved/,name);
+    const active=JSON.parse(readFileSync(join(directory,"app-vars.json")));
+    assert.equal(active.LZC_RETIREMENTS_ENABLED,"true",name);
+    assert.equal(active.LZC_ASSISTANT_ENABLED,"false",name);
+    assert.equal(active.LZC_MAILOUT_ENABLED,"false",name);
+    assert.deepEqual(JSON.parse(active.LZC_RETIREMENT_CONTROL_PROJECT_IDS),[project]);
+  });
+});
+test("the actual workflow stdin commands fail before staging on invalid policy inputs",()=>{
+  for(const name of ["configurator-release.yml","configurator-production.yml"]) fixture(directory=>{
+    const command=workflowPolicy(name);
+    const result=spawnSync(process.execPath,command.args,{input:command.source,encoding:"utf8",env:{...process.env,LZC_PRIVATE:directory,LZC_CF_SPACE_ID:"invalid",LZC_FEATURE_OPERATOR_PROJECT_ID:project}});
+    assert.notEqual(result.status,0,name);
+    assert.match(result.stderr,/deployment stopped before staging/);
+  });
+});
 test("captures only the target app before staging, suspends features during staging and preserves its private final settings", () => fixture(directory => {
   const calls = [];
   const flags = preserveRuntimeFeatures({ directory, spaceId: space, operatorProjectId: project, cf(args) {
@@ -75,7 +105,7 @@ test("both workflows embed the reviewed helper, including legacy release redeplo
   const source = readFileSync(new URL("./runtime-features.mjs", import.meta.url), "utf8").trimEnd();
   for (const name of ["configurator-release.yml", "configurator-production.yml"]) {
     const workflow = readFileSync(new URL(`../../../.github/workflows/${name}`, import.meta.url), "utf8");
-    const embedded = workflow.split("node --input-type=module <<'LZC_RUNTIME_FEATURES'\n")[1]?.split("\n          LZC_RUNTIME_FEATURES")[0]?.split("\n").map(line => line.slice(10)).join("\n");
+    const embedded = workflowPolicy(name).source;
     assert.equal(embedded, source);
     assert.ok(workflow.indexOf("# END GENERATED RUNTIME FEATURE POLICY") < workflow.indexOf("- name: Stage runner, migration and application"));
     assert.match(workflow, /LZC_FEATURE_OPERATOR_PROJECT_ID: \$\{\{ vars.LZC_PROJECT_ID \}\}/);

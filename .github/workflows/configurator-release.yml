@@ -349,7 +349,7 @@ jobs:
           cf target -o lzc-dev -s configurator
           test "$(cf space configurator --guid)" = "$LZC_CF_SPACE_ID"
           # BEGIN GENERATED RUNTIME FEATURE POLICY
-          node --input-type=module <<'LZC_RUNTIME_FEATURES'
+          node --input-type=module - <<'LZC_RUNTIME_FEATURES'
           // Embedded into both deployment workflows so rollback of an older application
           // still preserves the current operator policy. Regenerate with embed-runtime-features.mjs.
           import { readFileSync, writeFileSync, lstatSync } from "node:fs";
