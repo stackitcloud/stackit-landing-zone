@@ -1,6 +1,15 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.3.3": {
+  introduction:"Reliable retirement planning with live OpenTofu diagnostics.",
+  changes:[
+   "Compare retirement snapshots against the exact authoritative backend State, avoiding false failures when OpenTofu reserializes check results.",
+   "Refresh retirement status automatically and show bounded, redacted OpenTofu progress, native diagnostics and the reviewed deletion details.",
+   "Show the staged service, project and folder cleanup sequence, with technical evidence kept under optional details.",
+  ],
+  limitations:"Assistant behavior is unchanged: combined requests can still exceed the response deadline; full multi-topic qualification remains incomplete (#275), and intermittent serving errors are tracked in #225.",
+ },
  "v2.3.2": {
   introduction:"Simpler retirement with automatic service-account project verification.",
   changes:[

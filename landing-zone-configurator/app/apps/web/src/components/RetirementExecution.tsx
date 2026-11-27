@@ -3,6 +3,7 @@ import {
   type RetirementExecutionReview,
   retirementCredentialProjectSchema,
   retirementExecutionReviewSchema,
+  retirementOutputSchema,
 } from "@lzc/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -71,6 +72,18 @@ const errors: Record<string, string> = {
     "Der Rückbaustand hat sich geändert. Aktualisiere den Status und prüfe die Auswahl erneut.",
   retirement_state_changed:
     "Der State hat sich geändert. Prüfe den Status und erstelle einen neuen Plan.",
+  retirement_init_failed:
+    "OpenTofu konnte das Rückbau-Backend oder die Provider nicht initialisieren. Prüfe die OpenTofu-Ausgabe.",
+  retirement_validate_failed:
+    "OpenTofu konnte die Rückbaukonfiguration nicht validieren. Prüfe die OpenTofu-Ausgabe.",
+  retirement_plan_failed:
+    "OpenTofu konnte den Rückbauplan nicht erstellen. Prüfe die OpenTofu-Ausgabe.",
+  retirement_before_failed:
+    "Der aktuelle State konnte nicht gelesen werden. Prüfe die OpenTofu-Ausgabe.",
+  retirement_backend_read_failed:
+    "Der aktuelle State konnte nicht gelesen werden. Prüfe die OpenTofu-Ausgabe.",
+  retirement_native_plan_failed:
+    "Der Rückbauplan ist fehlgeschlagen. Prüfe die OpenTofu-Ausgabe und die Abschlussprüfung.",
 };
 export function RetirementExecutionPanel({
   session,
@@ -97,6 +110,17 @@ export function RetirementExecutionPanel({
     [homeBusy, setHomeBusy] = useState(false),
     [homeError, setHomeError] = useState("");
   const homeLookup = useRef<AbortController | null>(null);
+  const reviewSequence = useRef(0);
+  const outputSequence = useRef(0);
+  const outputRequests = useRef<Record<string, number>>({});
+  const outputControllers = useRef<Record<string, AbortController>>({});
+  const [outputs, setOutputs] = useState<
+    Record<string, { text: string; truncated: boolean }>
+  >({});
+  const [outputErrors, setOutputErrors] = useState<Record<string, boolean>>({});
+  const [pollError, setPollError] = useState(false);
+  const changed = useRef(onChanged);
+  changed.current = onChanged;
   const [handoff, setHandoff] = useState(false),
     [independent, setIndependent] = useState(false),
     [confirmDelete, setConfirmDelete] = useState(false),
@@ -187,6 +211,13 @@ export function RetirementExecutionPanel({
     setPreview(null);
     setRecovery(null);
     setError("");
+    setOutputs({});
+    outputRequests.current = {};
+    for (const request of Object.values(outputControllers.current))
+      request.abort();
+    outputControllers.current = {};
+    setOutputErrors({});
+    setPollError(false);
     setBusy(false);
     setConfirmDelete(false);
     setRetention(false);
@@ -200,13 +231,15 @@ export function RetirementExecutionPanel({
       };
     const controller = new AbortController();
     const owner = identity;
+    const sequence = ++reviewSequence.current;
     void Promise.all([
       api(`${base}/execution`, undefined, controller.signal),
       api("/api/v1/credentials", undefined, controller.signal),
     ])
       .then(([status, credentials]) => {
         if (controller.signal.aborted || current.current !== owner) return;
-        setReview(retirementExecutionReviewSchema.parse(status));
+        if (sequence === reviewSequence.current)
+          setReview(retirementExecutionReviewSchema.parse(status));
         setProfiles(
           z
             .object({
@@ -231,9 +264,148 @@ export function RetirementExecutionPanel({
       });
     return () => {
       controller.abort();
+      for (const request of Object.values(outputControllers.current))
+        request.abort();
+      outputControllers.current = {};
       current.current = "";
     };
   }, [identity, expanded, api, base, retirement.notBefore]);
+  const loadOutput = useCallback(
+    async (jobId: string, signal?: AbortSignal, refresh = false) => {
+      if (signal?.aborted) return false;
+      if (outputControllers.current[jobId] && !refresh) return false;
+      const owner = identity;
+      const sequence = ++outputSequence.current;
+      outputRequests.current[jobId] = sequence;
+      outputControllers.current[jobId]?.abort();
+      const request = new AbortController();
+      outputControllers.current[jobId] = request;
+      const abort = () => request.abort();
+      signal?.addEventListener("abort", abort, { once: true });
+      const timeout = setTimeout(abort, 15000);
+      try {
+        const output = retirementOutputSchema.parse(
+          await api(`${base}/jobs/${jobId}/output`, undefined, request.signal),
+        );
+        if (
+          request.signal.aborted ||
+          current.current !== owner ||
+          outputRequests.current[jobId] !== sequence
+        )
+          return;
+        setOutputs((previous) => ({ ...previous, [jobId]: output }));
+        setOutputErrors((previous) => ({ ...previous, [jobId]: false }));
+        return true;
+      } catch {
+        if (
+          !signal?.aborted &&
+          current.current === owner &&
+          outputRequests.current[jobId] === sequence
+        )
+          setOutputErrors((previous) => ({ ...previous, [jobId]: true }));
+        return false;
+      } finally {
+        clearTimeout(timeout);
+        signal?.removeEventListener("abort", abort);
+        if (outputControllers.current[jobId] === request)
+          delete outputControllers.current[jobId];
+      }
+    },
+    [api, base, identity],
+  );
+  useEffect(() => {
+    if (
+      !expanded ||
+      busy ||
+      ["COMPLETE", "CANCELLED"].includes(retirement.phase)
+    )
+      return;
+    const controller = new AbortController(),
+      owner = identity;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let running = false;
+    let lastCompletion = "";
+    let lastOutputCompletion = "";
+    let interval = 2000;
+    const refresh = async () => {
+      if (running || controller.signal.aborted) return;
+      running = true;
+      try {
+        if (document.visibilityState === "hidden") return;
+        const sequence = ++reviewSequence.current;
+        const status = retirementExecutionReviewSchema.parse(
+          await api(
+            `${base}/execution`,
+            undefined,
+            AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+          ),
+        );
+        if (
+          controller.signal.aborted ||
+          current.current !== owner ||
+          sequence !== reviewSequence.current
+        )
+          return;
+        setReview(status);
+        setPollError(false);
+        interval = status.jobs.some(
+          (job) =>
+            [
+              "starting",
+              "initializing",
+              "validating",
+              "planning",
+              "applying",
+            ].includes(job.status) || job.recoveryPending,
+        )
+          ? 2000
+          : 10000;
+        const latest = [...status.jobs].sort(
+          (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+        )[0];
+        if (latest) {
+          const completion = latest.nativeStatus
+            ? `${latest.id}:${latest.nativeStatus}`
+            : "";
+          if (!completion || completion !== lastOutputCompletion)
+            void loadOutput(latest.id, controller.signal).then((loaded) => {
+              if (
+                loaded &&
+                !controller.signal.aborted &&
+                current.current === owner
+              )
+                lastOutputCompletion = completion;
+            });
+          if (completion && completion !== lastCompletion) {
+            lastCompletion = completion;
+            void changed.current().catch(() => {
+              if (!controller.signal.aborted && current.current === owner)
+                setPollError(true);
+            });
+          }
+        }
+      } catch {
+        if (!controller.signal.aborted && current.current === owner)
+          setPollError(true);
+      } finally {
+        running = false;
+        if (!controller.signal.aborted) timer = setTimeout(refresh, interval);
+      }
+    };
+    timer = setTimeout(refresh, 2000);
+    const visible = () => {
+      if (document.visibilityState === "visible") {
+        clearTimeout(timer);
+        void refresh();
+      }
+    };
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [expanded, busy, identity, api, base, loadOutput, retirement.phase]);
   async function action(
     path: string,
     body?: unknown,
@@ -241,6 +413,7 @@ export function RetirementExecutionPanel({
   ) {
     if (busy) return;
     const owner = identity;
+    const sequence = ++reviewSequence.current;
     setBusy(true);
     setError("");
     try {
@@ -260,7 +433,14 @@ export function RetirementExecutionPanel({
         setRetention(false);
         const updated = await api(`${base}/execution`);
         if (current.current !== owner) return;
-        setReview(retirementExecutionReviewSchema.parse(updated));
+        if (sequence === reviewSequence.current) {
+          const status = retirementExecutionReviewSchema.parse(updated);
+          setReview(status);
+          const latest = [...status.jobs].sort(
+            (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+          )[0];
+          if (latest) void loadOutput(latest.id, undefined, true);
+        }
         await onChanged();
       }
     } catch (cause) {
@@ -310,6 +490,13 @@ export function RetirementExecutionPanel({
           >
             {t("Status aktualisieren")}
           </button>
+          {pollError && (
+            <p role="status">
+              {t(
+                "Der Status konnte gerade nicht aktualisiert werden. Die Anzeige wird automatisch erneut geprüft.",
+              )}
+            </p>
+          )}
           {review &&
             !review.hasHandoff &&
             !["CANCELLED", "COMPLETE", "PAUSED"].includes(retirement.phase) && (
@@ -461,6 +648,27 @@ export function RetirementExecutionPanel({
             <div key={scope.id} className="retirement-scope">
               <h4>{scope.name}</h4>
               <p>{t(phaseLabels[scope.stage] ?? "Prüfung erforderlich")}</p>
+              <ol aria-label={t("Rückbauschritte")}>
+                {(scope.instanceId
+                  ? ["remove_application"]
+                  : ["private_workloads", "remove_projects", "finalize_folders"]
+                ).map((phase) => (
+                  <li
+                    key={phase}
+                    aria-current={scope.stage === phase ? "step" : undefined}
+                  >
+                    {t(phaseLabels[phase] ?? "Prüfung erforderlich")}
+                    {scope.stage === phase && <> · {t("Aktueller Schritt")}</>}
+                  </li>
+                ))}
+              </ol>
+              {!scope.instanceId && (
+                <p>
+                  {t(
+                    "Zuerst werden Dienste bereinigt, danach Projekte entfernt. Ordner folgen erst, wenn STACKIT die Projekte endgültig gelöscht hat.",
+                  )}
+                </p>
+              )}
               <button
                 type="button"
                 className="button secondary"
@@ -499,9 +707,79 @@ export function RetirementExecutionPanel({
                       failed: "Fehlgeschlagen",
                       recovery_required: "Prüfung erforderlich",
                     } as Record<string, string>
-                  )[job.status] ?? "Prüfung erforderlich",
+                  )[job.nativeStatus === "failed" ? "failed" : job.status] ??
+                    "Prüfung erforderlich",
                 )}
               </p>
+              {job.errorCode && (
+                <p role="status">
+                  {t(
+                    errors[job.errorCode] ??
+                      "Der Rückbau konnte nicht abgeschlossen werden. Prüfe die OpenTofu-Ausgabe und die Abschlussprüfung.",
+                  )}
+                </p>
+              )}
+              <p>
+                {t("Gestartet")}: {new Date(job.createdAt).toLocaleString()}
+              </p>
+              <details
+                open={job.id === review.jobs[0]?.id}
+                onToggle={(event) => {
+                  if (event.currentTarget.open)
+                    void loadOutput(job.id, undefined, true);
+                }}
+              >
+                <summary>{t("OpenTofu-Ausgabe")}</summary>
+                {outputs[job.id]?.text ? (
+                  <section aria-label={t("OpenTofu-Ausgabe")}>
+                    <pre>{outputs[job.id]?.text}</pre>
+                  </section>
+                ) : (
+                  <p>
+                    {t(
+                      job.nativeStatus
+                        ? "Für diesen abgeschlossenen Lauf wurde keine OpenTofu-Ausgabe gespeichert."
+                        : "Noch keine OpenTofu-Ausgabe vorhanden. Status und Ausgabe werden automatisch aktualisiert.",
+                    )}
+                  </p>
+                )}
+                {outputs[job.id]?.truncated && (
+                  <p>{t("Die Ausgabe wurde wegen ihrer Größe gekürzt.")}</p>
+                )}
+                {outputErrors[job.id] && (
+                  <p role="status">
+                    {t(
+                      "Die OpenTofu-Ausgabe konnte gerade nicht geladen werden. Versuche es erneut.",
+                    )}
+                  </p>
+                )}
+                {outputErrors[job.id] && (
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() => void loadOutput(job.id, undefined, true)}
+                  >
+                    {t("Ausgabe erneut laden")}
+                  </button>
+                )}
+              </details>
+              <details>
+                <summary>{t("Technische Nachweise")}</summary>
+                <dl>
+                  <dt>{t("Auftrags-ID")}</dt>
+                  <dd>
+                    <code>{job.id}</code>
+                  </dd>
+                  <dt>{t("Quellversion")}</dt>
+                  <dd>
+                    <code>{job.sourceRevision}</code>
+                  </dd>
+                  <dt>{t("Provider-Prüfsumme")}</dt>
+                  <dd>
+                    <code>{job.providerLockSha256}</code>
+                  </dd>
+                </dl>
+              </details>
               {job.status === "failed" && job.nativeStatus === null && (
                 <p>
                   {t(

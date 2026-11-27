@@ -1,4 +1,37 @@
 export const englishMessages: Record<string, string> = {
+  "Ausgabe erneut laden": "Reload output",
+  "Für diesen abgeschlossenen Lauf wurde keine OpenTofu-Ausgabe gespeichert.":
+    "No OpenTofu output was saved for this completed execution.",
+  "OpenTofu konnte das Rückbau-Backend oder die Provider nicht initialisieren. Prüfe die OpenTofu-Ausgabe.":
+    "OpenTofu could not initialize the retirement backend or providers. Check the OpenTofu output.",
+  "OpenTofu konnte die Rückbaukonfiguration nicht validieren. Prüfe die OpenTofu-Ausgabe.":
+    "OpenTofu could not validate the retirement configuration. Check the OpenTofu output.",
+  "OpenTofu konnte den Rückbauplan nicht erstellen. Prüfe die OpenTofu-Ausgabe.":
+    "OpenTofu could not create the retirement Plan. Check the OpenTofu output.",
+  "Der aktuelle State konnte nicht gelesen werden. Prüfe die OpenTofu-Ausgabe.":
+    "The current State could not be read. Check the OpenTofu output.",
+  "Der Rückbauplan ist fehlgeschlagen. Prüfe die OpenTofu-Ausgabe und die Abschlussprüfung.":
+    "The retirement Plan failed. Check the OpenTofu output and completion verification.",
+  "Der Rückbau konnte nicht abgeschlossen werden. Prüfe die OpenTofu-Ausgabe und die Abschlussprüfung.":
+    "Retirement could not be completed. Check the OpenTofu output and completion verification.",
+  "Der Status konnte gerade nicht aktualisiert werden. Die Anzeige wird automatisch erneut geprüft.":
+    "Status could not be refreshed. The app will check again automatically.",
+  Rückbauschritte: "Retirement steps",
+  "Aktueller Schritt": "Current step",
+  "Zuerst werden Dienste bereinigt, danach Projekte entfernt. Ordner folgen erst, wenn STACKIT die Projekte endgültig gelöscht hat.":
+    "Services are cleaned up first, then projects are removed. Folders follow once STACKIT has permanently deleted the projects.",
+  "Noch keine OpenTofu-Ausgabe vorhanden. Status und Ausgabe werden automatisch aktualisiert.":
+    "No OpenTofu output yet. Status and output refresh automatically.",
+  "Die Ausgabe wurde wegen ihrer Größe gekürzt.":
+    "The output was truncated because of its size.",
+  "Die OpenTofu-Ausgabe konnte gerade nicht geladen werden. Versuche es erneut.":
+    "The OpenTofu output could not be loaded. Try again.",
+  "Provider-Prüfsumme": "Provider checksum",
+  Quellversion: "Source revision",
+  "Auftrags-ID": "Job ID",
+  Gestartet: "Started",
+  "Technische Nachweise": "Technical evidence",
+
   "Der Ausführungsstatus hat sich geändert. Bitte aktualisieren und erneut prüfen.":
     "Execution status changed. Refresh and check again.",
   "Die App konnte den fehlgeschlagenen Lauf noch nicht abschließend prüfen. Aktualisiere den Status und versuche es erneut.":
