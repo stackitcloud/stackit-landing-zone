@@ -1047,6 +1047,7 @@ it("transfers only a captured same-State scope to independent encrypted custody 
     }),
   );
   const key = parseServiceAccountKey({
+    projectId: control,
     credentials: {
       kid: "handoff-fixture-key",
       iss: "handoff-fixture@sa.stackit.cloud",
@@ -1310,7 +1311,6 @@ it("transfers only a captured same-State scope to independent encrypted custody 
   const input = {
     generation: entry.generation,
     credentialProfileId: profile,
-    cleanupProjectId: control,
     confirmStateHandoff: true,
     confirmCleanupPermissionsSurvive: true,
   };
@@ -1319,6 +1319,24 @@ it("transfers only a captured same-State scope to independent encrypted custody 
   });
   expect(calls).toEqual([]);
   await new Promise((resolve) => setTimeout(resolve, 1100));
+  expect(
+    await prepare.homeProject(owner, entry.id, {
+      generation: entry.generation,
+      credentialProfileId: profile,
+    }),
+  ).toMatchObject({ credentialProfileId: profile, projectId: control });
+  await expect(
+    prepare.homeProject(outsider, entry.id, {
+      generation: entry.generation,
+      credentialProfileId: profile,
+    }),
+  ).rejects.toMatchObject({ code: "42501" });
+  await expect(
+    prepare.prepare(owner, entry.id, {
+      ...input,
+      cleanupProjectId: randomUUID(),
+    }),
+  ).rejects.toMatchObject({ code: "retirement_cleanup_identity_unverified" });
   const result = await prepare.prepare(owner, entry.id, input);
   expect(result.scopeCount).toBe(2);
   const rows = await admin.query(

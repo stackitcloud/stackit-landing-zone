@@ -3834,7 +3834,18 @@ export const englishMessages: Record<string, string> = {
   "Eine Rückbauvoraussetzung ist noch offen.":
     "A retirement prerequisite remains unresolved.",
   "Status prüfen": "Check status",
-  "Rückbau fortsetzen": "Resume retirement",
+  "Rückbau fortsetzen": "Continue retirement",
+  "Rückbau wiederaufnehmen": "Resume retirement",
+  "Rückbauschritte ausblenden": "Hide retirement steps",
+  "Rückbaudetails anzeigen": "View retirement details",
+  "Projekt des Service Accounts wird geprüft …":
+    "Checking the service account's project…",
+  "Projektzuordnung erneut prüfen": "Check project assignment again",
+  "Projekt des Service Accounts": "Service account's project",
+  "Projektzuordnung geprüft.": "Project assignment verified.",
+  "Projektdetails zum Service Account": "Service account project details",
+  "Das Projekt des Service Accounts konnte nicht ermittelt werden. Prüfe den ausgewählten Zugang und seine Berechtigungen.":
+    "The service account’s project could not be determined. Check the selected credentials and their permissions.",
   "Rückbau pausieren": "Pause retirement",
   "Rückbau abbrechen": "Cancel retirement",
   "Rückbau abbrechen und Neuanlagen nach Prüfung wieder zulassen? Bereits gelöschte Ressourcen werden nicht wiederhergestellt.":
@@ -3865,7 +3876,7 @@ export const englishMessages: Record<string, string> = {
   "Ein Ordner enthält ein Projekt außerhalb des erfassten Rückbauumfangs. Prüfe die Zuordnung vor dem Fortsetzen.":
     "A folder contains a project outside the captured retirement scope. Review its assignment before continuing.",
   "Der unabhängige Service Account konnte nicht bestätigt werden. Prüfe Profil und Projektzuordnung.":
-    "The independent service account could not be verified. Check the profile and its home project.",
+    "The independent service account could not be verified. Check the selected profile and its STACKIT permissions.",
   "Der State hat sich geändert. Prüfe den Status und erstelle einen neuen Plan.":
     "State has changed. Review the status and create a new plan.",
   "Rückbauschritte und Freigaben": "Retirement steps and approvals",

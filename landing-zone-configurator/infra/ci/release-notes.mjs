@@ -1,6 +1,15 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.3.2": {
+  introduction:"Simpler retirement with automatic service-account project verification.",
+  changes:[
+   "Automatically identify and verify the project in which the selected service account was created, including existing credential profiles; no manual project ID is required.",
+   "Keep project details optional, offer an in-place verification retry and keep State handover blocked until verification succeeds.",
+   "Use a clear Continue retirement action and verify that the cleanup account survives outside the complete retirement target ancestry.",
+  ],
+  limitations:"Assistant behavior is unchanged: combined requests can still exceed the response deadline; full multi-topic qualification remains incomplete (#275), and intermittent serving errors are tracked in #225.",
+ },
  "v2.3.1": {
   introduction:"Retire applied platform Landing Zones directly from the platform workflow.",
   changes:[

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { RetirementCloudError } from "@lzc/contracts/recovery";
 import { expect, it, vi } from "vitest";
 import { buildApp } from "../apps/api/src/app.js";
 import type { AuthServices } from "../apps/api/src/auth/routes.js";
@@ -8,6 +9,10 @@ import type { RetirementExecutionRoutes } from "../apps/api/src/retirements/rout
 
 function fixture(
   execution?: import("../apps/api/src/retirements/routes.js").RetirementExecutionRoutes,
+  preparation?: Pick<
+    import("../apps/api/src/retirements/preparation.js").RetirementPreparation,
+    "prepare" | "homeProject"
+  >,
 ) {
   const session: Session = {
     id: randomUUID(),
@@ -42,6 +47,7 @@ function fixture(
     auth,
     retirements,
     ...(execution ? { retirementExecution: execution } : {}),
+    ...(preparation ? { retirementPreparation: preparation } : {}),
   });
   const headers = {
     cookie: `__Host-lzc-session=${"b".repeat(43)}`,
@@ -164,9 +170,70 @@ it("separates cookie-authorized review from one-job runner and HTTP-State capabi
     result: vi.fn(),
     recovery: vi.fn(),
   };
-  const f = fixture(execution),
+  const selectedProfile = randomUUID();
+  const preparation = {
+    prepare: vi.fn(),
+    homeProject: vi.fn(async () => ({
+      credentialProfileId: selectedProfile,
+      projectId: randomUUID(),
+      name: "Bootstrap project",
+    })),
+  };
+  const f = fixture(execution, preparation),
     id = randomUUID();
   try {
+    const endpoint = `/api/v1/retirements/${id}/credential-project`;
+    const payload = { generation: 1, credentialProfileId: selectedProfile };
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: endpoint,
+          headers: { ...f.headers, "x-lzc-csrf": "invalid" },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: endpoint,
+          headers: { ...f.headers, "x-lzc-tenant": randomUUID() },
+          payload,
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(preparation.homeProject).not.toHaveBeenCalled();
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: endpoint,
+          headers: f.headers,
+          payload,
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(preparation.homeProject).toHaveBeenCalledWith(
+      f.session,
+      id,
+      payload,
+    );
+    expect(preparation.prepare).not.toHaveBeenCalled();
+    preparation.homeProject.mockRejectedValue(
+      new RetirementCloudError("retirement_cloud_access_unverified", 403),
+    );
+    const denied = await f.app.inject({
+      method: "POST",
+      url: endpoint,
+      headers: f.headers,
+      payload,
+    });
+    expect(denied.statusCode).toBe(409);
+    expect(denied.json()).toEqual({
+      error: "retirement_cloud_access_unverified",
+    });
     expect(
       (
         await f.app.inject({

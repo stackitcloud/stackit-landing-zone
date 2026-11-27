@@ -29,6 +29,7 @@ export class RetirementCloudError extends Error {
       | "retirement_cleanup_identity_unverified"
       | "retirement_foreign_child"
       | "retirement_cloud_inventory_incomplete",
+    readonly status?: number,
   ) {
     super(code);
   }
@@ -56,6 +57,7 @@ export class StackitRetirementCloud {
         [401, 403, 404].includes(response.status)
           ? "retirement_cloud_access_unverified"
           : "retirement_cloud_unavailable",
+        response.status,
       );
     }
     const reader = response.body.getReader(),
@@ -100,7 +102,7 @@ export class StackitRetirementCloud {
           deadline,
         ),
       );
-    return (
+    const get = (
       path: string,
       service: "resource-manager" | "service-account" = "resource-manager",
     ) =>
@@ -112,6 +114,152 @@ export class StackitRetirementCloud {
         },
         deadline,
       );
+    // Token claims guide discovery only. Fixed read APIs independently prove
+    // the account identity, project ownership and organization before use.
+    let projectIdHint: string | undefined;
+    try {
+      const parts = token.access_token.split(".");
+      if (parts.length === 3) {
+        const claims = z
+          .object({ "stackit/project/project.id": uuid.optional() })
+          .safeParse(
+            JSON.parse(
+              Buffer.from(parts[1] ?? "", "base64url").toString("utf8"),
+            ),
+          );
+        if (claims.success)
+          projectIdHint = claims.data["stackit/project/project.id"];
+      }
+    } catch {
+      /* Opaque tokens fall back to bounded API discovery. */
+    }
+    return Object.assign(get, { projectIdHint });
+  }
+  async homeProject(
+    input: { organizationId: string; projectIdHint?: string },
+    raw: ServiceAccountKey,
+  ) {
+    const organizationId = uuid.parse(input.organizationId);
+    const deadline = Date.now() + 60000,
+      get = await this.authenticated(raw, deadline);
+    const accountSchema = z.object({
+      id: uuid,
+      email: z.email(),
+      projectId: uuid,
+    });
+    const accounts = async (id: string) => {
+      const result = z
+        .object({ items: z.array(accountSchema).max(10000) })
+        .parse(
+          await get(`/v2/projects/${id}/service-accounts`, "service-account"),
+        );
+      const matches = result.items.filter(
+        (a) => a.id === raw.credentials.sub && a.email === raw.credentials.iss,
+      );
+      if (matches.length > 1 || matches.some((a) => a.projectId !== id))
+        throw new RetirementCloudError(
+          "retirement_cleanup_identity_unverified",
+        );
+      return matches.length === 1;
+    };
+    const verified = async (id: string) => {
+      const home = project
+        .extend({ name: z.string().min(1).max(256).nullish() })
+        .parse(await get(`/v2/projects/${id}`));
+      if (home.projectId !== id || home.lifecycleState !== "ACTIVE")
+        throw new RetirementCloudError(
+          "retirement_cleanup_identity_unverified",
+        );
+      let ancestor = home.parent;
+      const seen = new Set<string>();
+      for (let depth = 0; depth < 64; depth++) {
+        if (ancestor.type === "ORGANIZATION") {
+          if (ancestor.id !== organizationId) break;
+          return { projectId: id, name: home.name ?? id };
+        }
+        if (ancestor.type !== "FOLDER" || seen.has(ancestor.id)) break;
+        seen.add(ancestor.id);
+        const parentFolder = folder.parse(
+          await get(`/v2/folders/${ancestor.id}`),
+        );
+        if (
+          parentFolder.folderId !== ancestor.id ||
+          parentFolder.containerId !== ancestor.containerId
+        )
+          break;
+        ancestor = parentFolder.parent;
+      }
+      throw new RetirementCloudError("retirement_cleanup_identity_unverified");
+    };
+    const hints = [
+      ...new Set(
+        [raw.projectId, get.projectIdHint, input.projectIdHint].filter(
+          (v): v is string => !!v,
+        ),
+      ),
+    ];
+    for (const hint of hints) {
+      uuid.parse(hint);
+      try {
+        if (await accounts(hint)) return verified(hint);
+      } catch (error) {
+        if (
+          !(error instanceof RetirementCloudError) ||
+          ![403, 404].includes(error.status ?? 0)
+        )
+          throw error;
+      }
+    }
+    // Legacy stored profiles lack the key's optional projectId. Discover only
+    // projects visible to this account; no names or key strings are guessed.
+    const seen = new Set<string>();
+    for (let offset = 0; offset < 10000; ) {
+      const query = new URLSearchParams({
+        member: raw.credentials.iss,
+        limit: "100",
+        offset: String(offset),
+      });
+      const page = z
+        .object({
+          items: z.array(project).max(100),
+          limit: z.number().int().positive().max(100),
+          offset: z.number().int().nonnegative(),
+        })
+        .parse(await get(`/v2/projects?${query}`));
+      if (
+        page.offset !== offset ||
+        page.items.length > page.limit ||
+        page.items.some((p) => seen.has(p.projectId)) ||
+        new Set(page.items.map((p) => p.projectId)).size !== page.items.length
+      )
+        throw new RetirementCloudError("retirement_cloud_inventory_incomplete");
+      for (const item of page.items) seen.add(item.projectId);
+      for (let first = 0; first < page.items.length; first += 4) {
+        const matches = await Promise.all(
+          page.items.slice(first, first + 4).map(async (p) => {
+            try {
+              return (await accounts(p.projectId)) ? p.projectId : null;
+            } catch (error) {
+              if (
+                error instanceof RetirementCloudError &&
+                [403, 404].includes(error.status ?? 0)
+              )
+                return null;
+              throw error;
+            }
+          }),
+        );
+        const found = matches.filter((v): v is string => v !== null);
+        if (found.length > 1)
+          throw new RetirementCloudError(
+            "retirement_cleanup_identity_unverified",
+          );
+        if (found[0] !== undefined) return verified(found[0]);
+      }
+      if (page.items.length < page.limit) break;
+      offset += page.items.length;
+    }
+    throw new RetirementCloudError("retirement_cleanup_identity_unverified");
   }
   async control(
     input: {
@@ -154,23 +302,27 @@ export class StackitRetirementCloud {
       const control = project.parse(await get(`/v2/projects/${id}`));
       if (control.projectId !== id || control.lifecycleState !== "ACTIVE")
         throw new RetirementCloudError("retirement_cloud_access_unverified");
-      if (control.parent.type === "FOLDER") {
-        const scope = folder.parse(
-          await get(`/v2/folders/${encodeURIComponent(control.parent.id)}`),
-        );
-        if (
-          scope.folderId !== control.parent.id ||
-          scope.containerId !== control.parent.containerId ||
-          scope.parent.type !== "ORGANIZATION" ||
-          scope.parent.id !== value.organizationId
-        )
-          throw new RetirementCloudError("retirement_cloud_access_unverified");
-        if (folders.has(scope.folderId))
+      let ancestor = control.parent;
+      const visited = new Set<string>();
+      let verified = false;
+      for (let depth = 0; depth < 64; depth++) {
+        if (ancestor.type === "ORGANIZATION") {
+          verified = ancestor.id === value.organizationId;
+          break;
+        }
+        if (ancestor.type !== "FOLDER" || visited.has(ancestor.id)) break;
+        visited.add(ancestor.id);
+        if (folders.has(ancestor.id))
           throw new RetirementCloudError("retirement_control_inside_target");
-      } else if (
-        control.parent.type !== "ORGANIZATION" ||
-        control.parent.id !== value.organizationId
-      )
+        const scope = folder.parse(await get(`/v2/folders/${ancestor.id}`));
+        if (
+          scope.folderId !== ancestor.id ||
+          scope.containerId !== ancestor.containerId
+        )
+          break;
+        ancestor = scope.parent;
+      }
+      if (!verified)
         throw new RetirementCloudError("retirement_cloud_access_unverified");
     }
     const accounts = z

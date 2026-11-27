@@ -1,5 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
+  retirementCredentialProjectRequestSchema,
+  retirementCredentialProjectSchema,
+} from "@lzc/contracts";
+import {
   retirementAdapterCommit,
   retirementInventory,
   retirementInventorySchema,
@@ -25,7 +29,7 @@ import { retirementSourceInputs } from "./source-inputs.js";
 export const retirementPrepareSchema = z.strictObject({
   generation: z.number().int().positive().refine(Number.isSafeInteger),
   credentialProfileId: z.uuid(),
-  cleanupProjectId: z.uuid(),
+  cleanupProjectId: z.uuid().optional(),
   confirmStateHandoff: z.literal(true),
   confirmCleanupPermissionsSurvive: z.literal(true),
 });
@@ -72,7 +76,7 @@ export class RetirementPreparation {
     private readonly secrets: CredentialSecrets,
     private readonly cloud: Pick<
       StackitRetirementCloud,
-      "control" | "targets" | "folderChildren"
+      "control" | "targets" | "folderChildren" | "homeProject"
     >,
     private readonly controlProjectIds: readonly string[],
     private readonly executionRunner: Pick<
@@ -316,10 +320,21 @@ export class RetirementPreparation {
       checked.keyId !== secret.key.credentials.kid
     )
       throw new CredentialError(409, "retirement_cleanup_identity_unverified");
+    const home = await this.cloud.homeProject(
+      {
+        organizationId: context.organizationId,
+        ...(input.cleanupProjectId
+          ? { projectIdHint: input.cleanupProjectId }
+          : {}),
+      },
+      secret.key,
+    );
+    if (input.cleanupProjectId && input.cleanupProjectId !== home.projectId)
+      throw new CredentialError(409, "retirement_cleanup_identity_unverified");
     const control = await this.cloud.control(
       {
         organizationId: context.organizationId,
-        cleanupProjectId: input.cleanupProjectId,
+        cleanupProjectId: home.projectId,
         controlProjectIds: [...this.controlProjectIds],
         targetProjectIds: projectIds,
         targetFolderIds: folderIds,
@@ -412,7 +427,7 @@ export class RetirementPreparation {
               input.credentialProfileId,
               secret.version,
               secret.key.credentials.kid,
-              input.cleanupProjectId,
+              home.projectId,
               witness,
               JSON.stringify(handoffs),
             ],
@@ -425,5 +440,39 @@ export class RetirementPreparation {
       generation: input.generation,
       scopeCount: context.scopes.length || handoffs.length,
     };
+  }
+  async homeProject(session: Session, id: string, raw: unknown) {
+    const input = retirementCredentialProjectRequestSchema.parse(raw);
+    const context = await withTenant(this.pool, session, async (client) =>
+      contextSchema.parse(
+        (
+          await client.query(
+            "SELECT lzc_auth.retirement_execution_context($1,$2,$3) AS value",
+            [session.id, z.uuid().parse(id), input.generation],
+          )
+        ).rows[0].value,
+      ),
+    );
+    const checked = await this.profiles.verifyForPreparation(
+      session,
+      input.credentialProfileId,
+      context.organizationId,
+    );
+    const secret = await this.secrets.get(session, input.credentialProfileId);
+    if (
+      checked.check.status !== "passed" ||
+      checked.check.organizationId !== context.organizationId ||
+      checked.version !== secret.version ||
+      checked.keyId !== secret.key.credentials.kid
+    )
+      throw new CredentialError(409, "retirement_cleanup_identity_unverified");
+    const project = await this.cloud.homeProject(
+      { organizationId: context.organizationId },
+      secret.key,
+    );
+    return retirementCredentialProjectSchema.parse({
+      credentialProfileId: input.credentialProfileId,
+      ...project,
+    });
   }
 }

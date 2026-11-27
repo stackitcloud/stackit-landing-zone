@@ -36,15 +36,21 @@ dieser Nachweise startet keinen weiteren Plan/Apply und ändert keine Cloud-Ress
    Ausführungsfreigaben werden sofort gesperrt. Bereits laufende Schreibprozesse
    prüfen und abgleichen. Pausieren öffnet keine Neuanlagen; Fortsetzen entwertet
    frühere Generationen.
-3. Nach dem Vorbereitungsfenster das persönliche Zugangsdatenprofil des tatsächlich
-   handelnden Owners und dessen unabhängiges Service-Account-Projekt auswählen.
+3. Nach dem Vorbereitungsfenster **Rückbau fortsetzen** öffnen und das gespeicherte
+   Zugangsdatenprofil des tatsächlich handelnden Owners auswählen. Das Projekt, in dem der Account angelegt wurde,
+   wird automatisch ermittelt und nach Abgleich der Service-Account-Identität mit
+   STACKIT unter den optionalen Projektdetails mit Name und ID angezeigt. Bei bestehenden Profilen ohne Projektmetadaten
+   wird der authentifizierte Account-Kontext mit den API-Antworten abgeglichen. Weder ein
+   erneuter Upload noch eine manuelle Projekt-ID sind erforderlich. Scheitert die
+   Prüfung, bleibt die State-Übernahme gesperrt; die Prüfung lässt sich direkt erneut
+   starten.
    Erhalt des Zugangs, Datenexport/Aufbewahrung und State-Übernahme bestätigen.
    Geprüft werden Organisation, Ressourcenzuordnung, bekannte Unterprojekte,
    Quellverfügbarkeit, Runner-Stopp und die Lage von Steuerungsprojekten und
    Bereinigungsidentität außerhalb sämtlicher erfasster Rückbauziele. Operator-Projekt-IDs
    stammen aus der vertrauenswürdigen Deployment-Bindung; Kundenzugangsdaten benötigen
    keine Rechte auf die SaaS-Betreiberorganisation. Der kundeneigene Bereinigungsaccount,
-   sein Heimatprojekt und dessen Zuordnung werden separat mit dem Kundenzugang geprüft.
+   sein Projekt und dessen Zuordnung werden separat mit dem Kundenzugang geprüft.
 4. Jeden ursprünglichen Plattform-/Application-State ausdrücklich in die
    verschlüsselte Verwahrung der bestehenden Configurator-Datenbank übernehmen.
    Das ist ein Wechsel der State-Autorität, kein zweiter aktiver State. Ursprüngliche
@@ -126,6 +132,7 @@ Ausführung benötigt Plattformrolle und aktuellen Organisationsnachweis.
 | `POST /api/v1/retirements` | Absicht, Termin, Benachrichtigung und dauerhafte Neuanlagensperre |
 | `POST /api/v1/retirements/:id` | Generationsgebunden prüfen, pausieren, fortsetzen, vor Übernahme abbrechen oder Termin ändern |
 | `GET /api/v1/retirements/:id/execution` | Sichere Scope-/Job-Übersicht ohne Zugangsdaten, Roh-State oder Roh-Plan |
+| `POST /api/v1/retirements/:id/credential-project` | Projekt des Accounts im gewählten Profil ermitteln und prüfen; keine State-Übernahme oder Ausführung |
 | `POST /api/v1/retirements/:id/prepare` | Unabhängigen Zugang prüfen und State ausdrücklich übernehmen |
 | `POST /api/v1/retirements/:id/plans` | Nativer Plan mit gebundener Quelle für einen freigegebenen Scope |
 | `GET .../:id/jobs/:jobId/preview` | Genaue Ressourcenliste zur Löschung |

@@ -328,7 +328,7 @@ export function RetirementPanel({
               >
                 {t(
                   row.phase === "PAUSED"
-                    ? "Rückbau fortsetzen"
+                    ? "Rückbau wiederaufnehmen"
                     : "Rückbau pausieren",
                 )}
               </button>

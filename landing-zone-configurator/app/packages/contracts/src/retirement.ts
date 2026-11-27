@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+export const retirementCredentialProjectRequestSchema = z.strictObject({
+  generation: z.number().int().positive().refine(Number.isSafeInteger),
+  credentialProfileId: z.uuid(),
+});
+export const retirementCredentialProjectSchema = z.strictObject({
+  credentialProfileId: z.uuid(),
+  projectId: z.uuid(),
+  name: z.string().min(1).max(256),
+});
+
 export const retirementPhaseSchema = z.enum([
   "RETIRING",
   "DRAINING",
