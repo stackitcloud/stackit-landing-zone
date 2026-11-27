@@ -3940,7 +3940,16 @@ export const englishMessages: Record<string, string> = {
   "STACKIT hat die Folder-Löschung noch nicht zugelassen. Die fehlgeschlagene Ausführung bleibt dokumentiert. Prüfe den Status später und erstelle einen neuen Folder-Plan.":
     "STACKIT has not yet allowed folder deletion. The failed execution remains recorded. Check again later and create a new folder plan.",
   "Löschumfang prüfen": "Review deletions",
-  "Runner-Stopp und Ergebnis prüfen": "Verify runner stop and result",
+  "Abschluss erneut prüfen": "Check completion again",
+  "Ausführungsstatus prüfen": "Check execution status",
+  "Die Ausführung ist beendet. Das Ergebnis wird automatisch geprüft.":
+    "Execution has finished. The result is being checked automatically.",
+  "Die Abschlussprüfung konnte noch nicht beendet werden. Sie wird automatisch wiederholt.":
+    "The completion check has not finished yet. It will retry automatically.",
+  "Die Löschfreigabe ist nach der Abschlussprüfung verfügbar.":
+    "Deletion approval will be available after the completion check.",
+  "Dieser Plan ist nicht mehr freigabefähig. Prüfe den Status und erstelle gegebenenfalls einen neuen Plan mit deinem Zugang.":
+    "This plan is no longer eligible for approval. Check the status and, if needed, create a new plan with your credentials.",
   "Unterbrochenen State prüfen": "Review interrupted state",
   "Geplanter Löschumfang": "Planned deletions",
   "Ressourcen zur Löschung": "resources to delete",

@@ -131,9 +131,16 @@ kann keine gespeicherte Ausgabe vorliegen.
 Die Schrittliste zeigt die Bereinigung von Diensten und Control Planes, das Entfernen
 der Projekte und die zeitversetzte Ordnerlöschung. Prüfe vor der Apply-Freigabe die
 konkrete Löschliste aus dem erfolgreichen nativen Plan. Technische Quell- und
-Provider-Nachweise stehen unter optionalen Details. Prüfe bei einem fehlgeschlagenen
-Plan zunächst dessen gestoppten Runner und das Ergebnis, bevor du einen neuen Plan
-erstellst. Diese Prüfung führt keine Löschung aus.
+Provider-Nachweise stehen unter optionalen Details. Solange die Schritte geöffnet
+sind, prüft die App nach gemeldetem Abschluss deines Auftrags automatisch den
+zugehörigen Runner und das Ergebnis. Eine vorübergehend nicht verfügbare
+Abschlussprüfung wird wiederholt und als ausstehend angezeigt; die Löschfreigabe
+bleibt gesperrt, bis die bestehenden serverseitigen Prüfungen erfolgreich sind.
+Eine zusätzliche Runner-Stopp-Aktion ist nicht erforderlich. Die Prüfung startet
+niemals einen Plan oder Apply. Läufe ohne natives Ergebnis und unterbrochene
+State-Wiederherstellungen erfordern weiterhin eine ausdrückliche Status- oder
+Wiederherstellungsprüfung; ausstehende Sicherungsuploads werden nie automatisch
+beendet.
 
 Snapshot-Prüfungen verwenden das unveränderte State-Dokument des HTTP-Backends.
 `tofu state pull` kann `check_results` normalisieren oder umsortieren; diese

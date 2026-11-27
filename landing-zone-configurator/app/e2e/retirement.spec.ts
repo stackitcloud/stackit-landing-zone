@@ -180,6 +180,7 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
     homeAttempts = 0,
     planned = false,
     inspected = false,
+    inspectionAttempts = 0,
     applied = false,
     applyInspected = false;
   await page.route("**/api/v1/credentials", (route) =>
@@ -329,7 +330,15 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
       if (path.includes(applyId)) {
         applyInspected = true;
         current.phase = "WAITING_FOR_PURGE";
-      } else inspected = true;
+      } else {
+        if (++inspectionAttempts === 1)
+          return route.fulfill({
+            status: 409,
+            json: { error: "retirement_runner_not_stopped" },
+          });
+        inspected = true;
+      }
+      return route.fulfill({ json: review() });
     }
     if (path.endsWith("/apply")) {
       expect(inspected).toBe(true);
@@ -410,28 +419,23 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
     })
     .check();
   await expect(apply).toBeDisabled();
-  await panel
-    .getByRole("button", { name: "Verify runner stop and result" })
-    .click();
-  // A refreshed review invalidates the previous selection; approve the exact Plan again.
-  await panel
-    .getByRole("button", { name: "Review deletions", exact: true })
-    .click();
-  await panel
-    .getByRole("checkbox", {
-      name: "Data exports, backups and retention requirements have been reviewed.",
-    })
-    .check();
-  await panel
-    .getByRole("checkbox", {
+  await expect(
+    panel.getByText(
+      "The completion check has not finished yet. It will retry automatically.",
+    ),
+  ).toBeVisible();
+  expect(applied).toBe(false);
+  // The app verifies completion and retries a not-yet-stopped result without
+  // requiring a technical action or losing the owner's exact deletion review.
+  await expect(apply).toBeEnabled({ timeout: 15000 });
+  expect(inspectionAttempts).toBe(2);
+  expect(applied).toBe(false);
+  await expect(
+    panel.getByRole("checkbox", {
       name: "I confirm permanent deletion of exactly this reviewed scope.",
-    })
-    .check();
-  await expect(apply).toBeEnabled();
+    }),
+  ).toBeChecked();
   await apply.click();
-  await panel
-    .getByRole("button", { name: "Verify runner stop and result" })
-    .click();
   await expect(
     panel.getByText("Waiting for STACKIT project removal", { exact: true }),
   ).toBeVisible();
@@ -716,7 +720,7 @@ test("refreshes a running retirement automatically and shows native output, fail
           {
             id: jobId,
             scopeId,
-            operatorId: user,
+            operatorId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
             generation: 1,
             operation: "plan",
             phase: "private_workloads",
@@ -802,4 +806,137 @@ test("refreshes a running retirement automatically and shows native output, fail
     path: info.outputPath("retirement-live-output.png"),
     fullPage: true,
   });
+});
+
+test("leaves active jobs, interrupted State and other operators outside automatic completion", async ({
+  page,
+}) => {
+  await mockEmptyApplicationLists(page);
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { stackit: true, github: false, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/backends", (route) =>
+    route.fulfill({ json: { backends: [] } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: user, login: "owner@example.test" },
+        tenant: {
+          id: tenant,
+          name: "Completion boundaries",
+          kind: "organisation",
+          roles: ["platform-engineer"],
+          manageMembers: true,
+        },
+        csrfToken: "retirement-csrf",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        stackitVerified: true,
+      },
+    }),
+  );
+  const current = {
+    id,
+    name: "Completion boundaries",
+    stateKey,
+    organizationId: "44444444-4444-4444-8444-444444444444",
+    createdBy: user,
+    reason: "Synthetic completion boundaries",
+    notBefore: new Date(Date.now() - 60000).toISOString(),
+    createdAt: new Date().toISOString(),
+    phase: "PREPARED",
+    generation: 1,
+    applications: [],
+    blockers: [],
+  };
+  const job = {
+    scopeId: "66666666-6666-4666-8666-666666666666",
+    operatorId: user,
+    generation: 1,
+    operation: "plan",
+    phase: "private_workloads",
+    status: "recovery_required",
+    nativeStatus: "succeeded",
+    createdAt: current.createdAt,
+    sourceRevision: "a".repeat(40),
+    providerLockSha256: "b".repeat(64),
+    artifactSha256: null,
+    deleteCount: 0,
+    canApply: false,
+    canInspect: true,
+    recoveryAvailable: false,
+    recoveryPending: false,
+    errorCode: null,
+  };
+  let reads = 0,
+    mutations = 0;
+  await page.route("**/api/v1/retirements**", (route) => {
+    if (route.request().method() !== "GET") {
+      mutations++;
+      return route.fulfill({
+        status: 409,
+        json: { error: "unexpected_completion" },
+      });
+    }
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
+    if (path.endsWith("/output"))
+      return route.fulfill({ json: { text: "", truncated: false } });
+    if (path.endsWith("/execution")) {
+      reads++;
+      return route.fulfill({
+        json: {
+          retirementId: id,
+          generation: 1,
+          hasHandoff: true,
+          prepared: true,
+          canPrepare: false,
+          scopes: [],
+          jobs: [
+            {
+              ...job,
+              id: "77777777-7777-4777-8777-777777777770",
+              nativeStatus: null,
+              status: "planning",
+            },
+            {
+              ...job,
+              id: "77777777-7777-4777-8777-777777777771",
+              nativeStatus: "failed",
+              recoveryPending: true,
+            },
+            {
+              ...job,
+              id: "77777777-7777-4777-8777-777777777772",
+              nativeStatus: "failed",
+              recoveryAvailable: true,
+            },
+            {
+              ...job,
+              id: "77777777-7777-4777-8777-777777777773",
+              operatorId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            },
+            {
+              ...job,
+              id: "77777777-7777-4777-8777-777777777774",
+              generation: 2,
+            },
+          ],
+        },
+      });
+    }
+    return route.fulfill({ json: [current] });
+  });
+  await page.goto("/deployments/retire");
+  await page
+    .getByRole("button", { name: "Continue retirement", exact: true })
+    .click();
+  await expect.poll(() => reads, { timeout: 7000 }).toBeGreaterThanOrEqual(3);
+  expect(mutations).toBe(0);
+  await expect(page.locator(".retirement-job")).toHaveCount(5);
+  await expect(
+    page.getByRole("button", { name: "Apply reviewed retirement plan" }),
+  ).toHaveCount(0);
 });

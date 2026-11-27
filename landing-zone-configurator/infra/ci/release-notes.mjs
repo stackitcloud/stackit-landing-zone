@@ -1,6 +1,14 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.3.4": {
+  introduction:"Retirement completion checks now run automatically.",
+  changes:[
+   "Verify completed retirement Plans and Applies automatically, retry temporary completion-check failures and keep deletion approval tied to the reviewed native Plan.",
+   "Explain pending approval in the interface without requiring users to stop runners; preserve explicit handling of interrupted executions and State recovery.",
+  ],
+  limitations:"Assistant behavior is unchanged: combined requests can still exceed the response deadline; full multi-topic qualification remains incomplete (#275), and intermittent serving errors are tracked in #225.",
+ },
  "v2.3.3": {
   introduction:"Reliable retirement planning with live OpenTofu diagnostics.",
   changes:[

@@ -115,8 +115,13 @@ created before output capture was available can have no retained output.
 The step list shows service/control-plane cleanup, project removal and deferred
 folder deletion. Review the actual deletion list from the successful native Plan
 before approving Apply; technical source and provider evidence is available under
-optional details. If a Plan fails, verify its stopped runner and result before
-creating another Plan. This verification does not execute a deletion.
+optional details. While the steps are open, the app automatically verifies the
+matching runner and result after your job reports completion. A temporarily
+unavailable completion check is retried and shown as pending; deletion approval
+stays disabled until the existing server-side checks succeed. No extra runner-stop
+action is required, and this check never starts a Plan or Apply. Runs without a
+native outcome and interrupted State recovery still need an explicit status or
+recovery review; pending recovery uploads are never stopped automatically.
 
 Snapshot checks use the exact authoritative HTTP State document. `tofu state pull`
 can normalize or reorder `check_results`; that representation is used for inventory

@@ -119,6 +119,9 @@ export function RetirementExecutionPanel({
   >({});
   const [outputErrors, setOutputErrors] = useState<Record<string, boolean>>({});
   const [pollError, setPollError] = useState(false);
+  const [completionErrors, setCompletionErrors] = useState<
+    Record<string, boolean>
+  >({});
   const changed = useRef(onChanged);
   changed.current = onChanged;
   const [handoff, setHandoff] = useState(false),
@@ -218,6 +221,7 @@ export function RetirementExecutionPanel({
     outputControllers.current = {};
     setOutputErrors({});
     setPollError(false);
+    setCompletionErrors({});
     setBusy(false);
     setConfirmDelete(false);
     setRetention(false);
@@ -333,7 +337,7 @@ export function RetirementExecutionPanel({
       try {
         if (document.visibilityState === "hidden") return;
         const sequence = ++reviewSequence.current;
-        const status = retirementExecutionReviewSchema.parse(
+        let status = retirementExecutionReviewSchema.parse(
           await api(
             `${base}/execution`,
             undefined,
@@ -348,6 +352,54 @@ export function RetirementExecutionPanel({
           return;
         setReview(status);
         setPollError(false);
+        // Reconcile only a reported terminal outcome. Never stop an execution
+        // without its result or while interrupted State still needs recovery.
+        const completed = status.jobs.find(
+          (job) =>
+            job.operatorId === session.user.id &&
+            job.generation === retirement.generation &&
+            job.canInspect &&
+            job.nativeStatus !== null &&
+            !job.recoveryPending &&
+            !job.recoveryAvailable,
+        );
+        if (completed) {
+          try {
+            const reconciled = retirementExecutionReviewSchema.parse(
+              await api(
+                `${base}/jobs/${completed.id}/inspect`,
+                { generation: retirement.generation },
+                AbortSignal.any([
+                  controller.signal,
+                  AbortSignal.timeout(15000),
+                ]),
+              ),
+            );
+            if (
+              controller.signal.aborted ||
+              current.current !== owner ||
+              sequence !== reviewSequence.current
+            )
+              return;
+            status = reconciled;
+            setReview(status);
+            setCompletionErrors((previous) => ({
+              ...previous,
+              [completed.id]: false,
+            }));
+          } catch {
+            if (
+              controller.signal.aborted ||
+              current.current !== owner ||
+              sequence !== reviewSequence.current
+            )
+              return;
+            setCompletionErrors((previous) => ({
+              ...previous,
+              [completed.id]: true,
+            }));
+          }
+        }
         interval = status.jobs.some(
           (job) =>
             [
@@ -376,8 +428,11 @@ export function RetirementExecutionPanel({
               )
                 lastOutputCompletion = completion;
             });
-          if (completion && completion !== lastCompletion) {
-            lastCompletion = completion;
+          const checkedCompletion = completion
+            ? `${completion}:${latest.status}:${latest.canInspect}`
+            : "";
+          if (checkedCompletion && checkedCompletion !== lastCompletion) {
+            lastCompletion = checkedCompletion;
             void changed.current().catch(() => {
               if (!controller.signal.aborted && current.current === owner)
                 setPollError(true);
@@ -405,7 +460,17 @@ export function RetirementExecutionPanel({
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [expanded, busy, identity, api, base, loadOutput, retirement.phase]);
+  }, [
+    expanded,
+    busy,
+    identity,
+    api,
+    base,
+    loadOutput,
+    retirement.phase,
+    retirement.generation,
+    session.user.id,
+  ]);
   async function action(
     path: string,
     body?: unknown,
@@ -806,20 +871,41 @@ export function RetirementExecutionPanel({
                   {t("Löschumfang prüfen")}
                 </button>
               )}
-              {job.canInspect && (
-                <button
-                  type="button"
-                  className="button secondary"
-                  disabled={busy || job.recoveryPending}
-                  onClick={() =>
-                    void action(`/jobs/${job.id}/inspect`, {
-                      generation: retirement.generation,
-                    })
-                  }
-                >
-                  {t("Runner-Stopp und Ergebnis prüfen")}
-                </button>
-              )}
+              {job.canInspect &&
+                job.operatorId === session.user.id &&
+                job.generation === retirement.generation &&
+                job.nativeStatus &&
+                !job.recoveryPending &&
+                !job.recoveryAvailable && (
+                  <p role="status">
+                    {t(
+                      completionErrors[job.id]
+                        ? "Die Abschlussprüfung konnte noch nicht beendet werden. Sie wird automatisch wiederholt."
+                        : "Die Ausführung ist beendet. Das Ergebnis wird automatisch geprüft.",
+                    )}
+                  </p>
+                )}
+              {job.canInspect &&
+                (!job.nativeStatus ||
+                  completionErrors[job.id] ||
+                  job.recoveryAvailable) && (
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy || job.recoveryPending}
+                    onClick={() =>
+                      void action(`/jobs/${job.id}/inspect`, {
+                        generation: retirement.generation,
+                      })
+                    }
+                  >
+                    {t(
+                      job.nativeStatus
+                        ? "Abschluss erneut prüfen"
+                        : "Ausführungsstatus prüfen",
+                    )}
+                  </button>
+                )}
               {job.recoveryPending && (
                 <p>
                   {t(
@@ -884,6 +970,17 @@ export function RetirementExecutionPanel({
                   "Ich bestätige die unwiderrufliche Löschung genau dieses geprüften Umfangs.",
                 )}
               </label>
+              {!review?.jobs.some((j) => j.id === preview.id && j.canApply) && (
+                <p role="status">
+                  {t(
+                    review?.jobs.some(
+                      (j) => j.id === preview.id && j.canInspect,
+                    )
+                      ? "Die Löschfreigabe ist nach der Abschlussprüfung verfügbar."
+                      : "Dieser Plan ist nicht mehr freigabefähig. Prüfe den Status und erstelle gegebenenfalls einen neuen Plan mit deinem Zugang.",
+                  )}
+                </p>
+              )}
               <button
                 type="button"
                 className="button"
