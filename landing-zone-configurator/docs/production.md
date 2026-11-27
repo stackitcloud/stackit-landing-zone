@@ -35,8 +35,9 @@ that package instead of restarting the current droplet. When in doubt, explicitl
 pin the current droplet using a rolling CF V3 deployment, as the release activator
 does. This operation enables the feature; it does not start a Landing Zone teardown.
 
-Drain or pause active retirement executions before disabling Retirement; this
-startup switch is not a stop button for an already dispatched cloud job.
+Finish or pause retirement workflows and wait for all in-flight jobs and State
+callbacks to settle before disabling Retirement. Pausing alone does not prove a
+Runner has stopped; this switch is not a stop button for a dispatched cloud job.
 
 Each deployment snapshots the existing app's three feature values after scoped
 CF login and before staging starts. Explicit `false` is preserved as well as

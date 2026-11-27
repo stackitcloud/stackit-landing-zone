@@ -38,8 +38,9 @@ Droplet neu zu starten. Im Zweifel den aktuellen Droplet ausdrücklich über ein
 rollierende CF-V3-Bereitstellung angeben, wie im Release-Aktivator. Diese Aktion
 aktiviert die Funktion; sie startet keinen Rückbau einer Landing Zone.
 
-Aktive Retirement-Ausführungen vor dem Abschalten geordnet beenden oder pausieren.
-Der Startschalter ist kein Stop-Button für bereits gestartete Cloud-Jobs.
+Rückbauvorhaben vor dem Abschalten beenden oder pausieren und alle laufenden Jobs
+sowie State-Rückmeldungen vollständig abwickeln lassen. Pausieren allein belegt
+keinen gestoppten Runner; der Schalter beendet keine gestarteten Cloud-Jobs.
 
 Jedes Deployment übernimmt die drei bestehenden CF-Schalter nach dem gezielten
 CF-Login und vor dem Staging. Ein ausdrückliches `false` bleibt ebenso erhalten
