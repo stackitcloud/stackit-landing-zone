@@ -1201,6 +1201,19 @@ test("keeps the current retirement and its approval together while older attempt
     .check();
   await expect(apply).toBeEnabled();
   expect(writes).toBe(0);
+  const renewal = active
+    .locator("summary")
+    .filter({ hasText: /^Reconfirm retirement credentials$/ });
+  await renewal.click();
+  await expect(
+    active.getByRole("heading", { name: "Reconfirm retirement credentials" }),
+  ).toBeVisible();
+  await renewal.click();
+  await expect(
+    active.getByRole("heading", { name: "Reconfirm retirement credentials" }),
+  ).toBeHidden();
+  await expect(apply).toBeEnabled();
+  expect(writes).toBe(0);
   await active
     .getByText("Completed steps and previous runs (2)", { exact: true })
     .click();
