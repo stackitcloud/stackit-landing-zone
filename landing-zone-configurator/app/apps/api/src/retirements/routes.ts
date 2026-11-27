@@ -1,3 +1,4 @@
+import { RetirementCloudError } from "@lzc/contracts/recovery";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
@@ -32,7 +33,7 @@ export function registerRetirements(
   auth: AuthServices,
   retirements: Pick<Retirements, "list" | "start" | "change" | "candidates">,
   execution?: RetirementExecutionRoutes,
-  preparation?: Pick<RetirementPreparation, "prepare">,
+  preparation?: Pick<RetirementPreparation, "prepare" | "homeProject">,
 ) {
   const sessions = new WeakMap<FastifyRequest, Session>();
   app.register(async (routes) => {
@@ -41,6 +42,10 @@ export function registerRetirements(
         return reply.code(413).send({ error: "request_too_large" });
       if (error instanceof CredentialError)
         return reply.code(error.status).send({ error: error.code });
+      if (error instanceof RetirementCloudError)
+        return reply
+          .code(error.code === "retirement_cloud_unavailable" ? 503 : 409)
+          .send({ error: error.code });
       if (error instanceof z.ZodError)
         return reply.code(400).send({ error: "invalid_retirement_request" });
       const e = error as { code?: string; message?: string };
@@ -80,6 +85,17 @@ export function registerRetirements(
       routes.get("/api/v1/retirements/:id/execution", async (request) =>
         execution.review(sessions.get(request)!, params(request).id),
       );
+      if (preparation)
+        routes.post(
+          "/api/v1/retirements/:id/credential-project",
+          { bodyLimit: 4096 },
+          async (request) =>
+            preparation.homeProject(
+              sessions.get(request)!,
+              params(request).id,
+              request.body,
+            ),
+        );
       if (preparation)
         routes.post(
           "/api/v1/retirements/:id/prepare",

@@ -2,6 +2,12 @@ import { createPrivateKey, randomUUID, sign } from "node:crypto";
 import { z } from "zod";
 
 const keySchema = z.object({
+  // Discovery hint only; owning-project identity must be verified through the API.
+  projectId: z
+    .uuid()
+    .nullable()
+    .transform((value) => value ?? undefined)
+    .optional(),
   id: z.string().max(128).optional(),
   active: z.literal(true).optional(),
   validUntil: z.iso.datetime({ offset: true }).optional(),

@@ -61,7 +61,10 @@ export function buildApp(
   options: {
     webRoot?: string;
     retirementExecution?: RetirementExecutionRoutes;
-    retirementPreparation?: Pick<RetirementPreparation, "prepare">;
+    retirementPreparation?: Pick<
+      RetirementPreparation,
+      "prepare" | "homeProject"
+    >;
     retirements?: Pick<Retirements, "list" | "start" | "change" | "candidates">;
     notifications?: Pick<Notifications, "list" | "read" | "preferences">;
     developmentLogin?: DevelopmentLogin;

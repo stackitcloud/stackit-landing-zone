@@ -48,6 +48,7 @@ const json = (value: unknown, status = 200) =>
   });
 function fixture(
   override: (url: URL) => Response | undefined = () => undefined,
+  accessToken = "TOKEN_FIXTURE",
 ) {
   const calls: { url: string; method: string }[] = [];
   const request: typeof fetch = async (address, init) => {
@@ -55,10 +56,10 @@ function fixture(
     calls.push({ url: url.toString(), method: init?.method ?? "GET" });
     expect(init?.redirect).toBe("error");
     if (url.hostname === "accounts.stackit.cloud")
-      return json({ access_token: "TOKEN_FIXTURE", token_type: "Bearer" });
+      return json({ access_token: accessToken, token_type: "Bearer" });
     expect(init?.method).toBe("GET");
     expect(new Headers(init?.headers).get("authorization")).toBe(
-      "Bearer TOKEN_FIXTURE",
+      `Bearer ${accessToken}`,
     );
     const replaced = override(url);
     if (replaced) return replaced;
@@ -85,6 +86,176 @@ function fixture(
   return { cloud: new StackitRetirementCloud(request), calls };
 }
 describe("retirement read-only STACKIT observations", () => {
+  it("resolves existing profiles from a token project hint only after independent API verification", async () => {
+    const token = `e30.${Buffer.from(JSON.stringify({ "stackit/project/project.id": control })).toString("base64url")}.signature`;
+    const { cloud, calls } = fixture(() => undefined, token);
+    expect(
+      (await cloud.homeProject({ organizationId: org }, key)).projectId,
+    ).toBe(control);
+    expect(calls.some((c) => new URL(c.url).pathname === "/v2/projects")).toBe(
+      false,
+    );
+    expect(
+      calls.some(
+        (c) =>
+          new URL(c.url).pathname ===
+          `/v2/projects/${control}/service-accounts`,
+      ),
+    ).toBe(true);
+  });
+  it("does not treat a token project claim as proof of account ownership", async () => {
+    const token = `e30.${Buffer.from(JSON.stringify({ "stackit/project/project.id": target })).toString("base64url")}.signature`;
+    const { cloud } = fixture(
+      (url) =>
+        url.pathname === `/v2/projects/${target}/service-accounts`
+          ? json({ items: [] })
+          : url.pathname === "/v2/projects"
+            ? json({ items: [project(control)], offset: 0, limit: 100 })
+            : undefined,
+      token,
+    );
+    expect(
+      (await cloud.homeProject({ organizationId: org }, key)).projectId,
+    ).toBe(control);
+  });
+  it("verifies the project hint retained in an uploaded key instead of trusting it", async () => {
+    const hinted = parseServiceAccountKey({ ...key, projectId: control });
+    expect(hinted.projectId).toBe(control);
+    const { cloud, calls } = fixture();
+    expect(await cloud.homeProject({ organizationId: org }, hinted)).toEqual({
+      projectId: control,
+      name: control,
+    });
+    expect(calls.some((c) => new URL(c.url).pathname === "/v2/projects")).toBe(
+      false,
+    );
+    expect(
+      calls.some(
+        (c) =>
+          new URL(c.url).pathname ===
+          `/v2/projects/${control}/service-accounts`,
+      ),
+    ).toBe(true);
+  });
+  it("discovers legacy profiles by their actual account identity and tolerates an unreadable unrelated project", async () => {
+    const { cloud, calls } = fixture((url) => {
+      if (url.pathname === "/v2/projects") {
+        expect(url.searchParams.get("member")).toBe(key.credentials.iss);
+        return json({
+          items: [project(target), project(control)],
+          limit: 100,
+          offset: 0,
+        });
+      }
+      if (url.pathname === `/v2/projects/${target}/service-accounts`)
+        return json({}, 403);
+      if (url.pathname === `/v2/projects/${control}`)
+        return json({ ...project(control), name: "Customer bootstrap" });
+      return undefined;
+    });
+    expect(await cloud.homeProject({ organizationId: org }, key)).toEqual({
+      projectId: control,
+      name: "Customer bootstrap",
+    });
+    expect(calls.every((c) => ["GET", "POST"].includes(c.method))).toBe(true);
+  });
+  it("does not use an unrelated project ID from the key as authority", async () => {
+    const { cloud } = fixture((url) =>
+      url.pathname === `/v2/projects/${target}/service-accounts`
+        ? json({ items: [] })
+        : url.pathname === "/v2/projects"
+          ? json({ items: [project(control)], limit: 100, offset: 0 })
+          : undefined,
+    );
+    expect(
+      (
+        await cloud.homeProject(
+          { organizationId: org },
+          parseServiceAccountKey({ ...key, projectId: target }),
+        )
+      ).projectId,
+    ).toBe(control);
+  });
+  it("rejects contradictory owning-project observations", async () => {
+    const { cloud } = fixture((url) =>
+      url.pathname === "/v2/projects"
+        ? json({
+            items: [project(control), project(target)],
+            limit: 100,
+            offset: 0,
+          })
+        : url.pathname === `/v2/projects/${target}/service-accounts`
+          ? json({
+              items: [
+                { id: subject, email: key.credentials.iss, projectId: target },
+              ],
+            })
+          : undefined,
+    );
+    await expect(
+      cloud.homeProject({ organizationId: org }, key),
+    ).rejects.toMatchObject({ code: "retirement_cleanup_identity_unverified" });
+  });
+  it("requires both subject and email to match and fails on an incomplete project inventory", async () => {
+    const mismatch = fixture((url) =>
+      url.pathname === `/v2/projects/${control}/service-accounts`
+        ? json({
+            items: [
+              { id: target, email: key.credentials.iss, projectId: control },
+            ],
+          })
+        : undefined,
+    );
+    await expect(
+      mismatch.cloud.homeProject(
+        { organizationId: org },
+        parseServiceAccountKey({ ...key, projectId: control }),
+      ),
+    ).rejects.toMatchObject({ code: "retirement_cleanup_identity_unverified" });
+    const repeated = fixture((url) =>
+      url.pathname === "/v2/projects"
+        ? json({ items: [project(target)], limit: 1, offset: 0 })
+        : url.pathname === `/v2/projects/${target}/service-accounts`
+          ? json({ items: [] })
+          : undefined,
+    );
+    await expect(
+      repeated.cloud.homeProject({ organizationId: org }, key),
+    ).rejects.toMatchObject({ code: "retirement_cloud_inventory_incomplete" });
+  });
+  it("checks the complete ancestry of the discovered home and rejects a target ancestor", async () => {
+    const outer = "66666666-6666-4666-8666-666666666666",
+      inner = "77777777-7777-4777-8777-777777777777";
+    const { cloud } = fixture((url) => {
+      if (url.pathname === `/v2/projects/${control}`)
+        return json(
+          project(control, { type: "FOLDER", id: inner, containerId: "inner" }),
+        );
+      if (url.pathname === `/v2/folders/${inner}`)
+        return json({
+          folderId: inner,
+          containerId: "inner",
+          parent: { type: "FOLDER", id: outer, containerId: "outer" },
+        });
+      if (url.pathname === `/v2/folders/${outer}`)
+        return json({
+          folderId: outer,
+          containerId: "outer",
+          parent: orgParent,
+        });
+      return undefined;
+    });
+    const hinted = parseServiceAccountKey({ ...key, projectId: control });
+    expect(
+      (await cloud.homeProject({ organizationId: org }, hinted)).projectId,
+    ).toBe(control);
+    await expect(cloud.control(input, key)).resolves.toMatchObject({
+      cleanupProjectId: control,
+    });
+    await expect(
+      cloud.control({ ...input, targetFolderIds: [outer] }, key),
+    ).rejects.toMatchObject({ code: "retirement_control_inside_target" });
+  });
   it("does not require customer credentials to read the operator's separate SaaS projects", async () => {
     const operator = "66666666-6666-4666-8666-666666666666";
     const { cloud, calls } = fixture((url) =>

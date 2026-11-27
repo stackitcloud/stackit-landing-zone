@@ -177,6 +177,7 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
     blockers: [],
   };
   let handoff = false,
+    homeAttempts = 0,
     planned = false,
     inspected = false,
     applied = false,
@@ -289,7 +290,23 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
     const body = route.request().postDataJSON();
     expect(body.generation).toBe(1);
     expect(route.request().headers()["x-lzc-csrf"]).toBe("retirement-csrf");
+    if (path.endsWith("/credential-project")) {
+      expect(body.credentialProfileId).toBe(profileId);
+      if (++homeAttempts === 1)
+        return route.fulfill({
+          status: 503,
+          json: { error: "retirement_cloud_unavailable" },
+        });
+      return route.fulfill({
+        json: {
+          credentialProfileId: profileId,
+          projectId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          name: "Customer bootstrap",
+        },
+      });
+    }
     if (path.endsWith("/prepare")) {
+      expect(body.cleanupProjectId).toBeUndefined();
       expect(body).toMatchObject({
         credentialProfileId: profileId,
         confirmStateHandoff: true,
@@ -322,14 +339,38 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
   await page.goto("/deployments/retire");
   const panel = page.getByRole("region", { name: "Retire landing zones" });
   await panel
-    .getByRole("button", { name: "Retirement steps and approvals" })
+    .getByRole("button", { name: "Continue retirement", exact: true })
     .click();
   await panel
     .getByRole("combobox", { name: "Service account profile", exact: true })
     .selectOption(profileId);
+  await expect(
+    panel.getByText(
+      "The service account’s project could not be determined. Check the selected credentials and their permissions.",
+    ),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", {
+      name: "Verify retirement credentials and hand over state",
+    }),
+  ).toBeDisabled();
   await panel
-    .getByLabel("Independent service account's home project ID")
-    .fill("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    .getByRole("button", { name: "Check project assignment again" })
+    .click();
+  await expect(
+    panel.getByText("Project assignment verified.", { exact: true }),
+  ).toBeVisible();
+  await panel
+    .getByText("Service account project details", { exact: true })
+    .click();
+  await expect(panel.getByText("Customer bootstrap")).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath("retirement-home-project.png"),
+    fullPage: true,
+  });
+  await expect(
+    panel.getByLabel("Independent service account's home project ID"),
+  ).toHaveCount(0);
   const prepare = panel.getByRole("button", {
     name: "Verify retirement credentials and hand over state",
   });
@@ -399,4 +440,143 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
     path: info.outputPath("retirement-execution.png"),
     fullPage: true,
   });
+});
+
+test("keeps the selected profile's home project when an older lookup finishes late", async ({
+  page,
+}) => {
+  await mockEmptyApplicationLists(page);
+  const first = "55555555-5555-4555-8555-555555555555",
+    second = "66666666-6666-4666-8666-666666666666";
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { stackit: true, github: false, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: user, login: "owner@example.test" },
+        tenant: {
+          id: tenant,
+          name: "Workspace",
+          kind: "organisation",
+          roles: ["platform-engineer"],
+          manageMembers: true,
+        },
+        csrfToken: "retirement-csrf",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        stackitVerified: true,
+      },
+    }),
+  );
+  await page.route("**/api/v1/credentials", (route) =>
+    route.fulfill({
+      json: {
+        profiles: [
+          {
+            id: first,
+            name: "First profile",
+            serviceAccount: "first@example.test",
+            state: "stored",
+          },
+          {
+            id: second,
+            name: "Second profile",
+            serviceAccount: "second@example.test",
+            state: "stored",
+          },
+        ],
+      },
+    }),
+  );
+  let oldSeen = false,
+    releaseOld: (() => Promise<void>) | undefined;
+  await page.route("**/api/v1/retirements**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
+    if (path.endsWith("/execution"))
+      return route.fulfill({
+        json: {
+          retirementId: id,
+          generation: 1,
+          hasHandoff: false,
+          prepared: false,
+          canPrepare: true,
+          scopes: [],
+          jobs: [],
+        },
+      });
+    if (path.endsWith("/credential-project")) {
+      const body = route.request().postDataJSON();
+      if (body.credentialProfileId === first) {
+        oldSeen = true;
+        releaseOld = () =>
+          route
+            .fulfill({
+              json: {
+                credentialProfileId: first,
+                projectId: first,
+                name: "Stale bootstrap project",
+              },
+            })
+            .catch(() => {});
+        return;
+      }
+      expect(body.credentialProfileId).toBe(second);
+      return route.fulfill({
+        json: {
+          credentialProfileId: second,
+          projectId: second,
+          name: "Selected bootstrap project",
+        },
+      });
+    }
+    return route.fulfill({
+      json: [
+        {
+          id,
+          stateKey,
+          name: "Company platform",
+          organizationId: "44444444-4444-4444-8444-444444444444",
+          createdBy: user,
+          reason: "Retire",
+          notBefore: new Date(Date.now() - 60000).toISOString(),
+          createdAt: new Date().toISOString(),
+          phase: "PREPARED",
+          generation: 1,
+          applications: [],
+          blockers: [],
+        },
+      ],
+    });
+  });
+  await page.goto("/deployments/retire");
+  const panel = page.getByRole("region", { name: "Retire landing zones" });
+  await panel
+    .getByRole("button", { name: "Continue retirement", exact: true })
+    .click();
+  const select = panel.getByRole("combobox", {
+    name: "Service account profile",
+    exact: true,
+  });
+  await select.selectOption(first);
+  await expect.poll(() => oldSeen).toBe(true);
+  const aborted = page.waitForEvent("requestfailed", {
+    predicate: (r) =>
+      r.url().endsWith("/credential-project") &&
+      r.postDataJSON()?.credentialProfileId === first,
+  });
+  await select.selectOption(second);
+  await aborted;
+  await expect(
+    panel.getByText("Project assignment verified.", { exact: true }),
+  ).toBeVisible();
+  await panel
+    .getByText("Service account project details", { exact: true })
+    .click();
+  await expect(panel.getByText("Selected bootstrap project")).toBeVisible();
+  await releaseOld?.();
+  await expect(panel.getByText("Selected bootstrap project")).toBeVisible();
+  await expect(panel.getByText("Stale bootstrap project")).toHaveCount(0);
 });

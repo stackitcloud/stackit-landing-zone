@@ -145,6 +145,7 @@ test("patch release notes describe their changes and unknown versions require cu
  const consultation=run("v2.2.5","skip");assert.equal(consultation.status,0,consultation.stderr);assert.match(consultation.stdout,/Retain displayed choices/);assert.match(consultation.stdout,/qualification remains incomplete/);assert.match(consultation.stdout,/#292.*#293.*#294.*#295/);assert.ok(consultation.stdout.split(/\s+/).length<180);
  const cleanup=run("v2.3.0","skip");assert.equal(cleanup.status,0,cleanup.stderr);assert.match(cleanup.stdout,/fresh Plan against the existing State/);assert.match(cleanup.stdout,/Delete saved configurations/);assert.match(cleanup.stdout,/Combined requests can still exceed/);assert.ok(cleanup.stdout.split(/\s+/).length<200);
  const future=run("v2.0.2");assert.notEqual(future.status,0);assert.match(future.stderr,/Curated release notes required/);
+ const profile=run("v2.3.2","skip");assert.equal(profile.status,0,profile.stderr);assert.match(profile.stdout,/no manual project ID/);assert.match(profile.stdout,/Continue retirement/);assert.ok(profile.stdout.split(/\s+/).length<180);
  const retirement=run("v2.3.1","skip");assert.equal(retirement.status,0,retirement.stderr);assert.match(retirement.stdout,/without creating an Application platform binding/);assert.match(retirement.stdout,/completed S3 backend migrations/);assert.ok(retirement.stdout.split(/\s+/).length<180);
 });
 

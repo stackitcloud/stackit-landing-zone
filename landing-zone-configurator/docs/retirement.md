@@ -31,14 +31,19 @@ not run another Plan/Apply or change cloud resources.
 2. New orders, publications, expansions, source upgrades and stale execution
    capabilities are fenced immediately. Inspect and reconcile existing writers.
    Pause does not reopen admissions; resume invalidates earlier generations.
-3. After the preparation window, choose the acting owner's personal cleanup
-   credential profile and its independent home project. Confirm surviving access,
+3. After the preparation window, select **Continue retirement** and choose the
+   acting owner's saved cleanup credential profile. The project in which the account was created is resolved
+   automatically and shown under optional service-account project details after verifying the service-account
+   identity against STACKIT. Existing profiles without project metadata are discovered
+   using the authenticated account context and verified API responses; no re-upload or manual project ID is
+   needed. Failed verification blocks handover and can be retried in place.
+   Confirm surviving access,
    retention/export review and State handover. The Configurator checks organization,
    resource ownership, known children, source availability, writer stops and that
    its trusted operator project IDs and cleanup identity are outside all captured
    targets. Operator project IDs come from the deployment binding; a customer
    credential never needs access to the SaaS operator organization. The cleanup
-   account/home project and its ancestry are checked with that customer credential.
+   account, its project and its ancestry are checked with that customer credential.
 4. Explicitly hand over each original Platform/Application State to encrypted
    custody in the existing Configurator database. This is one authority transfer,
    not an additional live State. Original source/backend identities and immutable
@@ -112,6 +117,7 @@ execution controls require the platform role and fresh verified organization acc
 | `POST /api/v1/retirements` | Announce intent, date, notifications and durable admission freeze |
 | `POST /api/v1/retirements/:id` | Generation-bound inspect, pause, resume, pre-handover cancel or reschedule |
 | `GET /api/v1/retirements/:id/execution` | Safe scope/job summaries; no credentials, raw State or raw Plan |
+| `POST /api/v1/retirements/:id/credential-project` | Resolve and verify the selected profile's account project; no State handover or execution |
 | `POST /api/v1/retirements/:id/prepare` | Verify independent control and explicitly hand over State |
 | `POST /api/v1/retirements/:id/plans` | Source-bound native Plan for an eligible scope |
 | `GET .../:id/jobs/:jobId/preview` | Exact resource deletion list |

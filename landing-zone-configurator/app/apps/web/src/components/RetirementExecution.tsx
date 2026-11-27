@@ -1,6 +1,7 @@
 import {
   type Retirement,
   type RetirementExecutionReview,
+  retirementCredentialProjectSchema,
   retirementExecutionReviewSchema,
 } from "@lzc/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -87,8 +88,15 @@ export function RetirementExecutionPanel({
   const [profiles, setProfiles] = useState<
       Array<{ id: string; name: string; serviceAccount: string }>
     >([]),
-    [profile, setProfile] = useState(""),
-    [project, setProject] = useState("");
+    [profile, setProfile] = useState("");
+  const [home, setHome] = useState<{
+      credentialProfileId: string;
+      projectId: string;
+      name: string;
+    } | null>(null),
+    [homeBusy, setHomeBusy] = useState(false),
+    [homeError, setHomeError] = useState("");
+  const homeLookup = useRef<AbortController | null>(null);
   const [handoff, setHandoff] = useState(false),
     [independent, setIndependent] = useState(false),
     [confirmDelete, setConfirmDelete] = useState(false),
@@ -127,6 +135,52 @@ export function RetirementExecutionPanel({
     [tenant, session.csrfToken],
   );
   const base = `/api/v1/retirements/${retirement.id}`;
+  const verifyHomeProject = useCallback(() => {
+    const controller = new AbortController(),
+      owner = identity;
+    homeLookup.current?.abort();
+    homeLookup.current = controller;
+    setHome(null);
+    setHomeError("");
+    setHomeBusy(false);
+    if (expanded && profile && review?.canPrepare) {
+      setHomeBusy(true);
+      void api(
+        `${base}/credential-project`,
+        { generation: retirement.generation, credentialProfileId: profile },
+        controller.signal,
+      )
+        .then((result) => {
+          if (controller.signal.aborted || current.current !== owner) return;
+          const resolved = retirementCredentialProjectSchema.parse(result);
+          if (resolved.credentialProfileId !== profile)
+            throw Error("retirement_changed");
+          setHome(resolved);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted && current.current === owner)
+            setHomeError(
+              "Das Projekt des Service Accounts konnte nicht ermittelt werden. Prüfe den ausgewählten Zugang und seine Berechtigungen.",
+            );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted && current.current === owner)
+            setHomeBusy(false);
+        });
+    }
+  }, [
+    expanded,
+    profile,
+    identity,
+    api,
+    base,
+    retirement.generation,
+    review?.canPrepare,
+  ]);
+  useEffect(() => {
+    verifyHomeProject();
+    return () => homeLookup.current?.abort();
+  }, [verifyHomeProject]);
   useEffect(() => {
     current.current = identity;
     setReview(null);
@@ -223,11 +277,22 @@ export function RetirementExecutionPanel({
     <div className="retirement-execution">
       <button
         type="button"
-        className="button secondary"
+        className={
+          expanded ||
+          ["COMPLETE", "CANCELLED", "PAUSED"].includes(retirement.phase)
+            ? "button secondary"
+            : "button primary"
+        }
         aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
       >
-        {t("Rückbauschritte und Freigaben")}
+        {t(
+          expanded
+            ? "Rückbauschritte ausblenden"
+            : ["COMPLETE", "CANCELLED", "PAUSED"].includes(retirement.phase)
+              ? "Rückbaudetails anzeigen"
+              : "Rückbau fortsetzen",
+        )}
       </button>
       {expanded && (
         <>
@@ -280,11 +345,16 @@ export function RetirementExecutionPanel({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!handoff || !independent) return;
+                if (
+                  !handoff ||
+                  !independent ||
+                  homeBusy ||
+                  home?.credentialProfileId !== profile
+                )
+                  return;
                 void action("/prepare", {
                   generation: retirement.generation,
                   credentialProfileId: profile,
-                  cleanupProjectId: project,
                   confirmStateHandoff: true,
                   confirmCleanupPermissionsSurvive: true,
                 });
@@ -316,19 +386,36 @@ export function RetirementExecutionPanel({
                   ))}
                 </select>
               </label>
-              <label>
-                {t("Projekt-ID des unabhängigen Service Accounts")}
-                <input
-                  value={project}
-                  onChange={(e) => {
-                    setProject(e.target.value);
-                    setHandoff(false);
-                    setIndependent(false);
-                  }}
-                  pattern="[0-9a-fA-F-]{36}"
-                  required
-                />
-              </label>
+              {homeBusy && (
+                <p role="status">
+                  {t("Projekt des Service Accounts wird geprüft …")}
+                </p>
+              )}
+              {homeError && <p role="alert">{t(homeError)}</p>}
+              {homeError && (
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy || homeBusy}
+                  onClick={verifyHomeProject}
+                >
+                  {t("Projektzuordnung erneut prüfen")}
+                </button>
+              )}
+              {home?.credentialProfileId === profile && (
+                <>
+                  <p role="status">{t("Projektzuordnung geprüft.")}</p>
+                  <details>
+                    <summary>{t("Projektdetails zum Service Account")}</summary>
+                    <dl>
+                      <dt>{t("Projekt des Service Accounts")}</dt>
+                      <dd>
+                        {home.name} · <code>{home.projectId}</code>
+                      </dd>
+                    </dl>
+                  </details>
+                </>
+              )}
               <p>
                 {t(
                   "Der Service Account und die Configurator-Datenbank müssen außerhalb der zu löschenden Landing Zone bestehen bleiben. Prüfe Datenexporte, Aufbewahrungsregeln und den verbleibenden State im bisherigen Backend.",
@@ -358,7 +445,12 @@ export function RetirementExecutionPanel({
                 type="submit"
                 className="button"
                 disabled={
-                  busy || !profile || !project || !handoff || !independent
+                  busy ||
+                  !profile ||
+                  homeBusy ||
+                  home?.credentialProfileId !== profile ||
+                  !handoff ||
+                  !independent
                 }
               >
                 {t("Rückbauzugang prüfen und State übernehmen")}
