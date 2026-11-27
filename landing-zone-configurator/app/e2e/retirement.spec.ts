@@ -6,7 +6,7 @@ const tenant = "22222222-2222-4222-8222-222222222222",
   user = "11111111-1111-4111-8111-111111111111",
   id = "33333333-3333-4333-8333-333333333333";
 const stateKey = `platform/${tenant}/fixture/terraform.tfstate`;
-test("announces retirement with an explicit scope and seven-day window, and fences pause by generation", async ({
+test("announces retirement with an explicit scope and archives cancellation after a generation-fenced pause", async ({
   page,
 }, info) => {
   await mockEmptyApplicationLists(page);
@@ -40,6 +40,18 @@ test("announces retirement with an explicit scope and seven-day window, and fenc
   await page.route("**/api/v1/retirements**", async (route) => {
     expect(route.request().headers()["x-lzc-tenant"]).toBe(tenant);
     const path = new URL(route.request().url()).pathname;
+    if (route.request().method() === "GET" && path.endsWith("/execution"))
+      return route.fulfill({
+        json: {
+          retirementId: id,
+          generation: current?.generation ?? 1,
+          hasHandoff: false,
+          prepared: false,
+          canPrepare: false,
+          scopes: [],
+          jobs: [],
+        },
+      });
     if (route.request().method() === "GET")
       return route.fulfill({
         json: path.endsWith("/candidates")
@@ -78,12 +90,18 @@ test("announces retirement with an explicit scope and seven-day window, and fenc
           },
         ],
         blockers: ["retirement-preparation-window"],
+        canCancel: true,
       };
     } else {
       expect(body.generation).toBe(current.generation);
       current = {
         ...current,
-        phase: body.action === "pause" ? "PAUSED" : "RETIRING",
+        phase:
+          body.action === "cancel"
+            ? "CANCELLED"
+            : body.action === "pause"
+              ? "PAUSED"
+              : "RETIRING",
         generation: Number(current.generation) + 1,
       };
     }
@@ -110,16 +128,37 @@ test("announces retirement with an explicit scope and seven-day window, and fenc
   await panel.getByRole("checkbox").check();
   await submit.click();
   await expect(panel.getByRole("status")).toHaveText("Retirement announced");
+  await panel
+    .getByText("Announcement and affected landing zones", { exact: true })
+    .click();
   await expect(panel).toContainText("Forschungsumgebung");
   await expect(panel).toContainText("Demo abgeschlossen");
   await expect(panel).toContainText(
     "The announced preparation window has not ended.",
   );
+  await panel.getByText("Manage retirement", { exact: true }).click();
   await panel
     .getByRole("button", { name: "Pause retirement", exact: true })
     .click();
   await expect(panel.getByRole("status")).toHaveText("Retirement paused");
   expect(mutations).toHaveLength(2);
+  await panel
+    .getByRole("button", { name: "Resume retirement", exact: true })
+    .click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await panel
+    .getByRole("button", { name: "Cancel retirement", exact: true })
+    .click();
+  await expect(panel.locator(".retirement-current")).toHaveCount(0);
+  await expect(
+    panel.getByText(
+      "No retirement is in progress. Previous attempts are available in the history.",
+    ),
+  ).toBeVisible();
+  await expect(
+    panel.getByText("Retirement history (1)", { exact: true }),
+  ).toBeVisible();
+  expect(mutations).toHaveLength(4);
   await expect(panel).not.toContainText("Rückbau");
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
@@ -355,9 +394,6 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
   await page.goto("/deployments/retire");
   const panel = page.getByRole("region", { name: "Retire landing zones" });
   await panel
-    .getByRole("button", { name: "Continue retirement", exact: true })
-    .click();
-  await panel
     .getByRole("combobox", { name: "Service account profile", exact: true })
     .selectOption(profileId);
   await expect(
@@ -564,9 +600,6 @@ test("keeps the selected profile's home project when an older lookup finishes la
   });
   await page.goto("/deployments/retire");
   const panel = page.getByRole("region", { name: "Retire landing zones" });
-  await panel
-    .getByRole("button", { name: "Continue retirement", exact: true })
-    .click();
   const select = panel.getByRole("combobox", {
     name: "Service account profile",
     exact: true,
@@ -753,9 +786,6 @@ test("refreshes a running retirement automatically and shows native output, fail
   });
   await page.goto("/deployments/retire");
   const panel = page.getByRole("region", { name: "Retire landing zones" });
-  await panel
-    .getByRole("button", { name: "Continue retirement", exact: true })
-    .click();
   await expect(panel.getByText("Starting", { exact: true })).toBeVisible();
   await expect(
     panel.getByRole("list", { name: "Retirement steps" }),
@@ -808,9 +838,148 @@ test("refreshes a running retirement automatically and shows native output, fail
   });
 });
 
-test("leaves active jobs, interrupted State and other operators outside automatic completion", async ({
+for (const paused of [false, true]) {
+  test(`keeps protected runs visible without automatic mutation (${paused ? "paused" : "active"})`, async ({
+    page,
+  }) => {
+    await mockEmptyApplicationLists(page);
+    await page.route("**/auth/status", (route) =>
+      route.fulfill({
+        json: { stackit: true, github: false, primary: "stackit" },
+      }),
+    );
+    await page.route("**/api/v1/backends", (route) =>
+      route.fulfill({ json: { backends: [] } }),
+    );
+    await page.route("**/api/v1/session", (route) =>
+      route.fulfill({
+        json: {
+          user: { id: user, login: "owner@example.test" },
+          tenant: {
+            id: tenant,
+            name: "Completion boundaries",
+            kind: "organisation",
+            roles: ["platform-engineer"],
+            manageMembers: true,
+          },
+          csrfToken: "retirement-csrf",
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+          stackitVerified: true,
+        },
+      }),
+    );
+    const current = {
+      id,
+      name: "Completion boundaries",
+      stateKey,
+      organizationId: "44444444-4444-4444-8444-444444444444",
+      createdBy: user,
+      reason: "Synthetic completion boundaries",
+      notBefore: new Date(Date.now() - 60000).toISOString(),
+      createdAt: new Date().toISOString(),
+      phase: paused ? "PAUSED" : "PREPARED",
+      generation: 1,
+      applications: [],
+      blockers: [],
+    };
+    const job = {
+      scopeId: "66666666-6666-4666-8666-666666666666",
+      operatorId: user,
+      generation: 1,
+      operation: "plan",
+      phase: "private_workloads",
+      status: "recovery_required",
+      nativeStatus: "succeeded",
+      createdAt: current.createdAt,
+      sourceRevision: "a".repeat(40),
+      providerLockSha256: "b".repeat(64),
+      artifactSha256: null,
+      deleteCount: 0,
+      canApply: false,
+      canInspect: true,
+      recoveryAvailable: false,
+      recoveryPending: false,
+      errorCode: null,
+    };
+    let reads = 0,
+      mutations = 0;
+    await page.route("**/api/v1/retirements**", (route) => {
+      if (route.request().method() !== "GET") {
+        mutations++;
+        return route.fulfill({
+          status: 409,
+          json: { error: "unexpected_completion" },
+        });
+      }
+      const path = new URL(route.request().url()).pathname;
+      if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
+      if (path.endsWith("/output"))
+        return route.fulfill({ json: { text: "", truncated: false } });
+      if (path.endsWith("/execution")) {
+        reads++;
+        return route.fulfill({
+          json: {
+            retirementId: id,
+            generation: 1,
+            hasHandoff: true,
+            prepared: true,
+            canPrepare: false,
+            scopes: [],
+            jobs: [
+              {
+                ...job,
+                id: "77777777-7777-4777-8777-777777777770",
+                nativeStatus: null,
+                status: "planning",
+              },
+              {
+                ...job,
+                id: "77777777-7777-4777-8777-777777777771",
+                nativeStatus: "failed",
+                recoveryPending: true,
+              },
+              {
+                ...job,
+                id: "77777777-7777-4777-8777-777777777772",
+                nativeStatus: "failed",
+                recoveryAvailable: true,
+              },
+              {
+                ...job,
+                id: "77777777-7777-4777-8777-777777777773",
+                operatorId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              },
+              {
+                ...job,
+                id: "77777777-7777-4777-8777-777777777774",
+                generation: 2,
+              },
+              ...(paused
+                ? [{ ...job, id: "77777777-7777-4777-8777-777777777775" }]
+                : []),
+            ],
+          },
+        });
+      }
+      return route.fulfill({ json: [current] });
+    });
+    await page.goto("/deployments/retire");
+    await expect.poll(() => reads, { timeout: 7000 }).toBeGreaterThanOrEqual(3);
+    expect(mutations).toBe(0);
+    if (paused)
+      await expect(
+        page.getByRole("button", { name: "Resume retirement", exact: true }),
+      ).toBeVisible();
+    await expect(page.locator(".retirement-job")).toHaveCount(paused ? 6 : 5);
+    await expect(
+      page.getByRole("button", { name: "Apply reviewed retirement plan" }),
+    ).toHaveCount(0);
+  });
+}
+
+test("keeps the current retirement and its approval together while older attempts are read-only history", async ({
   page,
-}) => {
+}, info) => {
   await mockEmptyApplicationLists(page);
   await page.route("**/auth/status", (route) =>
     route.fulfill({
@@ -826,7 +995,7 @@ test("leaves active jobs, interrupted State and other operators outside automati
         user: { id: user, login: "owner@example.test" },
         tenant: {
           id: tenant,
-          name: "Completion boundaries",
+          name: "Guided retirement",
           kind: "organisation",
           roles: ["platform-engineer"],
           manageMembers: true,
@@ -837,13 +1006,19 @@ test("leaves active jobs, interrupted State and other operators outside automati
       },
     }),
   );
+  const archiveId = "33333333-3333-4333-8333-333333333334";
+  const scopeId = "66666666-6666-4666-8666-666666666666";
+  const latestId = "77777777-7777-4777-8777-777777777770";
+  const oldId = "77777777-7777-4777-8777-777777777771";
+  const oldApplyId = "77777777-7777-4777-8777-777777777772";
+  const archiveJobId = "77777777-7777-4777-8777-777777777773";
   const current = {
     id,
-    name: "Completion boundaries",
+    name: "My company platform",
     stateKey,
     organizationId: "44444444-4444-4444-8444-444444444444",
     createdBy: user,
-    reason: "Synthetic completion boundaries",
+    reason: "Current attempt",
     notBefore: new Date(Date.now() - 60000).toISOString(),
     createdAt: new Date().toISOString(),
     phase: "PREPARED",
@@ -851,92 +1026,219 @@ test("leaves active jobs, interrupted State and other operators outside automati
     applications: [],
     blockers: [],
   };
+  const cancelled = {
+    ...current,
+    id: archiveId,
+    reason: "Superseded attempt",
+    phase: "CANCELLED",
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+  };
   const job = {
-    scopeId: "66666666-6666-4666-8666-666666666666",
+    scopeId,
     operatorId: user,
     generation: 1,
     operation: "plan",
-    phase: "private_workloads",
-    status: "recovery_required",
+    phase: "remove_projects",
+    status: "succeeded",
     nativeStatus: "succeeded",
     createdAt: current.createdAt,
     sourceRevision: "a".repeat(40),
     providerLockSha256: "b".repeat(64),
-    artifactSha256: null,
-    deleteCount: 0,
-    canApply: false,
-    canInspect: true,
+    artifactSha256: "c".repeat(64),
+    deleteCount: 2,
+    canApply: true,
+    canInspect: false,
     recoveryAvailable: false,
     recoveryPending: false,
     errorCode: null,
   };
-  let reads = 0,
-    mutations = 0;
+  const previousJobs = [
+    {
+      ...job,
+      id: oldId,
+      createdAt: cancelled.createdAt,
+      status: "failed",
+      nativeStatus: "failed",
+      canApply: false,
+      errorCode: "retirement_plan_failed",
+    },
+    {
+      ...job,
+      id: oldApplyId,
+      createdAt: cancelled.createdAt,
+      operation: "apply",
+      phase: "private_workloads",
+      canApply: false,
+    },
+  ];
+  const outputRequests: string[] = [];
+  let writes = 0,
+    archiveReads = 0;
   await page.route("**/api/v1/retirements**", (route) => {
+    const path = new URL(route.request().url()).pathname;
     if (route.request().method() !== "GET") {
-      mutations++;
+      writes++;
       return route.fulfill({
         status: 409,
-        json: { error: "unexpected_completion" },
+        json: { error: "unexpected_mutation" },
       });
     }
-    const path = new URL(route.request().url()).pathname;
     if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
-    if (path.endsWith("/output"))
-      return route.fulfill({ json: { text: "", truncated: false } });
     if (path.endsWith("/execution")) {
-      reads++;
+      const archived = path.includes(archiveId);
+      if (archived) archiveReads++;
       return route.fulfill({
         json: {
-          retirementId: id,
+          retirementId: archived ? archiveId : id,
           generation: 1,
           hasHandoff: true,
           prepared: true,
-          canPrepare: false,
-          scopes: [],
-          jobs: [
+          canPrepare: true,
+          scopes: [
             {
-              ...job,
-              id: "77777777-7777-4777-8777-777777777770",
-              nativeStatus: null,
-              status: "planning",
+              id: scopeId,
+              name: "My company platform",
+              instanceId: null,
+              stage: "remove_projects",
+              stateVersion: "2",
+              canPlan: false,
             },
+          ],
+          jobs: archived
+            ? [
+                {
+                  ...job,
+                  id: archiveJobId,
+                  canInspect: true,
+                  recoveryAvailable: true,
+                },
+              ]
+            : [previousJobs[0], { ...job, id: latestId }, previousJobs[1]],
+        },
+      });
+    }
+    if (path.endsWith("/preview"))
+      return route.fulfill({
+        json: {
+          id: latestId,
+          phase: "remove_projects",
+          artifactSha256: "c".repeat(64),
+          deletes: [
             {
-              ...job,
-              id: "77777777-7777-4777-8777-777777777771",
-              nativeStatus: "failed",
-              recoveryPending: true,
-            },
-            {
-              ...job,
-              id: "77777777-7777-4777-8777-777777777772",
-              nativeStatus: "failed",
-              recoveryAvailable: true,
-            },
-            {
-              ...job,
-              id: "77777777-7777-4777-8777-777777777773",
-              operatorId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-            },
-            {
-              ...job,
-              id: "77777777-7777-4777-8777-777777777774",
-              generation: 2,
+              address: "module.management.example",
+              type: "example",
+              id: "synthetic-resource",
             },
           ],
         },
       });
+    if (path.endsWith("/output")) {
+      const jobId = path.split("/").at(-2)!;
+      outputRequests.push(jobId);
+      return route.fulfill({
+        json: {
+          text:
+            jobId === latestId ? "CURRENT_PLAN_OUTPUT" : "HISTORICAL_OUTPUT",
+          truncated: false,
+        },
+      });
     }
-    return route.fulfill({ json: [current] });
+    return route.fulfill({ json: [cancelled, current] });
   });
   await page.goto("/deployments/retire");
-  await page
-    .getByRole("button", { name: "Continue retirement", exact: true })
-    .click();
-  await expect.poll(() => reads, { timeout: 7000 }).toBeGreaterThanOrEqual(3);
-  expect(mutations).toBe(0);
-  await expect(page.locator(".retirement-job")).toHaveCount(5);
+  const panel = page.getByRole("region", { name: "Retire landing zones" });
+  const active = panel.locator(".retirement-current");
+  await expect(active).toHaveCount(1);
+  await expect(active.locator(".retirement-job:visible")).toHaveCount(1);
   await expect(
-    page.getByRole("button", { name: "Apply reviewed retirement plan" }),
-  ).toHaveCount(0);
+    active
+      .getByRole("list", { name: "Retirement steps" })
+      .getByRole("listitem")
+      .first(),
+  ).toContainText("Completed");
+  await active
+    .locator(".retirement-scope > .retirement-job")
+    .getByText("OpenTofu output", { exact: true })
+    .click();
+  await expect(active.getByText("CURRENT_PLAN_OUTPUT")).toBeVisible();
+  await active
+    .locator(".retirement-scope > .retirement-job")
+    .getByText("OpenTofu output", { exact: true })
+    .click();
+  await expect(
+    panel.getByText("Superseded attempt", { exact: true }),
+  ).toBeHidden();
+  await expect(
+    active.getByText(
+      "OpenTofu could not create the retirement Plan. Check the OpenTofu output.",
+    ),
+  ).toBeHidden();
+  expect(archiveReads).toBe(0);
+  expect(outputRequests.every((value) => value === latestId)).toBe(true);
+  await expect(
+    active.getByRole("heading", { name: "Reconfirm retirement credentials" }),
+  ).toBeHidden();
+  await active
+    .getByRole("button", { name: "Review deletions", exact: true })
+    .click();
+  const currentJob = active.locator(".retirement-scope > .retirement-job");
+  await expect(
+    currentJob.getByRole("region", { name: "Planned deletions" }),
+  ).toBeVisible();
+  const apply = currentJob.getByRole("button", {
+    name: "Apply reviewed retirement plan",
+  });
+  await expect(apply).toBeDisabled();
+  await currentJob
+    .getByRole("checkbox", {
+      name: "Data exports, backups and retention requirements have been reviewed.",
+    })
+    .check();
+  await currentJob
+    .getByRole("checkbox", {
+      name: "I confirm permanent deletion of exactly this reviewed scope.",
+    })
+    .check();
+  await expect(apply).toBeEnabled();
+  expect(writes).toBe(0);
+  const renewal = active
+    .locator("summary")
+    .filter({ hasText: /^Reconfirm retirement credentials$/ });
+  await renewal.click();
+  await expect(
+    active.getByRole("heading", { name: "Reconfirm retirement credentials" }),
+  ).toBeVisible();
+  await renewal.click();
+  await expect(
+    active.getByRole("heading", { name: "Reconfirm retirement credentials" }),
+  ).toBeHidden();
+  await expect(apply).toBeEnabled();
+  expect(writes).toBe(0);
+  await active
+    .getByText("Completed steps and previous runs (2)", { exact: true })
+    .click();
+  await expect(
+    active.getByText(
+      "OpenTofu could not create the retirement Plan. Check the OpenTofu output.",
+    ),
+  ).toBeVisible();
+  await panel.getByText("Retirement history (1)", { exact: true }).click();
+  await panel.locator(".retirement-history > details > summary").click();
+  const archive = panel.locator(".retirement-archived");
+  await expect.poll(() => archiveReads).toBe(1);
+  await expect(archive.locator(".retirement-job")).toHaveCount(1);
+  await expect(archive.getByRole("button")).toHaveCount(0);
+  await archive.getByText("OpenTofu output", { exact: true }).click();
+  await expect(archive.getByText("HISTORICAL_OUTPUT")).toBeVisible();
+  expect(writes).toBe(0);
+  // History browsing cannot reset or move the current plan's approval.
+  await expect(apply).toBeEnabled();
+  await panel.getByText("Retirement history (1)", { exact: true }).click();
+  await active
+    .getByText("Completed steps and previous runs (2)", { exact: true })
+    .click();
+  await page.screenshot({
+    path: info.outputPath("retirement-guided-overview.png"),
+    fullPage: true,
+  });
 });

@@ -36,7 +36,7 @@ dieser Nachweise startet keinen weiteren Plan/Apply und ändert keine Cloud-Ress
    Ausführungsfreigaben werden sofort gesperrt. Bereits laufende Schreibprozesse
    prüfen und abgleichen. Pausieren öffnet keine Neuanlagen; Fortsetzen entwertet
    frühere Generationen.
-3. Nach dem Vorbereitungsfenster **Rückbau fortsetzen** öffnen und das gespeicherte
+3. Nach dem Vorbereitungsfenster im automatisch geöffneten aktuellen Rückbau das gespeicherte
    Zugangsdatenprofil des tatsächlich handelnden Owners auswählen. Das Projekt, in dem der Account angelegt wurde,
    wird automatisch ermittelt und nach Abgleich der Service-Account-Identität mit
    STACKIT unter den optionalen Projektdetails mit Name und ID angezeigt. Bei bestehenden Profilen ohne Projektmetadaten
@@ -121,6 +121,26 @@ Buckets. Unabhängige Zugangsdaten und Datenbanksicherungen bis zum vollständig
 Abgleich erhalten.
 
 ### Fortschritt und Fehlerdiagnose
+
+Der aktuelle Rückbau steht getrennt von abgebrochenen und abgeschlossenen Versuchen.
+Jede Landing Zone hat ihren eigenen aktuellen Ablauf; ein älterer Versuch ersetzt
+keinen ungeklärten aktiven Rückbau. Der **Rückbauverlauf** ist zunächst eingeklappt
+und lädt Ausführungsdetails erst beim Öffnen eines Versuchs. Historische Versuche
+sind nur lesbar: Sie bieten Ausgabe und Nachweise, aber keine Plan-, Apply-,
+Zugangsdaten- oder Wiederherstellungsaktionen.
+
+Jeder aktuelle Bereich führt Phase, nächste Aktion, neuesten Lauf, native Ausgabe
+und die genaue Löschfreigabe zusammen. Erledigte Schritte und überholte Läufe
+wandern in den eingeklappten Ausführungsverlauf. Ungeklärte Ausführungen und
+State-Wiederherstellungen bleiben auch dann sichtbar, wenn ein neuerer Lauf
+existiert. Application-Bereiche stehen vor der von ihnen blockierten Plattform.
+Eine vorbereitete Zugangsfreigabe wird während ihrer Gültigkeit nicht erneut
+angefordert. Pausieren, Abbrechen und ausdrückliche Statusprüfungen stehen unter
+**Rückbau verwalten**; bei einem pausierten Rückbau ist **Rückbau wiederaufnehmen**
+die primäre Aktion. Status, Ausgabe und ungeklärte Arbeit bleiben sichtbar;
+Ausführung und automatische Abschlussprüfungen pausieren bis zur Wiederaufnahme.
+Die erneute Bestätigung des Rückbauzugangs bleibt in optionalen eingeklappten
+Details erreichbar.
 
 Lasse die Rückbauschritte geöffnet, um den aktiven Auftrag zu verfolgen. Status und
 OpenTofu-Ausgabe aktualisieren sich automatisch. Jeder Auftrag behält seine eigene

@@ -31,7 +31,7 @@ not run another Plan/Apply or change cloud resources.
 2. New orders, publications, expansions, source upgrades and stale execution
    capabilities are fenced immediately. Inspect and reconcile existing writers.
    Pause does not reopen admissions; resume invalidates earlier generations.
-3. After the preparation window, select **Continue retirement** and choose the
+3. After the preparation window, use the automatically opened current retirement and choose the
    acting owner's saved cleanup credential profile. The project in which the account was created is resolved
    automatically and shown under optional service-account project details after verifying the service-account
    identity against STACKIT. Existing profiles without project metadata are discovered
@@ -106,6 +106,23 @@ or silently erase bucket contents. Independent control credentials and database
 backups must remain available until the whole retirement is reconciled.
 
 ### Progress and failure diagnostics
+
+The current retirement is shown separately from cancelled and completed attempts.
+Each Landing Zone has its own current workflow; an older attempt never replaces
+an unresolved active one. **Retirement history** is collapsed by default and loads
+execution details only when an attempt is opened. Historical attempts are read-only:
+they offer output and evidence, not Plan, Apply, credential or recovery actions.
+
+Each current scope groups its phase, next action, latest run, native output and
+exact deletion approval together. Completed steps and superseded runs move into
+collapsed run history. Unresolved execution and State recovery stay visible even
+when a newer run exists. Application scopes are shown before the platform they
+block. A prepared credential grant is not requested again while it remains valid.
+Pause, cancellation and explicit status checks are under **Manage retirement**;
+a paused retirement presents **Resume retirement** as its primary action. Its
+status, output and unresolved work remain visible, with execution and automatic
+completion checks suspended until resume. Credential renewal remains available
+under collapsed optional details.
 
 Keep the retirement steps open to follow the active job. Status and OpenTofu
 output refresh automatically. Each job retains its own bounded, redacted output;

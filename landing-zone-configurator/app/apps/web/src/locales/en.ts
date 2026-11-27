@@ -1,4 +1,34 @@
 export const englishMessages: Record<string, string> = {
+  "Schritt abgeschlossen": "Completed",
+  "Die Abschlussprüfung muss vom Benutzer durchgeführt werden, der den Lauf gestartet hat.":
+    "The user who started this run must complete its final review.",
+  "Voraussetzungen erneut prüfen": "Recheck prerequisites",
+  "In diesem Versuch wurden keine Rückbauschritte ausgeführt.":
+    "No retirement steps were executed in this attempt.",
+  "Das Vorbereitungsfenster läuft. Der nächste Schritt wird ab dem angekündigten Termin verfügbar.":
+    "The preparation window is open. The next step becomes available from the announced date.",
+  "Rückbaustand wird geladen …": "Loading retirement status …",
+  "Bereinige zuerst die Application Landing Zones. Danach kann der Plattform-Rückbau fortgesetzt werden.":
+    "Clean up the Application Landing Zones first. Platform retirement can then continue.",
+  "Erstelle den Plan für diesen Schritt. Prüfe danach den Löschumfang und gib die Ausführung frei.":
+    "Create the plan for this step, then review the deletion scope and approve execution.",
+  "STACKIT muss die Projekte endgültig gelöscht haben, bevor die Ordner entfernt werden können. Ein neuer Plan prüft den aktuellen Löschumfang.":
+    "STACKIT must permanently delete the projects before their folders can be removed. A new plan checks the current deletion scope.",
+  "Nächster Schritt": "Next step",
+  "Abgeschlossene Schritte und frühere Läufe":
+    "Completed steps and previous runs",
+  "Rückbautermin ändern": "Change retirement date",
+  "Weitere Prüfungen": "Additional checks",
+  "Neuen Rückbau ankündigen": "Announce a new retirement",
+  "Rückbau verwalten": "Manage retirement",
+  "Ankündigung und betroffene Landing Zones":
+    "Announcement and affected landing zones",
+  "Abgebrochene und abgeschlossene Rückbauten. Diese Einträge sind nur zur Einsicht und erfordern keine Aktion.":
+    "Cancelled and completed retirements. These records are read-only and require no action.",
+  Rückbauverlauf: "Retirement history",
+  "Kein laufender Rückbau. Frühere Versuche findest du im Verlauf.":
+    "No retirement is in progress. Previous attempts are available in the history.",
+  "Aktueller Rückbau": "Current retirement",
   "Ausgabe erneut laden": "Reload output",
   "Für diesen abgeschlossenen Lauf wurde keine OpenTofu-Ausgabe gespeichert.":
     "No OpenTofu output was saved for this completed execution.",
