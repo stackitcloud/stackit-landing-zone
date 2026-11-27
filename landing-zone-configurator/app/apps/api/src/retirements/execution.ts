@@ -2,6 +2,8 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   retirementApplyRequestSchema,
   retirementExecutionReviewSchema,
+  retirementOutputSchema,
+  retirementPlanFailureCodeSchema,
   retirementPlanRequestSchema,
 } from "@lzc/contracts";
 import {
@@ -145,6 +147,7 @@ const resultSchema = z.strictObject({
       "retirement_plan_outcome_unconfirmed",
       "retirement_runner_stopped_before_apply",
     ])
+    .or(retirementPlanFailureCodeSchema)
     .nullable()
     .optional(),
 });
@@ -476,7 +479,7 @@ export class RetirementExecution {
       .catch(() => {});
     return { id };
   }
-  private async resolve(ticket: string, recovery = false) {
+  private async ticketIdentity(ticket: string, recovery = false) {
     if (!/^[A-Za-z0-9_-]{43}$/.test(ticket))
       throw fail("invalid_runner_ticket", 401);
     const row = (
@@ -490,12 +493,16 @@ export class RetirementExecution {
       tenantId: z.uuid().parse(row.tenant_id),
       userId: z.uuid().parse(row.operator_id),
     };
+    return { identity, id: z.uuid().parse(row.id) };
+  }
+  private async resolve(ticket: string, recovery = false) {
+    const { identity, id } = await this.ticketIdentity(ticket, recovery);
     const context = await withTenant(this.pool, identity, async (c) =>
       runnerContextSchema.parse(
         (
           await c.query(
             "SELECT lzc_auth.retirement_runner_context($1) AS value",
-            [row.id],
+            [id],
           )
         ).rows[0].value,
       ),
@@ -582,6 +589,31 @@ export class RetirementExecution {
           .parse(stage),
       ]),
     );
+  }
+  async output(ticket: string, raw: unknown) {
+    const { identity, id } = await this.ticketIdentity(ticket);
+    const output = retirementOutputSchema.parse(raw);
+    await withTenant(this.pool, identity, (c) =>
+      c.query("SELECT lzc_auth.retirement_store_output($1,$2,$3)", [
+        id,
+        output.text,
+        output.truncated,
+      ]),
+    );
+  }
+  async jobOutput(session: Session, id: string, jobId: string) {
+    const output = await withTenant(
+      this.pool,
+      session,
+      async (c) =>
+        (
+          await c.query(
+            "SELECT output_text AS text,output_truncated AS truncated FROM lzc_auth.retirement_job_for_review($1,$2,$3)",
+            [session.id, z.uuid().parse(id), z.uuid().parse(jobId)],
+          )
+        ).rows[0],
+    );
+    return retirementOutputSchema.parse(output);
   }
   async artifact(ticket: string, raw: unknown) {
     const { identity, context } = await this.resolve(ticket),

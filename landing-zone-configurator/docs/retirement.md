@@ -105,6 +105,25 @@ their owning service. This feature does not enable `force_destroy`, bypass reten
 or silently erase bucket contents. Independent control credentials and database
 backups must remain available until the whole retirement is reconciled.
 
+### Progress and failure diagnostics
+
+Keep the retirement steps open to follow the active job. Status and OpenTofu
+output refresh automatically. Each job retains its own bounded, redacted output;
+raw State and machine-readable saved-plan JSON are never displayed. Older jobs
+created before output capture was available can have no retained output.
+
+The step list shows service/control-plane cleanup, project removal and deferred
+folder deletion. Review the actual deletion list from the successful native Plan
+before approving Apply; technical source and provider evidence is available under
+optional details. If a Plan fails, verify its stopped runner and result before
+creating another Plan. This verification does not execute a deletion.
+
+Snapshot checks use the exact authoritative HTTP State document. `tofu state pull`
+can normalize or reorder `check_results`; that representation is used for inventory
+verification, not as a byte-equivalent witness. The same authoritative document
+check binds post-Apply receipts, and State version/locking and deletion approvals
+remain enforced.
+
 ## API and deployment contract
 
 Browser APIs require one resolved session, the explicit workspace header and
@@ -117,6 +136,8 @@ execution controls require the platform role and fresh verified organization acc
 | `POST /api/v1/retirements` | Announce intent, date, notifications and durable admission freeze |
 | `POST /api/v1/retirements/:id` | Generation-bound inspect, pause, resume, pre-handover cancel or reschedule |
 | `GET /api/v1/retirements/:id/execution` | Safe scope/job summaries; no credentials, raw State or raw Plan |
+| `GET /api/v1/retirements/:id/jobs/:jobId/output` | Read workspace-authorized, redacted native output for one job |
+| `POST /api/retirement-runner/output` | Publish bounded progress under the one-job runner capability |
 | `POST /api/v1/retirements/:id/credential-project` | Resolve and verify the selected profile's account project; no State handover or execution |
 | `POST /api/v1/retirements/:id/prepare` | Verify independent control and explicitly hand over State |
 | `POST /api/v1/retirements/:id/plans` | Source-bound native Plan for an eligible scope |

@@ -165,6 +165,8 @@ it("separates cookie-authorized review from one-job runner and HTTP-State capabi
       .fn<RetirementExecutionRoutes["input"]>()
       .mockRejectedValue(new CredentialError(409, "retirement_state_changed")),
     stage: vi.fn(),
+    output: vi.fn(),
+    jobOutput: vi.fn(async () => ({ text: "", truncated: false })),
     artifact: vi.fn(),
     state: vi.fn(async () => ({ version: 4 })),
     result: vi.fn(),
@@ -252,6 +254,32 @@ it("separates cookie-authorized review from one-job runner and HTTP-State capabi
       ).statusCode,
     ).toBe(200);
     expect(execution.review).toHaveBeenCalledWith(f.session, id);
+    const outputPath = `/api/v1/retirements/${id}/jobs/${randomUUID()}/output`;
+    expect((await f.app.inject({ url: outputPath })).statusCode).toBe(401);
+    expect(
+      (
+        await f.app.inject({
+          url: outputPath,
+          headers: { ...f.headers, "x-lzc-tenant": randomUUID() },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(execution.jobOutput).not.toHaveBeenCalled();
+    const output = await f.app.inject({ url: outputPath, headers: f.headers });
+    expect(output.statusCode).toBe(200);
+    expect(output.headers["cache-control"]).toBe("no-store");
+    expect(output.json()).toEqual({ text: "", truncated: false });
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/retirement-runner/output",
+          headers: f.headers,
+          payload: { text: "", truncated: false },
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(execution.output).not.toHaveBeenCalled();
     expect(
       (
         await f.app.inject({
@@ -290,6 +318,18 @@ it("separates cookie-authorized review from one-job runner and HTTP-State capabi
       ).statusCode,
     ).toBe(409);
     expect(execution.input).toHaveBeenCalledWith(ticket);
+    const nativeOutput = { text: "$ tofu init\n", truncated: false };
+    expect(
+      (
+        await f.app.inject({
+          method: "POST",
+          url: "/api/retirement-runner/output",
+          headers: bearer,
+          payload: nativeOutput,
+        })
+      ).statusCode,
+    ).toBe(204);
+    expect(execution.output).toHaveBeenCalledWith(ticket, nativeOutput);
     expect(
       (
         await f.app.inject({

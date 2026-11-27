@@ -15,6 +15,7 @@ import { join, resolve } from "node:path";
 import {
   applicationExecutionProfile,
   platformRunnerSourceSchema,
+  retirementPlanFailureCodeSchema,
 } from "@lzc/contracts";
 import {
   assertRetirementProtectedResources,
@@ -34,6 +35,11 @@ import {
   verifyRetirementPlan,
 } from "@lzc/contracts/recovery";
 import { z } from "zod";
+import {
+  retirementOutput,
+  retirementOutputSecrets,
+} from "./retirement-output.js";
+import { readRetirementBackendState } from "./retirement-state.js";
 import { hostedBrokerOrigin, localBrokerOrigin } from "./runner.js";
 
 const hash = (bytes: Buffer | string) =>
@@ -51,6 +57,7 @@ export type RetirementWorkerOptions = {
   timeoutMilliseconds?: number;
   report?: Report;
   recoveryRetryMilliseconds?: number;
+  fetch?: typeof fetch;
 };
 async function bounded(path: string) {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -98,6 +105,24 @@ export async function runRetirementWorker(
     preserveRecovery = false;
   let retainedState: Buffer | undefined;
   let recoveryRequired = false;
+  let outputSecrets: string[] = [];
+  let acknowledgedOutput: { text: string; truncated: boolean } | undefined;
+  const publishOutput = async (live = false) => {
+    if (!workPath) return;
+    try {
+      const output = await retirementOutput(workPath, outputSecrets, live);
+      if (
+        output.text === acknowledgedOutput?.text &&
+        output.truncated === acknowledgedOutput.truncated
+      )
+        return;
+      await report("output", output);
+      acknowledgedOutput = output;
+    } catch {
+      /* Output transport must not retry or change native cloud work. */
+      console.error(JSON.stringify({ event: "retirement_output_failed" }));
+    }
+  };
   try {
     process.umask(0o077);
     if (
@@ -110,6 +135,11 @@ export async function runRetirementWorker(
     const input = retirementWorkerInputSchema.parse(await report("input", {}));
     claimed = true;
     applying = input.operation === "apply";
+    outputSecrets = retirementOutputSecrets(
+      input.key,
+      options.ticket,
+      input.variables,
+    );
     if (
       input.id !== z.uuid().parse(options.id) ||
       input.backend.password !== options.ticket ||
@@ -233,6 +263,7 @@ export async function runRetirementWorker(
     );
     const env: NodeJS.ProcessEnv = {
       PATH: `${join(root, "tools")}:/usr/bin:/bin`,
+      HOME: work,
       TMPDIR: directory,
       TF_IN_AUTOMATION: "true",
       TF_INPUT: "0",
@@ -252,6 +283,15 @@ export async function runRetirementWorker(
       if (Date.now() >= deadline) throw Error("retirement_timed_out");
       const output = await open(join(work, `${name}.out`), "wx", 0o600),
         error = await open(join(work, `${name}.err`), "wx", 0o600);
+      let outputStopped = false;
+      let pending: Promise<void> | undefined;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const poll = () => {
+        pending = publishOutput(true).finally(() => {
+          if (!outputStopped) timer = setTimeout(poll, 500);
+        });
+      };
+      timer = setTimeout(poll, 500);
       try {
         const exit = await new Promise<number>((done, fail) => {
           const child = spawn(tofu, args, {
@@ -296,8 +336,12 @@ export async function runRetirementWorker(
           stderr: await bounded(join(work, `${name}.err`)),
         };
       } finally {
+        outputStopped = true;
+        clearTimeout(timer);
+        await pending;
         await output.close();
         await error.close();
+        await publishOutput();
       }
     }
     const version = JSON.parse(
@@ -314,10 +358,13 @@ export async function runRetirementWorker(
       "-lock-timeout=0s",
     ]);
     const beforeBytes = (await command("before", ["state", "pull"])).stdout;
-    if (
-      retirementStateSha256(JSON.parse(beforeBytes.toString("utf8"))) !==
-      input.beforeStateSha256
-    )
+    const authoritativeState = await readRetirementBackendState(
+      input.backend.address,
+      options.ticket,
+      deadline,
+      options.fetch,
+    );
+    if (retirementStateSha256(authoritativeState) !== input.beforeStateSha256)
       throw Error("retirement_state_changed");
     const before = retirementInventory(
       JSON.parse(beforeBytes.toString("utf8")),
@@ -340,6 +387,7 @@ export async function runRetirementWorker(
         "plan",
         [
           "plan",
+          "-json",
           ...(input.phase === "remove_application" ||
           input.phase === "private_workloads"
             ? ["-destroy"]
@@ -388,6 +436,8 @@ export async function runRetirementWorker(
       input.baseline,
       input.phase,
     );
+    if (!applying)
+      await command("plan-details", ["show", "-no-color", "retirement.plan"]);
     if (!applying) {
       await report("artifact", {
         data: planBytes.toString("base64"),
@@ -426,6 +476,18 @@ export async function runRetirementWorker(
     const after = retirementInventory(JSON.parse(afterBytes.toString("utf8")), {
       includePrivate: true,
     });
+    const authoritativeAfter = await readRetirementBackendState(
+      input.backend.address,
+      options.ticket,
+      deadline,
+      options.fetch,
+    );
+    if (
+      retirementStateSha256(
+        retirementInventory(authoritativeAfter, { includePrivate: true }),
+      ) !== retirementStateSha256(after)
+    )
+      throw Error("retirement_state_changed");
     const receipt = verifyRetirementApply(
       before,
       after,
@@ -459,9 +521,7 @@ export async function runRetirementWorker(
       );
     await report("result", {
       status: applied.exit === 0 ? "succeeded" : "failed",
-      stateSha256: retirementStateSha256(
-        JSON.parse(afterBytes.toString("utf8")),
-      ),
+      stateSha256: retirementStateSha256(authoritativeAfter),
       removed: receipt.removed,
       completedDeletes,
       errorCode:
@@ -472,7 +532,7 @@ export async function runRetirementWorker(
             : "retirement_native_apply_failed",
     });
     return applied.exit === 0 ? "succeeded" : "failed";
-  } catch {
+  } catch (failure) {
     preserveRecovery = applying && directory !== undefined;
     if (applying && workPath) {
       const recoveryExists = await lstat(
@@ -508,7 +568,9 @@ export async function runRetirementWorker(
         ...(recoveryRequired ? { recoveryRequired: true } : {}),
         errorCode: applying
           ? "retirement_apply_outcome_unconfirmed"
-          : "retirement_native_plan_failed",
+          : (retirementPlanFailureCodeSchema.safeParse(
+              failure instanceof Error ? failure.message : "",
+            ).data ?? "retirement_native_plan_failed"),
       }).catch(() => undefined);
     // A CF task's filesystem disappears on exit. Keep this task alive until its
     // interrupted State is durably acknowledged; never retry native cloud work.

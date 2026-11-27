@@ -269,6 +269,13 @@ test("reviews exact deletions before Apply and preserves the folder purge wait",
     if (route.request().method() === "GET") {
       if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
       if (path.endsWith("/execution")) return route.fulfill({ json: review() });
+      if (path.endsWith("/output"))
+        return route.fulfill({
+          json: {
+            text: "$ tofu plan\nPlan: 0 to add, 0 to change, 1 to destroy.\n",
+            truncated: false,
+          },
+        });
       if (path.endsWith("/preview"))
         return route.fulfill({
           json: {
@@ -579,4 +586,197 @@ test("keeps the selected profile's home project when an older lookup finishes la
   await releaseOld?.();
   await expect(panel.getByText("Selected bootstrap project")).toBeVisible();
   await expect(panel.getByText("Stale bootstrap project")).toHaveCount(0);
+});
+
+test("refreshes a running retirement automatically and shows native output, failure and step details", async ({
+  page,
+}, info) => {
+  await mockEmptyApplicationLists(page);
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { stackit: true, github: false, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/backends", (route) =>
+    route.fulfill({ json: { backends: [] } }),
+  );
+  await page.route("**/api/v1/credentials", (route) =>
+    route.fulfill({ json: { profiles: [] } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: user, login: "owner@example.test" },
+        tenant: {
+          id: tenant,
+          name: "Retirement output test",
+          kind: "organisation",
+          roles: ["platform-engineer"],
+          manageMembers: true,
+        },
+        csrfToken: "retirement-csrf",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        stackitVerified: true,
+      },
+    }),
+  );
+  const jobId = "77777777-7777-4777-8777-777777777777",
+    scopeId = "66666666-6666-4666-8666-666666666666";
+  const current = {
+    id,
+    name: "Retirement output pilot",
+    stateKey,
+    organizationId: "44444444-4444-4444-8444-444444444444",
+    createdBy: user,
+    reason: "Synthetic retirement progress",
+    notBefore: new Date(Date.now() - 60000).toISOString(),
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    phase: "PREPARED",
+    generation: 1,
+    applications: [],
+    blockers: [],
+  };
+  let stage: "starting" | "planning" | "recovery_required" = "starting";
+  let mutationCount = 0;
+  let outputReads = 0,
+    reviewReads = 0;
+  const delayed: {
+    output?: () => Promise<void>;
+    review?: () => Promise<void>;
+  } = {};
+  await page.route("**/api/v1/retirements**", async (route) => {
+    expect(route.request().headers()["x-lzc-tenant"]).toBe(tenant);
+    if (route.request().method() !== "GET") {
+      mutationCount++;
+      return route.fulfill({
+        status: 405,
+        json: { error: "no mutation in this test" },
+      });
+    }
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
+    if (path.endsWith("/output")) {
+      if (++outputReads === 1)
+        return new Promise<void>((resolve) => {
+          delayed.output = async () => {
+            await route
+              .fulfill({
+                json: { text: "STALE_STARTING_OUTPUT", truncated: false },
+              })
+              .catch(() => {});
+            resolve();
+          };
+        });
+      return route.fulfill({
+        json: {
+          text:
+            stage === "starting"
+              ? ""
+              : stage === "planning"
+                ? "$ tofu plan\nRefreshing state...\n"
+                : "$ tofu plan\nError: Provider access denied\n",
+          truncated: false,
+        },
+      });
+    }
+    if (path.endsWith("/execution")) {
+      const value = {
+        retirementId: id,
+        generation: 1,
+        hasHandoff: true,
+        prepared: true,
+        canPrepare: false,
+        scopes: [
+          {
+            id: scopeId,
+            name: current.name,
+            instanceId: null,
+            stage: "private_workloads",
+            stateVersion: "1",
+            canPlan: false,
+          },
+        ],
+        jobs: [
+          {
+            id: jobId,
+            scopeId,
+            operatorId: user,
+            generation: 1,
+            operation: "plan",
+            phase: "private_workloads",
+            status: stage,
+            nativeStatus: stage === "recovery_required" ? "failed" : null,
+            createdAt: current.createdAt,
+            sourceRevision: "a".repeat(40),
+            providerLockSha256: "b".repeat(64),
+            artifactSha256: null,
+            deleteCount: 0,
+            canApply: false,
+            canInspect: stage === "recovery_required",
+            recoveryAvailable: false,
+            recoveryPending: false,
+            errorCode:
+              stage === "recovery_required" ? "retirement_plan_failed" : null,
+          },
+        ],
+      };
+      if (++reviewReads === 1)
+        return new Promise<void>((resolve) => {
+          delayed.review = async () => {
+            await route.fulfill({ json: value });
+            resolve();
+          };
+        });
+      return route.fulfill({ json: value });
+    }
+    return route.fulfill({ json: [current] });
+  });
+  await page.goto("/deployments/retire");
+  const panel = page.getByRole("region", { name: "Retire landing zones" });
+  await panel
+    .getByRole("button", { name: "Continue retirement", exact: true })
+    .click();
+  await expect(panel.getByText("Starting", { exact: true })).toBeVisible();
+  await expect(
+    panel.getByRole("list", { name: "Retirement steps" }),
+  ).toBeVisible();
+  await expect.poll(() => Boolean(delayed.output && delayed.review)).toBe(true);
+  stage = "planning";
+  await expect(panel.getByText("Creating plan", { exact: true })).toBeVisible({
+    timeout: 7000,
+  });
+  const output = panel.getByRole("region", { name: "OpenTofu output" });
+  await expect(output).toContainText("Refreshing state...");
+  await delayed.review?.();
+  await delayed.output?.();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await expect(panel.getByText("Starting", { exact: true })).toHaveCount(0);
+  await expect(output).toContainText("Refreshing state...");
+  await expect(output).not.toContainText("STALE_STARTING_OUTPUT");
+  stage = "recovery_required";
+  current.phase = "NEEDS_ATTENTION";
+  await expect(output).toContainText("Provider access denied", {
+    timeout: 7000,
+  });
+  await expect(
+    panel.locator(".retirement-job").getByText("Failed", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByText(
+      "OpenTofu could not create the retirement Plan. Check the OpenTofu output.",
+    ),
+  ).toBeVisible();
+  await expect(panel.getByText("Starting", { exact: true })).toHaveCount(0);
+  await panel.getByText("Technical evidence", { exact: true }).click();
+  await expect(panel.getByText(jobId, { exact: true })).toBeVisible();
+  expect(mutationCount).toBe(0);
+  await page.screenshot({
+    path: info.outputPath("retirement-live-output.png"),
+    fullPage: true,
+  });
 });

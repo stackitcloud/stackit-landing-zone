@@ -1489,6 +1489,23 @@ it("transfers only a captured same-State scope to independent encrypted custody 
       ticket = await waitTicket(job.id),
       input = await execution.input(ticket);
     expect(input.key).toEqual(key);
+    const nativeOutput = {
+      text: "$ tofu init\nInitializing the backend...\n",
+      truncated: false,
+    };
+    await execution.output(ticket, nativeOutput);
+    expect(await execution.jobOutput(owner, entry.id, job.id)).toEqual(
+      nativeOutput,
+    );
+    await expect(
+      execution.jobOutput(outsider, entry.id, job.id),
+    ).rejects.toMatchObject({ code: "42501" });
+    await expect(
+      execution.output(ticket, {
+        text: "x".repeat(2 * 1024 * 1024 + 1),
+        truncated: false,
+      }),
+    ).rejects.toThrow();
     expect(input.protectedProjectIds).toContain(control);
     const state = await execution.state(ticket, "read");
     nativePlan = planFor(state, input.phase);
@@ -1506,6 +1523,15 @@ it("transfers only a captured same-State scope to independent encrypted custody 
       ).planSha256,
     });
     await execution.result(ticket, { status: "succeeded" });
+    await expect(
+      execution.output(ticket, {
+        text: "late output must not replace evidence",
+        truncated: false,
+      }),
+    ).rejects.toMatchObject({ code: "42501" });
+    expect(await execution.jobOutput(owner, entry.id, job.id)).toEqual(
+      nativeOutput,
+    );
     expect(
       (await execution.review(owner, entry.id)).jobs.find(
         (j) => j.id === job.id,

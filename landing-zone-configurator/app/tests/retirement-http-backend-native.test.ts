@@ -126,3 +126,110 @@ it.skipIf(!tofu)(
   },
   90_000,
 );
+
+it.skipIf(!tofu)(
+  "compares raw backend State instead of OpenTofu-normalized check results",
+  async () => {
+    const directory = await mkdtemp(
+      join(tmpdir(), "lzc-retirement-state-normalization-"),
+    );
+    let state: Record<string, unknown> | undefined;
+    const server = createServer((request, response) => {
+      if (request.method !== "GET") {
+        response.writeHead(405).end();
+        return;
+      }
+      response.writeHead(state ? 200 : 404, {
+        "Content-Type": "application/json",
+      });
+      response.end(state ? JSON.stringify(state) : undefined);
+    });
+    try {
+      await new Promise<void>((resolve) =>
+        server.listen(0, "127.0.0.1", resolve),
+      );
+      const address = server.address();
+      if (!address || typeof address === "string") throw Error("missing port");
+      const endpoint = `http://127.0.0.1:${address.port}/state`;
+      await writeFile(join(directory, "main.tf"), retirementHttpBackendHcl);
+      const execute = async (args: string[]) => {
+        const output: Buffer[] = [];
+        const child = spawn(tofu as string, args, {
+          cwd: directory,
+          env: {
+            PATH: process.env.PATH,
+            HOME: directory,
+            TF_HTTP_ADDRESS: endpoint,
+            TF_HTTP_RETRY_MAX: "0",
+            TF_IN_AUTOMATION: "true",
+            TF_INPUT: "0",
+            CHECKPOINT_DISABLE: "1",
+          },
+          timeout: 20000,
+        });
+        child.stdout.on("data", (chunk) => output.push(chunk));
+        const errors: Buffer[] = [];
+        child.stderr.on("data", (chunk) => errors.push(chunk));
+        await new Promise<void>((resolve, reject) => {
+          child.once("error", reject);
+          child.once("close", (code) =>
+            code === 0
+              ? resolve()
+              : reject(Error(Buffer.concat(errors).toString())),
+          );
+        });
+        return Buffer.concat(output).toString("utf8");
+      };
+      await execute(["init", "-input=false", "-no-color"]);
+      state = {
+        version: 4,
+        terraform_version: "1.12.6",
+        serial: 1,
+        lineage: "11111111-1111-4111-8111-111111111111",
+        outputs: {},
+        resources: [],
+        check_results: [
+          {
+            object_kind: "check",
+            config_addr: "check.z",
+            status: "pass",
+            objects: [
+              { object_addr: "check.z", status: "pass", failure_messages: [] },
+            ],
+          },
+          {
+            object_kind: "check",
+            config_addr: "check.a",
+            status: "pass",
+            objects: [{ object_addr: "check.a", status: "pass" }],
+          },
+        ],
+      };
+      const normalized = JSON.parse(await execute(["state", "pull"]));
+      const { retirementStateSha256 } = await import(
+        "../packages/contracts/src/recovery/retirement.js"
+      );
+      const { readRetirementBackendState } = await import(
+        "../apps/worker/src/retirement-state.js"
+      );
+      expect(retirementStateSha256(normalized)).not.toBe(
+        retirementStateSha256(state),
+      );
+      expect(retirementInventory(normalized)).toEqual(
+        retirementInventory(state),
+      );
+      const authoritative = await readRetirementBackendState(
+        endpoint,
+        "fixture-ticket",
+        Date.now() + 1000,
+      );
+      expect(retirementStateSha256(authoritative)).toBe(
+        retirementStateSha256(state),
+      );
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+  30000,
+);

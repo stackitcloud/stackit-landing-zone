@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { runRetirementWorker } from "../apps/worker/src/retirement.js";
 import { brokerOrigin } from "../apps/worker/src/runner.js";
 import {
@@ -87,6 +87,10 @@ async function fixture(
     ackRecovery?: boolean;
     hosted?: boolean;
     recoveryAcknowledgedAfter?: number;
+    normalizedState?: boolean;
+    changedBackend?: boolean;
+    slowPlan?: boolean;
+    outputUnavailable?: boolean;
   } = {},
 ) {
   const dir = await mkdtemp(join(tmpdir(), "lzc-retirement-worker-test-"));
@@ -164,11 +168,16 @@ async function fixture(
   const nativePlan = Buffer.from("synthetic native saved plan fixture");
   const script = `#!${process.execPath}
 const fs=require("node:fs"),path=require("node:path");
-const cmd=process.argv[2];const before=${JSON.stringify(before)},after=${JSON.stringify(after)},plan=${JSON.stringify(plan)};
+const cmd=process.argv[2];const before=${JSON.stringify(options.normalizedState ? { ...before, check_results: null } : before)},after=${JSON.stringify(options.normalizedState ? { ...after, check_results: null } : after)},plan=${JSON.stringify(plan)};
 if(cmd==="version")console.log(JSON.stringify({terraform_version:"1.12.6"}));
 else if(cmd==="state")console.log(JSON.stringify(fs.existsSync("fixture-applied")?after:before,null,2));
-else if(cmd==="plan")fs.writeFileSync("retirement.plan",Buffer.from(${JSON.stringify(nativePlan.toString("base64"))},"base64"));
-else if(cmd==="show")console.log(JSON.stringify(plan));
+else if(cmd==="plan"){
+ console.log(JSON.stringify({type:"version",ui:"1.2","@message":"OpenTofu 1.12.6"}));
+ console.log(JSON.stringify({type:"refresh_start","@message":"Refreshing synthetic resources..."}));
+ const finish=()=>fs.writeFileSync("retirement.plan",Buffer.from(${JSON.stringify(nativePlan.toString("base64"))},"base64"));
+ if(${JSON.stringify(options.slowPlan)})setTimeout(finish,1800);else finish();
+}
+else if(cmd==="show"){if(process.argv.includes("-no-color"))console.log("Plan: 0 to add, 0 to change, 1 to destroy.");else console.log(JSON.stringify(plan));}
 else if(cmd==="apply"){
  console.log(JSON.stringify({type:"version",ui:"1.2"}));
  fs.writeFileSync("fixture-applied","");
@@ -220,6 +229,7 @@ else if(cmd==="apply"){
   };
   const reports: { path: string; body: unknown }[] = [];
   let recoveryCount = 0;
+  let backendReads = 0;
   const run = () =>
     runRetirementWorker({
       root,
@@ -230,9 +240,36 @@ else if(cmd==="apply"){
       id: input.id,
       ticket,
       timeoutMilliseconds: 20000,
+      fetch: async (_address, request) => {
+        expect(request?.method).toBe("GET");
+        expect(request?.redirect).toBe("error");
+        expect(request?.headers).toMatchObject({
+          authorization: `Basic ${Buffer.from(`runner:${ticket}`).toString("base64")}`,
+        });
+        const snapshot = ++backendReads === 1 ? before : after;
+        return new Response(
+          JSON.stringify(
+            options.changedBackend
+              ? {
+                  ...before,
+                  outputs: {
+                    changed: {
+                      value: "different retained output",
+                      sensitive: true,
+                      type: "string",
+                    },
+                  },
+                }
+              : snapshot,
+          ),
+          { status: 200 },
+        );
+      },
       report: async (path, body) => {
         reports.push({ path, body });
         if (path === "input") return input;
+        if (path === "output" && options.outputUnavailable)
+          throw Error("synthetic_output_transport_failure");
         if (path === "recovery") {
           recoveryCount += 1;
           return {
@@ -244,19 +281,61 @@ else if(cmd==="apply"){
         return {};
       },
     });
-  return { root, workRoot, input, reports, run };
+  return { root, workRoot, input, reports, run, after };
 }
+it("accepts OpenTofu's reserialized checks while retaining exact authoritative backend checksums", async () => {
+  const f = await fixture({ normalizedState: true });
+  expect(await f.run()).toBe("succeeded");
+  expect(f.reports.some((r) => r.path === "artifact")).toBe(true);
+});
+it("rejects an actual authoritative State change before publishing an artifact", async () => {
+  const f = await fixture({ normalizedState: true, changedBackend: true });
+  expect(await f.run()).toBe("failed");
+  expect(f.reports.some((r) => r.path === "artifact")).toBe(false);
+  expect(f.reports.findLast((r) => r.path === "result")?.body).toMatchObject({
+    errorCode: "retirement_state_changed",
+  });
+});
+it("binds the Apply receipt to the authoritative post-Apply document despite normalized checks", async () => {
+  const f = await fixture({ operation: "apply", normalizedState: true });
+  expect(await f.run()).toBe("succeeded");
+  expect(f.reports.findLast((r) => r.path === "result")?.body).toMatchObject({
+    status: "succeeded",
+    stateSha256: retirementStateSha256(f.after),
+  });
+});
+it("publishes native progress before a long-running Plan completes", async () => {
+  const f = await fixture({ slowPlan: true });
+  const execution = f.run();
+  try {
+    await vi.waitFor(
+      () => {
+        expect(
+          f.reports.some(
+            (r) =>
+              r.path === "output" &&
+              JSON.stringify(r.body).includes("Refreshing synthetic resources"),
+          ),
+        ).toBe(true);
+        expect(f.reports.some((r) => r.path === "artifact")).toBe(false);
+      },
+      { timeout: 1500 },
+    );
+  } finally {
+    expect(await execution).toBe("succeeded");
+  }
+});
+it("keeps output transport failure separate from native Plan execution", async () => {
+  const f = await fixture({ outputUnavailable: true });
+  expect(await f.run()).toBe("succeeded");
+  expect(f.reports.filter((r) => r.path === "artifact")).toHaveLength(1);
+});
 it("plans the captured scope and reports only a secret-free projection and exact artifact", async () => {
   const f = await fixture();
   expect(await f.run()).toBe("succeeded");
-  expect(f.reports.map((r) => r.path)).toEqual([
-    "input",
-    "stage",
-    "stage",
-    "stage",
-    "artifact",
-    "result",
-  ]);
+  expect(
+    f.reports.filter((r) => r.path !== "output").map((r) => r.path),
+  ).toEqual(["input", "stage", "stage", "stage", "artifact", "result"]);
   expect(JSON.stringify(f.reports)).not.toMatch(
     /PRIVATE_STATE_SENTINEL|PLAN_SECRET_SENTINEL|PRIVATE KEY/,
   );

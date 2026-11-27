@@ -120,6 +120,27 @@ automatisches `force_destroy`, Umgehen von Aufbewahrung oder stilles Leeren von
 Buckets. Unabhängige Zugangsdaten und Datenbanksicherungen bis zum vollständigen
 Abgleich erhalten.
 
+### Fortschritt und Fehlerdiagnose
+
+Lasse die Rückbauschritte geöffnet, um den aktiven Auftrag zu verfolgen. Status und
+OpenTofu-Ausgabe aktualisieren sich automatisch. Jeder Auftrag behält seine eigene
+begrenzte, bereinigte Ausgabe; rohe States und maschinenlesbares Saved-Plan-JSON
+werden nie angezeigt. Für ältere Aufträge aus der Zeit vor der Ausgabeerfassung
+kann keine gespeicherte Ausgabe vorliegen.
+
+Die Schrittliste zeigt die Bereinigung von Diensten und Control Planes, das Entfernen
+der Projekte und die zeitversetzte Ordnerlöschung. Prüfe vor der Apply-Freigabe die
+konkrete Löschliste aus dem erfolgreichen nativen Plan. Technische Quell- und
+Provider-Nachweise stehen unter optionalen Details. Prüfe bei einem fehlgeschlagenen
+Plan zunächst dessen gestoppten Runner und das Ergebnis, bevor du einen neuen Plan
+erstellst. Diese Prüfung führt keine Löschung aus.
+
+Snapshot-Prüfungen verwenden das unveränderte State-Dokument des HTTP-Backends.
+`tofu state pull` kann `check_results` normalisieren oder umsortieren; diese
+Darstellung wird zur Inventarprüfung verwendet, nicht als bytegleicher Nachweis.
+Derselbe Abgleich mit dem maßgeblichen Dokument bindet die Nachweise nach einem
+Apply. State-Version, Sperren und Löschfreigaben werden weiterhin geprüft.
+
 ## API und Deployment
 
 Browser-APIs benötigen eine aufgelöste Sitzung, den expliziten Arbeitsbereich und
@@ -132,6 +153,8 @@ Ausführung benötigt Plattformrolle und aktuellen Organisationsnachweis.
 | `POST /api/v1/retirements` | Absicht, Termin, Benachrichtigung und dauerhafte Neuanlagensperre |
 | `POST /api/v1/retirements/:id` | Generationsgebunden prüfen, pausieren, fortsetzen, vor Übernahme abbrechen oder Termin ändern |
 | `GET /api/v1/retirements/:id/execution` | Sichere Scope-/Job-Übersicht ohne Zugangsdaten, Roh-State oder Roh-Plan |
+| `GET /api/v1/retirements/:id/jobs/:jobId/output` | Für den Workspace autorisierte, bereinigte native Ausgabe eines Auftrags lesen |
+| `POST /api/retirement-runner/output` | Begrenzten Fortschritt mit dem Runner-Zugang genau dieses Auftrags melden |
 | `POST /api/v1/retirements/:id/credential-project` | Projekt des Accounts im gewählten Profil ermitteln und prüfen; keine State-Übernahme oder Ausführung |
 | `POST /api/v1/retirements/:id/prepare` | Unabhängigen Zugang prüfen und State ausdrücklich übernehmen |
 | `POST /api/v1/retirements/:id/plans` | Nativer Plan mit gebundener Quelle für einen freigegebenen Scope |

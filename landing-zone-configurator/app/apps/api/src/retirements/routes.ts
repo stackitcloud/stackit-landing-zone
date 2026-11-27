@@ -23,6 +23,8 @@ export type RetirementExecutionRoutes = Pick<
   | "adoptRecovery"
   | "input"
   | "stage"
+  | "output"
+  | "jobOutput"
   | "artifact"
   | "state"
   | "result"
@@ -107,6 +109,13 @@ export function registerRetirements(
               request.body,
             ),
         );
+      routes.get(
+        "/api/v1/retirements/:id/jobs/:jobId/output",
+        async (request) => {
+          const { id, jobId } = params(request);
+          return execution.jobOutput(sessions.get(request)!, id, jobId!);
+        },
+      );
       routes.get(
         "/api/v1/retirements/:id/jobs/:jobId/recovery",
         async (request) => {
@@ -271,6 +280,14 @@ export function registerRetirementRunner(
       await execution.stage(ticket(request), body.stage);
       return reply.code(204).send();
     });
+    routes.post(
+      "/api/retirement-runner/output",
+      { bodyLimit: 13 * 1024 * 1024 },
+      async (request, reply) => {
+        await execution.output(ticket(request), request.body);
+        return reply.code(204).send();
+      },
+    );
     for (const action of ["artifact", "recovery"] as const)
       routes.post(
         `/api/retirement-runner/${action}`,

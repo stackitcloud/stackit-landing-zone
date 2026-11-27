@@ -1,4 +1,35 @@
 import { z } from "zod";
+export const retirementOutputSchema = z.strictObject({
+  text: z
+    .string()
+    .refine(
+      (text) => new TextEncoder().encode(text).byteLength <= 2 * 1024 * 1024,
+    ),
+  truncated: z.boolean(),
+});
+export const retirementPlanFailureCodeSchema = z.enum([
+  "retirement_worker_configuration_invalid",
+  "retirement_input_invalid",
+  "retirement_backend_invalid",
+  "retirement_artifact_invalid",
+  "retirement_source_unavailable",
+  "retirement_package_invalid",
+  "retirement_provider_lock_changed",
+  "retirement_engine_changed",
+  "retirement_state_changed",
+  "retirement_backend_read_failed",
+  "retirement_timed_out",
+  "retirement_native_start_failed",
+  "retirement_version_failed",
+  "retirement_init_failed",
+  "retirement_before_failed",
+  "retirement_validate_failed",
+  "retirement_plan_failed",
+  "retirement_show_failed",
+  "retirement_private_cleanup_empty",
+  "retirement_broker_failed",
+  "retirement_native_output_invalid",
+]);
 
 export const retirementCredentialProjectRequestSchema = z.strictObject({
   generation: z.number().int().positive().refine(Number.isSafeInteger),
