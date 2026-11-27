@@ -643,6 +643,8 @@ test("refreshes a running retirement automatically and shows native output, fail
   const delayed: {
     output?: () => Promise<void>;
     review?: () => Promise<void>;
+    slowOutput?: () => Promise<void>;
+    slowFailure?: () => string | null;
   } = {};
   await page.route("**/api/v1/retirements**", async (route) => {
     expect(route.request().headers()["x-lzc-tenant"]).toBe(tenant);
@@ -664,6 +666,20 @@ test("refreshes a running retirement automatically and shows native output, fail
                 json: { text: "STALE_STARTING_OUTPUT", truncated: false },
               })
               .catch(() => {});
+            resolve();
+          };
+        });
+      if (outputReads === 3)
+        return new Promise<void>((resolve) => {
+          delayed.slowFailure = () =>
+            route.request().failure()?.errorText ?? null;
+          delayed.slowOutput = async () => {
+            await route.fulfill({
+              json: {
+                text: "$ tofu plan\nRefreshing state...\n",
+                truncated: false,
+              },
+            });
             resolve();
           };
         });
@@ -746,6 +762,13 @@ test("refreshes a running retirement automatically and shows native output, fail
     timeout: 7000,
   });
   const output = panel.getByRole("region", { name: "OpenTofu output" });
+  await expect.poll(() => Boolean(delayed.slowOutput)).toBe(true);
+  const statusReadsDuringDownload = reviewReads;
+  await expect
+    .poll(() => reviewReads)
+    .toBeGreaterThan(statusReadsDuringDownload);
+  expect(delayed.slowFailure?.()).toBe(null);
+  await delayed.slowOutput?.();
   await expect(output).toContainText("Refreshing state...");
   await delayed.review?.();
   await delayed.output?.();

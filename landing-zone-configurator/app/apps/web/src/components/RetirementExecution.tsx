@@ -271,8 +271,9 @@ export function RetirementExecutionPanel({
     };
   }, [identity, expanded, api, base, retirement.notBefore]);
   const loadOutput = useCallback(
-    async (jobId: string, signal?: AbortSignal) => {
+    async (jobId: string, signal?: AbortSignal, refresh = false) => {
       if (signal?.aborted) return false;
+      if (outputControllers.current[jobId] && !refresh) return false;
       const owner = identity;
       const sequence = ++outputSequence.current;
       outputRequests.current[jobId] = sequence;
@@ -438,7 +439,7 @@ export function RetirementExecutionPanel({
           const latest = [...status.jobs].sort(
             (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
           )[0];
-          if (latest) void loadOutput(latest.id);
+          if (latest) void loadOutput(latest.id, undefined, true);
         }
         await onChanged();
       }
@@ -724,7 +725,8 @@ export function RetirementExecutionPanel({
               <details
                 open={job.id === review.jobs[0]?.id}
                 onToggle={(event) => {
-                  if (event.currentTarget.open) void loadOutput(job.id);
+                  if (event.currentTarget.open)
+                    void loadOutput(job.id, undefined, true);
                 }}
               >
                 <summary>{t("OpenTofu-Ausgabe")}</summary>
@@ -755,7 +757,7 @@ export function RetirementExecutionPanel({
                   <button
                     type="button"
                     className="button secondary"
-                    onClick={() => void loadOutput(job.id)}
+                    onClick={() => void loadOutput(job.id, undefined, true)}
                   >
                     {t("Ausgabe erneut laden")}
                   </button>
