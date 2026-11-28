@@ -16,7 +16,14 @@ export async function retirementOutput(
     .sort((a, b) => b.length - a.length);
   let text = "",
     truncated = false;
-  for (const name of ["init", "validate", "plan", "plan-details", "apply"]) {
+  for (const name of [
+    "init",
+    "validate",
+    "plan",
+    "plan-details",
+    "bucket-cleanup",
+    "apply",
+  ]) {
     for (const stream of ["out", "err"]) {
       const file = await open(
         join(directory, `${name}.${stream}`),
@@ -58,7 +65,7 @@ export async function retirementOutput(
             : name === "apply"
               ? "apply retirement.plan"
               : name;
-        const chunk = `$ tofu ${command}${stream === "err" ? " (stderr)" : ""}\n${content}\n`;
+        const chunk = `$ ${name === "bucket-cleanup" ? "bucket cleanup" : `tofu ${command}`}${stream === "err" ? " (stderr)" : ""}\n${content}\n`;
         truncated ||= bytesRead < size || Buffer.byteLength(chunk) > remaining;
         text += new TextDecoder().decode(
           Buffer.from(chunk).subarray(0, remaining),

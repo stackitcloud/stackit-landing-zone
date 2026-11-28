@@ -8,6 +8,7 @@ export * from "./inventory.js";
 export * from "./project-iam.js";
 export * from "./proof.js";
 export * from "./retirement.js";
+export * from "./retirement-buckets.js";
 export * from "./retirement-cloud.js";
 export * from "./retirement-source.js";
 export * from "./service-account.js";

@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import {
+  appendFile,
   cp,
   lstat,
   mkdtemp,
@@ -19,10 +20,13 @@ import {
 } from "@lzc/contracts";
 import {
   assertRetirementProtectedResources,
+  bucketCleanupErrors,
+  emptyRetirementBuckets,
   parseServiceAccountKey,
   readApplicationExecutionManifest,
   readRetirementSource,
   retirementAdapterCommit,
+  retirementBuckets,
   retirementCompletedDeletes,
   retirementFolderConflict,
   retirementInventory,
@@ -58,6 +62,7 @@ export type RetirementWorkerOptions = {
   report?: Report;
   recoveryRetryMilliseconds?: number;
   fetch?: typeof fetch;
+  bucketCleanup?: typeof emptyRetirementBuckets;
 };
 async function bounded(path: string) {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -448,7 +453,62 @@ export async function runRetirementWorker(
       await report("result", { status: "succeeded" });
       return "succeeded";
     }
-    await report("stage", { stage: "applying" });
+    let applyingStage = false;
+    const beginApplying = async () => {
+      await report("stage", { stage: "applying" });
+      applyingStage = true;
+    };
+    const buckets = retirementBuckets(
+      checked.deletes,
+      input.protectedProjectIds,
+    );
+    if (buckets.length) {
+      if (input.bucketCleanupPolicy !== 1)
+        throw Error("retirement_bucket_cleanup_confirmation_required");
+      const progressFile = join(work, "bucket-cleanup.out");
+      await writeFile(progressFile, "", { mode: 0o600, flag: "wx" });
+      const progress = async (line: string) => {
+        await appendFile(progressFile, line, { mode: 0o600 });
+        await publishOutput();
+      };
+      try {
+        await (options.bucketCleanup ?? emptyRetirementBuckets)({
+          buckets,
+          key: input.key,
+          jobId: input.id,
+          deadline,
+          ...(options.fetch ? { request: options.fetch } : {}),
+          progress,
+          beforeDelete: beginApplying,
+        });
+      } catch (error) {
+        const code = bucketCleanupErrors.includes(
+          (error as Error).message as (typeof bucketCleanupErrors)[number],
+        )
+          ? (error as Error).message
+          : "retirement_bucket_cleanup_unavailable";
+        await progress(
+          `Bucket cleanup stopped: ${code}. OpenTofu Apply has not started.\n`,
+        );
+        const unchanged = await readRetirementBackendState(
+          input.backend.address,
+          options.ticket,
+          deadline,
+          options.fetch,
+        );
+        if (retirementStateSha256(unchanged) !== input.beforeStateSha256)
+          throw Error("retirement_state_changed");
+        await report("result", {
+          status: "failed",
+          stateSha256: input.beforeStateSha256,
+          removed: [],
+          completedDeletes: [],
+          errorCode: code,
+        });
+        return "failed";
+      }
+    }
+    if (!applyingStage) await beginApplying();
     const applied = await command(
       "apply",
       [

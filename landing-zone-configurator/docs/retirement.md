@@ -98,12 +98,52 @@ adopt that State. This requires a new Plan and never reuses the old artifact. If
 trustworthy State/receipt is available, retain the freeze and resolve recovery
 instead of changing a database phase or discarding State entries.
 
-Original S3 objects are frozen evidence after handover, not active backends. They
-may prevent a management bucket from being deleted. Export required evidence and
-review removal of those objects, versions and other bucket data explicitly through
-their owning service. This feature does not enable `force_destroy`, bypass retention
-or silently erase bucket contents. Independent control credentials and database
-backups must remain available until the whole retirement is reconciled.
+### Bucket contents and existing partial retirements
+
+Original S3 objects are frozen evidence after handover, not active backends. The
+State bucket is usually non-empty even when nobody uploaded application data:
+it contains the original State and possibly older versions. Export required data
+and retain independent database backups before confirming deletion.
+
+A fresh Plan lists the buckets scheduled for deletion but does not create S3
+credentials or change contents. The existing Apply review requires an additional
+confirmation to permanently delete **all contents and versions** of those exact
+buckets. That approval is enforced by the API and bound to the job's encrypted
+input policy; older Plans need a fresh Plan and approval.
+
+Before native Apply, the Runner uses the independent cleanup service account to
+create a separate credential group and a one-hour access key in each target
+project. Its account needs Object Storage credential create/delete permissions
+and S3 access allowed by the bucket policies. It does not use the original
+Automation service account, original S3 credentials or the deleted Vault secrets.
+Only exact bucket project/region/name identities in the verified deletion list
+are eligible; protected control projects are rejected.
+
+The Runner inventories versions, delete markers and multipart uploads and checks
+retention/legal hold before content removal. It deletes selected versions/markers
+in batches, aborts uploads, confirms that all target buckets are empty and revokes
+its temporary keys/groups **before** starting the unchanged saved OpenTofu Apply.
+It never bypasses governance/compliance retention or clears legal hold. Progress
+shows bucket names and counts, not private object names, credentials or contents.
+
+Cleanup is bounded by the job deadline and 50,000 inventory entries across its
+buckets. Stop external writers as part of the retirement freeze. New writes,
+protection, access errors, partial S3 errors or failed credential revocation stop
+the operation before native Apply; no unbounded drain or blind native retry runs.
+If cleanup itself partially succeeded, those content deletions remain. A confirmed
+unchanged State is reported for a cleanup-only failure, so a fresh Plan can be
+created after completion inspection. Large inventories require separately reviewed
+cleanup. Temporary keys expire after one hour even if a process is lost; inspect
+any remaining `lzc-retire-…` groups after an interrupted cleanup.
+
+For an existing failed retirement that already removed the original S3 credentials:
+reload the app, open **Retire**, reconcile the previous execution (or its displayed
+State recovery if necessary), renew the independent credential grant when prompted,
+and create a **new Plan for the same retirement**. Confirm bucket-content deletion
+in that Plan's Apply review. Previously removed resources remain absent; no import,
+new landing zone, manual database phase change or reuse of the old Plan is required.
+The remaining buckets and project are removed after successful content cleanup;
+folder finalization still waits for the actual project purge.
 
 ### Progress and failure diagnostics
 

@@ -112,13 +112,56 @@ Danach ist ein neuer Plan erforderlich; das alte Artefakt wird nicht erneut benu
 Fehlt ein vertrauenswürdiger State oder Nachweis, Sperre erhalten und Wiederherstellung
 klären. Keine Datenbankphase umschreiben und keine State-Einträge verwerfen.
 
+### Bucket-Inhalte und bestehende Teilrückbauten
+
 Die bisherigen S3-Objekte sind nach Übernahme eingefrorene Nachweise und keine
-aktiven Backends. Sie können die Löschung des Management-Buckets verhindern.
-Benötigte Nachweise exportieren und das Entfernen dieser Objekte, Versionen und
-sonstiger Bucket-Daten über den zuständigen Dienst ausdrücklich prüfen. Es gibt kein
-automatisches `force_destroy`, Umgehen von Aufbewahrung oder stilles Leeren von
-Buckets. Unabhängige Zugangsdaten und Datenbanksicherungen bis zum vollständigen
-Abgleich erhalten.
+aktiven Backends. Der State-Bucket ist normalerweise auch ohne hochgeladene
+Anwendungsdaten nicht leer: Er enthält den bisherigen State und gegebenenfalls
+ältere Versionen. Benötigte Daten exportieren und unabhängige Datenbanksicherungen
+erhalten, bevor die Löschung bestätigt wird.
+
+Ein frischer Plan zeigt die zu löschenden Buckets, erstellt aber keine S3-Zugänge
+und verändert keine Inhalte. Die bestehende Apply-Prüfung verlangt eine zusätzliche
+Bestätigung zur endgültigen Löschung **aller Inhalte und Versionen** genau dieser
+Buckets. Die API erzwingt diese Bestätigung; die Bereinigungspolicy ist an die
+verschlüsselten Auftragseingaben gebunden. Ältere Pläne benötigen einen neuen Plan
+und eine neue Freigabe.
+
+Vor dem nativen Apply erstellt der Runner mit dem unabhängigen Bereinigungs-Service-
+Account eine eigene Credentials-Gruppe und einen eine Stunde gültigen Access Key im
+jeweiligen Zielprojekt. Der Account benötigt Rechte zum Anlegen/Löschen von Object-
+Storage-Zugängen und durch Bucket-Policies erlaubten S3-Zugriff. Der ursprüngliche
+Automation-Service-Account, bisherige S3-Zugänge und bereits gelöschte Vault-Secrets
+werden nicht verwendet. Zulässig sind ausschließlich die geprüften Projekt-/Region-/
+Bucket-Identitäten der Löschliste; geschützte Steuerungsprojekte werden abgewiesen.
+
+Der Runner erfasst Versionen, Löschmarker und Multipart-Uploads und prüft vor der
+Inhaltslöschung Aufbewahrung und Legal Hold. Er entfernt Versionen/Marker in Batches,
+bricht Uploads ab, bestätigt leere Ziel-Buckets und entfernt seine temporären Keys/
+Gruppen **vor** dem unveränderten gespeicherten OpenTofu-Apply. Governance-/Compliance-
+Aufbewahrung und Legal Hold werden nie umgangen. Der Fortschritt zeigt Bucket-Namen
+und Anzahlen, aber keine privaten Objektnamen, Zugangsdaten oder Inhalte.
+
+Die Bereinigung ist durch das Auftragszeitlimit und insgesamt 50.000 Inventareinträge
+über alle Buckets begrenzt. Externe Schreiber im Rahmen der Rückbausperre anhalten.
+Neue Schreibzugriffe, Schutzfristen, Zugriffsfehler, teilweise S3-Fehler oder eine
+fehlgeschlagene Entfernung der Zugänge stoppen vor dem nativen Apply. Es gibt weder
+endloses Leeren noch blindes Wiederholen nativer Aktionen. Bereits gelöschte Inhalte
+bleiben gelöscht. Bei einem reinen Bereinigungsfehler wird ein bestätigt unveränderter
+State gemeldet; nach Abschlussprüfung ist ein neuer Plan möglich. Große Inventare
+benötigen eine gesondert geprüfte Bereinigung. Temporäre Keys laufen nach einer Stunde
+ab, auch wenn ein Prozess verloren geht; verbliebene `lzc-retire-…`-Gruppen nach einer
+unterbrochenen Bereinigung prüfen.
+
+Bei einem bestehenden fehlgeschlagenen Rückbau mit bereits entfernten S3-Zugängen:
+App neu laden, **Retire** öffnen, den bisherigen Lauf abgleichen beziehungsweise die
+angezeigte State-Wiederherstellung durchführen, bei Aufforderung die unabhängige
+Zugangsfreigabe erneuern und einen **neuen Plan für denselben Rückbau** erstellen.
+Bei dessen Apply die Bucket-Inhaltslöschung bestätigen. Bereits entfernte Ressourcen
+bleiben entfernt. Weder Import noch neue Landing Zone, manuelle Datenbankänderung
+oder Wiederverwendung des alten Plans sind erforderlich. Verbliebene Buckets und
+Projekt werden nach erfolgreicher Inhaltsbereinigung entfernt; die abschließende
+Folder-Löschung wartet weiterhin auf den tatsächlichen Projekt-Purge.
 
 ### Fortschritt und Fehlerdiagnose
 

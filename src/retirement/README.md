@@ -150,8 +150,44 @@ python3 src/retirement/guard.py check-plan \
   --plan /absolute/private/retirement/projects.plan.json --phase remove_projects
 # Independently review the human-readable saved Plan and its exact scope.
 tofu -chdir=src/retirement show /absolute/private/retirement/projects.tfplan
+```
+
+Before Apply, empty each bucket in the reviewed deletion list, including the
+original State bucket. This must no longer be an active backend. The optional
+standalone helper needs Python 3 and AWS CLI v2 with MD5 multi-object deletion
+support and S3 credentials for that bucket's
+project; it does not require the Configurator or its database/API. If earlier teardown
+already revoked the original credentials, create a separate cleanup credential
+through STACKIT first and revoke it after cleanup. Do not restore the original
+Automation service account or recreate already deleted infrastructure.
+
+```sh
+# Read-only inventory; repeat for every approved bucket and its project profile.
+python3 src/retirement/empty-bucket.py \
+  --plan /absolute/private/retirement/projects.plan.json \
+  --bucket EXACT_APPROVED_BUCKET --profile cleanup-project
+# After data export and review: use the JSON checksum printed above.
+python3 src/retirement/empty-bucket.py \
+  --plan /absolute/private/retirement/projects.plan.json \
+  --bucket EXACT_APPROVED_BUCKET --profile cleanup-project \
+  --plan-sha256 REVIEWED_JSON_SHA256 --apply \
+  --confirm-bucket-contents-deletion --confirm-state-backend-outside-target
+# Only after all approved buckets are confirmed empty:
 tofu -chdir=src/retirement apply /absolute/private/retirement/projects.tfplan
 ```
+
+The helper removes versions (including null versions), delete markers and incomplete
+multipart uploads. It checks retention/legal hold without bypass, checks per-object
+delete errors and confirms emptiness. It never starts OpenTofu or deletes the bucket
+itself. It is bounded to 50,000 inventory entries and 15 minutes per invocation;
+large inventories require separately reviewed cleanup. Stop concurrent writers.
+Already removed contents remain removed after a failure; fix the reported cause
+and repeat only the reviewed cleanup. After a failed native Apply, reconcile State
+and generate a fresh native Plan first. Credentials are supplied through the normal
+AWS CLI environment/profile, never in the plan, command arguments or helper output.
+The backend confirmation is an operator attestation; the helper cannot prove the
+location of your active backend. Complete the independent State migration/check
+above before confirming it.
 
 The guard rejects creates, updates, replacements, unreviewed identities, governance
 deletions and disappearance during refresh. In particular, the pinned project

@@ -8,6 +8,8 @@ import {
 } from "@lzc/contracts";
 import {
   assertRetirementProtectedResources,
+  bucketCleanupErrors,
+  retirementBuckets,
   retirementInventory,
   retirementInventorySchema,
   retirementPlanProjection,
@@ -148,6 +150,7 @@ const resultSchema = z.strictObject({
       "retirement_runner_stopped_before_apply",
     ])
     .or(retirementPlanFailureCodeSchema)
+    .or(z.enum(bucketCleanupErrors))
     .nullable()
     .optional(),
 });
@@ -379,6 +382,24 @@ export class RetirementExecution {
       !this.runner.supportsArtifact?.(saved.runner_package_id)
     )
       throw fail("retirement_artifact_changed");
+    if (!saved.projection) throw fail("retirement_plan_unavailable");
+    const savedInput = this.template(session, saved);
+    const checked = verifyRetirementPlan(
+      saved.projection,
+      savedInput.before,
+      savedInput.baseline,
+      savedInput.phase,
+    );
+    const buckets = retirementBuckets(
+      checked.deletes,
+      savedInput.protectedProjectIds,
+    );
+    if (
+      buckets.length &&
+      (savedInput.bucketCleanupPolicy !== 1 ||
+        request.confirmBucketContentsDeletion !== true)
+    )
+      throw fail("retirement_bucket_cleanup_confirmation_required");
     return this.start(
       session,
       await this.context(session, id, request.generation, saved.scope_id),
@@ -405,6 +426,7 @@ export class RetirementExecution {
       ticket = randomBytes(32).toString("base64url");
     const input = templateSchema.parse({
       id,
+      bucketCleanupPolicy: 1,
       operation: saved ? "apply" : "plan",
       retirementId: context.retirementId,
       generation: context.generation,
