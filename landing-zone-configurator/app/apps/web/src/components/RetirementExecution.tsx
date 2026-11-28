@@ -45,6 +45,21 @@ const phaseLabels: Record<string, string> = {
   complete: "Stillgelegt",
 };
 const errors: Record<string, string> = {
+  retirement_bucket_cleanup_confirmation_required:
+    "Erstelle einen neuen Rückbauplan und bestätige die Löschung der Bucket-Inhalte.",
+  retirement_bucket_cleanup_locked:
+    "Bucket-Inhalte sind durch Aufbewahrungsfristen oder Legal Hold geschützt. Die Bereinigung umgeht diese Sperren nicht.",
+  retirement_bucket_cleanup_unavailable:
+    "Die Bucket-Bereinigung konnte nicht abgeschlossen werden. Prüfe die Ausgabe und den Bereinigungszugang.",
+  retirement_bucket_cleanup_access_failed:
+    "Der unabhängige Zugang benötigt Zugriff auf Object Storage und die Inhalte der zu löschenden Buckets.",
+  retirement_bucket_cleanup_incomplete:
+    "Die Buckets sind noch nicht vollständig leer. Prüfe laufende Schreibzugriffe und die Ausgabe; erstelle danach einen neuen Plan.",
+  retirement_bucket_cleanup_credentials_failed:
+    "Der kurzlebige Bereinigungszugang konnte nicht sicher erstellt oder entfernt werden. Prüfe die Object-Storage-Zugänge des betroffenen Projekts.",
+  retirement_bucket_cleanup_scope_invalid:
+    "Der Bucket-Umfang stimmt nicht mit dem geprüften Rückbauplan überein. Erstelle einen neuen Plan.",
+
   retirement_runner_unavailable:
     "Die Ausführungsumgebung konnte nicht gestartet werden. Es liegt kein OpenTofu-Ergebnis vor. Aktualisiere den Status und erstelle einen neuen Plan.",
   retirement_private_runner_required:
@@ -134,6 +149,7 @@ export function RetirementExecutionPanel({
   const [handoff, setHandoff] = useState(false),
     [independent, setIndependent] = useState(false),
     [confirmDelete, setConfirmDelete] = useState(false),
+    [confirmBucketContents, setConfirmBucketContents] = useState(false),
     [retention, setRetention] = useState(false);
   const [preview, setPreview] = useState<z.infer<typeof previewSchema> | null>(
       null,
@@ -144,6 +160,12 @@ export function RetirementExecutionPanel({
     [confirmRecovery, setConfirmRecovery] = useState(false);
   const approvalPanel = useRef<HTMLElement | null>(null);
   const previewId = preview?.id;
+  const hasBucketDeletes =
+    preview?.deletes.some((r) => r.type === "stackit_objectstorage_bucket") ??
+    false;
+  useEffect(() => {
+    if (preview?.id && preview.artifactSha256) setConfirmBucketContents(false);
+  }, [preview?.id, preview?.artifactSha256]);
   useEffect(() => {
     if (previewId) approvalPanel.current?.focus({ preventScroll: true });
   }, [previewId]);
@@ -807,6 +829,18 @@ export function RetirementExecutionPanel({
               "Ich bestätige die unwiderrufliche Löschung genau dieses geprüften Umfangs.",
             )}
           </label>
+          {hasBucketDeletes && (
+            <label>
+              <input
+                type="checkbox"
+                checked={confirmBucketContents}
+                onChange={(e) => setConfirmBucketContents(e.target.checked)}
+              />
+              {t(
+                "Ich bestätige die endgültige Löschung aller Inhalte und Versionen der oben aufgeführten Buckets.",
+              )}
+            </label>
+          )}
           {!review?.jobs.some((j) => j.id === preview.id && j.canApply) && (
             <p role="status">
               {t(
@@ -823,6 +857,7 @@ export function RetirementExecutionPanel({
               busy ||
               !retention ||
               !confirmDelete ||
+              (hasBucketDeletes && !confirmBucketContents) ||
               !review?.jobs.some((j) => j.id === preview.id && j.canApply)
             }
             onClick={() =>
@@ -831,6 +866,9 @@ export function RetirementExecutionPanel({
                 artifactSha256: preview.artifactSha256,
                 confirmDestroyResources: true,
                 confirmDataRetentionReviewed: true,
+                ...(hasBucketDeletes
+                  ? { confirmBucketContentsDeletion: true }
+                  : {}),
               })
             }
           >

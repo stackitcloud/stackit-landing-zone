@@ -1,6 +1,14 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.3.8": {
+  introduction:"Complete retirement of non-empty buckets, including existing partial retirements.",
+  changes:[
+   "Add explicit bucket-content approval and automatic version, marker and multipart cleanup before OpenTofu Apply, using independent expiring credentials.",
+   "Resume existing retirement State after original S3 credentials have been deleted; preserve retention protections, progress and partial-failure evidence.",
+   "Provide an independent OpenTofu cleanup helper and recovery instructions without requiring the Configurator.",
+  ],
+ },
  "v2.3.7": {
   introduction:"More reliable retirement startup and live OpenTofu output.",
   changes:["Wait for slow Cloud Foundry runner package copies before starting retirement jobs.","Stream retirement OpenTofu progress using the same transport as Plan and Apply; clarify startup failures."],

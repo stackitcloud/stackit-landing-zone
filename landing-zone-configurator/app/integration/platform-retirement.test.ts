@@ -1043,6 +1043,22 @@ it("transfers only a captured same-State scope to independent encrypted custody 
           provider: 'provider["registry.opentofu.org/stackitcloud/stackit"]',
           instances: [{ attributes: { project_id: project } }],
         },
+        {
+          module: "module.management",
+          mode: "managed",
+          type: "stackit_objectstorage_bucket",
+          name: "tfstate",
+          provider: 'provider["registry.opentofu.org/stackitcloud/stackit"]',
+          instances: [
+            {
+              attributes: {
+                id: `${project},eu01,fixture-state-bucket`,
+                project_id: project,
+                name: "fixture-state-bucket",
+              },
+            },
+          ],
+        },
       ],
     }),
   );
@@ -1472,6 +1488,7 @@ it("transfers only a captured same-State scope to independent encrypted custody 
             : "delete",
         ],
         before: {
+          ...resource.selectors,
           [resource.type === "stackit_resourcemanager_folder"
             ? "folder_id"
             : resource.type === "stackit_resourcemanager_project"
@@ -1561,6 +1578,7 @@ it("transfers only a captured same-State scope to independent encrypted custody 
         artifactSha256: artifactHash,
         confirmDestroyResources: true,
         confirmDataRetentionReviewed: true,
+        confirmBucketContentsDeletion: true,
       }),
       ticket = await waitTicket(job.id),
       input = await execution.input(ticket);
@@ -1650,6 +1668,50 @@ it("transfers only a captured same-State scope to independent encrypted custody 
     ).rows[0].owner_user_id,
   ).toBe(outsider.userId);
   executionScope = rootScopeId;
+  for (const cleanupStage of ["validating", "applying"] as const) {
+    const cleanupBlockedPlan = await createPlan();
+    const cleanupBlocked = await execution.apply(
+      owner,
+      entry.id,
+      cleanupBlockedPlan.id,
+      {
+        generation: entry.generation,
+        artifactSha256: artifactHash,
+        confirmDestroyResources: true,
+        confirmDataRetentionReviewed: true,
+        confirmBucketContentsDeletion: true,
+      },
+    );
+    const cleanupTicket = await waitTicket(cleanupBlocked.id);
+    const cleanupInput = await execution.input(cleanupTicket);
+    expect(
+      cleanupInput.before.resources.some(
+        (r) => r.type === "stackit_objectstorage_credential",
+      ),
+    ).toBe(false);
+    await execution.stage(cleanupTicket, "validating");
+    if (cleanupStage === "applying")
+      await execution.stage(cleanupTicket, "applying");
+    await execution.result(cleanupTicket, {
+      status: "failed",
+      stateSha256: cleanupInput.beforeStateSha256,
+      removed: [],
+      completedDeletes: [],
+      errorCode: "retirement_bucket_cleanup_locked",
+    });
+    const cleanupClosed = await execution.inspect(
+      owner,
+      entry.id,
+      cleanupBlocked.id,
+      entry.generation,
+    );
+    expect(
+      cleanupClosed.scopes.find((s) => s.id === rootScopeId),
+    ).toMatchObject({
+      stage: "remove_projects",
+      canPlan: true,
+    });
+  }
   const stoppedPlan = await execution.plan(owner, entry.id, {
       generation: entry.generation,
       scopeId: executionScope,
@@ -1674,6 +1736,16 @@ it("transfers only a captured same-State scope to independent encrypted custody 
     code: "42501",
   });
   const interruptedPlan = await createPlan();
+  await expect(
+    execution.apply(owner, entry.id, interruptedPlan.id, {
+      generation: entry.generation,
+      artifactSha256: artifactHash,
+      confirmDestroyResources: true,
+      confirmDataRetentionReviewed: true,
+    }),
+  ).rejects.toMatchObject({
+    code: "retirement_bucket_cleanup_confirmation_required",
+  });
   const interrupted = await execution.apply(
     owner,
     entry.id,
@@ -1683,6 +1755,7 @@ it("transfers only a captured same-State scope to independent encrypted custody 
       artifactSha256: artifactHash,
       confirmDestroyResources: true,
       confirmDataRetentionReviewed: true,
+      confirmBucketContentsDeletion: true,
     },
   );
   const interruptedTicket = await waitTicket(interrupted.id),
@@ -1732,7 +1805,10 @@ it("transfers only a captured same-State scope to independent encrypted custody 
     entry.id,
     interrupted.id,
   );
-  expect(recoveryPreview.removed).toHaveLength(1);
+  expect(recoveryPreview.removed.map((r) => r.type).sort()).toEqual([
+    "stackit_objectstorage_bucket",
+    "stackit_resourcemanager_project",
+  ]);
   await expect(
     execution.adoptRecovery(owner, entry.id, interrupted.id, {
       generation: entry.generation,
@@ -1769,7 +1845,7 @@ it("transfers only a captured same-State scope to independent encrypted custody 
   expect(reconciled.scopes.find((s) => s.id === rootScopeId)?.stage).toBe(
     "remove_projects",
   );
-  expect(interruptedInput.before.resources).toHaveLength(2);
+  expect(interruptedInput.before.resources).toHaveLength(3);
   const first = await createPlan();
   await expect(
     execution.apply(outsider, entry.id, first.id, {
@@ -1777,6 +1853,7 @@ it("transfers only a captured same-State scope to independent encrypted custody 
       artifactSha256: artifactHash,
       confirmDestroyResources: true,
       confirmDataRetentionReviewed: true,
+      confirmBucketContentsDeletion: true,
     }),
   ).rejects.toMatchObject({ code: "42501" });
   const projectsRemoved = await runApply(first.id, true);

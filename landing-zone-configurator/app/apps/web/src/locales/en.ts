@@ -4092,4 +4092,20 @@ export const englishMessages: Record<string, string> = {
     "This workspace still contains existing Landing Zones. Complete their retirement first.",
   "Im Arbeitsbereich läuft noch eine Ausführung oder eine Wiederherstellung ist offen. Schließe diese zuerst ab.":
     "An execution or recovery is still pending in this workspace. Complete it before deleting the workspace.",
+  "Ich bestätige die endgültige Löschung aller Inhalte und Versionen der oben aufgeführten Buckets.":
+    "I confirm the permanent deletion of all contents and versions in the buckets listed above.",
+  "Erstelle einen neuen Rückbauplan und bestätige die Löschung der Bucket-Inhalte.":
+    "Create a new retirement plan and confirm deletion of bucket contents.",
+  "Bucket-Inhalte sind durch Aufbewahrungsfristen oder Legal Hold geschützt. Die Bereinigung umgeht diese Sperren nicht.":
+    "Bucket contents are protected by retention periods or legal hold. Cleanup does not bypass these protections.",
+  "Die Bucket-Bereinigung konnte nicht abgeschlossen werden. Prüfe die Ausgabe und den Bereinigungszugang.":
+    "Bucket cleanup could not complete. Check the output and cleanup access.",
+  "Der unabhängige Zugang benötigt Zugriff auf Object Storage und die Inhalte der zu löschenden Buckets.":
+    "The independent account needs Object Storage access and access to the contents of the buckets being deleted.",
+  "Die Buckets sind noch nicht vollständig leer. Prüfe laufende Schreibzugriffe und die Ausgabe; erstelle danach einen neuen Plan.":
+    "The buckets are not completely empty. Check ongoing writes and the output, then create a new plan.",
+  "Der kurzlebige Bereinigungszugang konnte nicht sicher erstellt oder entfernt werden. Prüfe die Object-Storage-Zugänge des betroffenen Projekts.":
+    "The temporary cleanup access could not be safely created or removed. Check Object Storage credentials in the affected project.",
+  "Der Bucket-Umfang stimmt nicht mit dem geprüften Rückbauplan überein. Erstelle einen neuen Plan.":
+    "The bucket scope does not match the reviewed retirement plan. Create a new plan.",
 };

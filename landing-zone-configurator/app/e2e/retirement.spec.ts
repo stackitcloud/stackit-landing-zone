@@ -1558,3 +1558,162 @@ test("renders incremental retirement NDJSON before completion without restarting
   );
   await expect(output).toContainText("Destroy complete!");
 });
+
+test("requires explicit bucket-content approval in the existing retirement Apply review", async ({
+  page,
+}) => {
+  await mockEmptyApplicationLists(page);
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { stackit: true, github: false, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/backends", (route) =>
+    route.fulfill({ json: { backends: [] } }),
+  );
+  await page.route("**/api/v1/credentials", (route) =>
+    route.fulfill({ json: { profiles: [] } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: user, login: "owner@example.test" },
+        tenant: {
+          id: tenant,
+          name: "Partial retirement",
+          kind: "organisation",
+          roles: ["platform-engineer"],
+          manageMembers: true,
+        },
+        csrfToken: "retirement-csrf",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        stackitVerified: true,
+      },
+    }),
+  );
+  const job = "77777777-7777-4777-8777-777777777777",
+    scope = "66666666-6666-4666-8666-666666666666",
+    hash = "a".repeat(64);
+  let applied: unknown;
+  const current = {
+    id,
+    stateKey,
+    name: "Partially retired platform",
+    organizationId: "44444444-4444-4444-8444-444444444444",
+    createdBy: user,
+    reason: "Cleanup remaining state bucket",
+    notBefore: new Date(Date.now() - 60000).toISOString(),
+    createdAt: new Date().toISOString(),
+    phase: "NEEDS_ATTENTION",
+    generation: 1,
+    applications: [],
+    blockers: [],
+  };
+  await page.route("**/api/v1/retirements**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (route.request().method() === "POST") {
+      expect(path).toBe(`/api/v1/retirements/${id}/jobs/${job}/apply`);
+      applied = route.request().postDataJSON();
+      return route.fulfill({
+        json: { id: "88888888-8888-4888-8888-888888888888" },
+      });
+    }
+    if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
+    if (path.endsWith("/execution"))
+      return route.fulfill({
+        json: {
+          retirementId: id,
+          generation: 1,
+          hasHandoff: true,
+          prepared: true,
+          canPrepare: false,
+          scopes: [
+            {
+              id: scope,
+              name: current.name,
+              instanceId: null,
+              stage: "remove_projects",
+              stateVersion: "5",
+              canPlan: false,
+            },
+          ],
+          jobs: [
+            {
+              id: job,
+              scopeId: scope,
+              operatorId: user,
+              generation: 1,
+              operation: "plan",
+              phase: "remove_projects",
+              status: "succeeded",
+              nativeStatus: "succeeded",
+              createdAt: current.createdAt,
+              sourceRevision: "b".repeat(40),
+              providerLockSha256: "c".repeat(64),
+              artifactSha256: hash,
+              deleteCount: 1,
+              canApply: true,
+              canInspect: false,
+              recoveryAvailable: false,
+              recoveryPending: false,
+              errorCode: null,
+            },
+          ],
+        },
+      });
+    if (path.endsWith("/preview"))
+      return route.fulfill({
+        json: {
+          id: job,
+          phase: "remove_projects",
+          artifactSha256: hash,
+          deletes: [
+            {
+              address: "module.management.stackit_objectstorage_bucket.tfstate",
+              type: "stackit_objectstorage_bucket",
+              id: "55555555-5555-4555-8555-555555555555,eu01,fixture-state-bucket",
+            },
+          ],
+        },
+      });
+    if (path.endsWith("/output"))
+      return route.fulfill({ json: { text: "", truncated: false } });
+    return route.fulfill({ json: [current] });
+  });
+  await page.goto("/deployments/retire");
+  const panel = page.getByRole("region", { name: "Retire landing zones" });
+  await panel
+    .getByRole("button", { name: "Review deletions", exact: true })
+    .click();
+  const apply = panel.getByRole("button", {
+    name: "Apply reviewed retirement plan",
+  });
+  await panel
+    .getByRole("checkbox", {
+      name: "Data exports, backups and retention requirements have been reviewed.",
+    })
+    .check();
+  await panel
+    .getByRole("checkbox", {
+      name: "I confirm permanent deletion of exactly this reviewed scope.",
+    })
+    .check();
+  await expect(apply).toBeDisabled();
+  expect(applied).toBeUndefined();
+  await panel
+    .getByRole("checkbox", {
+      name: "I confirm the permanent deletion of all contents and versions in the buckets listed above.",
+    })
+    .check();
+  await expect(apply).toBeEnabled();
+  await apply.click();
+  await expect
+    .poll(() => applied)
+    .toEqual({
+      generation: 1,
+      artifactSha256: hash,
+      confirmDestroyResources: true,
+      confirmDataRetentionReviewed: true,
+      confirmBucketContentsDeletion: true,
+    });
+});

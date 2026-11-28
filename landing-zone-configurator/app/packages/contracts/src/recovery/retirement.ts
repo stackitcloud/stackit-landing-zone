@@ -375,6 +375,7 @@ export const retirementWorkerInputSchema = z.strictObject({
   beforeStateSha256: z.string().regex(/^[a-f0-9]{64}$/),
   protectedServiceAccount: z.email(),
   protectedProjectIds: z.array(z.uuid()).min(1).max(32),
+  bucketCleanupPolicy: z.literal(1).optional(),
   key: z.unknown(),
   backend: z.strictObject({
     address: z.url(),

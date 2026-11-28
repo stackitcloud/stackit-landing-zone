@@ -82,6 +82,7 @@ const original = {
 async function fixture(
   options: {
     operation?: "plan" | "apply";
+    bucket?: "success" | "fail";
     finalize?: boolean;
     failure?: "folder-conflict" | "state-write";
     ackRecovery?: boolean;
@@ -124,20 +125,55 @@ async function fixture(
       ),
     }),
   );
+  const bucketAttributes = {
+    id: `${projectId},eu01,fixture-state-bucket`,
+    project_id: projectId,
+    name: "fixture-state-bucket",
+  };
+  const sourceState = {
+    ...original,
+    resources: [
+      ...original.resources,
+      ...(options.bucket
+        ? [
+            {
+              module: "module.management",
+              mode: "managed",
+              type: "stackit_objectstorage_bucket",
+              name: "tfstate",
+              provider:
+                'provider["registry.opentofu.org/stackitcloud/stackit"]',
+              instances: [{ attributes: bucketAttributes }],
+            },
+          ]
+        : []),
+    ],
+  };
   const before = options.finalize
     ? { ...original, serial: 2, resources: original.resources.slice(0, 1) }
-    : original;
-  const after = options.failure
-    ? before
-    : {
-        ...before,
-        serial: before.serial + 1,
-        resources: options.finalize ? [] : before.resources.slice(0, 1),
-      };
+    : sourceState;
+  const after =
+    options.failure || options.bucket === "fail"
+      ? before
+      : {
+          ...before,
+          serial: before.serial + 1,
+          resources: options.finalize ? [] : before.resources.slice(0, 1),
+        };
   const plan = {
     format_version: "1.2",
     complete: true,
     resource_changes: [
+      ...(options.bucket
+        ? [
+            {
+              address: "module.management.stackit_objectstorage_bucket.tfstate",
+              mode: "managed",
+              type: "stackit_objectstorage_bucket",
+              change: { actions: ["delete"], before: bucketAttributes },
+            },
+          ]
+        : []),
       {
         address: folderAddress,
         mode: "managed",
@@ -205,7 +241,8 @@ else if(cmd==="apply"){
     providerLockSha256: retirementProviderLockSha256,
     variables,
     variablesSha256: sha(JSON.stringify(variables)),
-    baseline: retirementInventory(original),
+    baseline: retirementInventory(sourceState),
+    bucketCleanupPolicy: 1,
     before: retirementInventory(before),
     beforeStateSha256: retirementStateSha256(before),
     protectedServiceAccount: key.credentials.iss,
@@ -230,10 +267,37 @@ else if(cmd==="apply"){
   const reports: { path: string; body: unknown }[] = [];
   let recoveryCount = 0;
   let backendReads = 0;
+  const bucketCleanup = vi.fn(
+    async (
+      args: Parameters<
+        NonNullable<
+          import("../apps/worker/src/retirement.js").RetirementWorkerOptions["bucketCleanup"]
+        >
+      >[0],
+    ) => {
+      expect(
+        reports.some(
+          (r) =>
+            r.path === "stage" &&
+            (r.body as { stage: string }).stage === "applying",
+        ),
+      ).toBe(false);
+      await args.progress?.(
+        "Bucket fixture-state-bucket: preparing contents cleanup.\n",
+      );
+      if (options.bucket === "fail")
+        throw Error("retirement_bucket_cleanup_locked");
+      await args.beforeDelete?.();
+      await args.progress?.(
+        "Bucket fixture-state-bucket: empty; ready for OpenTofu deletion.\n",
+      );
+    },
+  );
   const run = () =>
     runRetirementWorker({
       root,
       workRoot,
+      bucketCleanup,
       local: !options.hosted,
       recoveryRetryMilliseconds: 1,
       brokerOrigin: origin,
@@ -281,7 +345,7 @@ else if(cmd==="apply"){
         return {};
       },
     });
-  return { root, workRoot, input, reports, run, after };
+  return { root, workRoot, input, reports, run, after, bucketCleanup };
 }
 it("accepts OpenTofu's reserialized checks while retaining exact authoritative backend checksums", async () => {
   const f = await fixture({ normalizedState: true });
@@ -440,4 +504,45 @@ it("keeps a hosted CF task alive for durable recovery upload without repeating n
     ),
   ).toHaveLength(1);
   expect(await readdir(f.workRoot)).toEqual([]);
+});
+
+it("keeps plans read-only and empties approved buckets before native Apply", async () => {
+  const planned = await fixture({ bucket: "success" });
+  await expect(planned.run()).resolves.toBe("succeeded");
+  expect(planned.bucketCleanup).not.toHaveBeenCalled();
+  const applied = await fixture({ bucket: "success", operation: "apply" });
+  await expect(applied.run()).resolves.toBe("succeeded");
+  expect(applied.bucketCleanup).toHaveBeenCalledOnce();
+  expect(applied.bucketCleanup.mock.calls[0]?.[0].buckets).toEqual([
+    {
+      projectId,
+      region: "eu01",
+      name: "fixture-state-bucket",
+      address: "module.management.stackit_objectstorage_bucket.tfstate",
+    },
+  ]);
+  expect(
+    applied.reports
+      .filter((r) => r.path === "output")
+      .some((r) => JSON.stringify(r.body).includes("$ bucket cleanup")),
+  ).toBe(true);
+});
+it("reports a known unchanged State and never starts OpenTofu Apply after bucket cleanup fails", async () => {
+  const f = await fixture({ bucket: "fail", operation: "apply" });
+  await expect(f.run()).resolves.toBe("failed");
+  expect(
+    f.reports.some(
+      (r) =>
+        r.path === "stage" &&
+        (r.body as { stage: string }).stage === "applying",
+    ),
+  ).toBe(false);
+  expect(f.reports.find((r) => r.path === "result")?.body).toMatchObject({
+    status: "failed",
+    removed: [],
+    completedDeletes: [],
+    errorCode: "retirement_bucket_cleanup_locked",
+    stateSha256: f.input.beforeStateSha256,
+  });
+  expect(f.reports.some((r) => r.path === "recovery")).toBe(false);
 });

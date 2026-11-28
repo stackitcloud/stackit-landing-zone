@@ -159,6 +159,7 @@ export const retirementApplyRequestSchema = z.strictObject({
   artifactSha256: z.string().regex(/^[a-f0-9]{64}$/),
   confirmDestroyResources: z.literal(true),
   confirmDataRetentionReviewed: z.literal(true),
+  confirmBucketContentsDeletion: z.literal(true).optional(),
 });
 export const retirementInspectSchema = z.strictObject({
   generation: z.number().int().positive().refine(Number.isSafeInteger),

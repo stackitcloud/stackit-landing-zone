@@ -157,8 +157,45 @@ python3 src/retirement/guard.py check-plan \
   --plan /absolute/private/retirement/projects.plan.json --phase remove_projects
 # Menschenlesbaren gespeicherten Plan und genauen Umfang unabhängig prüfen.
 tofu -chdir=src/retirement show /absolute/private/retirement/projects.tfplan
+```
+
+Vor Apply jeden Bucket der geprüften Löschliste leeren, einschließlich des
+ursprünglichen State-Buckets. Dieser darf kein aktives Backend mehr sein. Das
+optionale eigenständige Werkzeug benötigt Python 3 und AWS CLI v2 mit Unterstützung
+für MD5-Sammellöschung und S3-Zugängen
+für das jeweilige Bucket-Projekt, aber weder Configurator noch dessen Datenbank
+oder API. Wurden die ursprünglichen Zugänge bereits entfernt, zunächst über STACKIT
+einen separaten Bereinigungszugang anlegen und nach der Bereinigung entfernen.
+Weder den Automation-Service-Account noch bereits gelöschte Infrastruktur neu anlegen.
+
+```sh
+# Lesende Inventarisierung; für jeden freigegebenen Bucket und Projekt-Profil wiederholen.
+python3 src/retirement/empty-bucket.py \
+  --plan /absolute/private/retirement/projects.plan.json \
+  --bucket EXACT_APPROVED_BUCKET --profile cleanup-project
+# Nach Datenexport und Prüfung den oben ausgegebenen JSON-Hash verwenden.
+python3 src/retirement/empty-bucket.py \
+  --plan /absolute/private/retirement/projects.plan.json \
+  --bucket EXACT_APPROVED_BUCKET --profile cleanup-project \
+  --plan-sha256 REVIEWED_JSON_SHA256 --apply \
+  --confirm-bucket-contents-deletion --confirm-state-backend-outside-target
+# Erst wenn alle freigegebenen Buckets bestätigt leer sind:
 tofu -chdir=src/retirement apply /absolute/private/retirement/projects.tfplan
 ```
+
+Das Werkzeug entfernt Versionen einschließlich Null-Versionen, Löschmarker und
+unvollständige Multipart-Uploads. Es prüft Aufbewahrung/Legal Hold ohne Umgehung,
+Fehler einzelner Objektlöschungen und den abschließenden Leerstand. Es startet
+weder OpenTofu noch löscht es den Bucket selbst. Pro Aufruf gelten 50.000 Inventar-
+einträge und 15 Minuten als Grenze; große Inventare benötigen gesondert geprüfte
+Bereinigung. Konkurrierende Schreiber anhalten. Bereits gelöschte Inhalte bleiben
+nach einem Fehler gelöscht; Ursache beheben und nur die geprüfte Bereinigung
+wiederholen. Nach einem fehlgeschlagenen nativen Apply zunächst State abgleichen
+und einen frischen nativen Plan erstellen. Zugangsdaten kommen aus der normalen
+AWS-CLI-Umgebung beziehungsweise dem Profil, nie aus Plan, Argumenten oder Ausgabe.
+Die Backend-Bestätigung ist eine Erklärung des Operators; das Werkzeug kann den
+Standort des aktiven Backends nicht beweisen. Die unabhängige State-Migration und
+Prüfung oben abschließen, bevor diese Bestätigung gegeben wird.
 
 Die Prüfung weist Neuanlagen, Änderungen, Ersetzungen, ungeprüfte Identitäten,
 Governance-Löschungen und ein Verschwinden beim Refresh ab. Insbesondere kann der
