@@ -180,17 +180,21 @@ async function waitForAccess(
       });
       return;
     } catch (error) {
-      const code = (error as { name?: string }).name;
+      const observed = error as {
+        name?: string;
+        $metadata?: { httpStatusCode?: number };
+      };
       if (
-        !code ||
-        ![
-          "InvalidAccessKeyId",
-          "AccessDenied",
-          "SignatureDoesNotMatch",
-        ].includes(code) ||
+        (observed.$metadata?.httpStatusCode !== 403 &&
+          ![
+            "InvalidAccessKeyId",
+            "AccessDenied",
+            "SignatureDoesNotMatch",
+          ].includes(observed.name ?? "")) ||
         Date.now() >= until
       )
         throw fail("retirement_bucket_cleanup_access_failed");
+      // HEAD errors have no XML error body; use HTTP 403 as well as named errors.
       // New S3 keys may propagate asynchronously. Observe access; never repeat creation.
       await delay(Math.min(250, Math.max(1, until - Date.now())));
     }
