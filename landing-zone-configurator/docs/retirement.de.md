@@ -147,7 +147,13 @@ wird nicht mehr zur Löschfreigabe angeboten. Nach Klärung des Laufs einen neue
 Plan erstellen.
 
 Lasse die Rückbauschritte geöffnet, um den aktiven Auftrag zu verfolgen. Status und
-OpenTofu-Ausgabe aktualisieren sich automatisch. Jeder Auftrag behält seine eigene
+OpenTofu-Ausgabe aktualisieren sich automatisch. Die Ausgabe nutzt denselben
+laufenden NDJSON-Transport wie Plattform- und Application-Plan/Apply, einschließlich
+Wiederverbindung und Zugriffsprüfung während des Streams. Ein kalter Runner kann
+bis zu fünf Minuten für die Paketkopie vor dem OpenTofu-Start benötigen; die
+Beobachtung dieser Kopie wiederholt keinen Auftrag und startet keinen zweiten.
+Ein Startfehler hat keinen nativen Ausführungsnachweis und wird getrennt von
+einem OpenTofu-Fehler angezeigt. Jeder Auftrag behält seine eigene
 begrenzte, bereinigte Ausgabe; rohe States und maschinenlesbares Saved-Plan-JSON
 werden nie angezeigt. Für ältere Aufträge aus der Zeit vor der Ausgabeerfassung
 kann keine gespeicherte Ausgabe vorliegen.

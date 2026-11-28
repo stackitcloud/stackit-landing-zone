@@ -1377,3 +1377,184 @@ test("offers explicit completion of a pre-pause run after resume without replayi
     page.getByRole("button", { name: "Apply reviewed retirement plan" }),
   ).toHaveCount(0);
 });
+
+test("renders incremental retirement NDJSON before completion without restarting the stream on status polls", async ({
+  page,
+}) => {
+  await mockEmptyApplicationLists(page);
+  await page.route("**/auth/status", (route) =>
+    route.fulfill({
+      json: { stackit: true, github: false, primary: "stackit" },
+    }),
+  );
+  await page.route("**/api/v1/backends", (route) =>
+    route.fulfill({ json: { backends: [] } }),
+  );
+  await page.route("**/api/v1/credentials", (route) =>
+    route.fulfill({ json: { profiles: [] } }),
+  );
+  await page.route("**/api/v1/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { id: user, login: "owner@example.test" },
+        tenant: {
+          id: tenant,
+          name: "Stream test",
+          kind: "organisation",
+          roles: ["platform-engineer"],
+          manageMembers: true,
+        },
+        csrfToken: "retirement-csrf",
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        stackitVerified: true,
+      },
+    }),
+  );
+  const jobId = "77777777-7777-4777-8777-777777777777",
+    scopeId = "66666666-6666-4666-8666-666666666666";
+  const retirement = {
+    id,
+    stateKey,
+    name: "Streaming pilot",
+    organizationId: "44444444-4444-4444-8444-444444444444",
+    createdBy: user,
+    reason: "Synthetic stream",
+    notBefore: new Date(Date.now() - 60000).toISOString(),
+    createdAt: new Date().toISOString(),
+    phase: "PREPARED",
+    generation: 1,
+    applications: [],
+    blockers: [],
+  };
+  let statusReads = 0;
+  await page.route("**/api/v1/retirements**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (route.request().method() !== "GET") throw Error("Unexpected mutation");
+    if (path.endsWith("/candidates")) return route.fulfill({ json: [] });
+    if (path.endsWith("/execution")) {
+      statusReads++;
+      return route.fulfill({
+        json: {
+          retirementId: id,
+          generation: 1,
+          hasHandoff: true,
+          prepared: true,
+          canPrepare: false,
+          scopes: [
+            {
+              id: scopeId,
+              name: retirement.name,
+              instanceId: null,
+              stage: "private_workloads",
+              stateVersion: "1",
+              canPlan: false,
+            },
+          ],
+          jobs: [
+            {
+              id: jobId,
+              scopeId,
+              operatorId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              generation: 1,
+              operation: "apply",
+              phase: "private_workloads",
+              status: "applying",
+              nativeStatus: null,
+              createdAt: retirement.createdAt,
+              sourceRevision: "a".repeat(40),
+              providerLockSha256: "b".repeat(64),
+              artifactSha256: null,
+              deleteCount: 2,
+              canApply: false,
+              canInspect: false,
+              recoveryAvailable: false,
+              recoveryPending: false,
+              errorCode: null,
+            },
+          ],
+        },
+      });
+    }
+    return route.fulfill({ json: [retirement] });
+  });
+  // The API transport is covered by real HTTP tests. Here control individual
+  // browser stream chunks to prove rendering does not await response completion.
+  await page.addInitScript(() => {
+    const original = window.fetch;
+    const state = {
+      reads: 0,
+      ended: false,
+      send: (_text: string, _end = false) => {},
+    };
+    Object.assign(window, { retirementStreamTest: state });
+    window.fetch = async (...args) => {
+      if (
+        !String(args[0]).includes("/jobs/") ||
+        !String(args[0]).endsWith("/output")
+      )
+        return original(...args);
+      state.reads++;
+      const signal = args[1]?.signal;
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            const encoder = new TextEncoder();
+            state.send = (text, end = false) => {
+              controller.enqueue(
+                encoder.encode(
+                  `${JSON.stringify({ type: "output", data: { text, truncated: false, kind: end ? "execution" : "live" } })}\n`,
+                ),
+              );
+              if (end) {
+                state.ended = true;
+                controller.enqueue(encoder.encode('{"type":"complete"}\n'));
+                controller.close();
+              }
+            };
+            state.send("$ tofu apply\nDestroying first resource...\n");
+            signal?.addEventListener(
+              "abort",
+              () => controller.error(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          },
+        }),
+        { headers: { "content-type": "application/x-ndjson" } },
+      );
+    };
+  });
+  await page.goto("/deployments/retire");
+  const panel = page.getByRole("region", { name: "Retire landing zones" });
+  const output = panel.getByRole("region", { name: "OpenTofu output" });
+  await expect(output).toContainText("Destroying first resource...");
+  const reads = statusReads;
+  await expect.poll(() => statusReads).toBeGreaterThan(reads);
+  await page.evaluate(() => {
+    const state = (
+      window as unknown as {
+        retirementStreamTest: {
+          reads: number;
+          ended: boolean;
+          send(text: string, end?: boolean): void;
+        };
+      }
+    ).retirementStreamTest;
+    if (state.reads !== 1 || state.ended)
+      throw Error("The active stream was replaced or completed early");
+    state.send(
+      "$ tofu apply\nDestroying first resource...\nFirst resource destroyed\n",
+    );
+  });
+  await expect(output).toContainText("First resource destroyed");
+  await page.evaluate(() =>
+    (
+      window as unknown as {
+        retirementStreamTest: { send(text: string, end: boolean): void };
+      }
+    ).retirementStreamTest.send(
+      "Destroy complete! Resources: 2 destroyed.\n",
+      true,
+    ),
+  );
+  await expect(output).toContainText("Destroy complete!");
+});

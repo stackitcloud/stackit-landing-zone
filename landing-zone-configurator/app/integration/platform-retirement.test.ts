@@ -1497,6 +1497,13 @@ it("transfers only a captured same-State scope to independent encrypted custody 
     expect(await execution.jobOutput(owner, entry.id, job.id)).toEqual(
       nativeOutput,
     );
+    expect(await execution.jobOutputStream(owner, entry.id, job.id)).toEqual({
+      ...nativeOutput,
+      kind: "live",
+    });
+    await expect(
+      execution.jobOutputStream(outsider, entry.id, job.id),
+    ).rejects.toMatchObject({ code: "42501" });
     await expect(
       execution.jobOutput(outsider, entry.id, job.id),
     ).rejects.toMatchObject({ code: "42501" });

@@ -8,7 +8,7 @@ import type { Session } from "../apps/api/src/auth/store.js";
 import { CredentialError } from "../apps/api/src/credentials/profiles.js";
 import { readPlanOutput } from "../apps/web/src/plan-output.js";
 
-describe.each(["platform", "application"] as const)(
+describe.each(["platform", "application", "retirement"] as const)(
   "%s output stream",
   (scope) => {
     async function fixture() {
@@ -65,6 +65,34 @@ describe.each(["platform", "application"] as const)(
               },
             }
           : {}),
+        ...(scope === "retirement"
+          ? {
+              retirements: {
+                list: vi.fn(),
+                candidates: vi.fn(),
+                start: vi.fn(),
+                change: vi.fn(),
+              },
+              retirementExecution: {
+                review: vi.fn(),
+                plan: vi.fn(),
+                apply: vi.fn(),
+                preview: vi.fn(),
+                inspect: vi.fn(),
+                recoveryReview: vi.fn(),
+                adoptRecovery: vi.fn(),
+                input: vi.fn(),
+                stage: vi.fn(),
+                output: vi.fn(),
+                jobOutput: vi.fn(),
+                jobOutputStream: output,
+                artifact: vi.fn(),
+                state: vi.fn(),
+                result: vi.fn(),
+                recovery: vi.fn(),
+              },
+            }
+          : {}),
         plans: {
           list: vi.fn(),
           start: vi.fn(),
@@ -77,7 +105,10 @@ describe.each(["platform", "application"] as const)(
         },
       });
       const address = await app.listen({ host: "127.0.0.1", port: 0 });
-      const url = `${address}/api/v1/${scope === "application" ? "applications/jobs" : "plans"}/${randomUUID()}/output`;
+      const url =
+        scope === "retirement"
+          ? `${address}/api/v1/retirements/${randomUUID()}/jobs/${randomUUID()}/output`
+          : `${address}/api/v1/${scope === "application" ? "applications/jobs" : "plans"}/${randomUUID()}/output`;
       const headers = {
         cookie: `__Host-lzc-session=${"b".repeat(43)}`,
         accept: "application/x-ndjson",
@@ -211,9 +242,11 @@ describe.each(["platform", "application"] as const)(
         expect(denied.headers.get("retry-after")).toBe("2");
         expect(await denied.json()).toEqual({
           error:
-            scope === "application"
-              ? "application_output_stream_limit"
-              : "plan_output_stream_limit",
+            scope === "retirement"
+              ? "retirement_output_stream_limit"
+              : scope === "application"
+                ? "application_output_stream_limit"
+                : "plan_output_stream_limit",
         });
         controllers[0]?.abort();
         await delay(30);

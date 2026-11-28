@@ -4,10 +4,12 @@ import { z } from "zod";
 import {
   type AuthServices,
   authenticatedSession,
+  cookie,
   validMutation,
 } from "../auth/routes.js";
 import type { Session } from "../auth/store.js";
 import { CredentialError } from "../credentials/profiles.js";
+import { sendPlanOutput } from "../plans/output-stream.js";
 import type { RetirementExecution } from "./execution.js";
 import type { RetirementPreparation } from "./preparation.js";
 import type { Retirements } from "./service.js";
@@ -25,6 +27,7 @@ export type RetirementExecutionRoutes = Pick<
   | "stage"
   | "output"
   | "jobOutput"
+  | "jobOutputStream"
   | "artifact"
   | "state"
   | "result"
@@ -38,6 +41,7 @@ export function registerRetirements(
   preparation?: Pick<RetirementPreparation, "prepare" | "homeProject">,
 ) {
   const sessions = new WeakMap<FastifyRequest, Session>();
+  const outputStreams = new Map<string, number>();
   app.register(async (routes) => {
     routes.setErrorHandler((error, _request, reply) => {
       if ((error as { statusCode?: number }).statusCode === 413)
@@ -111,9 +115,46 @@ export function registerRetirements(
         );
       routes.get(
         "/api/v1/retirements/:id/jobs/:jobId/output",
-        async (request) => {
+        async (request, reply) => {
           const { id, jobId } = params(request);
-          return execution.jobOutput(sessions.get(request)!, id, jobId!);
+          const session = sessions.get(request)!;
+          if (!request.headers.accept?.includes("application/x-ndjson"))
+            return execution.jobOutput(session, id, jobId!);
+          const initial = await execution.jobOutputStream(session, id, jobId!);
+          const owner = `${session.tenantId}:${session.userId}`;
+          const count = outputStreams.get(owner) ?? 0;
+          if (count >= 8)
+            return reply
+              .code(429)
+              .header("Retry-After", "2")
+              .send({ error: "retirement_output_stream_limit" });
+          outputStreams.set(owner, count + 1);
+          reply.raw.once("close", () => {
+            const remaining = (outputStreams.get(owner) ?? 1) - 1;
+            if (remaining) outputStreams.set(owner, remaining);
+            else outputStreams.delete(owner);
+          });
+          sendPlanOutput(reply, initial, async () => {
+            const token = cookie(request, "__Host-lzc-session");
+            const current = token
+              ? await auth.store.resolveSession(token)
+              : null;
+            if (
+              !current ||
+              current.id !== session.id ||
+              current.userId !== session.userId ||
+              current.tenantId !== session.tenantId
+            )
+              throw new CredentialError(401, "authentication_required");
+            try {
+              return await execution.jobOutputStream(current, id, jobId!);
+            } catch (error) {
+              if ((error as { code?: string }).code === "42501")
+                throw new CredentialError(403, "credential_role_required");
+              throw error;
+            }
+          });
+          return reply;
         },
       );
       routes.get(

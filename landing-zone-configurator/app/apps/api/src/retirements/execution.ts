@@ -601,19 +601,48 @@ export class RetirementExecution {
       ]),
     );
   }
-  async jobOutput(session: Session, id: string, jobId: string) {
+  private async readJobOutput(session: Session, id: string, jobId: string) {
     const output = await withTenant(
       this.pool,
       session,
       async (c) =>
         (
           await c.query(
-            "SELECT output_text AS text,output_truncated AS truncated FROM lzc_auth.retirement_job_for_review($1,$2,$3)",
+            "SELECT output_text AS text,output_truncated AS truncated,native_status,status,stopped_at FROM lzc_auth.retirement_job_for_review($1,$2,$3)",
             [session.id, z.uuid().parse(id), z.uuid().parse(jobId)],
           )
         ).rows[0],
     );
-    return retirementOutputSchema.parse(output);
+    return z
+      .object({
+        text: z.string(),
+        truncated: z.boolean(),
+        native_status: z.string().nullable(),
+        status: z.string(),
+        stopped_at: z.date().nullable(),
+      })
+      .parse(output);
+  }
+  async jobOutput(session: Session, id: string, jobId: string) {
+    const output = await this.readJobOutput(session, id, jobId);
+    return retirementOutputSchema.parse({
+      text: output.text,
+      truncated: output.truncated,
+    });
+  }
+  async jobOutputStream(session: Session, id: string, jobId: string) {
+    const output = await this.readJobOutput(session, id, jobId);
+    const live =
+      output.native_status === null &&
+      output.stopped_at === null &&
+      !["succeeded", "failed"].includes(output.status);
+    return {
+      ...retirementOutputSchema.parse({
+        text: output.text,
+        truncated: output.truncated,
+      }),
+      kind: live ? ("live" as const) : ("execution" as const),
+    };
   }
   async artifact(ticket: string, raw: unknown) {
     const { identity, context } = await this.resolve(ticket),

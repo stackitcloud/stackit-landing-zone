@@ -167,6 +167,11 @@ it("separates cookie-authorized review from one-job runner and HTTP-State capabi
     stage: vi.fn(),
     output: vi.fn(),
     jobOutput: vi.fn(async () => ({ text: "", truncated: false })),
+    jobOutputStream: vi.fn(async () => ({
+      text: "",
+      truncated: false,
+      kind: "execution" as const,
+    })),
     artifact: vi.fn(),
     state: vi.fn(async () => ({ version: 4 })),
     result: vi.fn(),
