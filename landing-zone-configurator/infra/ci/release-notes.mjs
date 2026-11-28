@@ -1,6 +1,10 @@
 const tag=process.env.LZC_RELEASE_TAG;
 if(!/^v(?:[2-9]|[1-9][0-9]+)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag??""))throw new Error("Expected a stable product release tag");
 const notes={
+ "v2.3.7": {
+  introduction:"More reliable retirement startup and live OpenTofu output.",
+  changes:["Wait for slow Cloud Foundry runner package copies before starting retirement jobs.","Stream retirement OpenTofu progress using the same transport as Plan and Apply; clarify startup failures."],
+ },
  "v2.3.6": {
   introduction:"Complete interrupted retirement reviews after pausing and resuming.",
   changes:[

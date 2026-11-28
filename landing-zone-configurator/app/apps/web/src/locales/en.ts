@@ -4006,8 +4006,10 @@ export const englishMessages: Record<string, string> = {
     "Retirement first requires a separately reviewed migration of the original Terraform state to OpenTofu. State has not been handed over.",
   "Die ursprünglichen Eingaben können mit diesem Quellpaket nicht sicher rekonstruiert werden. Der State wurde nicht übernommen.":
     "The original inputs cannot be safely reconstructed with this source package. State has not been handed over.",
-  "Kein nativer Abschlussnachweis. Der Runner ist beendet; erstelle einen neuen Plan.":
-    "No native completion receipt is available. The runner has stopped; create a new plan.",
+  "Kein nativer Abschlussnachweis verfügbar. Prüfe den Status und die Abschlussprüfung, bevor du fortfährst.":
+    "No native completion receipt is available. Check the status and completion check before continuing.",
+  "Die Ausführungsumgebung konnte nicht gestartet werden. Es liegt kein OpenTofu-Ergebnis vor. Aktualisiere den Status und erstelle einen neuen Plan.":
+    "The execution environment could not be started. No OpenTofu result is available. Refresh the status and create a new plan.",
   "Plan erstellen": "Create plan",
   "Speichern und Plan erstellen": "Save and create plan",
   "Plan erstellen: {{value0}}": "Create plan: {{value0}}",

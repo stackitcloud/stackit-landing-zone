@@ -8,6 +8,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { t } from "../i18n";
+import { readPlanOutput } from "../plan-output";
 import type { Session } from "./Account";
 
 const previewSchema = z.object({
@@ -44,6 +45,8 @@ const phaseLabels: Record<string, string> = {
   complete: "Stillgelegt",
 };
 const errors: Record<string, string> = {
+  retirement_runner_unavailable:
+    "Die Ausführungsumgebung konnte nicht gestartet werden. Es liegt kein OpenTofu-Ergebnis vor. Aktualisiere den Status und erstelle einen neuen Plan.",
   retirement_private_runner_required:
     "Diese Landing Zone benötigt für den Rückbau einen Runner mit Zugang zu ihren privaten Control Planes. Der State wurde nicht übernommen.",
   retirement_engine_migration_required:
@@ -303,20 +306,58 @@ export function RetirementExecutionPanel({
       outputControllers.current[jobId] = request;
       const abort = () => request.abort();
       signal?.addEventListener("abort", abort, { once: true });
-      const timeout = setTimeout(abort, 15000);
-      try {
-        const output = retirementOutputSchema.parse(
-          await api(`${base}/jobs/${jobId}/output`, undefined, request.signal),
-        );
+      const deadline = Date.now() + 20 * 60 * 1000;
+      const accept = (output: { text: string; truncated: boolean }) => {
         if (
           request.signal.aborted ||
           current.current !== owner ||
           outputRequests.current[jobId] !== sequence
         )
           return;
-        setOutputs((previous) => ({ ...previous, [jobId]: output }));
+        setOutputs((previous) => ({
+          ...previous,
+          [jobId]: { text: output.text, truncated: output.truncated },
+        }));
         setOutputErrors((previous) => ({ ...previous, [jobId]: false }));
-        return true;
+      };
+      try {
+        while (!request.signal.aborted && Date.now() < deadline) {
+          const timeout = setTimeout(abort, 40000);
+          let kind: string | undefined;
+          try {
+            const response = await fetch(`${base}/jobs/${jobId}/output`, {
+              credentials: "same-origin",
+              cache: "no-store",
+              signal: request.signal,
+              headers: {
+                "x-lzc-tenant": tenant,
+                Accept: "application/x-ndjson",
+              },
+            });
+            if (!response.ok) throw Error("retirement_output_unavailable");
+            if (
+              response.headers
+                .get("content-type")
+                ?.includes("application/x-ndjson")
+            )
+              kind = await readPlanOutput(response, accept);
+            else accept(retirementOutputSchema.parse(await response.json()));
+          } finally {
+            clearTimeout(timeout);
+          }
+          if (kind !== "live") return true;
+          await new Promise<void>((resolve) => {
+            const done = () => {
+              clearTimeout(timer);
+              request.signal.removeEventListener("abort", done);
+              resolve();
+            };
+            const timer = setTimeout(done, 100);
+            request.signal.addEventListener("abort", done, { once: true });
+            if (request.signal.aborted) done();
+          });
+        }
+        return false;
       } catch {
         if (
           !signal?.aborted &&
@@ -326,13 +367,12 @@ export function RetirementExecutionPanel({
           setOutputErrors((previous) => ({ ...previous, [jobId]: true }));
         return false;
       } finally {
-        clearTimeout(timeout);
         signal?.removeEventListener("abort", abort);
         if (outputControllers.current[jobId] === request)
           delete outputControllers.current[jobId];
       }
     },
-    [api, base, identity],
+    [base, identity, tenant],
   );
   useEffect(() => {
     if (
@@ -438,7 +478,7 @@ export function RetirementExecutionPanel({
             ? `${latest.id}:${latest.nativeStatus}`
             : "";
           if (!completion || completion !== lastOutputCompletion)
-            void loadOutput(latest.id, controller.signal).then((loaded) => {
+            void loadOutput(latest.id).then((loaded) => {
               if (
                 loaded &&
                 !controller.signal.aborted &&
@@ -632,7 +672,7 @@ export function RetirementExecutionPanel({
       {job.status === "failed" && job.nativeStatus === null && (
         <p>
           {t(
-            "Kein nativer Abschlussnachweis. Der Runner ist beendet; erstelle einen neuen Plan.",
+            "Kein nativer Abschlussnachweis verfügbar. Prüfe den Status und die Abschlussprüfung, bevor du fortfährst.",
           )}
         </p>
       )}

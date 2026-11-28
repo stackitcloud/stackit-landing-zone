@@ -154,8 +154,8 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       this.config.inspection && identity === this.config.dropletId,
     );
   }
-  private async authorized() {
-    const deadline = Date.now() + 120000;
+  private async authorized(timeoutMs = 120000) {
+    const deadline = Date.now() + timeoutMs;
     const response = await fetch(
       "https://uaa.system.01.cf.eu01.stackit.cloud/oauth/token",
       {
@@ -319,7 +319,7 @@ export class CloudFoundryPlanRunner implements PlanRunner {
     variables: Record<string, string>,
     record: (appId: string, sourceDropletId: string) => Promise<void>,
   ) {
-    const call = await this.authorized();
+    const call = await this.authorized(6 * 60_000);
     const template = await call(`apps/${this.config.templateId}`);
     const templateSchema = z.object({
       name: z.string(),
@@ -359,10 +359,13 @@ export class CloudFoundryPlanRunner implements PlanRunner {
       { relationships: { app: { data: { guid: appId } } } },
     );
     const dropletId = guid(copied.guid);
-    for (let attempt = 0; attempt < 30; attempt++) {
+    // Large runner packages can take longer than 30 seconds to copy in CF.
+    // Observe this one copy; never repeat the mutation or dispatch a task early.
+    const copyDeadline = Date.now() + 5 * 60_000;
+    for (;;) {
       const current = await call(`droplets/${dropletId}`);
       if (current.state === "STAGED") break;
-      if (current.state !== "COPYING" || attempt === 29)
+      if (current.state !== "COPYING" || Date.now() >= copyDeadline)
         throw new Error("Runner copy failed");
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }

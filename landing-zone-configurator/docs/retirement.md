@@ -128,7 +128,12 @@ across generations, and its old Plan is not offered for deletion approval; creat
 a fresh Plan after the unresolved run has been closed.
 
 Keep the retirement steps open to follow the active job. Status and OpenTofu
-output refresh automatically. Each job retains its own bounded, redacted output;
+output refresh automatically. Output uses the same live NDJSON transport as
+Platform and Application Plan/Apply, including reconnects and access checks during
+the stream. A cold runner may need up to five minutes to copy its package before
+OpenTofu starts; observing that copy does not retry or start a second job. A
+startup failure has no native execution receipt and is shown separately from
+an OpenTofu failure. Each job retains its own bounded, redacted output;
 raw State and machine-readable saved-plan JSON are never displayed. Older jobs
 created before output capture was available can have no retained output.
 
