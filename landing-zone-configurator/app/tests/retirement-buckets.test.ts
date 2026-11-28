@@ -345,7 +345,8 @@ it("derives exact project/region/name from reviewed bucket IDs and rejects prote
 
 it("uses real signed S3 HTTP requests and XML serialization for versions, markers and multipart cleanup", async () => {
   let deleted = false,
-    aborted = false;
+    aborted = false,
+    heads = 0;
   const calls: string[] = [],
     errors: string[] = [];
   const server = createServer(async (request, response) => {
@@ -367,7 +368,7 @@ it("uses real signed S3 HTTP requests and XML serialization for versions, marker
       response.setHeader("content-type", "application/xml");
       const xml = (body: string) => response.end(body);
       if (request.method === "HEAD") {
-        response.statusCode = 200;
+        response.statusCode = ++heads === 1 ? 403 : 200;
         return response.end();
       }
       if (url.searchParams.has("object-lock")) {
@@ -442,6 +443,13 @@ it("uses real signed S3 HTTP requests and XML serialization for versions, marker
     });
     expect(errors).toEqual([]);
     expect(deleted && aborted).toBe(true);
+    expect(heads).toBe(2);
+    expect(calls.slice(0, 2)).toEqual(["HEAD:", "HEAD:"]);
+    expect(
+      f.api.filter(
+        (c) => c.method === "POST" && c.url.includes("/access-key?"),
+      ),
+    ).toHaveLength(1);
     expect(calls.some((c) => c.startsWith("POST:"))).toBe(true);
     expect(f.api.filter((c) => c.method === "DELETE")).toHaveLength(2);
   } finally {
